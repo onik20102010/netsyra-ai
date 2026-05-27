@@ -1,15 +1,16 @@
 ﻿"use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { PanelLeftClose, PanelLeft } from "lucide-react";
 
-export default function ChatPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [diveDeep, setDiveDeep] = useState(false);
+// Inner component that uses useSearchParams – must be separate
+function ChatContent() {
   const searchParams = useSearchParams();
   const initialId = searchParams.get("conversation");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [diveDeep, setDiveDeep] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(initialId);
   const router = useRouter();
 
@@ -25,27 +26,25 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
-      {/* Top bar – always visible */}
+      {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 select-none">
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className="flex items-center gap-2 focus:outline-none"
         >
-          <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">  {/* ← size here */}
-      <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-    </div>
-          <span className="text-lg font-bold text-black">Netsyra</span>
+          <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
+            <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
+          </div>
+          <span className="text-lg font-bold text-indigo-600">Netsyra</span>
           {sidebarCollapsed ? (
             <PanelLeft className="h-4 w-4 text-gray-400 ml-1" />
           ) : (
             <PanelLeftClose className="h-4 w-4 text-gray-400 ml-1" />
           )}
         </button>
-        {/* empty right side – you can add profile later */}
         <div />
       </div>
 
-      {/* Sidebar + main content area (pushed down by top bar height) */}
       <div className="flex flex-1 pt-12">
         <ChatSidebar
           collapsed={sidebarCollapsed}
@@ -66,5 +65,14 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Default export – wraps the inner component with Suspense
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white" />}>
+      <ChatContent />
+    </Suspense>
   );
 }
