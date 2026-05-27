@@ -17,16 +17,30 @@ export default function HistoryPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const supabase = createClient();
+  const [clientReady, setClientReady] = useState(false);
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
 
+  // Create Supabase client on mount only (client‑side)
   useEffect(() => {
-    if (!user) return;
+    try {
+      const client = createClient();
+      setSupabase(client);
+      setClientReady(true);
+    } catch (err) {
+      console.error("Failed to init Supabase client:", err);
+    }
+  }, []);
+
+  // Fetch conversations once client is ready
+  useEffect(() => {
+    if (!supabase || !user) return;
     const fetchConversations = async () => {
       const { data } = await supabase
         .from("conversations")
@@ -36,9 +50,10 @@ export default function HistoryPage() {
       setConversations(data || []);
     };
     fetchConversations();
-  }, [user, supabase]);
+  }, [supabase, user]);
 
   const handleDelete = async (id: string) => {
+    if (!supabase) return;
     const { error } = await supabase.from("conversations").delete().eq("id", id);
     if (error) {
       toast.error("Failed to delete conversation");
@@ -48,13 +63,19 @@ export default function HistoryPage() {
     }
   };
 
-  if (loading || !user) return null;
+  if (loading || !user || !clientReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex">
       <div className="flex-1 max-w-4xl mx-auto p-6">
         <Link href="/chat" className="text-purple-600 hover:underline text-sm mb-4 inline-block">
-           Back to Chat
+          ← Back to Chat
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Your Conversations</h1>
         {conversations.length === 0 ? (
