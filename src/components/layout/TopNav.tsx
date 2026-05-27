@@ -63,9 +63,9 @@ export default function TopNav() {
               </Button>
             </a>
 
-            {/* New – VS Code Web IDE button */}
+            {/* Code IDE button – works on Vercel after IDE build is copied to public/ide */}
             <a
-              href="http://localhost:5173"
+              href="/ide/index.html"
               target="_blank"
               rel="noopener noreferrer"
             >
