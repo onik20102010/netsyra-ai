@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
     if (modelTier === "auto") {
       const conversationHistory = messages
         .slice(0, -1)
-        .map((m) => `${m.role}: ${m.content}`)
+        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
 
       // Fetch live data (for any live sub‑tasks)
@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
       // Memory extraction (fire‑and‑forget)
       Promise.resolve().then(async () => {
         try {
-          const conversationContext = messages.slice(0, -1).map(m => `${m.role}: ${m.content}`).join("\n");
+          const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
           const fullContext = `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`;
           const facts = await extractMemories(lastUserMessage, fullContext);
           for (const fact of facts) {
@@ -516,7 +516,7 @@ if (shouldFetchLive) {
     try {
       const conversationContext = messages
         .slice(0, -1)
-        .map(m => `${m.role}: ${m.content}`)
+        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
       const fullContext = conversationContext
         ? `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`
