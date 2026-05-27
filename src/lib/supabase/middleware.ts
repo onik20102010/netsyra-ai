@@ -1,3 +1,4 @@
+// src/lib/supabase/middleware.ts
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -25,21 +26,22 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Refresh session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect /dashboard and other private routes
-if (
-  !user &&
-  (request.nextUrl.pathname.startsWith("/dashboard") ||
-   request.nextUrl.pathname.startsWith("/chat") ||
-   request.nextUrl.pathname.startsWith("/history"))
-) {
-  const url = request.nextUrl.clone();
-  url.pathname = "/login";
-  return NextResponse.redirect(url);
-}
+  // Protect routes
+  if (
+    !user &&
+    (request.nextUrl.pathname.startsWith("/dashboard") ||
+      request.nextUrl.pathname.startsWith("/chat") ||
+      request.nextUrl.pathname.startsWith("/history"))
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
