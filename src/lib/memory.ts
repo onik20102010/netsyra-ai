@@ -1,10 +1,13 @@
-﻿import { createClient } from "@supabase/supabase-js";
+﻿// src/lib/memory.ts
+import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "./embeddings";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 const extractionModels = [
   "gemini-2.0-flash-lite",
@@ -67,7 +70,7 @@ Output JSON only.`;
     const parsed = JSON.parse(result);
     return parsed.facts || [];
   } catch {
-    // Silently ignore  memory extraction is noncritical
+    // Silently ignore – memory extraction is non‑critical
     return [];
   }
 }
@@ -79,14 +82,14 @@ export async function storeMemory(
 ) {
   try {
     const embedding = await generateEmbedding(content);
-    await supabaseAdmin.from("memories").insert({
+    await getSupabaseAdmin().from("memories").insert({
       user_id: userId,
       content,
       importance_score: importance,
       embedding,
     });
   } catch {
-    // Silently ignore  embedding may be unavailable on free tier
+    // Silently ignore – embedding may be unavailable on free tier
   }
 }
 
@@ -97,7 +100,7 @@ export async function retrieveMemories(
 ): Promise<string[]> {
   try {
     const queryEmbedding = await generateEmbedding(query);
-    const { data, error } = await supabaseAdmin.rpc("match_memories", {
+    const { data, error } = await getSupabaseAdmin().rpc("match_memories", {
       query_embedding: queryEmbedding,
       match_threshold: 0.7,
       match_count: limit,
@@ -107,20 +110,20 @@ export async function retrieveMemories(
     if (error) throw error;
     return data.map((m: any) => m.content);
   } catch {
-    // Silently ignore  embedding or vector search temporarily unavailable
+    // Silently ignore – embedding or vector search temporarily unavailable
     return [];
   }
 }
 
 export async function getOrCreateProfile(userId: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from("profiles")
     .select()
     .eq("user_id", userId)
     .single();
 
   if (!data) {
-    await supabaseAdmin.from("profiles").insert({ user_id: userId });
+    await getSupabaseAdmin().from("profiles").insert({ user_id: userId });
     return { id: userId, name: null };
   }
   return data;
