@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="xgTIXVBokp3Lrny9cBdBGf20h1QzGWO9re0Oyx9uwc8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Builder Pro</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 (real icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Animated background orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <!-- ============= AUTH OVERLAY ============= -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card">
+            <div class="auth-icon"><i class="fas fa-file-alt"></i></div>
+            <h2>CV Builder Pro</h2>
+            <p>Create a password to save your progress. Everything stays on your device.</p>
+            <div class="input-group">
+                <input type="password" id="authPassword" placeholder="Min. 4 characters" autocomplete="off">
+            </div>
+            <button class="btn btn-primary" id="authSubmit">
+                <i class="fas fa-lock"></i> Enter / Create Account
+            </button>
+            <p class="auth-note">No data is ever sent anywhere – fully private.</p>
+        </div>
+    </div>
+
+    <!-- ============= MAIN APP ============= -->
+    <div class="app-container" id="appContainer">
+
+        <!-- Top Bar -->
+        <div class="top-bar" id="topBar">
+            <span class="logo"><i class="fas fa-star"></i> CV Builder Pro</span>
+
+            <!-- Template Switcher (10 professionally designed templates) -->
+            <div class="template-switcher">
+                <button class="btn btn-sm btn-accent-outline active" data-template="classic" onclick="setTemplate('classic')" title="Traditional layout with sidebar">
+                    <i class="fas fa-file-alt"></i> Classic
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="modern" onclick="setTemplate('modern')" title="Modern dark sidebar">
+                    <i class="fas fa-bold"></i> Modern
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="creative" onclick="setTemplate('creative')" title="Bold headers">
+                    <i class="fas fa-paint-brush"></i> Creative
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="ats-classic" onclick="setTemplate('ats-classic')" title="Safe for applicant tracking systems (ATS)">
+                    <i class="fas fa-robot"></i> ATS Classic
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="executive" onclick="setTemplate('executive')" title="Bold top header, no sidebar">
+                    <i class="fas fa-crown"></i> Executive
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="minimal" onclick="setTemplate('minimal')" title="Clean single column">
+                    <i class="fas fa-minus"></i> Minimal
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="tech" onclick="setTemplate('tech')" title="Monospace & code-friendly">
+                    <i class="fas fa-laptop-code"></i> Tech
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="academic" onclick="setTemplate('academic')" title="Serif fonts, traditional academic style">
+                    <i class="fas fa-university"></i> Academic
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="infographic" onclick="setTemplate('infographic')" title="Visual, metric-heavy layout">
+                    <i class="fas fa-chart-pie"></i> Infographic
+                </button>
+                <button class="btn btn-sm btn-accent-outline" data-template="creative2" onclick="setTemplate('creative2')" title="Reverse layout with light sidebar">
+                    <i class="fas fa-exchange-alt"></i> Creative 2
+                </button>
+            </div>
+
+            <!-- Searchable Industry Preset -->
+            <div class="searchable-select" id="industrySearchWrapper">
+                <div class="search-input-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="industrySearchInput" placeholder="Search company or sector..." autocomplete="off">
+                    <i class="fas fa-chevron-down toggle-arrow" id="toggleDropdownBtn"></i>
+                </div>
+                <div class="search-dropdown" id="searchDropdown">
+                    <!-- Options are generated dynamically via JS -->
+                </div>
+                <!-- Hidden input to store the selected value -->
+                <input type="hidden" id="industryPreset" value="">
+            </div>
+
+            <span class="badge badge-credits" id="creditBadge" onclick="openPaymentModal()">
+                <i class="fas fa-coins"></i> <span id="creditCount">5</span> Export Credit(s)
+            </span>
+
+            <button class="btn btn-sm btn-primary" onclick="exportPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="openCustomization()">
+                <i class="fas fa-sliders-h"></i> Customize
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+
+        <!-- Split Content -->
+        <div class="main-content">
+            <!-- Left: Forms -->
+            <aside class="form-panel" id="formPanel">
+                <div class="section-nav" id="sectionNav">
+                    <button class="active" data-section="personal"><i class="fas fa-user"></i> Personal</button>
+                    <button data-section="education"><i class="fas fa-graduation-cap"></i> Education</button>
+                    <button data-section="experience"><i class="fas fa-briefcase"></i> Experience</button>
+                    <button data-section="skills"><i class="fas fa-code"></i> Skills</button>
+                    <button data-section="languages"><i class="fas fa-language"></i> Languages</button>
+                    <button data-section="certifications"><i class="fas fa-certificate"></i> Certs</button>
+                    <button data-section="projects"><i class="fas fa-project-diagram"></i> Projects</button>
+                    <button data-section="awards"><i class="fas fa-award"></i> Awards</button>
+                    <button data-section="publications"><i class="fas fa-book"></i> Publications</button>
+                    <button data-section="coverletter"><i class="fas fa-envelope"></i> Cover</button>
+                    <button data-section="matcher"><i class="fas fa-search-plus"></i> Job Match</button>
+                </div>
+
+                <div id="formSections">
+                    <!-- Personal -->
+                    <div class="form-section active" id="section-personal">
+                        <h3>Personal Information</h3>
+                        <div class="photo-upload">
+                            <img class="photo-preview" id="photoPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23ccc'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' fill='%23888' font-size='40'%3E%3C/text%3E%3C/svg%3E" alt="Profile">
+                            <div>
+                                <button class="btn btn-sm btn-secondary" onclick="document.getElementById('photoInput').click()"><i class="fas fa-camera"></i> Upload</button>
+                                <button class="btn btn-sm btn-danger" onclick="removePhoto()"><i class="fas fa-trash"></i></button>
+                                <input type="file" id="photoInput" accept="image/*" onchange="handlePhotoUpload(event)" hidden>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Full Name</label><input type="text" id="fullName" placeholder="Muhammad Ali" oninput="updatePreview()"></div>
+                            <div class="form-group"><label>Job Title</label><input type="text" id="jobTitle" placeholder="Software Engineer" oninput="updatePreview()"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Email</label><input type="email" id="email" placeholder="ali@example.com" oninput="updatePreview()"></div>
+                            <div class="form-group"><label>Phone</label><input type="text" id="phone" placeholder="+92 300 1234567" oninput="updatePreview()"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Location</label><input type="text" id="location" placeholder="Lahore, Pakistan" oninput="updatePreview()"></div>
+                            <div class="form-group"><label>LinkedIn / Website</label><input type="text" id="website" placeholder="linkedin.com/in/ali" oninput="updatePreview()"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                Professional Summary
+                                <button class="btn-example" data-type="summary" title="See examples"><i class="fas fa-lightbulb"></i></button>
+                            </label>
+                            <textarea id="summary" rows="3" placeholder="Brief professional summary..." oninput="updatePreview()"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Education -->
+                    <div class="form-section" id="section-education">
+                        <h3>Education</h3>
+                        <div id="educationEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addEducation()"><i class="fas fa-plus"></i> Add Education</button>
+                    </div>
+
+                    <!-- Experience -->
+                    <div class="form-section" id="section-experience">
+                        <h3>Work Experience</h3>
+                        <div id="experienceEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addExperience()"><i class="fas fa-plus"></i> Add Experience</button>
+                    </div>
+
+                    <!-- Skills -->
+                    <div class="form-section" id="section-skills">
+                        <h3>Skills</h3>
+                        <div id="skillsEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addSkill()"><i class="fas fa-plus"></i> Add Skill</button>
+                    </div>
+
+                    <!-- Languages -->
+                    <div class="form-section" id="section-languages">
+                        <h3>Languages</h3>
+                        <div id="languagesEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addLanguage()"><i class="fas fa-plus"></i> Add Language</button>
+                    </div>
+
+                    <!-- Certifications -->
+                    <div class="form-section" id="section-certifications">
+                        <h3>Certifications</h3>
+                        <div id="certificationsEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addCertification()"><i class="fas fa-plus"></i> Add Certification</button>
+                    </div>
+
+                    <!-- Projects -->
+                    <div class="form-section" id="section-projects">
+                        <h3>Projects</h3>
+                        <div id="projectsEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addProject()"><i class="fas fa-plus"></i> Add Project</button>
+                    </div>
+
+                    <!-- Awards -->
+                    <div class="form-section" id="section-awards">
+                        <h3>Awards & Honors</h3>
+                        <div id="awardsEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addAward()"><i class="fas fa-plus"></i> Add Award</button>
+                    </div>
+
+                    <!-- Publications -->
+                    <div class="form-section" id="section-publications">
+                        <h3>Publications</h3>
+                        <div id="publicationsEntries"></div>
+                        <button class="btn btn-sm btn-secondary" onclick="addPublication()"><i class="fas fa-plus"></i> Add Publication</button>
+                    </div>
+
+                    <!-- Cover Letter -->
+                    <div class="form-section" id="section-coverletter">
+                        <h3>Cover Letter</h3>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="text" id="clDate" placeholder="15 May 2025" oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Hiring Manager Name (optional)</label>
+                            <input type="text" id="clManager" placeholder="Mr. Khan" oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Company Name</label>
+                            <input type="text" id="clCompany" placeholder="Systems Limited" oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Position Applied For</label>
+                            <input type="text" id="clPosition" placeholder="Senior Software Engineer" oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Your Address (City)</label>
+                            <input type="text" id="clAddress" placeholder="Lahore" oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Salutation</label>
+                            <input type="text" id="clSalutation" value="Dear Hiring Manager," oninput="updateCoverLetter()">
+                        </div>
+                        <div class="form-group">
+                            <label>Opening Paragraph</label>
+                            <textarea id="clOpening" rows="3" placeholder="I am excited to apply..." oninput="updateCoverLetter()">I am writing to express my enthusiastic interest in the {position} role at {company}. With my background in {field}, I believe I can contribute meaningfully to your team.</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Body Paragraph 1</label>
+                            <textarea id="clBody1" rows="3" placeholder="In my previous role..." oninput="updateCoverLetter()">In my most recent role, I successfully {accomplishment} which resulted in {result}. I am skilled in {skill1} and {skill2}, which directly align with the requirements of this position.</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Body Paragraph 2</label>
+                            <textarea id="clBody2" rows="3" placeholder="What excites me about this opportunity..." oninput="updateCoverLetter()">What particularly attracts me to {company} is your commitment to {value}. I have always admired your work in {area} and I am eager to bring my expertise to such an innovative environment.</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Closing Paragraph</label>
+                            <textarea id="clClosing" rows="2" placeholder="Thank you for considering..." oninput="updateCoverLetter()">I would welcome the opportunity to discuss how my skills can benefit {company}. Thank you for your time and consideration.</textarea>
+                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="exportCoverLetter()"><i class="fas fa-file-pdf"></i> Export Cover Letter as PDF</button>
+                    </div>
+
+                    <!-- Job Matcher -->
+                    <div class="form-section" id="section-matcher">
+                        <h3>ATS Job Matcher</h3>
+                        <label>Paste the full job description below</label>
+                        <textarea id="jdText" rows="5" placeholder="Paste job description here..."></textarea>
+                        <button class="btn btn-sm btn-primary" onclick="matchJobDescription()" style="margin-top:0.5rem;">
+                            <i class="fas fa-search-plus"></i> Analyze Match
+                        </button>
+                        <div id="matchResult" style="margin-top:1.5rem; color:var(--text-secondary);"></div>
+                        <div id="keywordSuggestions" style="margin-top:0.5rem;"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right: CV Preview -->
+            <main class="preview-panel" id="previewPanel">
+                <div class="cv-page" id="cvPage">
+                    <div class="cv-inner" id="cvInner"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ============= MODALS ============= -->
+    <!-- Payment Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <h3><i class="fas fa-coins"></i> Buy Export Credits</h3>
+            <p>Simulate a payment to add credits.</p>
+            <div class="payment-option" onclick="simulatePayment('JazzCash')">
+                <div class="pay-icon"><i class="fas fa-mobile-alt"></i></div>
+                <div class="pay-info"><strong>JazzCash</strong><span>Instant mobile payment</span></div>
+                <span class="pay-credits">+5 Credits</span>
+            </div>
+            <div class="payment-option" onclick="simulatePayment('EasyPaisa')">
+                <div class="pay-icon"><i class="fas fa-wallet"></i></div>
+                <div class="pay-info"><strong>EasyPaisa</strong><span>Quick digital wallet</span></div>
+                <span class="pay-credits">+5 Credits</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" style="width:100%;" onclick="closePaymentModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Customization Modal -->
+    <div class="modal-overlay" id="customizationModal">
+        <div class="modal">
+            <h3><i class="fas fa-sliders-h"></i> Customize CV</h3>
+            <div class="form-group"><label>Accent Color</label><input type="color" id="accentColorPicker" value="#6c5ce7" oninput="applyCustomizations()"></div>
+            <div class="form-group"><label>Font Style</label>
+                <select id="fontStylePicker" onchange="applyCustomizations()">
+                    <option value="inter">Inter (Sans-serif)</option>
+                    <option value="playfair">Playfair Display (Serif)</option>
+                    <option value="poppins">Poppins (Modern)</option>
+                    <option value="jetbrains">JetBrains Mono (Technical)</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Font Size</label>
+                <select id="fontSizePicker" onchange="applyCustomizations()">
+                    <option value="14px">Small (14px)</option>
+                    <option value="16px" selected>Normal (16px)</option>
+                    <option value="18px">Large (18px)</option>
+                    <option value="20px">Extra Large (20px)</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Border Radius</label>
+                <select id="borderRadiusPicker" onchange="applyCustomizations()">
+                    <option value="2px">Sharp (2px)</option>
+                    <option value="8px">Rounded (8px)</option>
+                    <option value="16px">Very Rounded (16px)</option>
+                </select>
+            </div>
+            <button class="btn btn-sm btn-primary" style="width:100%;" onclick="closeCustomization()">Done</button>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Mobile Preview Toggle Button -->
+    <button class="preview-toggle-btn" id="mobilePreviewToggle" title="Toggle Preview">
+        <i class="fas fa-eye"></i>
+    </button>
+
+    <!-- Global Example Tooltip (for achievement examples) -->
+    <div id="globalExampleTooltip" class="example-tooltip" style="display:none; position:absolute;"></div>
+
+    <script src="js/app.js" defer></script>
+</body>
+</html>
