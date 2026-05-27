@@ -34,9 +34,7 @@ async function callGeminiForExtraction(prompt: string): Promise<string> {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Status ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Status ${response.status}`);
 
       const data = await response.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
