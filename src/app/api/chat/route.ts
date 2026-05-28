@@ -516,4 +516,53 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
     }
+    // Conversation storage
+    let finalConversationId = conversationId;
+    try {
+      if (!conversationId || newConversation) {
+        finalConversationId = crypto.randomUUID();
+        const title = await generateTitle(lastUserMessage);
+        await supabase.from("conversations").insert({
+          id: finalConversationId,
+          user_id: user.id,
+          title,
+        });
+      }
+      await supabase.from("messages").insert([
+        { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
+        { conversation_id: finalConversationId, role: "assistant", content: reply },
+      ]);
+    } catch (dbError: any) {
+      console.error("Database store failed:", dbError.message);
+    }
+
+    // Memory extraction (awaited)
+    try {
+      const conversationContext = messages
+        .slice(0, -1)
+        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+        .join("\n");
+      const fullContext = conversationContext
+        ? `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`
+        : `user: ${lastUserMessage}\nassistant: ${reply}`;
+
+      const facts = await extractMemories(lastUserMessage, fullContext);
+      for (const fact of facts) {
+        if (fact.importance > 0.3) {
+          await storeMemory(user.id, fact.content, fact.importance);
+        }
+      }
+    } catch (memError: any) {
+      console.error("Memory extraction failed:", memError.message);
+    }
+
+    return NextResponse.json({
+      reply,
+      conversationId: finalConversationId,
+      wikiLink,
+    });
+  } catch (error: any) {
+    console.error("Chat API error:", error.message);
+    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
   }
+}
