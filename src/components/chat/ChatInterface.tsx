@@ -166,7 +166,7 @@ const assistantMessage: Message = {
     setMessages(updatedMessages);
     setInput("");
 
-    const contextMessages = updatedMessages.slice(-5);
+    const contextMessages = updatedMessages.slice(-14);
     const assistantMessage = await sendMessage(userMessage.content, contextMessages);
     if (assistantMessage) {
       setMessages((prev) => [...prev, assistantMessage]);

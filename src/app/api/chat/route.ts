@@ -194,7 +194,6 @@ async function callGemini(
 // ─── SearXNG real‑time search (free, no API key) ──────────────
 async function searchSearXNG(query: string): Promise<{ text: string; url?: string } | null> {
   try {
-    // Use a public SearXNG instance (you can replace with your own later)
     const baseUrl = "https://searx.be/search";
     const params = new URLSearchParams({
       q: query,
@@ -209,16 +208,13 @@ async function searchSearXNG(query: string): Promise<{ text: string; url?: strin
     if (!response.ok) return null;
     const data = await response.json();
 
-    // Extract top results
     const results = data.results?.slice(0, 5) || [];
     if (results.length === 0) return null;
 
-    // Build a clean text summary
     const snippets = results
       .map((r: any) => `- ${r.title}: ${r.content || r.snippet || ""} (${r.url})`)
       .join("\n");
 
-    // Also collect unique URLs
     const topUrl = results[0]?.url || undefined;
 
     return {
@@ -275,6 +271,59 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Message limit (10 per 8 hours) ──
+    const now = new Date();
+
+    let { data: profile } = await supabase
+      .from("profiles")
+      .select("message_count, message_reset_at")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      // Create profile with initial count 0
+      await supabase.from("profiles").insert({
+        user_id: user.id,
+        message_count: 0,
+        message_reset_at: now.toISOString(),
+      });
+      const { data: newProfile } = await supabase
+        .from("profiles")
+        .select("message_count, message_reset_at")
+        .eq("user_id", user.id)
+        .single();
+      profile = newProfile;
+    }
+
+    if (profile) {
+      const resetTime = new Date(profile.message_reset_at);
+      const hoursSinceReset = (now.getTime() - resetTime.getTime()) / (1000 * 60 * 60);
+
+      if (hoursSinceReset >= 8) {
+        // Reset the count and timer
+        await supabase
+          .from("profiles")
+          .update({ message_count: 0, message_reset_at: now.toISOString() })
+          .eq("user_id", user.id);
+        profile.message_count = 0;
+      }
+
+      if (profile.message_count >= 10) {
+        const nextReset = new Date(resetTime.getTime() + 8 * 60 * 60 * 1000);
+        const remaining = Math.ceil((nextReset.getTime() - now.getTime()) / (1000 * 60 * 60));
+        return NextResponse.json(
+          { error: `You've reached your daily limit (10 messages). Resets in about ${remaining} hour(s).` },
+          { status: 429 }
+        );
+      }
+
+      // Increment the count
+      await supabase
+        .from("profiles")
+        .update({ message_count: profile.message_count + 1 })
+        .eq("user_id", user.id);
+    }
+
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
     if (modelTier === "auto") {
       const conversationHistory = messages
@@ -282,7 +331,6 @@ export async function POST(req: NextRequest) {
         .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
 
-      // Fetch live data (for any live sub‑tasks)
       let liveData = "";
       try {
         const jinaResult = await searchJina(lastUserMessage);
@@ -293,10 +341,8 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
 
-      // Run the auto router (classify + dispatch + combine)
       const { reply, tiersUsed } = await autoRoute(lastUserMessage, conversationHistory, liveData);
 
-      // Conversation storage
       let finalConversationId = conversationId;
       try {
         if (!conversationId || newConversation) {
@@ -316,10 +362,9 @@ export async function POST(req: NextRequest) {
         console.error("Database store failed:", dbError.message);
       }
 
-      // Memory extraction (fire‑and‑forget)
       Promise.resolve().then(async () => {
         try {
-          const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+          const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n");
           const fullContext = `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`;
           const facts = await extractMemories(lastUserMessage, fullContext);
           for (const fact of facts) {
@@ -339,61 +384,47 @@ export async function POST(req: NextRequest) {
     const tierConfig = tiers[modelTier as keyof typeof tiers];
     if (!tierConfig) return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
 
-// ── Real‑time data injection ──
-let webContext = "";
-let wikiLink: string | null = null;
+    // Real‑time data injection
+    let webContext = "";
+    let wikiLink: string | null = null;
 
-// Detect if the message is time‑sensitive (for SearXNG trigger)
-const timeKeywords = [
-  "latest", "current", "today", "now", "2026", "2025",
-  "price", "stock", "weather", "news", "happening",
-  "recent", "updated", "live", "net worth",
-];
-const isTimeSensitive = timeKeywords.some((kw) =>
-  lastUserMessage.toLowerCase().includes(kw)
-);
+    const timeKeywords = [
+      "latest", "current", "today", "now", "2026", "2025",
+      "price", "stock", "weather", "news", "happening",
+      "recent", "updated", "live", "net worth",
+    ];
+    const isTimeSensitive = timeKeywords.some((kw) =>
+      lastUserMessage.toLowerCase().includes(kw)
+    );
+    const shouldFetchLive = modelTier === "live" || diveDeep || isTimeSensitive;
 
-const shouldFetchLive = modelTier === "live" || diveDeep || isTimeSensitive;
-
-if (shouldFetchLive) {
-  // 1. Try SearXNG first (for all tiers when time‑sensitive or live/DiveDeep)
-  try {
-    const searxResult = await searchSearXNG(lastUserMessage);
-    if (searxResult) {
-      webContext = `[REAL-TIME WEB DATA (SearXNG)]\n${searxResult.text}\n\n`;
-      wikiLink = searxResult.url || null;
-      console.log("🌐 SearXNG result first 300 chars:", webContext.substring(0, 300));
+    if (shouldFetchLive) {
+      try {
+        const searxResult = await searchSearXNG(lastUserMessage);
+        if (searxResult) {
+          webContext = `[REAL-TIME WEB DATA (SearXNG)]\n${searxResult.text}\n\n`;
+          wikiLink = searxResult.url || null;
+        }
+      } catch {}
+      if (!webContext) {
+        try {
+          const jinaResult = await searchJina(lastUserMessage);
+          if (jinaResult) {
+            webContext = `[REAL-TIME WEB DATA (Jina)]\n${jinaResult.text}\n\n`;
+            wikiLink = jinaResult.url || null;
+          }
+        } catch {}
+      }
+      if (!webContext) {
+        try {
+          const wiki = await searchWikipedia(lastUserMessage);
+          if (wiki) {
+            webContext = `[Wikipedia]\n${wiki.summary}\n\n`;
+            wikiLink = wiki.url;
+          }
+        } catch {}
+      }
     }
-  } catch {}
-
-  // 2. Fallback to Jina if SearXNG gave nothing
-  if (!webContext) {
-    try {
-      const jinaResult = await searchJina(lastUserMessage);
-      if (jinaResult) {
-        webContext = `[REAL-TIME WEB DATA (Jina)]\n${jinaResult.text}\n\n`;
-        wikiLink = jinaResult.url || null;
-        console.log("🌐 Jina fallback used");
-      }
-    } catch {}
-  }
-
-  // 3. Final fallback to Wikipedia
-  if (!webContext) {
-    try {
-      const wiki = await searchWikipedia(lastUserMessage);
-      if (wiki) {
-        webContext = `[Wikipedia]\n${wiki.summary}\n\n`;
-        wikiLink = wiki.url;
-        console.log("📚 Wikipedia fallback used");
-      }
-    } catch {}
-  }
-
-  if (!webContext) {
-    console.warn("⚠️ No live data found for query:", lastUserMessage);
-  }
-}
 
     // Memory retrieval
     let memoryContext = "";
@@ -407,7 +438,7 @@ if (shouldFetchLive) {
     // Build final system prompt
     const baseSystem = tierConfig.systemPrompt;
     const priorityInstruction = webContext
-      ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names. If the data is insufficient, state clearly what you found and suggest a more specific query.\n\n"
+      ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names.\n\n"
       : "";
 
     const fullSystemPrompt = (
@@ -441,7 +472,6 @@ if (shouldFetchLive) {
             fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
           );
         }
-
         if (reply) break;
       } catch (error: any) {
         console.error(`Model ${modelConfig.modelName} failed:`, error.message);
@@ -453,15 +483,13 @@ if (shouldFetchLive) {
     }
 
     if (!reply) {
-      const msg = skippedModels.length
-        ? `No working models. Skipped (missing keys): ${skippedModels.join(", ")}. Last error: ${lastError?.message}`
-        : lastError
-          ? `All models failed. Last error: ${lastError.message}`
-          : `All models are currently unavailable. Please try again later.`;
+      const msg = lastError
+        ? `All models failed. Last error: ${lastError.message}`
+        : "All models are currently unavailable.";
       return NextResponse.json({ error: msg }, { status: 429 });
     }
 
-        // ── Fallback link injection ─────────────────────────────
+    // Weak reply? Inject links
     const replyLower = reply.toLowerCase();
     const isWeakReply =
       reply.length < 30 ||
@@ -477,14 +505,12 @@ if (shouldFetchLive) {
       try {
         const searxResult = await searchSearXNG(lastUserMessage);
         if (searxResult) {
-          // Extract clean links from the result
           const links = (searxResult.text.match(/\(https?:\/\/[^\s)]+\)/g) || [])
             .slice(0, 3)
             .map((link) => link.replace(/[()]/g, ""));
           if (links.length > 0) {
             const linkText = links.map((link, i) => `${i + 1}. [${new URL(link).hostname}](${link})`).join("\n");
             reply = `${reply}\n\n🔗 **Here are some helpful links:**\n${linkText}`;
-            // Also update wikiLink if not already set
             if (!wikiLink) wikiLink = links[0];
           }
         }
@@ -503,7 +529,6 @@ if (shouldFetchLive) {
           title,
         });
       }
-
       await supabase.from("messages").insert([
         { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
         { conversation_id: finalConversationId, role: "assistant", content: reply },
