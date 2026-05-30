@@ -17,8 +17,10 @@ export interface TierConfig {
 }
 
 // Shared identity (global)
-const identity = `You are Netsyra-AI, a high-level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request.`;
+const identity = `You are Netsyra-AI, a high-level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request.
 
+‼️ MANDATORY RULE – READ CAREFULLY:
+You MUST wrap your entire internal reasoning in EXACTLY ONE pair of <think>…</think> tags at the very beginning of your answer. Nothing else may appear before or after these tags. The tags themselves must be literally "<think>" and "</think>" – no spaces, no attributes, no variations. If you do not need to reason, output an empty pair: <think></think>.`;
 // Full structure prompt (used only by Pro)
 const systemPrompt = `
 You are a production-grade autonomous AI assistant operating as a unified intelligence system with:

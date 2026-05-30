@@ -2,12 +2,12 @@
   "name": "netsyra",
   "version": "0.1.0",
   "private": true,
-"scripts": {
+  "scripts": {
     "dev": "concurrently -n next,ide-term,ide-vite -c cyan,green,yellow \"next dev\" \"cd D:\\vscode-web-ide && node server/terminal-server.js\" \"cd D:\\vscode-web-ide && npm run dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
-},
+  },
   "dependencies": {
     "@mendable/firecrawl-js": "^4.25.0",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -33,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",

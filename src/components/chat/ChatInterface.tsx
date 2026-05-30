@@ -20,11 +20,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thinking?: string;
   wikiLink?: string | null;
 };
 
@@ -32,38 +35,53 @@ interface ChatInterfaceProps {
   conversationId: string | null;
   setConversationId: (id: string | null) => void;
   diveDeep: boolean;
+  onConversationCreated?: (id: string) => void;   // new
 }
 
-function CodeBlock({ language, codeString }: { language: string; codeString: string }) {
+function CopyButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg">
-      <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-        <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">{language}</span>
-        <button
-          onClick={async () => {
-            await navigator.clipboard.writeText(codeString);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-green-400" />
-              <span className="text-green-400">Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              Copy
-            </>
-          )}
-        </button>
-      </div>
-      <pre className="p-4 overflow-x-auto">
-        <code className={`language-${language} text-sm text-gray-200`}>{codeString}</code>
-      </pre>
+    <button
+      onClick={async () => {
+        await navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
+    >
+      {copied ? (
+        <>
+          <Check className="w-3.5 h-3.5 text-green-400" />
+          <span className="text-green-400">Copied!</span>
+        </>
+      ) : (
+        <>
+          <Copy className="w-3.5 h-3.5" />
+          Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+function ThinkingBlock({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="my-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition"
+      >
+        <span className="w-4 h-4 flex items-center justify-center rounded border border-gray-300 text-gray-500">
+          {open ? "−" : "+"}
+        </span>
+        {open ? "Hide thinking" : "Show thinking"}
+      </button>
+      {open && (
+        <div className="mt-2 p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-500 whitespace-pre-wrap">
+          {text}
+        </div>
+      )}
     </div>
   );
 }
@@ -72,14 +90,15 @@ export default function ChatInterface({
   conversationId,
   setConversationId,
   diveDeep,
+  onConversationCreated,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("auto");   // default Auto
+  const [selectedModel, setSelectedModel] = useState("auto");
   const [isLoading, setIsLoading] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
-  const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);   // badge data
+  const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
@@ -88,11 +107,11 @@ export default function ChatInterface({
   useEffect(() => { scrollToBottom(); }, [messages]);
   
   useEffect(() => {
-  const textarea = mainInputRef.current;
-  if (!textarea) return;
-  textarea.style.height = "auto";
-  textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
-}, [input]);
+    const textarea = mainInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
+  }, [input]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -110,7 +129,10 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId]);
 
-  const sendMessage = async (userContent: string, contextMessages: Message[]) => {
+  const sendMessage = async (userContent: string, contextMessages: Message[]): Promise<{
+    assistantMessage: Message;
+    newConversationId?: string;
+  } | null> => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/chat", {
@@ -126,24 +148,29 @@ export default function ChatInterface({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-
-      // Capture tiersUsed from auto routing
+  
       if (data.tiersUsed) {
         setAutoTiersUsed(data.tiersUsed);
       } else {
         setAutoTiersUsed([]);
       }
-
-      // Remove <think> blocks from the reply
-const cleanReply = data.reply.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-
-const assistantMessage: Message = {
-  id: (Date.now() + 1).toString(),
-  role: "assistant",
-  content: cleanReply,
-  wikiLink: data.wikiLink || null,
-};
-      return assistantMessage;
+  
+      const thinkMatch = data.reply.match(/<think\b[^>]*?>[\s\S]*?<\/think>/i);
+      const thinking = thinkMatch ? thinkMatch[0] : null;
+      const cleanReply = data.reply.replace(/<think\b[^>]*?>[\s\S]*?<\/think>/gi, "").trim();
+  
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: cleanReply,
+        thinking,
+        wikiLink: data.wikiLink || null,
+      };
+  
+      return {
+        assistantMessage,
+        newConversationId: data.conversationId,
+      };
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
       return null;
@@ -155,21 +182,25 @@ const assistantMessage: Message = {
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
-
+  
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
     };
-
+  
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
-
+  
     const contextMessages = updatedMessages.slice(-14);
-    const assistantMessage = await sendMessage(userMessage.content, contextMessages);
-    if (assistantMessage) {
-      setMessages((prev) => [...prev, assistantMessage]);
+    const result = await sendMessage(userMessage.content, contextMessages);
+    if (result) {
+      if (!conversationId && result.newConversationId) {
+        setConversationId(result.newConversationId);
+        onConversationCreated?.(result.newConversationId);
+      }
+      setMessages((prev) => [...prev, result.assistantMessage]);
     }
   };
 
@@ -179,14 +210,18 @@ const assistantMessage: Message = {
     if (idx <= 0) return;
     const userMsg = messages[idx - 1];
     if (userMsg.role !== "user") return;
-
+  
     const truncated = messages.slice(0, idx);
     setMessages(truncated);
-
-    const contextMessages = [...truncated.slice(-5)];
-    const assistantMessage = await sendMessage(userMsg.content, contextMessages);
-    if (assistantMessage) {
-      setMessages((prev) => [...prev, assistantMessage]);
+  
+    const contextMessages = [...truncated.slice(-14)];
+    const result = await sendMessage(userMsg.content, contextMessages);
+    if (result) {
+      if (!conversationId && result.newConversationId) {
+        setConversationId(result.newConversationId);
+        onConversationCreated?.(result.newConversationId);
+      }
+      setMessages((prev) => [...prev, result.assistantMessage]);
     }
   };
 
@@ -207,20 +242,24 @@ const assistantMessage: Message = {
       cancelEditing();
       return;
     }
-
+  
     const idx = messages.findIndex((m) => m.id === msg.id);
     if (idx === -1) return;
-
+  
     const updatedMessages = [...messages];
     updatedMessages[idx] = { ...msg, content: newContent };
     const truncated = updatedMessages.slice(0, idx + 1);
     setMessages(truncated);
     cancelEditing();
-
-    const contextMessages = truncated.slice(-5);
-    const assistantMessage = await sendMessage(newContent, contextMessages);
-    if (assistantMessage) {
-      setMessages((prev) => [...prev, assistantMessage]);
+  
+    const contextMessages = truncated.slice(-14);
+    const result = await sendMessage(newContent, contextMessages);
+    if (result) {
+      if (!conversationId && result.newConversationId) {
+        setConversationId(result.newConversationId);
+        onConversationCreated?.(result.newConversationId);
+      }
+      setMessages((prev) => [...prev, result.assistantMessage]);
     }
   };
 
@@ -246,7 +285,6 @@ const assistantMessage: Message = {
       {/* Model selector header */}
       <div className="p-3 border-b border-gray-200">
         <ModelSelector selected={selectedModel} onSelect={setSelectedModel} />
-        {/* Auto‑routing badge */}
         {selectedModel === "auto" && autoTiersUsed.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1 px-1">
             <Sparkles className="w-3 h-3 text-indigo-500" />
@@ -268,7 +306,7 @@ const assistantMessage: Message = {
                 <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
               </div>
               <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
-              <p className="text-sm text-gray-400">Intelligent routing selects the best AI for each request.</p>
+              <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
             </motion.div>
           )}
 
@@ -328,10 +366,27 @@ const assistantMessage: Message = {
                             components={{
                               code({ node, inline, className, children, ...props }: any) {
                                 const match = /language-(\w+)/.exec(className || "");
+                                const codeString = String(children).replace(/\n$/, "");
+
                                 if (!inline && match) {
-                                  const language = match[1];
-                                  const codeString = String(children).replace(/\n$/, "");
-                                  return <CodeBlock language={language} codeString={codeString} />;
+                                  return (
+                                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg">
+                                      <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                                        <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                          {match[1]}
+                                        </span>
+                                        <CopyButton code={codeString} />
+                                      </div>
+                                      <SyntaxHighlighter
+                                        language={match[1]}
+                                        style={vscDarkPlus}
+                                        customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                                        codeTagProps={{ className: "text-sm" }}
+                                      >
+                                        {codeString}
+                                      </SyntaxHighlighter>
+                                    </div>
+                                  );
                                 }
                                 return (
                                   <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
@@ -370,6 +425,7 @@ const assistantMessage: Message = {
                             {msg.content}
                           </ReactMarkdown>
                         </div>
+                        {msg.thinking && <ThinkingBlock text={msg.thinking} />}
                         {msg.wikiLink && (
                           <a
                             href={msg.wikiLink}
@@ -453,38 +509,38 @@ const assistantMessage: Message = {
         <div ref={messagesEndRef} />
       </div>
 
-{/* Input – bottom‑sticky, auto‑expand */}
-<div className="sticky bottom-0 bg-white px-4 pt-2 pb-1 border-t border-gray-200">
-  <form onSubmit={handleSend} className="relative">
-    <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-      <textarea
-        ref={mainInputRef}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Message Netsyra..."
-        rows={1}
-        className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-2.5 pl-4 pr-12 text-sm max-h-[200px] overflow-y-auto"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-          }
-        }}
-      />
-      <button
-        type="submit"
-        disabled={isLoading || !input.trim()}
-        className="absolute right-1.5 bottom-1.5 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
-      >
-        <Send className="w-4 h-4 text-white" />
-      </button>
-    </div>
-    <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
-      Netsyra may produce inaccurate information.
-      {diveDeep && " 🌐 Dive Deep is ON"}
-    </p>
-  </form>
-</div>
+      {/* Input – bottom‑sticky, auto‑expand */}
+      <div className="sticky bottom-0 bg-white px-4 pt-2 pb-1 border-t border-gray-200">
+        <form onSubmit={handleSend} className="relative">
+          <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+            <textarea
+              ref={mainInputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Message Netsyra..."
+              rows={1}
+              className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-2.5 pl-4 pr-12 text-sm max-h-[200px] overflow-y-auto"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="absolute right-1.5 bottom-1.5 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
+            >
+              <Send className="w-4 h-4 text-white" />
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
+            Netsyra may produce inaccurate information.
+            {diveDeep && " 🌐 Dive Deep is ON"}
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

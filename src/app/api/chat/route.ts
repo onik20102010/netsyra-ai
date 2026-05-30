@@ -247,7 +247,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing messages or model tier" }, { status: 400 });
     }
 
-    // Normalize all message content to strings
     const messages = incomingMessages.map((m: any) => ({
       role: m.role,
       content: getText(m.content),
@@ -255,7 +254,7 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
-    // ── Conversation limit check ──
+    // ── Conversation limit (5 total) ──
     if (!conversationId || newConversation) {
       const { count, error: countError } = await supabase
         .from("conversations")
@@ -271,57 +270,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Message limit (10 per 8 hours) ──
-    const now = new Date();
-
-    let { data: profile } = await supabase
-      .from("profiles")
-      .select("message_count, message_reset_at")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      // Create profile with initial count 0
-      await supabase.from("profiles").insert({
-        user_id: user.id,
-        message_count: 0,
-        message_reset_at: now.toISOString(),
-      });
-      const { data: newProfile } = await supabase
-        .from("profiles")
-        .select("message_count, message_reset_at")
-        .eq("user_id", user.id)
-        .single();
-      profile = newProfile;
+    // ── Create conversation if new (TOP‑LEVEL, shared) ──
+    let finalConversationId = conversationId;
+    if (!finalConversationId || newConversation) {
+      finalConversationId = crypto.randomUUID();
+      try {
+        const title = await generateTitle(lastUserMessage);
+        await supabase.from("conversations").insert({
+          id: finalConversationId,
+          user_id: user.id,
+          title,
+        });
+      } catch (dbError: any) {
+        console.error("Failed to create conversation:", dbError.message);
+      }
     }
 
-    if (profile) {
-      const resetTime = new Date(profile.message_reset_at);
+    // ── Per‑conversation message limit (10 per 8 hours) ──
+    const now = new Date();
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("message_count, message_reset_at")
+      .eq("id", finalConversationId)
+      .single();
+
+    if (conv) {
+      const resetTime = new Date(conv.message_reset_at);
       const hoursSinceReset = (now.getTime() - resetTime.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceReset >= 8) {
-        // Reset the count and timer
         await supabase
-          .from("profiles")
+          .from("conversations")
           .update({ message_count: 0, message_reset_at: now.toISOString() })
-          .eq("user_id", user.id);
-        profile.message_count = 0;
-      }
-
-      if (profile.message_count >= 10) {
+          .eq("id", finalConversationId);
+      } else if (conv.message_count >= 10) {
         const nextReset = new Date(resetTime.getTime() + 8 * 60 * 60 * 1000);
         const remaining = Math.ceil((nextReset.getTime() - now.getTime()) / (1000 * 60 * 60));
         return NextResponse.json(
-          { error: `You've reached your daily limit (10 messages). Resets in about ${remaining} hour(s).` },
+          { error: `You've reached the limit (10 messages) for this conversation. Resets in about ${remaining} hour(s).` },
           { status: 429 }
         );
       }
-
-      // Increment the count
-      await supabase
-        .from("profiles")
-        .update({ message_count: profile.message_count + 1 })
-        .eq("user_id", user.id);
     }
 
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
@@ -343,25 +332,21 @@ export async function POST(req: NextRequest) {
 
       const { reply, tiersUsed } = await autoRoute(lastUserMessage, conversationHistory, liveData);
 
-      let finalConversationId = conversationId;
+      // Store messages and increment count (no conversation creation)
       try {
-        if (!conversationId || newConversation) {
-          finalConversationId = crypto.randomUUID();
-          const title = await generateTitle(lastUserMessage);
-          await supabase.from("conversations").insert({
-            id: finalConversationId,
-            user_id: user.id,
-            title,
-          });
-        }
         await supabase.from("messages").insert([
           { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
           { conversation_id: finalConversationId, role: "assistant", content: reply },
         ]);
+        await supabase
+          .from("conversations")
+          .update({ message_count: (conv?.message_count ?? 0) + 1 })
+          .eq("id", finalConversationId);
       } catch (dbError: any) {
         console.error("Database store failed:", dbError.message);
       }
 
+      // Background memory extraction
       Promise.resolve().then(async () => {
         try {
           const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n");
@@ -516,22 +501,20 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
     }
-    // Conversation storage
-    let finalConversationId = conversationId;
+
+    // Final safety: strip any remaining <think> tags from the final reply
+    reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+
+    // Store messages and increment count (no conversation creation)
     try {
-      if (!conversationId || newConversation) {
-        finalConversationId = crypto.randomUUID();
-        const title = await generateTitle(lastUserMessage);
-        await supabase.from("conversations").insert({
-          id: finalConversationId,
-          user_id: user.id,
-          title,
-        });
-      }
       await supabase.from("messages").insert([
         { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
         { conversation_id: finalConversationId, role: "assistant", content: reply },
       ]);
+      await supabase
+        .from("conversations")
+        .update({ message_count: (conv?.message_count ?? 0) + 1 })
+        .eq("id", finalConversationId);
     } catch (dbError: any) {
       console.error("Database store failed:", dbError.message);
     }
