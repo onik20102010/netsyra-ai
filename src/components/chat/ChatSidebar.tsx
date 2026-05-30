@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import ProfileModal from "./ProfileModal";
+import { toast } from "sonner";
 
 interface ChatSidebarProps {
   collapsed: boolean;
@@ -39,12 +40,13 @@ export default function ChatSidebar({
   activeConversationId,
   diveDeep,
   setDiveDeep,
-  refreshKey = 0,   // default value
+  refreshKey = 0,
 }: ChatSidebarProps) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [nameLoaded, setNameLoaded] = useState(false);   // ✅ prevent flicker
   const supabase = createClient();
 
   // Fetch conversations – re‑fetch when user, supabase, or refreshKey changes
@@ -62,18 +64,35 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile name
+  // ✅ Load profile name only once when user first appears
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
+
     const loadProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data?.name) setDisplayName(data.name);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Failed to load profile:", error.message);
+          return;
+        }
+        if (!cancelled && data?.name) {
+          setDisplayName(data.name);
+        }
+      } catch (err) {
+        console.error("Profile load error:", err);
+      } finally {
+        if (!cancelled) setNameLoaded(true);
+      }
     };
+
     loadProfile();
+    return () => { cancelled = true; };
   }, [user, supabase]);
 
   return (
@@ -191,11 +210,17 @@ export default function ChatSidebar({
                   {(displayName || user?.email || "U").charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 truncate font-medium">
-                    {displayName || user?.email?.split("@")[0] || "User"}
-                  </p>
-                  {!displayName && (
-                    <p className="text-xs text-gray-500">Click to set your name</p>
+                  {nameLoaded ? (
+                    <>
+                      <p className="text-sm text-gray-900 truncate font-medium">
+                        {displayName || user?.email?.split("@")[0] || "User"}
+                      </p>
+                      {!displayName && (
+                        <p className="text-xs text-gray-500">Click to set your name</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
                   )}
                 </div>
               </div>
@@ -208,18 +233,23 @@ export default function ChatSidebar({
         onClose={() => setProfileOpen(false)}
         userName={displayName}
         onSave={async (name: string) => {
-          setDisplayName(name);
-          if (user) {
-            await supabase.from("profiles").upsert(
+          if (!user) return;
+
+          try {
+            const { error } = await supabase.from("profiles").upsert(
               { user_id: user.id, name },
               { onConflict: "user_id" }
             );
-            const { data } = await supabase
-              .from("profiles")
-              .select("name")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            if (data?.name) setDisplayName(data.name);
+            if (error) {
+              console.error("Failed to save profile:", error.message);
+              toast.error("Could not save name. Please try again.");
+              return;
+            }
+            setDisplayName(name);
+            toast.success("Profile updated!");
+          } catch (err) {
+            console.error("Profile save error:", err);
+            toast.error("Something went wrong.");
           }
         }}
       />
