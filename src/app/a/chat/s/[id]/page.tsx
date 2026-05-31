@@ -10,7 +10,7 @@ export default function ChatThreadPage() {
   const router = useRouter();
   const conversationId = params.id as string;
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);   // ✅ renamed
   const [diveDeep, setDiveDeep] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const supabase = createClient();
@@ -66,9 +66,9 @@ export default function ChatThreadPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
-      {/* ⬇️ responsive padding added */}
+      {/* Top bar – show logo only when sidebar is closed */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 md:px-4 py-2 bg-white border-b border-gray-200 select-none">
-        {sidebarCollapsed && (
+        {!sidebarOpen && (
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
               <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
@@ -80,8 +80,8 @@ export default function ChatThreadPage() {
       </div>
       <div className="flex flex-1 pt-12">
         <ChatSidebar
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
+          open={sidebarOpen}
+          setOpen={setSidebarOpen}
           onNewChat={handleNewChat}
           onHistory={handleHistory}
           onSelectConversation={handleSelectConversation}
