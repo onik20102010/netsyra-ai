@@ -56,7 +56,7 @@ export default function ModelSelector({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 mt-2 w-64 rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-500/10 p-2 z-50"
+            className="absolute left-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-500/10 p-2 z-50"
           >
             <p className="text-xs text-gray-400 px-3 py-1">Select Model</p>
             {models.map((model) => (

@@ -35,7 +35,7 @@ interface ChatInterfaceProps {
   conversationId: string | null;
   setConversationId: (id: string | null) => void;
   diveDeep: boolean;
-  onConversationCreated?: (id: string) => void;   // new
+  onConversationCreated?: (id: string) => void;
 }
 
 function CopyButton({ code }: { code: string }) {
@@ -60,6 +60,29 @@ function CopyButton({ code }: { code: string }) {
           Copy
         </>
       )}
+    </button>
+  );
+}
+
+function PreviewButton({ code }: { code: string }) {
+  const handlePreview = () => {
+    const blob = new Blob([code], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
+
+  return (
+    <button
+      onClick={handlePreview}
+      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition ml-2"
+      title="Preview HTML"
+    >
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+      Preview
     </button>
   );
 }
@@ -105,7 +128,7 @@ export default function ChatInterface({
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => { scrollToBottom(); }, [messages]);
-  
+
   useEffect(() => {
     const textarea = mainInputRef.current;
     if (!textarea) return;
@@ -148,17 +171,17 @@ export default function ChatInterface({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-  
+
       if (data.tiersUsed) {
         setAutoTiersUsed(data.tiersUsed);
       } else {
         setAutoTiersUsed([]);
       }
-  
+
       const thinkMatch = data.reply.match(/<think\b[^>]*?>[\s\S]*?<\/think>/i);
       const thinking = thinkMatch ? thinkMatch[0] : null;
       const cleanReply = data.reply.replace(/<think\b[^>]*?>[\s\S]*?<\/think>/gi, "").trim();
-  
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -166,7 +189,7 @@ export default function ChatInterface({
         thinking,
         wikiLink: data.wikiLink || null,
       };
-  
+
       return {
         assistantMessage,
         newConversationId: data.conversationId,
@@ -182,25 +205,27 @@ export default function ChatInterface({
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
-  
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
     };
-  
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-  
-    const contextMessages = updatedMessages.slice(-14);
+
+    const contextMessages = [...messages, userMessage].slice(-14);
     const result = await sendMessage(userMessage.content, contextMessages);
+
     if (result) {
       if (!conversationId && result.newConversationId) {
         setConversationId(result.newConversationId);
         onConversationCreated?.(result.newConversationId);
       }
       setMessages((prev) => [...prev, result.assistantMessage]);
+    } else {
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     }
   };
 
@@ -210,10 +235,10 @@ export default function ChatInterface({
     if (idx <= 0) return;
     const userMsg = messages[idx - 1];
     if (userMsg.role !== "user") return;
-  
+
     const truncated = messages.slice(0, idx);
     setMessages(truncated);
-  
+
     const contextMessages = [...truncated.slice(-14)];
     const result = await sendMessage(userMsg.content, contextMessages);
     if (result) {
@@ -242,16 +267,16 @@ export default function ChatInterface({
       cancelEditing();
       return;
     }
-  
+
     const idx = messages.findIndex((m) => m.id === msg.id);
     if (idx === -1) return;
-  
+
     const updatedMessages = [...messages];
     updatedMessages[idx] = { ...msg, content: newContent };
     const truncated = updatedMessages.slice(0, idx + 1);
     setMessages(truncated);
     cancelEditing();
-  
+
     const contextMessages = truncated.slice(-14);
     const result = await sendMessage(newContent, contextMessages);
     if (result) {
@@ -293,44 +318,50 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-        <AnimatePresence initial={false}>
-          {messages.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400"
-            >
-              <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2">
-                <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-              </div>
-              <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
-              <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
-            </motion.div>
-          )}
-
-          {messages.map((msg, idx) => {
-            const isUser = msg.role === "user";
-            const isEditing = editingMessageId === msg.id;
-
-            return (
+      {/* Messages – responsive max-width */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-6 pb-0 space-y-6">
+          <AnimatePresence initial={false}>
+            {messages.length === 0 && (
               <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
               >
-                {!isUser && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                    <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                  </div>
-                )}
+                <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2">
+                  <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
+                </div>
+                <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
+                <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
+              </motion.div>
+            )}
 
-                <div className="max-w-[85%]">
-                  <div className={cn(isUser ? "text-zinc-950" : "text-zinc-950 pt-1")}>
+            {messages.map((msg, idx) => {
+              const isUser = msg.role === "user";
+              const isEditing = editingMessageId === msg.id;
+
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+                >
+                  {!isUser && (
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
+                      <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(
+                      msg.role === "user"
+                        ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
+                        : "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2"
+                    )}
+                  >
                     {isEditing ? (
                       <div className="flex items-start gap-2">
                         <textarea
@@ -370,12 +401,15 @@ export default function ChatInterface({
 
                                 if (!inline && match) {
                                   return (
-                                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg">
+                                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
                                       <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
                                         <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
                                           {match[1]}
                                         </span>
-                                        <CopyButton code={codeString} />
+                                        <div className="flex items-center">
+                                          <CopyButton code={codeString} />
+                                          {(match[1] === "html" || match[1] === "htm") && <PreviewButton code={codeString} />}
+                                        </div>
                                       </div>
                                       <SyntaxHighlighter
                                         language={match[1]}
@@ -439,107 +473,108 @@ export default function ChatInterface({
                         )}
                       </div>
                     )}
+                    {!isEditing && (
+                      <div
+                        className={cn(
+                          "flex items-center gap-2 mt-1 px-1",
+                          isUser ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        {isUser ? (
+                          <>
+                            <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleRefresh(msg.id)}
+                              disabled={isLoading}
+                              className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+                              title="Regenerate"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
+                              <ThumbsUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
+                              <ThumbsDown className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {!isEditing && (
-                    <div
-                      className={cn(
-                        "flex items-center gap-2 mt-1 px-1",
-                        isUser ? "justify-end" : "justify-start"
-                      )}
-                    >
-                      {isUser ? (
-                        <>
-                          <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleRefresh(msg.id)}
-                            disabled={isLoading}
-                            className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
-                            title="Regenerate"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
+                  {isUser && (
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mt-0.5">
+                      <User className="w-3.5 h-3.5 text-gray-500" />
                     </div>
                   )}
-                </div>
+                </motion.div>
+              );
+            })}
 
-                {isUser && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mt-0.5">
-                    <User className="w-3.5 h-3.5 text-gray-500" />
+            {isLoading && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
+                  <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                </div>
+                <div className="text-gray-400 pt-1 flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "400ms" }} />
                   </div>
-                )}
-              </motion.div>
-            );
-          })}
-
-          {isLoading && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 justify-start">
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                <Bot className="w-3.5 h-3.5 text-indigo-500" />
-              </div>
-              <div className="text-gray-400 pt-1 flex items-center gap-2">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "400ms" }} />
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input – bottom‑sticky, auto‑expand */}
-      <div className="sticky bottom-0 bg-white px-4 pt-2 pb-1 border-t border-gray-200">
-        <form onSubmit={handleSend} className="relative">
-          <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-            <textarea
-              ref={mainInputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message Netsyra..."
-              rows={1}
-              className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-2.5 pl-4 pr-12 text-sm max-h-[200px] overflow-y-auto"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="absolute right-1.5 bottom-1.5 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
-            >
-              <Send className="w-4 h-4 text-white" />
-            </button>
-          </div>
-          <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
-            Netsyra may produce inaccurate information.
-            {diveDeep && " 🌐 Dive Deep is ON"}
-          </p>
-        </form>
+      {/* Input – responsive max-width */}
+      <div className="sticky bottom-0">
+        <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-2 pb-1">
+          <form onSubmit={handleSend} className="relative">
+            <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+              <textarea
+                ref={mainInputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Message Netsyra..."
+                rows={1}
+                className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-3 pl-4 pr-12 text-sm max-h-[200px] overflow-y-auto"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
+              Netsyra may produce inaccurate information.
+              {diveDeep && " 🌐 Dive Deep is ON"}
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -66,7 +66,8 @@ export default function ChatThreadPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 select-none">
+      {/* ⬇️ responsive padding added */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 md:px-4 py-2 bg-white border-b border-gray-200 select-none">
         {sidebarCollapsed && (
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">

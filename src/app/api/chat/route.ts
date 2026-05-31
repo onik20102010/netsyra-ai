@@ -12,6 +12,43 @@ function getText(content: any): string {
   return "";
 }
 
+// ─── Compress a long reply to fit within a token budget using a fast model
+async function compressReply(
+  text: string,
+  maxTokens: number,
+  userMessage: string
+): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return text; // can't compress, return original
+
+  try {
+    const prompt = `The following AI response is too long. Summarize it to fit within ${maxTokens} tokens while keeping the main points and a natural conclusion. Only output the shortened response.
+
+Original response:
+${text}`;
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+        max_tokens: maxTokens,
+      }),
+    });
+
+    if (!response.ok) return text; // fallback to original
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch {
+    return text;
+  }
+}
+
 // ─── Wikipedia fallback search ────────────────────────────────
 async function searchWikipedia(query: string): Promise<{ summary: string; url: string } | null> {
   try {
@@ -139,7 +176,7 @@ async function callOpenAICompatible(
   if (!response.ok) {
     const err = await response.text();
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 5000));
+      await new Promise(r => setTimeout(r, 2000));
     }
     throw new Error(`OpenAI error (${response.status}): ${err}`);
   }
@@ -182,7 +219,7 @@ async function callGemini(
   if (!response.ok) {
     const err = await response.text();
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 5000));
+      await new Promise(r => setTimeout(r, 2000));
     }
     throw new Error(`Gemini error (${response.status}): ${err}`);
   }
@@ -332,11 +369,15 @@ export async function POST(req: NextRequest) {
 
       const { reply, tiersUsed } = await autoRoute(lastUserMessage, conversationHistory, liveData);
 
-      // Store messages and increment count (no conversation creation)
+      // Store messages with ordered timestamps
+      const insertNow = Date.now();
+      const userTimestamp = new Date(insertNow).toISOString();
+      const assistantTimestamp = new Date(insertNow + 1).toISOString();
+
       try {
         await supabase.from("messages").insert([
-          { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
-          { conversation_id: finalConversationId, role: "assistant", content: reply },
+          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
+          { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
         ]);
         await supabase
           .from("conversations")
@@ -462,7 +503,7 @@ export async function POST(req: NextRequest) {
         console.error(`Model ${modelConfig.modelName} failed:`, error.message);
         lastError = error;
         if (error.message.includes("429")) {
-          await new Promise(r => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, 1000));
         }
       }
     }
@@ -502,14 +543,24 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    // Compress if reply exceeds the tier's token budget
+    const estimatedTokens = Math.ceil(reply.length / 4); // rough estimate
+    if (estimatedTokens > tierConfig.maxTokens) {
+      reply = await compressReply(reply, tierConfig.maxTokens, lastUserMessage);
+    }
+
     // Final safety: strip any remaining <think> tags from the final reply
     reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
 
-    // Store messages and increment count (no conversation creation)
+    // Store messages with ordered timestamps
+    const insertNow = Date.now();
+    const userTimestamp = new Date(insertNow).toISOString();
+    const assistantTimestamp = new Date(insertNow + 1).toISOString();
+
     try {
       await supabase.from("messages").insert([
-        { conversation_id: finalConversationId, role: "user", content: lastUserMessage },
-        { conversation_id: finalConversationId, role: "assistant", content: reply },
+        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
+        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
       ]);
       await supabase
         .from("conversations")

@@ -6,7 +6,6 @@ import {
   History,
   BrainCircuit,
   PanelLeftClose,
-  Menu,
   MessageSquare,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -15,8 +14,8 @@ import ProfileModal from "./ProfileModal";
 import { toast } from "sonner";
 
 interface ChatSidebarProps {
-  collapsed: boolean;
-  setCollapsed: (collapsed: boolean) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
   onNewChat: () => void;
   onHistory: () => void;
   onSelectConversation: (id: string) => void;
@@ -32,8 +31,8 @@ type Conversation = {
 };
 
 export default function ChatSidebar({
-  collapsed,
-  setCollapsed,
+  open,
+  setOpen,
   onNewChat,
   onHistory,
   onSelectConversation,
@@ -46,10 +45,10 @@ export default function ChatSidebar({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
-  const [nameLoaded, setNameLoaded] = useState(false);   // ✅ prevent flicker
+  const [nameLoaded, setNameLoaded] = useState(false);
   const supabase = createClient();
 
-  // Fetch conversations – re‑fetch when user, supabase, or refreshKey changes
+  // Fetch conversations
   useEffect(() => {
     if (!user) return;
     const fetchConversations = async () => {
@@ -64,7 +63,7 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // ✅ Load profile name only once when user first appears
+  // Load profile name once, show skeleton until loaded
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -98,53 +97,24 @@ export default function ChatSidebar({
   return (
     <>
       <motion.aside
-        animate={{ width: collapsed ? 60 : 280 }}
+        animate={{ width: open ? 280 : 0 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className="h-full bg-gray-50 border-r border-gray-200 flex flex-col overflow-hidden"
       >
-        {collapsed ? (
-          <div className="flex flex-col items-center py-4 gap-4">
-            <button
-              onClick={() => setCollapsed(false)}
-              className="p-2 rounded-lg hover:bg-gray-200 text-gray-500 transition"
-              title="Open sidebar"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <button
-              onClick={onNewChat}
-              className="p-2 rounded-lg hover:bg-gray-200 text-gray-500 transition"
-              title="New chat"
-            >
-              <MessageSquarePlus className="h-5 w-5" />
-            </button>
-            <button
-              onClick={onHistory}
-              className="p-2 rounded-lg hover:bg-gray-200 text-gray-500 transition"
-              title="History"
-            >
-              <History className="h-5 w-5" />
-            </button>
-          </div>
-        ) : (
+        {open && (
           <>
-            {/* Header */}
+            {/* Header – only close button */}
             <div className="p-4 flex items-center justify-between border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
-                  <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-                </div>
-                <h2 className="text-lg font-bold text-indigo-600">Netsyra</h2>
-              </div>
+              <div /> {/* empty spacer */}
               <button
-                onClick={() => setCollapsed(true)}
+                onClick={() => setOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition"
               >
                 <PanelLeftClose className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Navigation */}
+            {/* Nav */}
             <div className="flex-1 p-3 space-y-1 overflow-y-auto">
               <button
                 onClick={onNewChat}
@@ -161,7 +131,6 @@ export default function ChatSidebar({
                 History
               </button>
 
-              {/* Dive Deep toggle */}
               <button
                 onClick={() => setDiveDeep(!diveDeep)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
@@ -172,18 +141,15 @@ export default function ChatSidebar({
               >
                 <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-600" : "text-gray-400"}`} />
                 Dive Deep
-                <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                    diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
-                  }`}
-                >
+                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                  diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                }`}>
                   {diveDeep ? "ON" : "OFF"}
                 </span>
               </button>
 
               <div className="my-3 border-t border-gray-200" />
 
-              {/* Conversation pills */}
               {conversations.map((conv) => (
                 <button
                   key={conv.id}
@@ -234,12 +200,11 @@ export default function ChatSidebar({
         userName={displayName}
         onSave={async (name: string) => {
           if (!user) return;
-
           try {
-            const { error } = await supabase.from("profiles").upsert(
-              { user_id: user.id, name },
-              { onConflict: "user_id" }
-            );
+            const { error } = await supabase
+              .from("profiles")
+              .upsert({ user_id: user.id, name }, { onConflict: "user_id" });
+
             if (error) {
               console.error("Failed to save profile:", error.message);
               toast.error("Could not save name. Please try again.");
