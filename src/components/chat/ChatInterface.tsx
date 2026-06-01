@@ -36,6 +36,7 @@ interface ChatInterfaceProps {
   setConversationId: (id: string | null) => void;
   diveDeep: boolean;
   onConversationCreated?: (id: string) => void;
+  initialModel?: string;
 }
 
 function CopyButton({ code }: { code: string }) {
@@ -114,10 +115,11 @@ export default function ChatInterface({
   setConversationId,
   diveDeep,
   onConversationCreated,
+  initialModel = "auto",
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("auto");
+  const [selectedModel, setSelectedModel] = useState(initialModel);
   const [isLoading, setIsLoading] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -323,19 +325,9 @@ export default function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="p-3 border-b border-gray-200">
-        <ModelSelector selected={selectedModel} onSelect={setSelectedModel} />
-        {selectedModel === "auto" && autoTiersUsed.length > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1 px-1">
-            <Sparkles className="w-3 h-3 text-indigo-500" />
-            <span>Auto‑routed via {autoTiersUsed.join(", ")}</span>
-          </div>
-        )}
-      </div>
-
       <div className="relative flex-1">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-6 pb-0 space-y-6">
+          <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-6 pb-0 space-y-6">
             <AnimatePresence initial={false}>
               {messages.length === 0 && (
                 <motion.div
@@ -344,9 +336,14 @@ export default function ChatInterface({
                   animate={{ opacity: 1 }}
                   className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
                 >
-                  <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2">
-                    <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-                  </div>
+<div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2 select-none pointer-events-none">
+  <img
+    src="/logo.png"
+    alt="Netsyra"
+    className="w-full h-full object-contain select-none pointer-events-none"
+    draggable={false}
+  />
+</div>
                   <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
                   <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
                 </motion.div>
@@ -581,17 +578,31 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
+      {/* Input – with model selector + button */}
       <div className="sticky bottom-0">
-        <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-2 pb-1">
+        <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-2 pb-1">
+          {/* Auto‑routed badge (still shown when applicable) */}
+          {selectedModel === "auto" && autoTiersUsed.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 px-1">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              <span>Auto‑routed via {autoTiersUsed.join(", ")}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSend} className="relative">
             <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+              {/* + button for model selector */}
+              <div className="absolute left-2 bottom-2">
+                <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
+              </div>
+
               <textarea
                 ref={mainInputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Message Netsyra..."
                 rows={1}
-                className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-3 pl-4 pr-12 text-sm max-h-[200px] overflow-y-auto"
+                className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-3 pl-12 pr-12 text-sm max-h-[200px] overflow-y-auto"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

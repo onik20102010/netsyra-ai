@@ -7,6 +7,7 @@ import {
   BrainCircuit,
   PanelLeftClose,
   MessageSquare,
+  Search,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -46,6 +47,7 @@ export default function ChatSidebar({
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
 
   // Fetch conversations
@@ -87,9 +89,7 @@ export default function ChatSidebar({
         }
 
         if (!cancelled) {
-          if (data?.name) {
-            setDisplayName(data.name);
-          }
+          if (data?.name) setDisplayName(data.name);
           setNameLoaded(true);
         }
       } catch (err) {
@@ -102,6 +102,13 @@ export default function ChatSidebar({
     return () => { cancelled = true; };
   }, [user, supabase]);
 
+  // Filter conversations that start with search query (case-insensitive)
+  const filteredConversations = searchQuery.trim()
+    ? conversations.filter((conv) =>
+        conv.title.toLowerCase().startsWith(searchQuery.toLowerCase())
+      )
+    : conversations;
+
   return (
     <>
       <motion.aside
@@ -111,15 +118,32 @@ export default function ChatSidebar({
       >
         {open && (
           <>
-            {/* Header with close button */}
-            <div className="p-4 flex items-center justify-between border-b border-gray-200">
-              <div />
+            {/* Header with close button + search bar */}
+            <div className="p-4 flex items-center gap-2 border-b border-gray-200">
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition"
+                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition flex-shrink-0"
               >
                 <PanelLeftClose className="h-5 w-5" />
               </button>
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 transition"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Nav */}
@@ -156,7 +180,8 @@ export default function ChatSidebar({
 
               <div className="my-3 border-t border-gray-200" />
 
-              {conversations.map((conv) => (
+              {/* Filtered conversation pills */}
+              {filteredConversations.map((conv) => (
                 <button
                   key={conv.id}
                   onClick={() => onSelectConversation(conv.id)}
@@ -170,6 +195,13 @@ export default function ChatSidebar({
                   <span className="truncate">{conv.title}</span>
                 </button>
               ))}
+
+              {/* Show a message when no conversations match */}
+              {searchQuery.trim() && filteredConversations.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">
+                  No chats found for "{searchQuery}"
+                </p>
+              )}
             </div>
 
             {/* User footer */}
@@ -206,28 +238,21 @@ export default function ChatSidebar({
         userName={displayName}
         onSave={async (name: string) => {
           if (!user) return;
-
           try {
-            // Update the profile
             const { error: updateError } = await supabase
               .from("profiles")
               .update({ name })
               .eq("user_id", user.id);
-
             if (updateError) {
-              // If update fails, try insert
               const { error: insertError } = await supabase
                 .from("profiles")
                 .insert({ user_id: user.id, name });
-
               if (insertError) {
                 console.error("Failed to save profile:", insertError.message);
                 toast.error("Could not save name. Please try again.");
                 return;
               }
             }
-
-            // Update local state immediately
             setDisplayName(name);
             setNameLoaded(true);
             toast.success("Profile updated!");

@@ -8,7 +8,8 @@ import { Menu } from "lucide-react";
 function ChatContent() {
   const searchParams = useSearchParams();
   const initialId = searchParams.get("conversation");
-  const [sidebarOpen, setSidebarOpen] = useState(true);      // true = visible
+  const initialModel = searchParams.get("model") || "auto";
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [diveDeep, setDiveDeep] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(initialId);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
@@ -29,28 +30,30 @@ function ChatContent() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
-      {/* Top bar – always shows hamburger when sidebar is closed */}
+      {/* Top bar – logo + name only */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 md:px-4 bg-white border-b border-gray-200 select-none">
         <div className="flex items-center gap-2">
-          {!sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition"
-              title="Open sidebar"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          )}
           <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
             <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
           </div>
-          <span className="text-lg font-bold text-indigo-600">Netsyra</span>
+          <span className="text-lg font-bold text-[#4D6BFE] font-mono tracking-tight">Netsyra</span>
         </div>
         <div />
       </div>
 
-      <div className="flex flex-1 pt-12">
-        {/* Sidebar – slides open/closed; 0 width when closed */}
+      {/* Floating glass hamburger – only visible when sidebar is closed */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="absolute top-[52px] left-2 z-30 w-10 h-10 rounded-full bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_0_15px_rgba(0,0,0,0.05)] flex items-center justify-center text-gray-500 hover:text-gray-800 hover:shadow-[0_0_25px_rgba(0,0,0,0.08)] transition-all"
+          title="Open sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Main content */}
+      <div className="flex flex-1 pt-[46px]">
         <ChatSidebar
           open={sidebarOpen}
           setOpen={setSidebarOpen}
@@ -68,6 +71,7 @@ function ChatContent() {
             setConversationId={setConversationId}
             diveDeep={diveDeep}
             onConversationCreated={handleConversationCreated}
+            initialModel={initialModel}
           />
         </div>
       </div>

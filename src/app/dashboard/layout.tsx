@@ -38,9 +38,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center p-1 ring-1 ring-gray-500/30">
             <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
           </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-gray-300 to-white bg-clip-text text-transparent">
-            Netsyra
-          </span>
+<span className="text-lg font-bold text-[#4D6BFE] font-mono tracking-tight">
+  Netsyra
+</span>
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/chat" className="text-sm text-white/60 hover:text-white transition flex items-center gap-1">
