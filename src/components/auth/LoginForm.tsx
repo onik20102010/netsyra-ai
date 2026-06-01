@@ -7,7 +7,6 @@ import PasswordInput from "./PasswordInput";
 import GoogleButton from "./GoogleButton";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth";
 import { toast } from "sonner";
-import Link from "next/link";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -24,18 +23,17 @@ export default function LoginForm() {
       toast.error(error.message);
     } else {
       toast.success("Logged in successfully!");
-      router.push("/dashboard");
+      router.push("/chat");
       router.refresh();
     }
   };
 
-const handleGoogleSignIn = async () => {
-  const { error } = await signInWithGoogle();
-  if (error) {
-    toast.error(error.message);
-  }
-  // No need to redirect manually – Supabase OAuth will redirect the whole page
-};
+  const handleGoogleSignIn = async () => {
+    const { error } = await signInWithGoogle();
+    if (error) {
+      toast.error(error.message);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -54,21 +52,6 @@ const handleGoogleSignIn = async () => {
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
           required
         />
-        <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center space-x-2 text-white/60">
-            <input
-              type="checkbox"
-              className="rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/30"
-            />
-            <span>Remember me</span>
-          </label>
-          <Link
-            href="/forgot-password"
-            className="text-purple-400 hover:text-purple-300 transition"
-          >
-            Forgot password?
-          </Link>
-        </div>
       </div>
 
       <Button
@@ -89,13 +72,6 @@ const handleGoogleSignIn = async () => {
       </div>
 
       <GoogleButton onClick={handleGoogleSignIn} />
-
-      <p className="text-center text-sm text-white/60">
-        Don’t have an account?{" "}
-        <Link href="/register" className="text-purple-400 hover:text-purple-300 font-medium">
-          Create one
-        </Link>
-      </p>
     </form>
   );
 }

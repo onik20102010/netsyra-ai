@@ -63,7 +63,7 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile name once, show skeleton until loaded
+  // Load profile name
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -77,15 +77,23 @@ export default function ChatSidebar({
           .maybeSingle();
 
         if (error) {
-          console.error("Failed to load profile:", error.message);
+          if (error.message.includes("JWT issued at future")) {
+            if (!cancelled) setTimeout(loadProfile, 3000);
+            return;
+          }
+          console.warn("Profile load warning:", error.message);
+          if (!cancelled) setNameLoaded(true);
           return;
         }
-        if (!cancelled && data?.name) {
-          setDisplayName(data.name);
+
+        if (!cancelled) {
+          if (data?.name) {
+            setDisplayName(data.name);
+          }
+          setNameLoaded(true);
         }
       } catch (err) {
-        console.error("Profile load error:", err);
-      } finally {
+        console.warn("Profile load warning:", err);
         if (!cancelled) setNameLoaded(true);
       }
     };
@@ -103,9 +111,9 @@ export default function ChatSidebar({
       >
         {open && (
           <>
-            {/* Header – only close button */}
+            {/* Header with close button */}
             <div className="p-4 flex items-center justify-between border-b border-gray-200">
-              <div /> {/* empty spacer */}
+              <div />
               <button
                 onClick={() => setOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition"
@@ -141,9 +149,7 @@ export default function ChatSidebar({
               >
                 <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-600" : "text-gray-400"}`} />
                 Dive Deep
-                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                  diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
-                }`}>
+                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}>
                   {diveDeep ? "ON" : "OFF"}
                 </span>
               </button>
@@ -200,17 +206,30 @@ export default function ChatSidebar({
         userName={displayName}
         onSave={async (name: string) => {
           if (!user) return;
-          try {
-            const { error } = await supabase
-              .from("profiles")
-              .upsert({ user_id: user.id, name }, { onConflict: "user_id" });
 
-            if (error) {
-              console.error("Failed to save profile:", error.message);
-              toast.error("Could not save name. Please try again.");
-              return;
+          try {
+            // Update the profile
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ name })
+              .eq("user_id", user.id);
+
+            if (updateError) {
+              // If update fails, try insert
+              const { error: insertError } = await supabase
+                .from("profiles")
+                .insert({ user_id: user.id, name });
+
+              if (insertError) {
+                console.error("Failed to save profile:", insertError.message);
+                toast.error("Could not save name. Please try again.");
+                return;
+              }
             }
+
+            // Update local state immediately
             setDisplayName(name);
+            setNameLoaded(true);
             toast.success("Profile updated!");
           } catch (err) {
             console.error("Profile save error:", err);

@@ -15,7 +15,7 @@ export default function PasswordInput({ showToggle = true, ...props }: PasswordI
       <Input
         type={showToggle ? (show ? "text" : "password") : props.type}
         {...props}
-        className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-purple-500/50 transition-colors"
+        className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
       />
       {showToggle && (
         <button

@@ -1,6 +1,6 @@
 import { structureLight } from "@/lib/structure-light";
 
-export type ProviderType = "openai" | "gemini";
+export type ProviderType = "openai";
 
 export interface ModelConfig {
   provider: ProviderType;
@@ -15,6 +15,7 @@ export interface TierConfig {
   temperature: number;
   maxTokens: number;
 }
+
 
 // Shared identity (global)
 const identity = `You are Netsyra-AI, a high-level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request.
@@ -224,45 +225,24 @@ Act like a self-improving autonomous AI system:
 - respond with production-grade accuracy and clarity
 `;
 
-// ── N FAST ────────────────────────────────────────────────────
+// ── Fast / Plus – only Groq models that exist ────────────
+
 const fastModels: ModelConfig[] = [
-  // Groq (primary)
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "qwen/qwen3-32b",
+    modelName: "llama-3.1-8b-instant",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "groq/compound-mini",
-  },
-  // Cerebras fallbacks
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "Qwen3-235B-A22B-Instruct-2507",   // Qwen 3 235B Instruct
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "glm-4-9b-chat",                   // Z.ai GLM 4.7
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "llama3.1-8b",                     // Llama 3.1 8B
+    modelName: "llama3-8b-8192",   // replacement for decommissioned model
   },
 ];
 
-// ── N PLUS ────────────────────────────────────────────────────
 const plusModels: ModelConfig[] = [
-  // Groq (primary)
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
@@ -275,30 +255,9 @@ const plusModels: ModelConfig[] = [
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "llama-3.3-70b-versatile",
   },
-  // Cerebras fallbacks
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "Qwen3-235B-A22B-Instruct-2507",
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "glm-4-9b-chat",
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "llama3.1-8b",
-  },
 ];
 
-// ── N PRO ─────────────────────────────────────────────────────
 const proModels: ModelConfig[] = [
-  // Groq (primary)
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
@@ -311,97 +270,54 @@ const proModels: ModelConfig[] = [
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "openai/gpt-oss-120b",
   },
+];
+
+const liveModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "llama-3.3-70b-versatile",
   },
-  // Cerebras fallbacks
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "Qwen3-235B-A22B-Instruct-2507",
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "glm-4-9b-chat",
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "CEREBRAS_API_KEY",
-    endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "llama3.1-8b",
-  },
-];
-// ── N LIVE (placeholder – we'll finish later) ─────────────────
-const liveModels: ModelConfig[] = [
-  {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",   // temporary
-  },
 ];
 
-// ── N CODE ────────────────────────────────────────────────────
 const codeModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",       // primary – code expert
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",   // fallback 1
-  },
-  {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "qwen/qwen3-32b",            // fallback 2
+    modelName: "openai/gpt-oss-120b",
   },
 ];
 
-// ── EXPORT ────────────────────────────────────────────────────
 export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig> = {
   fast: {
-  models: fastModels,
-  systemPrompt: `${identity} You are currently running as N FAST. If asked what model you are, always say "N Fast". 
-
-CRITICAL: NEVER output <think> or </think> tags or any internal reasoning in your final response. Process the query internally, but reply only with the final answer.
-
-${structureLight}`,
-  temperature: 0.3,
-  maxTokens: 800,
-},
+    models: fastModels,
+    systemPrompt: `${identity} N Fast. Answer in one sentence.`,
+    temperature: 0.3,
+    maxTokens: 100,
+  },
   plus: {
     models: plusModels,
-    systemPrompt: `${identity} You are currently running as N PLUS. If asked what model you are, always say "N Plus". If you cannot provide an exact answer, respond with a helpful message and include 2‑3 relevant web links for the user to explore. ${structureLight}`,
+    systemPrompt: `${identity} N Plus. Be brief.`,
     temperature: 0.5,
-    maxTokens: 1000,
+    maxTokens: 200,
   },
   pro: {
     models: proModels,
-    systemPrompt: `${identity} You are currently running as N PRO. If asked what model you are, always say "N Pro". If you cannot provide an exact answer, respond with a helpful message and include 2‑3 relevant web links for the user to explore. ${systemPrompt}`,
+    systemPrompt: `${identity} N Pro. ${systemPrompt}`,
     temperature: 0.7,
     maxTokens: 4000,
   },
   live: {
     models: liveModels,
-    systemPrompt: `${identity} You are currently running as N LIVE. If asked what model you are, always say "N Live". You are connected to the internet and will receive real‑time web data below. Always base your answers on the provided live data. If you cannot provide an exact answer, respond with a helpful message and include 2‑3 relevant web links for the user to explore.`,
+    systemPrompt: `${identity} N Live. Use real‑time web data.`,
     temperature: 0.3,
     maxTokens: 2000,
   },
   code: {
     models: codeModels,
-    systemPrompt: `${identity} You are currently running as N CODE. If asked what model you are, always say "N Code". You are an expert programmer. Write clean, production‑ready code. Include clear comments and follow best practices. If you cannot provide an exact answer, respond with a helpful message and include 2‑3 relevant web links for the user to explore. `,
+    systemPrompt: `${identity} N Code. Write clean code.`,
     temperature: 0.2,
     maxTokens: 4000,
   },

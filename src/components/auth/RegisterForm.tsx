@@ -72,19 +72,19 @@ export default function RegisterForm() {
           onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)}
           required
         />
-        <div className="flex items-center space-x-2 text-sm text-white/60">
+        <div className="flex items-start gap-2 text-sm text-white/60">
           <input
             type="checkbox"
             required
-            className="rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/30"
+            className="mt-0.5 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/30"
           />
           <span>
             I agree to the{" "}
-            <Link href="#" className="text-purple-400 hover:text-purple-300">
+            <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline underline-offset-2">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="#" className="text-purple-400 hover:text-purple-300">
+            <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline underline-offset-2">
               Privacy Policy
             </Link>
           </span>
@@ -109,13 +109,6 @@ export default function RegisterForm() {
       </div>
 
       <GoogleButton onClick={handleGoogleSignUp} />
-
-      <p className="text-center text-sm text-white/60">
-        Already have an account?{" "}
-        <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium">
-          Sign in
-        </Link>
-      </p>
     </form>
   );
 }

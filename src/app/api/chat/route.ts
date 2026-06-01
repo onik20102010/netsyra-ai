@@ -500,13 +500,15 @@ export async function POST(req: NextRequest) {
         }
         if (reply) break;
       } catch (error: any) {
-        console.error(`Model ${modelConfig.modelName} failed:`, error.message);
+        // Removed per-model console.error
         lastError = error;
         if (error.message.includes("429")) {
           await new Promise(r => setTimeout(r, 1000));
         }
       }
     }
+
+    if (lastError) console.warn("All models failed:", lastError.message);
 
     if (!reply) {
       const msg = lastError

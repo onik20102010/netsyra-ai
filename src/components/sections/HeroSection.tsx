@@ -1,7 +1,8 @@
 "use client";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap, Shield, Activity } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Shield, Activity, Brain, Cpu, Orbit } from "lucide-react";
 import Link from "next/link";
 
 const container = {
@@ -22,12 +23,76 @@ const transition = {
   ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
 };
 
+const backgroundElements = [
+  { icon: Brain, top: "20%", left: "10%" },
+  { icon: Cpu, top: "60%", left: "85%" },
+  { icon: Orbit, top: "70%", left: "15%" },
+  { icon: Sparkles, top: "30%", left: "80%" },
+  { icon: Zap, top: "15%", left: "90%" },
+  { icon: Activity, top: "80%", left: "40%" },
+];
+
 export default function HeroSection() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16 select-none">
-      {/* Ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full blur-[150px] opacity-10 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }} />
+      
+      {/* Animated Background Container - Only Rendered on Client */}
+      {isMounted && (
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          {/* Ambient glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full blur-[150px] opacity-10"
+               style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }} />
+          
+          {/* Floating Icons (Silver/White theme) */}
+          {backgroundElements.map((el, i) => (
+            <motion.div
+              key={i}
+              className="absolute text-slate-300/40"
+              style={{ top: el.top, left: el.left }}
+              animate={{
+                y: [0, -30, 0],
+                rotate: [0, 10, -10, 0],
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 5 + Math.random() * 5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.5,
+              }}
+            >
+              <el.icon size={40} />
+            </motion.div>
+          ))}
+
+          {/* Floating Dots (Silver/White theme) */}
+          {[...Array(10)].map((_, i) => (
+            <motion.div
+              key={`dot-${i}`}
+              className="absolute w-2 h-2 rounded-full bg-white/40"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.2, 0.8, 0.2],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="relative z-10 w-full max-w-5xl mx-auto px-4 text-center">
         <motion.div

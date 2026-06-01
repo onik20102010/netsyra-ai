@@ -1,11 +1,7 @@
 "use client";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
-import { Home, MessageSquare, LogOut, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
-// ── Policy data ──────────────────────────────────────────
 const sections = [
   {
     title: "TERMS OF SERVICE",
@@ -127,10 +123,17 @@ const sections = [
   },
 ];
 
-// ── Animation variants ────────────────────────────────────
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
+
 const sectionVariant = {
   hidden: { opacity: 0, y: 20 },
-  visible: {
+  show: {
     opacity: 1,
     y: 0,
     transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const },
@@ -139,100 +142,45 @@ const sectionVariant = {
 
 const paragraphVariant = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.4 } },
+  show: {
+    opacity: 1,
+    transition: { duration: 0.5 },
+  },
 };
 
-export default function DashboardPage() {
-  const { user, signOut } = useAuth();
-  const router = useRouter();
-
+export default function TermsPage() {
   return (
     <div className="min-h-screen bg-black text-gray-300 relative overflow-hidden">
       {/* Animated Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0">
         <motion.div
-          animate={{ scale: [1, 1.3, 1], rotate: [0, 180, 360] }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full bg-purple-900/15 blur-[150px]"
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[20%] w-[70%] h-[70%] rounded-full bg-purple-900/20 blur-[120px]"
         />
         <motion.div
-          animate={{ scale: [1.3, 1, 1.3], rotate: [0, -180, -360] }}
-          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full rounded-full bg-indigo-900/10 blur-[150px]"
-        />
-        <motion.div
-          animate={{ scale: [0.8, 1.1, 0.8], x: [0, 80, 0], y: [0, -40, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-900/10 blur-[120px]"
+          animate={{ scale: [1.2, 1, 1.2], rotate: [0, -90, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-[20%] -right-[20%] w-[70%] h-[70%] rounded-full bg-blue-900/20 blur-[120px]"
         />
       </div>
 
-      {/* Scrollable content */}
-      <div className="relative z-10 px-6 py-16 max-w-4xl mx-auto">
-        {/* ── Dashboard hero ──────────────────────────────── */}
+      {/* Content */}
+      <div className="relative z-10 max-w-4xl mx-auto px-6 py-16">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-center mb-24"
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-12"
         >
-          <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center p-2 ring-1 ring-purple-500/20 shadow-lg shadow-purple-500/5">
-              <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-light text-white mb-2">Welcome back</h1>
-          <p className="text-sm text-white/30 mb-10">
-            Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all"
-              >
-                <Home className="w-4 h-4" />
-                Home
-              </motion.button>
-            </Link>
-            <Link href="/chat">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/[0.08] transition-all"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Chat
-                <Sparkles className="w-3.5 h-3.5 opacity-50" />
-              </motion.button>
-            </Link>
-          </div>
-
-          <button
-            onClick={async () => { await signOut(); router.push("/login"); }}
-            className="mt-8 flex items-center justify-center gap-2 mx-auto px-5 py-2.5 rounded-full text-white/20 hover:text-white/60 hover:bg-white/[0.03] transition-all text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </motion.div>
-
-        {/* ── Policy content ───────────────────────────────── */}
-        <div className="space-y-16">
           {sections.map((section, idx) => (
-            <motion.div
-              key={idx}
-              variants={sectionVariant}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-40px" }}
-              className="space-y-4"
-            >
-              <h2 className="text-2xl font-bold text-white tracking-tight">
+            <motion.div key={idx} variants={sectionVariant} className="space-y-3">
+              {/* Section title */}
+              <h2 className="text-2xl font-bold text-white">
                 {section.title}
               </h2>
+
+              {/* Subtitle under main title */}
               {section.subtitle && (
                 <motion.p
                   variants={paragraphVariant}
@@ -241,30 +189,52 @@ export default function DashboardPage() {
                   {section.subtitle}
                 </motion.p>
               )}
-              <div className="space-y-3">
-                {section.content && section.content.map((text, pIdx) => (
+
+              {/* Paragraphs */}
+              <motion.div variants={container} className="space-y-2">
+                {section.content?.map((paragraph, pIdx) => (
                   <motion.p
                     key={pIdx}
                     variants={paragraphVariant}
                     className="text-gray-400 leading-relaxed"
                   >
-                    {text}
+                    {paragraph}
                   </motion.p>
                 ))}
-              </div>
+              </motion.div>
             </motion.div>
           ))}
 
-          <motion.p
+          {/* Contact card */}
+          <motion.div
             variants={sectionVariant}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-gray-500 text-sm text-center pt-10"
+            className="p-6 border border-white/10 rounded-2xl bg-white/5 backdrop-blur-md"
           >
-            This document was last updated on June 1, 2026.
-          </motion.p>
-        </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Need help?</h3>
+            <p className="text-gray-400">
+              If you have any questions regarding these terms, contact us at:
+            </p>
+            <a
+              href="mailto:onik20102010@gmail.com"
+              className="text-purple-400 hover:underline"
+            >
+              onik20102010@gmail.com
+            </a>
+          </motion.div>
+
+          {/* Back to home */}
+          <motion.div variants={sectionVariant} className="text-center pt-8">
+            <p className="text-gray-500 text-sm mb-4">
+              This document was last updated on June 1, 2026.
+            </p>
+            <Link
+              href="/"
+              className="text-purple-400 hover:underline text-sm"
+            >
+              ← Back to Home
+            </Link>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

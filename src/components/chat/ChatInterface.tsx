@@ -122,12 +122,28 @@ export default function ChatInterface({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => { scrollToBottom(); }, [messages]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+      setShowScrollButton(!isNearBottom);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [messages]);
 
   useEffect(() => {
     const textarea = mainInputRef.current;
@@ -215,7 +231,7 @@ export default function ChatInterface({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-14);
+    const contextMessages = [...messages, userMessage].slice(-1);
     const result = await sendMessage(userMessage.content, contextMessages);
 
     if (result) {
@@ -307,7 +323,6 @@ export default function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Model selector header */}
       <div className="p-3 border-b border-gray-200">
         <ModelSelector selected={selectedModel} onSelect={setSelectedModel} />
         {selectedModel === "auto" && autoTiersUsed.length > 0 && (
@@ -318,231 +333,254 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Messages – responsive max-width */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-6 pb-0 space-y-6">
-          <AnimatePresence initial={false}>
-            {messages.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
-              >
-                <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2">
-                  <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-                </div>
-                <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
-                <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
-              </motion.div>
-            )}
-
-            {messages.map((msg, idx) => {
-              const isUser = msg.role === "user";
-              const isEditing = editingMessageId === msg.id;
-
-              return (
+      <div className="relative flex-1">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
+          <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-6 pb-0 space-y-6">
+            <AnimatePresence initial={false}>
+              {messages.length === 0 && (
                 <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+                  key="empty-state"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
                 >
-                  {!isUser && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                      <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                    </div>
-                  )}
+                  <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2">
+                    <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
+                  </div>
+                  <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
+                  <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
+                </motion.div>
+              )}
 
-                  <div
-                    className={cn(
-                      msg.role === "user"
-                        ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
-                        : "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2"
-                    )}
+              {messages.map((msg, idx) => {
+                const isUser = msg.role === "user";
+                const isEditing = editingMessageId === msg.id;
+
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
                   >
-                    {isEditing ? (
-                      <div className="flex items-start gap-2">
-                        <textarea
-                          ref={editInputRef}
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          onKeyDown={handleEditKeyDown}
-                          className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
-                          rows={4}
-                        />
-                        <button
-                          onClick={() => saveEdit(msg)}
-                          className="text-indigo-600 hover:text-indigo-800 transition p-1"
-                          title="Save edit"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={cancelEditing}
-                          className="text-gray-400 hover:text-gray-600 transition p-1"
-                          title="Cancel"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                    {!isUser && (
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
+                        <Bot className="w-3.5 h-3.5 text-indigo-500" />
                       </div>
-                    ) : isUser ? (
-                      <p>{msg.content}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="prose-chat max-w-none">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              code({ node, inline, className, children, ...props }: any) {
-                                const match = /language-(\w+)/.exec(className || "");
-                                const codeString = String(children).replace(/\n$/, "");
+                    )}
 
-                                if (!inline && match) {
-                                  return (
-                                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
-                                      <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-                                        <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                          {match[1]}
-                                        </span>
-                                        <div className="flex items-center">
-                                          <CopyButton code={codeString} />
-                                          {(match[1] === "html" || match[1] === "htm") && <PreviewButton code={codeString} />}
+                    <div
+                      className={cn(
+                        msg.role === "user"
+                          ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
+                          : "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2"
+                      )}
+                    >
+                      {isEditing ? (
+                        <div className="flex items-start gap-2">
+                          <textarea
+                            ref={editInputRef}
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
+                            rows={4}
+                          />
+                          <button
+                            onClick={() => saveEdit(msg)}
+                            className="text-indigo-600 hover:text-indigo-800 transition p-1"
+                            title="Save edit"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-400 hover:text-gray-600 transition p-1"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : isUser ? (
+                        <p>{msg.content}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="prose-chat max-w-none">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ node, inline, className, children, ...props }: any) {
+                                  const match = /language-(\w+)/.exec(className || "");
+                                  const codeString = String(children).replace(/\n$/, "");
+
+                                  if (!inline && match) {
+                                    return (
+                                      <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                                        <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                                          <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                            {match[1]}
+                                          </span>
+                                          <div className="flex items-center">
+                                            <CopyButton code={codeString} />
+                                            {(match[1] === "html" || match[1] === "htm") && <PreviewButton code={codeString} />}
+                                          </div>
                                         </div>
+                                        <SyntaxHighlighter
+                                          language={match[1]}
+                                          style={vscDarkPlus}
+                                          customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                                          codeTagProps={{ className: "text-sm" }}
+                                        >
+                                          {codeString}
+                                        </SyntaxHighlighter>
                                       </div>
-                                      <SyntaxHighlighter
-                                        language={match[1]}
-                                        style={vscDarkPlus}
-                                        customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                                        codeTagProps={{ className: "text-sm" }}
-                                      >
-                                        {codeString}
-                                      </SyntaxHighlighter>
+                                    );
+                                  }
+                                  return (
+                                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                table({ children }: any) {
+                                  return (
+                                    <div className="overflow-x-auto my-4">
+                                      <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                                        {children}
+                                      </table>
                                     </div>
                                   );
-                                }
-                                return (
-                                  <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
-                                    {children}
-                                  </code>
-                                );
-                              },
-                              table({ children }: any) {
-                                return (
-                                  <div className="overflow-x-auto my-4">
-                                    <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                                },
+                                th({ children }: any) {
+                                  return (
+                                    <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
                                       {children}
-                                    </table>
-                                  </div>
-                                );
-                              },
-                              th({ children }: any) {
-                                return (
-                                  <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
-                                    {children}
-                                  </th>
-                                );
-                              },
-                              td({ children }: any) {
-                                return (
-                                  <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                    {children}
-                                  </td>
-                                );
-                              },
-                              hr({ node, ...props }: any) {
-                                return <hr className="my-8 border-t border-gray-300" {...props} />;
-                              },
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
-                        </div>
-                        {msg.thinking && <ThinkingBlock text={msg.thinking} />}
-                        {msg.wikiLink && (
-                          <a
-                            href={msg.wikiLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            View on Wikipedia
-                          </a>
-                        )}
-                      </div>
-                    )}
-                    {!isEditing && (
-                      <div
-                        className={cn(
-                          "flex items-center gap-2 mt-1 px-1",
-                          isUser ? "justify-end" : "justify-start"
-                        )}
-                      >
-                        {isUser ? (
-                          <>
-                            <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleRefresh(msg.id)}
-                              disabled={isLoading}
-                              className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
-                              title="Regenerate"
+                                    </th>
+                                  );
+                                },
+                                td({ children }: any) {
+                                  return (
+                                    <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                      {children}
+                                    </td>
+                                  );
+                                },
+                                hr({ node, ...props }: any) {
+                                  return <hr className="my-8 border-t border-gray-300" {...props} />;
+                                },
+                              }}
                             >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
-                              <ThumbsUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
-                              <ThumbsDown className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
+                          {msg.wikiLink && (
+                            <a
+                              href={msg.wikiLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View on Wikipedia
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      {!isEditing && (
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 mt-1 px-1",
+                            isUser ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {isUser ? (
+                            <>
+                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleRefresh(msg.id)}
+                                disabled={isLoading}
+                                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+                                title="Regenerate"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {isUser && (
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mt-0.5">
+                        <User className="w-3.5 h-3.5 text-gray-500" />
                       </div>
                     )}
-                  </div>
+                  </motion.div>
+                );
+              })}
 
-                  {isUser && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mt-0.5">
-                      <User className="w-3.5 h-3.5 text-gray-500" />
+              {isLoading && (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex gap-3 justify-start"
+                >
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
+                    <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                  </div>
+                  <div className="text-gray-400 pt-1 flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "400ms" }} />
                     </div>
-                  )}
-                </motion.div>
-              );
-            })}
-
-            {isLoading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 justify-start">
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                  <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                </div>
-                <div className="text-gray-400 pt-1 flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "400ms" }} />
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <div ref={messagesEndRef} />
+                </motion.div>
+              )}
+              <div ref={messagesEndRef} />
+            </AnimatePresence>
+          </div>
         </div>
+
+        <AnimatePresence>
+          {showScrollButton && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              onClick={scrollToBottom}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 p-2.5 rounded-full bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all"
+              aria-label="Scroll to bottom"
+            >
+              <svg className="w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Input – responsive max-width */}
       <div className="sticky bottom-0">
         <div className="max-w-[360px] sm:max-w-[600px] md:max-w-[800px] mx-auto px-4 pt-2 pb-1">
           <form onSubmit={handleSend} className="relative">
