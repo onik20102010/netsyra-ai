@@ -46,6 +46,7 @@ export default function ChatSidebar({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [userGoal, setUserGoal] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
@@ -65,7 +66,7 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile name
+  // Load profile name and goal
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -74,7 +75,7 @@ export default function ChatSidebar({
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("name")
+          .select("name, goal")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -90,6 +91,7 @@ export default function ChatSidebar({
 
         if (!cancelled) {
           if (data?.name) setDisplayName(data.name);
+          if (data?.goal) setUserGoal(data.goal);
           setNameLoaded(true);
         }
       } catch (err) {
@@ -102,10 +104,10 @@ export default function ChatSidebar({
     return () => { cancelled = true; };
   }, [user, supabase]);
 
-  // Filter conversations that start with search query (case-insensitive)
+  // Filter conversations based on search
   const filteredConversations = searchQuery.trim()
     ? conversations.filter((conv) =>
-        conv.title.toLowerCase().startsWith(searchQuery.toLowerCase())
+        conv.title.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : conversations;
 
@@ -196,7 +198,6 @@ export default function ChatSidebar({
                 </button>
               ))}
 
-              {/* Show a message when no conversations match */}
               {searchQuery.trim() && filteredConversations.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-4">
                   No chats found for "{searchQuery}"
@@ -205,30 +206,32 @@ export default function ChatSidebar({
             </div>
 
             {/* User footer */}
-            <button
-              onClick={() => setProfileOpen(true)}
-              className="w-full p-4 border-t border-gray-200 hover:bg-gray-100 transition text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                  {(displayName || user?.email || "U").charAt(0).toUpperCase()}
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="w-full hover:bg-gray-100 transition text-left rounded-lg p-2 -m-2"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                    {(displayName || user?.email || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {nameLoaded ? (
+                      <>
+                        <p className="text-sm text-gray-900 truncate font-medium">
+                          {displayName || user?.email?.split("@")[0] || "User"}
+                        </p>
+                        {!displayName && (
+                          <p className="text-xs text-gray-500">Click to set your name</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  {nameLoaded ? (
-                    <>
-                      <p className="text-sm text-gray-900 truncate font-medium">
-                        {displayName || user?.email?.split("@")[0] || "User"}
-                      </p>
-                      {!displayName && (
-                        <p className="text-xs text-gray-500">Click to set your name</p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
-                  )}
-                </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </>
         )}
       </motion.aside>
@@ -236,28 +239,21 @@ export default function ChatSidebar({
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         userName={displayName}
-        onSave={async (name: string) => {
+        userGoal={userGoal}
+        onSave={async (name: string, goal: string) => {
           if (!user) return;
           try {
-            const { error: updateError } = await supabase
+            const { error } = await supabase
               .from("profiles")
-              .update({ name })
-              .eq("user_id", user.id);
-            if (updateError) {
-              const { error: insertError } = await supabase
-                .from("profiles")
-                .insert({ user_id: user.id, name });
-              if (insertError) {
-                console.error("Failed to save profile:", insertError.message);
-                toast.error("Could not save name. Please try again.");
-                return;
-              }
+              .upsert({ user_id: user.id, name, goal }, { onConflict: "user_id" });
+            if (error) {
+              toast.error("Could not save profile.");
+              return;
             }
             setDisplayName(name);
-            setNameLoaded(true);
+            setUserGoal(goal);
             toast.success("Profile updated!");
           } catch (err) {
-            console.error("Profile save error:", err);
             toast.error("Something went wrong.");
           }
         }}

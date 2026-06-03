@@ -1,18 +1,29 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Check, Sun, Globe } from "lucide-react";
+import { X, User, Check, Sun, Globe, Target, Code, Atom, BookOpen, Briefcase, Palette } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProfileModalProps {
   open: boolean;
   onClose: () => void;
   userName: string;
-  onSave: (name: string) => void;
+  userGoal: string;
+  onSave: (name: string, goal: string) => void;
 }
 
-export default function ProfileModal({ open, onClose, userName, onSave }: ProfileModalProps) {
+const goals = [
+  { value: "", label: "No preference", icon: Target },
+  { value: "coding", label: "Coding", icon: Code },
+  { value: "physics", label: "Physics", icon: Atom },
+  { value: "research", label: "Research", icon: BookOpen },
+  { value: "business", label: "Business", icon: Briefcase },
+  { value: "creative", label: "Creative", icon: Palette },
+];
+
+export default function ProfileModal({ open, onClose, userName, userGoal, onSave }: ProfileModalProps) {
   const [name, setName] = useState(userName);
+  const [goal, setGoal] = useState(userGoal || "");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -21,7 +32,7 @@ export default function ProfileModal({ open, onClose, userName, onSave }: Profil
       return;
     }
     setSaving(true);
-    await onSave(name.trim());
+    await onSave(name.trim(), goal);
     setSaving(false);
     onClose();
     toast.success("Profile updated!");
@@ -45,25 +56,19 @@ export default function ProfileModal({ open, onClose, userName, onSave }: Profil
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md p-6 mx-4 space-y-6"
           >
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
-              <button
-                onClick={onClose}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 transition"
-              >
+              <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Avatar */}
             <div className="flex justify-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
                 {(name || userName || "U").charAt(0).toUpperCase()}
               </div>
             </div>
 
-            {/* Name input */}
             <div>
               <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1.5">
                 <User className="w-4 h-4 text-indigo-500" />
@@ -75,31 +80,43 @@ export default function ProfileModal({ open, onClose, userName, onSave }: Profil
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter your name"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-300 transition"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSave();
-                }}
               />
             </div>
 
-            {/* Theme & Language (read‑only for now) */}
+            {/* Goal selector */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1.5">
+                <Target className="w-4 h-4 text-indigo-500" />
+                Focus Area
+              </label>
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-300 transition"
+              >
+                {goals.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 flex items-center gap-2">
-                  <Sun className="w-4 h-4 text-gray-400" />
-                  Theme
+                  <Sun className="w-4 h-4 text-gray-400" /> Theme
                 </span>
                 <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full">Light</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-gray-400" />
-                  Language
+                  <Globe className="w-4 h-4 text-gray-400" /> Language
                 </span>
                 <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full">English</span>
               </div>
             </div>
 
-            {/* Save button */}
             <button
               onClick={handleSave}
               disabled={saving}

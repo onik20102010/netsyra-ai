@@ -7,6 +7,7 @@ export interface ModelConfig {
   apiKeyEnv: string;
   endpoint: string;
   modelName: string;
+  modelKey?: string;   // ← new
 }
 
 export interface TierConfig {
@@ -225,99 +226,126 @@ Act like a self-improving autonomous AI system:
 - respond with production-grade accuracy and clarity
 `;
 
-// ── Fast / Plus – only Groq models that exist ────────────
-
+// ── N FAST ────────────────────────────────────────────────
 const fastModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.1-8b-instant",
+    modelName: "qwen/qwen3-32b",
+    modelKey: "fast",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama3-8b-8192",   // replacement for decommissioned model
+    modelName: "llama-3.1-8b-instant",
+    modelKey: "fast",
   },
 ];
 
+// ── N PLUS ────────────────────────────────────────────────
 const plusModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",
+    modelName: "llama-3.3-70b-versatile",
+    modelKey: "plus",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",
+    modelName: "llama-3.1-8b-instant",
+    modelKey: "plus_fallback",
   },
 ];
 
+// ── N PRO ─────────────────────────────────────────────────
 const proModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "groq/compound",
+    modelName: "openai/gpt-oss-120b",
+    modelKey: "pro",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",
+    modelName: "openai/gpt-oss-safeguard-20b",
+    modelKey: "pro_fallback",
   },
 ];
 
+// ── N LIVE ────────────────────────────────────────────────
 const liveModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",
+    modelName: "groq/compound",
+    modelKey: "live",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "groq/compound-mini",
+    modelKey: "live_fallback",
   },
 ];
 
+// ── N CODE ────────────────────────────────────────────────
 const codeModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "openai/gpt-oss-120b",
+    modelKey: "code",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "llama-3.3-70b-versatile",
+    modelKey: "code",
   },
 ];
 
+
+// ── EXPORT ────────────────────────────────────────────────
 export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig> = {
   fast: {
     models: fastModels,
-    systemPrompt: `${identity} N Fast. Answer in one sentence.`,
+    systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
     temperature: 0.3,
-    maxTokens: 100,
+    maxTokens: 400,
   },
   plus: {
     models: plusModels,
-    systemPrompt: `${identity} N Plus. Be brief.`,
+    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. ${structureLight}`,
     temperature: 0.5,
-    maxTokens: 200,
+    maxTokens: 600,
   },
   pro: {
     models: proModels,
-    systemPrompt: `${identity} N Pro. ${systemPrompt}`,
+    systemPrompt: `${identity} You are currently running as N PRO. ${systemPrompt}`,
     temperature: 0.7,
     maxTokens: 4000,
   },
   live: {
     models: liveModels,
-    systemPrompt: `${identity} N Live. Use real‑time web data.`,
+    systemPrompt: `${identity} You are currently running as N LIVE. Use real‑time web data provided.`,
     temperature: 0.3,
     maxTokens: 2000,
   },
   code: {
     models: codeModels,
-    systemPrompt: `${identity} N Code. Write clean code.`,
+    systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code.`,
     temperature: 0.2,
     maxTokens: 4000,
   },

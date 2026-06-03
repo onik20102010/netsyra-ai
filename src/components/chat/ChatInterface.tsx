@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
   Sparkles,
-  User,
-  Bot,
   ExternalLink,
   Copy,
   Check,
@@ -115,7 +113,7 @@ export default function ChatInterface({
   setConversationId,
   diveDeep,
   onConversationCreated,
-  initialModel = "auto",
+  initialModel = "fast",
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -233,7 +231,7 @@ export default function ChatInterface({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-1);
+    const contextMessages = [...messages, userMessage].slice(-15);
     const result = await sendMessage(userMessage.content, contextMessages);
 
     if (result) {
@@ -336,14 +334,14 @@ export default function ChatInterface({
                   animate={{ opacity: 1 }}
                   className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
                 >
-<div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2 select-none pointer-events-none">
-  <img
-    src="/logo.png"
-    alt="Netsyra"
-    className="w-full h-full object-contain select-none pointer-events-none"
-    draggable={false}
-  />
-</div>
+                  <div className="w-24 h-24 rounded-xl bg-black flex items-center justify-center p-2 select-none pointer-events-none">
+                    <img
+                      src="/logo.png"
+                      alt="Netsyra"
+                      className="w-full h-full object-contain select-none pointer-events-none"
+                      draggable={false}
+                    />
+                  </div>
                   <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
                   <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
                 </motion.div>
@@ -363,8 +361,8 @@ export default function ChatInterface({
                     className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
                   >
                     {!isUser && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                        <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                        <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                       </div>
                     )}
 
@@ -481,7 +479,7 @@ export default function ChatInterface({
                               className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
-                              View on Wikipedia
+                              View from there
                             </a>
                           )}
                         </div>
@@ -526,12 +524,6 @@ export default function ChatInterface({
                         </div>
                       )}
                     </div>
-
-                    {isUser && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mt-0.5">
-                        <User className="w-3.5 h-3.5 text-gray-500" />
-                      </div>
-                    )}
                   </motion.div>
                 );
               })}
@@ -543,10 +535,10 @@ export default function ChatInterface({
                   animate={{ opacity: 1 }}
                   className="flex gap-3 justify-start"
                 >
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mt-0.5">
-                    <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                    <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                   </div>
-                  <div className="text-gray-400 pt-1 flex items-center gap-2">
+                  <div className="text-gray-400 pt-1 space-y-2">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }} />

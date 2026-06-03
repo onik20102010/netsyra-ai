@@ -1,74 +1,57 @@
 ﻿// src/lib/memory.ts
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding } from "./embeddings";
 
-function getSupabaseAdmin() {
+function getSupabaseClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
 
-const extractionModels = [
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
-  "gemini-2.5-flash",
-];
+async function callGroqForExtraction(prompt: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("Missing GROQ_API_KEY");
 
-async function callGeminiForExtraction(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0,
+      max_tokens: 500,
+      response_format: { type: "json_object" },
+    }),
+  });
 
-  for (const model of extractionModels) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 1024 },
-        }),
-      });
-
-      if (!response.ok) throw new Error(`Status ${response.status}`);
-
-      const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    } catch {
-      // silently try next model
-    }
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq extraction error: ${response.status} ${err}`);
   }
 
-  throw new Error("All extraction models temporarily unavailable");
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 export async function extractMemories(
   message: string,
   conversationContext: string
 ): Promise<{ content: string; importance: number }[]> {
-  const prompt = `You are a memory extraction AI. Given the user message and conversation context, extract any important personal facts or preferences the user reveals.
-
-Return a JSON object with a key "facts" that contains an array of objects, each with "content" (a concise statement, e.g. "User's name is Onik", "User likes pizza") and "importance" (a number from 0 to 1, where 0.1 = casual mention, 0.9 = core identity).
-
-Only return facts that are explicitly stated. If nothing important, return {"facts": []}.
-
-Conversation context:
-${conversationContext}
+  const prompt = `Extract personal facts from this message. Return a JSON object: {"facts":[{"content":"...","importance":0.0}]}. Only include explicitly stated facts. If nothing, return {"facts":[]}.
 
 User message: "${message}"
-
-Output JSON only.`;
+Context: ${conversationContext}
+Output ONLY JSON.`;
 
   try {
-    const result = await callGeminiForExtraction(prompt);
+    const result = await callGroqForExtraction(prompt);
     const parsed = JSON.parse(result);
     return parsed.facts || [];
-  } catch {
-    // Silently ignore – memory extraction is non‑critical
+  } catch (err) {
+    console.error("Memory extraction failed:", err);
     return [];
   }
 }
@@ -79,15 +62,20 @@ export async function storeMemory(
   importance: number
 ) {
   try {
-    const embedding = await generateEmbedding(content);
-    await getSupabaseAdmin().from("memories").insert({
+    console.log(`Storing memory for user ${userId}: "${content}"`);
+    const { error } = await getSupabaseClient().from("memories").insert({
       user_id: userId,
       content,
       importance_score: importance,
-      embedding,
+      embedding: null,   // no embedding needed
     });
-  } catch {
-    // Silently ignore – embedding may be unavailable on free tier
+    if (error) {
+      console.error("Store memory error:", error.message);
+    } else {
+      console.log("Memory stored successfully");
+    }
+  } catch (err) {
+    console.error("Store memory exception:", err);
   }
 }
 
@@ -97,31 +85,45 @@ export async function retrieveMemories(
   limit = 3
 ): Promise<string[]> {
   try {
-    const queryEmbedding = await generateEmbedding(query);
-    const { data, error } = await getSupabaseAdmin().rpc("match_memories", {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.7,
-      match_count: limit,
-      p_user_id: userId,
-    });
+    // Simple keyword matching instead of vector search
+    const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (keywords.length === 0) return [];
 
-    if (error) throw error;
-    return data.map((m: any) => m.content);
-  } catch {
-    // Silently ignore – embedding or vector search temporarily unavailable
+    let dbQuery = getSupabaseClient()
+      .from("memories")
+      .select("content")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);   // fetch recent 20, then filter
+
+    const { data, error } = await dbQuery;
+    if (error) {
+      console.error("Retrieve error:", error.message);
+      return [];
+    }
+
+    // Filter memories that contain any of the query keywords
+    const matches = (data || [])
+      .filter((m: any) => keywords.some(kw => m.content.toLowerCase().includes(kw)))
+      .slice(0, limit);
+
+    console.log(`Found ${matches.length} matching memories`);
+    return matches.map((m: any) => m.content);
+  } catch (err) {
+    console.error("Retrieve exception:", err);
     return [];
   }
 }
 
 export async function getOrCreateProfile(userId: string) {
-  const { data } = await getSupabaseAdmin()
+  const { data } = await getSupabaseClient()
     .from("profiles")
     .select()
     .eq("user_id", userId)
     .single();
 
   if (!data) {
-    await getSupabaseAdmin().from("profiles").insert({ user_id: userId });
+    await getSupabaseClient().from("profiles").insert({ user_id: userId });
     return { id: userId, name: null };
   }
   return data;

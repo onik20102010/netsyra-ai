@@ -1,8 +1,8 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { tiers } from "@/lib/model-registry";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { extractMemories, storeMemory, retrieveMemories } from "@/lib/memory";
 import { autoRoute } from "@/lib/router";
+import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -19,7 +19,7 @@ async function compressReply(
   userMessage: string
 ): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return text; // can't compress, return original
+  if (!apiKey) return text;
 
   try {
     const prompt = `The following AI response is too long. Summarize it to fit within ${maxTokens} tokens while keeping the main points and a natural conclusion. Only output the shortened response.
@@ -41,7 +41,7 @@ ${text}`;
       }),
     });
 
-    if (!response.ok) return text; // fallback to original
+    if (!response.ok) return text;
     const data = await response.json();
     return data.choices[0].message.content;
   } catch {
@@ -291,6 +291,21 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
+    // Fetch profile once for this request
+    let profileName = "";
+    let profileGoal = "";
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, goal")
+        .eq("user_id", user.id)
+        .single();
+      if (profile) {
+        if (profile.name) profileName = profile.name;
+        if (profile.goal) profileGoal = profile.goal;
+      }
+    } catch {}
+
     // ── Conversation limit (5 total) ──
     if (!conversationId || newConversation) {
       const { count, error: countError } = await supabase
@@ -350,12 +365,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Common profile context strings
+    const nameContext = profileName
+      ? `The user's name is ${profileName}. Address them by name naturally.\n\n`
+      : "";
+    const goalContext = profileGoal
+      ? `The user has selected "${profileGoal}" as their focus area. Adopt a tone and style appropriate for that field.\n\n`
+      : "";
+
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
     if (modelTier === "auto") {
-      const conversationHistory = messages
+      // Include name and goal context in the conversation history for the auto router
+      let conversationHistory = messages
         .slice(0, -1)
         .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
+
+      if (nameContext || goalContext) {
+        conversationHistory = `[System context]\n${nameContext}${goalContext}\n${conversationHistory}`;
+      }
 
       let liveData = "";
       try {
@@ -387,18 +415,6 @@ export async function POST(req: NextRequest) {
         console.error("Database store failed:", dbError.message);
       }
 
-      // Background memory extraction
-      Promise.resolve().then(async () => {
-        try {
-          const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n");
-          const fullContext = `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`;
-          const facts = await extractMemories(lastUserMessage, fullContext);
-          for (const fact of facts) {
-            if (fact.importance > 0.3) await storeMemory(user.id, fact.content, fact.importance);
-          }
-        } catch {}
-      });
-
       return NextResponse.json({
         reply,
         conversationId: finalConversationId,
@@ -417,12 +433,22 @@ export async function POST(req: NextRequest) {
     const timeKeywords = [
       "latest", "current", "today", "now", "2026", "2025",
       "price", "stock", "weather", "news", "happening",
-      "recent", "updated", "live", "net worth",
+      "recent", "updated", "live", "net worth", "bitcoin",
+      "crypto", "score", "election", "earthquake", "release",
     ];
-    const isTimeSensitive = timeKeywords.some((kw) =>
-      lastUserMessage.toLowerCase().includes(kw)
-    );
-    const shouldFetchLive = modelTier === "live" || diveDeep || isTimeSensitive;
+
+    const personalQuestions = [
+      "what is my name", "what's my name", "who am i",
+      "what is my goal", "what are my goals", "my profile",
+      "what do i like", "what is my", "who is",
+    ];
+
+    const lowerMsg = lastUserMessage.toLowerCase();
+    const isTimeSensitive = timeKeywords.some((kw) => lowerMsg.includes(kw));
+    const isPersonal = personalQuestions.some((q) => lowerMsg.includes(q));
+
+    const shouldFetchLive =
+      (modelTier === "live" || diveDeep || isTimeSensitive) && !isPersonal;
 
     if (shouldFetchLive) {
       try {
@@ -452,16 +478,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Memory retrieval
-    let memoryContext = "";
-    try {
-      const memories = await retrieveMemories(user.id, lastUserMessage);
-      if (memories.length) {
-        memoryContext = "Important information about the user:\n" + memories.map(m => `- ${m}`).join("\n");
-      }
-    } catch {}
-
-    // Build final system prompt
+    // Build final system prompt – always inject name and goal
     const baseSystem = tierConfig.systemPrompt;
     const priorityInstruction = webContext
       ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names.\n\n"
@@ -470,11 +487,12 @@ export async function POST(req: NextRequest) {
     const fullSystemPrompt = (
       priorityInstruction +
       (webContext ? webContext : "") +
-      (memoryContext ? `${memoryContext}\n\n` : "") +
+      nameContext +
+      goalContext +
       baseSystem
     ).trim();
 
-    // Model fallback
+    // Model fallback with usage limits
     let reply: string | null = null;
     let lastError: Error | null = null;
     const skippedModels: string[] = [];
@@ -483,6 +501,14 @@ export async function POST(req: NextRequest) {
       const apiKey = process.env[modelConfig.apiKeyEnv];
       if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") {
         skippedModels.push(modelConfig.modelName);
+        continue;
+      }
+
+      // Check model usage limit
+      const modelLimitKey = modelConfig.modelKey || modelTier;
+      const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
+      if (!allowed) {
+        skippedModels.push(modelConfig.modelName + " (limit reached)");
         continue;
       }
 
@@ -498,9 +524,12 @@ export async function POST(req: NextRequest) {
             fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
           );
         }
-        if (reply) break;
+
+        if (reply) {
+          await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(reply.length / 4));
+          break;
+        }
       } catch (error: any) {
-        // Removed per-model console.error
         lastError = error;
         if (error.message.includes("429")) {
           await new Promise(r => setTimeout(r, 1000));
@@ -546,7 +575,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Compress if reply exceeds the tier's token budget
-    const estimatedTokens = Math.ceil(reply.length / 4); // rough estimate
+    const estimatedTokens = Math.ceil(reply.length / 4);
     if (estimatedTokens > tierConfig.maxTokens) {
       reply = await compressReply(reply, tierConfig.maxTokens, lastUserMessage);
     }
@@ -570,26 +599,6 @@ export async function POST(req: NextRequest) {
         .eq("id", finalConversationId);
     } catch (dbError: any) {
       console.error("Database store failed:", dbError.message);
-    }
-
-    // Memory extraction (awaited)
-    try {
-      const conversationContext = messages
-        .slice(0, -1)
-        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
-        .join("\n");
-      const fullContext = conversationContext
-        ? `${conversationContext}\nuser: ${lastUserMessage}\nassistant: ${reply}`
-        : `user: ${lastUserMessage}\nassistant: ${reply}`;
-
-      const facts = await extractMemories(lastUserMessage, fullContext);
-      for (const fact of facts) {
-        if (fact.importance > 0.3) {
-          await storeMemory(user.id, fact.content, fact.importance);
-        }
-      }
-    } catch (memError: any) {
-      console.error("Memory extraction failed:", memError.message);
     }
 
     return NextResponse.json({
