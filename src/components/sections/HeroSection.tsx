@@ -184,7 +184,7 @@ export default function HeroSection() {
             className="flex flex-wrap justify-center gap-8 text-white/30 text-sm"
           >
             <div className="text-center">
-              <div className="text-2xl font-bold text-white/60">4+</div>
+              <div className="text-2xl font-bold text-white/60">5</div>
               <div>AI Models</div>
             </div>
             <div className="text-center">

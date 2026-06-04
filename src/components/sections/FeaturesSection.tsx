@@ -12,12 +12,36 @@ import {
 import AnimatedBackground from "@/components/ui/AnimatedBackground";
 
 const features = [
-  { icon: Cpu, title: "Intelligent Model Routing", desc: "Automatically selects the best AI for each request based on complexity, latency, and cost." },
-  { icon: DollarSign, title: "Cost Optimization", desc: "Save up to 70% by routing simple tasks to lightweight models and reserving heavy lifting for premium ones." },
-  { icon: Layers, title: "Multi-Provider AI", desc: "Seamlessly integrates OpenAI, Gemini, DeepSeek, Anthropic, and local models under one API." },
-  { icon: Zap, title: "Real-Time Streaming", desc: "Experience instant responses with streaming support across all models." },
-  { icon: BrainCircuit, title: "Smart Context Management", desc: "Preserves conversation state and optimizes token usage across model switches." },
-  { icon: BarChart3, title: "AI Performance Analytics", desc: "Detailed dashboards showing model usage, latency, cost savings, and routing decisions." },
+  {
+    icon: Cpu,
+    title: "Intelligent Model Routing",
+    desc: "Models can deeply analyse the request of the user and help the user more than just as an assistant.",
+  },
+  {
+    icon: DollarSign,
+    title: "Tiered Models",
+    desc: "Fast, Plus, Pro, Live, Code, and Expert – each tier is optimised for a different type of request.",
+  },
+  {
+    icon: Layers,
+    title: "Multi‑Backend AI",
+    desc: "Powered by Netsyra models that use one of the best routing systems ever.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Responses",
+    desc: "Low‑latency inference through N Live with real‑time streaming and Wikipedia integration.",
+  },
+  {
+    icon: BrainCircuit,
+    title: "Conversation Memory",
+    desc: "Remembers your thoughts, deeds, and uses them in responses.",
+  },
+  {
+    icon: BarChart3,
+    title: "Usage Controls",
+    desc: "Built‑in daily limits, per‑conversation caps, and model‑specific quotas keep usage predictable.",
+  },
 ];
 
 const container = {
@@ -44,7 +68,7 @@ export default function FeaturesSection() {
             Everything You Need to Orchestrate AI
           </h2>
           <p className="text-white/60 mt-4 text-lg max-w-2xl mx-auto">
-            One platform, infinite intelligence. Combine models like never before.
+            Smart model selection that routes every prompt to the right tier.
           </p>
         </motion.div>
         <motion.div

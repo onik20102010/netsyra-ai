@@ -29,7 +29,7 @@ const models = [
     id: "live",
     name: "N Live",
     icon: Globe,
-    desc: "Real‑time web data and Wikipedia integration.",
+    desc: "Real‑time web data and Wikipedia integration by activate the dive deep mode.",
     gradient: "from-orange-400 to-red-500",
   },
   {
@@ -70,7 +70,7 @@ export default function CTASection() {
               Ready to start a conversation?
             </h2>
             <p className="text-lg text-white/40 max-w-xl mx-auto">
-              Select a model below or let Auto‑Routing decide the best one for you.
+              Select a model below - each models is best for it's work.
             </p>
           </div>
 

@@ -41,7 +41,7 @@ export default function Footer() {
         ))}
       </div>
       <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-white/10 text-center text-white/40 text-sm">
-        © {new Date().getFullYear()} Netsyra AI. All rights reserved.
+        © 2016{new Date().getFullYear()} Netsyra AI. All rights reserved.
       </div>
     </footer>
   );

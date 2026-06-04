@@ -16,7 +16,7 @@ const testimonials = [
     name: "Marcus Rivera",
     role: "Lead Engineer, DevFlow",
     avatar: "MR",
-    content: "We replaced three separate AI APIs with one. The dashboard alone is worth it.",
+    content: "We choose Netsyra for many works.",
     rating: 5,
   },
   {

@@ -157,31 +157,31 @@ export default function ModelsShowcase() {
       subtitle: "Lowest latency · real‑time intelligence",
       description: [
         "Ultra‑fast inference with <200ms time‑to‑first‑token. Ideal for chatbots, real‑time assistants, and edge deployments.",
-        "128K context window · high throughput · 99.999% uptime SLA.",
-        "Best for: streaming responses, live translation, and rapid prototyping.",
+        "Best for daily use such like office, home, researching.",
+        "Low context window make the speed of response.",
       ],
       icon: <LightningIcon />,
       accentColor: "#F97316",
-      codeExample: `import { NFast } from "netsyra";\nconst response = await NFast.generate("Explain quantum gravity");\n// returns in <200ms`,
+      codeExample: `import { NFast } from "netsyra";\nconst response = await NFast.generate("Help me in my home work");\n// returns in <4sec`,
     },
     {
       title: "N Pro",
       subtitle: "Deep reasoning · agent‑grade intelligence",
       description: [
-        "State‑of‑the‑art reasoning, multi‑step planning, and function calling. Handles complex documents with 2M context.",
+        "State‑of‑the‑art reasoning, multi‑step planning, and function calling. Handles complex documents.",
         "Advanced tool use, code interpreter, and long‑form analysis with chain‑of‑thought.",
         "Best for: scientific research, legal review, autonomous workflows, and high‑stakes decisions.",
       ],
       icon: <DiamondIcon />,
       accentColor: "#8B5CF6",
-      codeExample: `import { NPro } from "netsyra";\nconst analysis = await NPro.analyze(\n  "Compare Q2 financial reports",\n  { context_window: "2M" }\n);`,
+      codeExample: `import { NPro } from "netsyra";\nconst analysis = await NPro.analyze(\n  "Compare Q2 financial reports",\n );`,
     },
     {
       title: "N Code",
       subtitle: "Code‑first · 100+ languages · refactoring",
       description: [
         "Specialized for code generation, debugging, test writing, and repository‑scale understanding.",
-        "Supports Python, TypeScript, Rust, Go, and 90+ other languages. Native VS Code and GitHub integration.",
+        "Supports Python, TypeScript, Rust, Go, and 90+ other languages.",
         "Best for: automated PR reviews, unit test generation, legacy code migration, and pair programming.",
       ],
       icon: <BracketsIcon />,
@@ -209,7 +209,7 @@ export default function ModelsShowcase() {
             </span>
           </h1>
           <p className="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
-            From the creators of Netsyra – each model is meticulously tuned for a specific class of workload.
+            From the creators of Netsyra – each model is known for it's best tone.
             <br />
             <span className="inline-block mt-2 text-sm font-mono text-gray-500">
               choose the right intelligence for your use case

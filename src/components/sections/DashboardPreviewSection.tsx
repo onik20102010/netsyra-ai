@@ -46,7 +46,7 @@ export default function DashboardPreviewSection() {
                 <div className="p-2 rounded-lg bg-white/5 text-sm">What's the best way to scale microservices?</div>
                 <div className="flex items-center space-x-2 text-xs text-purple-300">
                   <GitBranch className="w-4 h-4" />
-                  <span>Routed to: <strong>GPT-4.1</strong></span>
+                  <span>Routed to: <strong>Optimal Model</strong></span>
                 </div>
                 <div className="p-2 rounded-lg bg-purple-500/10 text-sm">Use horizontal scaling with Kubernetes...</div>
               </div>
@@ -64,21 +64,21 @@ export default function DashboardPreviewSection() {
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>DeepSeek Flash</span>
-                  <span className="text-green-400">1.2M tokens</span>
+                  <span>Fast Tier</span>
+                  <span className="text-green-400">2k tokens</span>
                 </div>
                 <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full w-3/5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" />
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>GPT-4.1</span>
-                  <span className="text-blue-400">450K tokens</span>
+                  <span>Reasoning Tier</span>
+                  <span className="text-blue-400">4k tokens</span>
                 </div>
                 <div className="w-full h-2 bg-white/10 rounded-full">
                   <div className="h-full w-1/4 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full" />
                 </div>
               </div>
-              <div className="text-xs text-white/50">Cost saved today: <strong className="text-purple-400">$127.50</strong></div>
+              <div className="text-xs text-white/50">Cost saved today: <strong className="text-purple-400">$200</strong></div>
             </Card>
 
             {/* Routing decisions panel */}
@@ -90,19 +90,19 @@ export default function DashboardPreviewSection() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Simple queries</span>
-                  <span className="text-green-400">→ Flash model</span>
+                  <span className="text-green-400">→ Fast Model</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Reasoning</span>
-                  <span className="text-blue-400">→ GPT-4.1</span>
+                  <span className="text-blue-400">→ Advanced Model</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Research</span>
-                  <span className="text-purple-400">→ Gemini Pro</span>
+                  <span className="text-purple-400">→ Research Model</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Private data</span>
-                  <span className="text-orange-400">→ Local Model</span>
+                  <span className="text-orange-400">→ On‑Device Model</span>
                 </div>
               </div>
               <div className="pt-2 border-t border-white/10 text-xs text-white/40">
