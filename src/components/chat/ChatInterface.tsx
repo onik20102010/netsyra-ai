@@ -108,7 +108,6 @@ function ThinkingBlock({ text }: { text: string }) {
   );
 }
 
-
 export default function ChatInterface({
   conversationId,
   setConversationId,
@@ -190,11 +189,7 @@ export default function ChatInterface({
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      if (data.tiersUsed) {
-        setAutoTiersUsed(data.tiersUsed);
-      } else {
-        setAutoTiersUsed([]);
-      }
+      if (data.tiersUsed) setAutoTiersUsed(data.tiersUsed); else setAutoTiersUsed([]);
 
       const thinkMatch = data.reply.match(/<think\b[^>]*?>[\s\S]*?<\/think>/i);
       const thinking = thinkMatch ? thinkMatch[0] : null;
@@ -208,42 +203,31 @@ export default function ChatInterface({
         wikiLink: data.wikiLink || null,
       };
 
-      return {
-        assistantMessage,
-        newConversationId: data.conversationId,
-      };
+      return { assistantMessage, newConversationId: data.conversationId };
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
       return null;
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading || lineLimitReached) return;
+    if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage: Message = { id: Date.now().toString(), role: "user", content: input.trim() };
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-15);
+    const contextMessages = [...messages, userMessage].slice(-14);
     const result = await sendMessage(userMessage.content, contextMessages);
-
     if (result) {
       if (!conversationId && result.newConversationId) {
         setConversationId(result.newConversationId);
         onConversationCreated?.(result.newConversationId);
       }
-      setMessages((prev) => [...prev, result.assistantMessage]);
+      setMessages(prev => [...prev, result.assistantMessage]);
     } else {
-      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
     }
   };
 
@@ -264,7 +248,7 @@ export default function ChatInterface({
         setConversationId(result.newConversationId);
         onConversationCreated?.(result.newConversationId);
       }
-      setMessages((prev) => [...prev, result.assistantMessage]);
+      setMessages(prev => [...prev, result.assistantMessage]);
     }
   };
 
@@ -302,7 +286,7 @@ export default function ChatInterface({
         setConversationId(result.newConversationId);
         onConversationCreated?.(result.newConversationId);
       }
-      setMessages((prev) => [...prev, result.assistantMessage]);
+      setMessages(prev => [...prev, result.assistantMessage]);
     }
   };
 

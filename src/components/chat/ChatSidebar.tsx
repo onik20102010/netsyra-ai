@@ -47,6 +47,7 @@ export default function ChatSidebar({
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [userGoal, setUserGoal] = useState("");
+  const [userInstructions, setUserInstructions] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
@@ -66,7 +67,7 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile name and goal
+  // Load profile name, goal, and custom instructions
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -75,7 +76,7 @@ export default function ChatSidebar({
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("name, goal")
+          .select("name, goal, custom_instructions")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -92,6 +93,7 @@ export default function ChatSidebar({
         if (!cancelled) {
           if (data?.name) setDisplayName(data.name);
           if (data?.goal) setUserGoal(data.goal);
+          if (data?.custom_instructions) setUserInstructions(data.custom_instructions);
           setNameLoaded(true);
         }
       } catch (err) {
@@ -240,18 +242,23 @@ export default function ChatSidebar({
         onClose={() => setProfileOpen(false)}
         userName={displayName}
         userGoal={userGoal}
-        onSave={async (name: string, goal: string) => {
+        userInstructions={userInstructions}
+        onSave={async (name: string, goal: string, instructions: string) => {
           if (!user) return;
           try {
             const { error } = await supabase
               .from("profiles")
-              .upsert({ user_id: user.id, name, goal }, { onConflict: "user_id" });
+              .upsert(
+                { user_id: user.id, name, goal, custom_instructions: instructions },
+                { onConflict: "user_id" }
+              );
             if (error) {
               toast.error("Could not save profile.");
               return;
             }
             setDisplayName(name);
             setUserGoal(goal);
+            setUserInstructions(instructions);
             toast.success("Profile updated!");
           } catch (err) {
             toast.error("Something went wrong.");

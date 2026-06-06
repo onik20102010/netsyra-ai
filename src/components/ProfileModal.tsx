@@ -8,11 +8,15 @@ interface ProfileModalProps {
   open: boolean;
   onClose: () => void;
   userName: string;
-  onSave: (name: string) => void;
+  userGoal: string;
+  userInstructions: string;
+  onSave: (name: string, goal: string, instructions: string) => void;
 }
 
-export default function ProfileModal({ open, onClose, userName, onSave }: ProfileModalProps) {
+export default function ProfileModal({ open, onClose, userName, userGoal, userInstructions, onSave }: ProfileModalProps) {
   const [name, setName] = useState(userName);
+  const [goal, setGoal] = useState(userGoal || "");
+  const [instructions, setInstructions] = useState(userInstructions || "");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -21,7 +25,7 @@ export default function ProfileModal({ open, onClose, userName, onSave }: Profil
       return;
     }
     setSaving(true);
-    await onSave(name.trim());
+    await onSave(name.trim(), goal, instructions.trim());
     setSaving(false);
     onClose();
     toast.success("Profile updated!");
@@ -78,6 +82,28 @@ export default function ProfileModal({ open, onClose, userName, onSave }: Profil
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSave();
                 }}
+              />
+            </div>
+
+            {/* Custom Instructions */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1.5">
+                <svg className="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                Custom Instructions
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Tell the AI how to respond (e.g. "Always reply in Spanish", "I'm a beginner, explain simply").
+              </p>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="e.g. Always use bullet points and keep answers short."
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm outline-none resize-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-300 transition"
               />
             </div>
 

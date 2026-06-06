@@ -3,7 +3,9 @@ import { tiers } from "@/lib/model-registry";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { autoRoute } from "@/lib/router";
 import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
-import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather } from "@/lib/time-utils";
+import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoordinates } from "@/lib/time-utils";
+import { classifyIntent } from "@/lib/intent";
+import { deepSearch } from "@/lib/deep-search";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -279,7 +281,6 @@ export async function POST(req: NextRequest) {
       conversationId,
       newConversation,
       diveDeep,
-      timezone: browserTimezone,
     } = body;
 
     if (!incomingMessages || !modelTier) {
@@ -296,107 +297,74 @@ export async function POST(req: NextRequest) {
     // Fetch profile once for this request
     let profileName = "";
     let profileGoal = "";
+    let customInstructions = "";
     try {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, goal")
+        .select("name, goal, custom_instructions")
         .eq("user_id", user.id)
         .single();
       if (profile) {
         if (profile.name) profileName = profile.name;
         if (profile.goal) profileGoal = profile.goal;
+        if (profile.custom_instructions) customInstructions = profile.custom_instructions;
       }
     } catch {}
 
-    // ── Time & Holiday injection ──
-    let timeContext = "";
-    const lowerMsg = lastUserMessage.toLowerCase();
+    // ── Custom instructions context ──
+    const instructionContext = customInstructions
+      ? `📌 The user has provided these custom instructions. Follow them carefully:\n\n${customInstructions}\n\n`
+      : "";
 
-    const isTimeQuery =
-      lowerMsg.includes("what time") ||
-      lowerMsg.includes("current time") ||
-      lowerMsg.includes("time is it") ||
-      lowerMsg.includes("what's the time") ||
-      lowerMsg.includes("time in");
+    // ── RAG pipeline (intent‑based retrieval) ─────────────────
+    let ragContext = "";
+    const conversationHistory = messages
+      .slice(0, -1)
+      .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+      .join("\n");
 
-    const isDateQuery =
-      lowerMsg.includes("what day") ||
-      lowerMsg.includes("today's date") ||
-      lowerMsg.includes("what is today") ||
-      lowerMsg.includes("current date");
+    const intent = await classifyIntent(lastUserMessage, conversationHistory);
 
-    const isHolidayQuery =
-      lowerMsg.includes("holiday") ||
-      lowerMsg.includes("holidays") ||
-      lowerMsg.includes("celebration") ||
-      lowerMsg.includes("festival");
-
-    if (isTimeQuery || isDateQuery || isHolidayQuery || lowerMsg.includes("weather")) {
+    if (intent.intent === "time") {
       try {
-        // Check if user is asking about a specific city
-        const cityMatch = lowerMsg.match(/time in ([a-z\s]+?)(\?|$)/i);
-        let targetTz = browserTimezone || "Asia/Karachi";
-
-        if (cityMatch) {
-          const city = cityMatch[1].trim();
-          const cityTzMap: Record<string, string> = {
-            "tokyo": "Asia/Tokyo",
-            "london": "Europe/London",
-            "new york": "America/New_York",
-            "los angeles": "America/Los_Angeles",
-            "paris": "Europe/Paris",
-            "berlin": "Europe/Berlin",
-            "dubai": "Asia/Dubai",
-            "sydney": "Australia/Sydney",
-            "toronto": "America/Toronto",
-            "mumbai": "Asia/Kolkata",
-            "delhi": "Asia/Kolkata",
-            "beijing": "Asia/Shanghai",
-            "shanghai": "Asia/Shanghai",
-            "moscow": "Europe/Moscow",
-            "seoul": "Asia/Seoul",
-            "singapore": "Asia/Singapore",
-            "hong kong": "Asia/Hong_Kong",
-            "istanbul": "Europe/Istanbul",
-          };
-          targetTz = cityTzMap[city] || targetTz;
-        }
-
-        const { time, date, timezone, countryCode, source, utcTimestamp, latitude, longitude } =
-          await getCurrentTimeAndLocation(req as any, targetTz);
+        const tz = intent.timezone || "Asia/Karachi";
+        const { time, date, timezone, countryCode, source } = await getCurrentTimeAndLocation(req as any, tz);
         const holidays = await getUpcomingHolidays(countryCode);
-
-        // Weather
-        let weatherInfo = "";
-        if (
-          lowerMsg.includes("weather") ||
-          lowerMsg.includes("temperature") ||
-          lowerMsg.includes("hot") ||
-          lowerMsg.includes("cold")
-        ) {
-          const weather = await getWeather(latitude || 0, longitude || 0, timezone);
-          if (weather) weatherInfo = `\n\n🌤️ Current weather: ${weather}`;
-        }
-
-        timeContext = `📌 ${source}
-
-Current local time and date:
-- 🕐 Time: ${time}
-- 📅 Date: ${date}
-- 🌍 Timezone: ${timezone}`;
-
-        if (cityMatch) {
-          timeContext += `\n- 📍 This is the current time for ${cityMatch[1].trim()}.`;
-        }
-
+        ragContext = `📌 ${source}\n\nCurrent local time and date:\n- 🕐 Time: ${time}\n- 📅 Date: ${date}\n- 🌍 Timezone: ${timezone}`;
         if (holidays.length > 0) {
-          timeContext += `\n\n🎉 Upcoming public holidays in ${countryCode}:\n${holidays.map(h => `  • ${h}`).join("\n")}`;
+          ragContext += `\n\n🎉 Upcoming public holidays in ${countryCode}:\n${holidays.map(h => `  • ${h}`).join("\n")}`;
         }
-
-        if (weatherInfo) timeContext += weatherInfo;
-
-        timeContext += `\n\n❗ Use the exact time, date, and timezone above in your response. Do NOT mention UTC or use approximate calculations.`;
+        ragContext += `\n\n❗ Use the exact time, date, and timezone above in your response.`;
       } catch {}
+    } else if (intent.intent === "weather") {
+      try {
+        const tz = intent.timezone || "Asia/Karachi";
+        const { latitude, longitude } = getCityCoordinates(tz);
+        const weather = await getWeather(latitude, longitude, tz);
+        if (weather) ragContext = `🌤️ Current weather: ${weather}\n\nRespond with a friendly weather report.`;
+      } catch {}
+    } else if (intent.intent === "search") {
+      // Deep search – fetch 5‑10 pages and summarize
+      try {
+        const deepResult = await deepSearch(intent.query);
+        if (deepResult) {
+          ragContext = `[Deep Web Research]\n\nThe following information was gathered from multiple sources:\n\n${deepResult}\n\nSynthesize a comprehensive answer using only the facts above.`;
+        }
+      } catch {}
+      // Fallback – single-page search if deep search fails
+      if (!ragContext) {
+        const searchWithTimeout = async (fn: () => Promise<any>, ms: number) => {
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
+          return Promise.race([fn(), timeout]);
+        };
+        try { const r = await searchWithTimeout(() => searchSearXNG(intent.query), 3000) as any; if (r?.text) ragContext = `[Web]\n${r.text}\n\n`; } catch {}
+        if (!ragContext) {
+          try { const r = await searchWithTimeout(() => searchJina(intent.query), 3000) as any; if (r?.text) ragContext = `[Web]\n${r.text}\n\n`; } catch {}
+        }
+        if (!ragContext) {
+          try { const r = await searchWithTimeout(() => searchWikipedia(intent.query), 2000) as any; if (r?.summary) ragContext = `[Wikipedia]\n${r.summary}\n\n`; } catch {}
+        }
+      }
     }
 
     // ── Create conversation if new (fast, title generated after response) ──
@@ -460,32 +428,21 @@ Current local time and date:
 
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
     if (modelTier === "auto") {
-      // Build conversation history including time context, name, goal
-      let conversationHistory = messages
+      let autoHistory = messages
         .slice(0, -1)
         .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
 
       const prefixParts: string[] = [];
-      if (timeContext) prefixParts.push(timeContext);
+      if (instructionContext) prefixParts.push(instructionContext);
+      if (ragContext) prefixParts.push(ragContext);
       if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
       if (prefixParts.length > 0) {
-        conversationHistory = `[System context]\n${prefixParts.join("\n")}\n${conversationHistory}`;
+        autoHistory = `[System context]\n${prefixParts.join("\n")}\n${autoHistory}`;
       }
 
-      let liveData = "";
-      try {
-        const jinaResult = await searchJina(lastUserMessage);
-        if (jinaResult) liveData = jinaResult.text;
-        else {
-          const wiki = await searchWikipedia(lastUserMessage);
-          if (wiki) liveData = wiki.summary;
-        }
-      } catch {}
+      const { reply, tiersUsed } = await autoRoute(lastUserMessage, autoHistory);
 
-      const { reply, tiersUsed } = await autoRoute(lastUserMessage, conversationHistory, liveData);
-
-      // Store messages with ordered timestamps
       const insertNow = Date.now();
       const userTimestamp = new Date(insertNow).toISOString();
       const assistantTimestamp = new Date(insertNow + 1).toISOString();
@@ -524,7 +481,6 @@ Current local time and date:
       "what do i like", "what is my", "who is",
     ];
     const isPersonal = personalQuestions.some((q) => lastUserMessage.toLowerCase().includes(q));
-
     const shouldFetchLive = modelTier === "live" || (diveDeep && !isPersonal);
 
     if (shouldFetchLive) {
@@ -532,46 +488,22 @@ Current local time and date:
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
         return Promise.race([fn(), timeout]);
       };
-
-      try {
-        const result = await searchWithTimeout(() => searchSearXNG(lastUserMessage), 3000) as any;
-        if (result?.text) {
-          webContext = `[Web]\n${result.text}\n\n`;
-          wikiLink = result.url || null;
-        }
-      } catch {}
-
-      if (!webContext && modelTier === "live") {
-        try {
-          const result = await searchWithTimeout(() => searchJina(lastUserMessage), 3000) as any;
-          if (result?.text) {
-            webContext = `[Web]\n${result.text}\n\n`;
-            wikiLink = result.url || null;
-          }
-        } catch {}
-      }
-
-      if (!webContext) {
-        try {
-          const result = await searchWithTimeout(() => searchWikipedia(lastUserMessage), 2000) as any;
-          if (result?.summary) {
-            webContext = `[Wikipedia]\n${result.summary}\n\n`;
-            wikiLink = result.url || null;
-          }
-        } catch {}
-      }
+      try { const r = await searchWithTimeout(() => searchSearXNG(lastUserMessage), 3000) as any; if (r?.text) { webContext = `[Web]\n${r.text}\n\n`; wikiLink = r.url || null; } } catch {}
+      if (!webContext && modelTier === "live") { try { const r = await searchWithTimeout(() => searchJina(lastUserMessage), 3000) as any; if (r?.text) { webContext = `[Web]\n${r.text}\n\n`; wikiLink = r.url || null; } } catch {} }
+      if (!webContext) { try { const r = await searchWithTimeout(() => searchWikipedia(lastUserMessage), 2000) as any; if (r?.summary) { webContext = `[Wikipedia]\n${r.summary}\n\n`; wikiLink = r.url || null; } } catch {} }
     }
 
-    // Build final system prompt – always inject name, goal, time
+    // Build final system prompt
     const baseSystem = tierConfig.systemPrompt;
     const priorityInstruction = webContext
       ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names.\n\n"
       : "";
 
     const fullSystemPrompt = (
+      instructionContext +
       priorityInstruction +
       (webContext ? webContext : "") +
-      (timeContext ? `${timeContext}\n\n` : "") +
+      (ragContext ? `${ragContext}\n\n` : "") +
       nameContext +
       goalContext +
       baseSystem
@@ -588,13 +520,9 @@ Current local time and date:
         skippedModels.push(modelConfig.modelName);
         continue;
       }
-
       const modelLimitKey = modelConfig.modelKey || modelTier;
       const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
-      if (!allowed) {
-        skippedModels.push(modelConfig.modelName + " (limit reached)");
-        continue;
-      }
+      if (!allowed) { skippedModels.push(modelConfig.modelName + " (limit reached)"); continue; }
 
       try {
         if (modelConfig.provider === "openai") {
@@ -608,21 +536,17 @@ Current local time and date:
             fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
           );
         }
-
         if (reply) {
           await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(reply.length / 4));
           break;
         }
       } catch (error: any) {
         lastError = error;
-        if (error.message.includes("429")) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
+        if (error.message.includes("429")) await new Promise(r => setTimeout(r, 1000));
       }
     }
 
     if (lastError) console.warn("All models failed:", lastError.message);
-
     if (!reply) {
       const msg = lastError
         ? `All models failed. Last error: ${lastError.message}`
@@ -632,23 +556,12 @@ Current local time and date:
 
     // Weak reply? Inject links
     const replyLower = reply.toLowerCase();
-    const isWeakReply =
-      reply.length < 30 ||
-      replyLower.includes("i don't know") ||
-      replyLower.includes("i cannot") ||
-      replyLower.includes("i'm not sure") ||
-      replyLower.includes("i do not have") ||
-      replyLower.includes("no information") ||
-      replyLower.includes("unable to") ||
-      replyLower.includes("i can't");
-
+    const isWeakReply = reply.length < 30 || replyLower.includes("i don't know") || replyLower.includes("i cannot") || replyLower.includes("i'm not sure") || replyLower.includes("i do not have") || replyLower.includes("no information") || replyLower.includes("unable to") || replyLower.includes("i can't");
     if (isWeakReply) {
       try {
         const searxResult = await searchSearXNG(lastUserMessage);
         if (searxResult) {
-          const links = (searxResult.text.match(/\(https?:\/\/[^\s)]+\)/g) || [])
-            .slice(0, 3)
-            .map((link) => link.replace(/[()]/g, ""));
+          const links = (searxResult.text.match(/\(https?:\/\/[^\s)]+\)/g) || []).slice(0, 3).map((link: string) => link.replace(/[()]/g, ""));
           if (links.length > 0) {
             const linkText = links.map((link, i) => `${i + 1}. [${new URL(link).hostname}](${link})`).join("\n");
             reply = `${reply}\n\n🔗 **Here are some helpful links:**\n${linkText}`;
@@ -660,36 +573,22 @@ Current local time and date:
 
     // Compress if reply exceeds the tier's token budget
     const estimatedTokens = Math.ceil(reply.length / 4);
-    if (estimatedTokens > tierConfig.maxTokens) {
-      reply = await compressReply(reply, tierConfig.maxTokens, lastUserMessage);
-    }
+    if (estimatedTokens > tierConfig.maxTokens) reply = await compressReply(reply, tierConfig.maxTokens, lastUserMessage);
 
-    // Final safety: strip any remaining <think> tags from the final reply
+    // Final safety: strip any remaining <think> tags
     reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
 
-    // Store messages with ordered timestamps
+    // Store messages
     const insertNow = Date.now();
-    const userTimestamp = new Date(insertNow).toISOString();
-    const assistantTimestamp = new Date(insertNow + 1).toISOString();
-
     try {
       await supabase.from("messages").insert([
-        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
-        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
+        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
       ]);
-      await supabase
-        .from("conversations")
-        .update({ message_count: (conv?.message_count ?? 0) + 1 })
-        .eq("id", finalConversationId);
-    } catch (dbError: any) {
-      console.error("Database store failed:", dbError.message);
-    }
+      await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
+    } catch (dbError: any) { console.error("Database store failed:", dbError.message); }
 
-    return NextResponse.json({
-      reply,
-      conversationId: finalConversationId,
-      wikiLink,
-    });
+    return NextResponse.json({ reply, conversationId: finalConversationId, wikiLink });
   } catch (error: any) {
     console.error("Chat API error:", error.message);
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
