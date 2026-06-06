@@ -3,6 +3,7 @@ import { tiers } from "@/lib/model-registry";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { autoRoute } from "@/lib/router";
 import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
+import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather } from "@/lib/time-utils";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -176,7 +177,7 @@ async function callOpenAICompatible(
   if (!response.ok) {
     const err = await response.text();
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 1000));
     }
     throw new Error(`OpenAI error (${response.status}): ${err}`);
   }
@@ -219,7 +220,7 @@ async function callGemini(
   if (!response.ok) {
     const err = await response.text();
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 1000));
     }
     throw new Error(`Gemini error (${response.status}): ${err}`);
   }
@@ -278,6 +279,7 @@ export async function POST(req: NextRequest) {
       conversationId,
       newConversation,
       diveDeep,
+      timezone: browserTimezone,
     } = body;
 
     if (!incomingMessages || !modelTier) {
@@ -306,32 +308,115 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
-    // ── Conversation limit (5 total) ──
-    if (!conversationId || newConversation) {
-      const { count, error: countError } = await supabase
-        .from("conversations")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+    // ── Time & Holiday injection ──
+    let timeContext = "";
+    const lowerMsg = lastUserMessage.toLowerCase();
 
-      if (countError) {
-        return NextResponse.json({ error: "Failed to check conversation limit" }, { status: 500 });
-      }
+    const isTimeQuery =
+      lowerMsg.includes("what time") ||
+      lowerMsg.includes("current time") ||
+      lowerMsg.includes("time is it") ||
+      lowerMsg.includes("what's the time") ||
+      lowerMsg.includes("time in");
 
-      if ((count ?? 0) >= 5) {
-        return NextResponse.json({ error: "You've reached the maximum of 5 conversations. Please delete some to continue." }, { status: 429 });
-      }
+    const isDateQuery =
+      lowerMsg.includes("what day") ||
+      lowerMsg.includes("today's date") ||
+      lowerMsg.includes("what is today") ||
+      lowerMsg.includes("current date");
+
+    const isHolidayQuery =
+      lowerMsg.includes("holiday") ||
+      lowerMsg.includes("holidays") ||
+      lowerMsg.includes("celebration") ||
+      lowerMsg.includes("festival");
+
+    if (isTimeQuery || isDateQuery || isHolidayQuery || lowerMsg.includes("weather")) {
+      try {
+        // Check if user is asking about a specific city
+        const cityMatch = lowerMsg.match(/time in ([a-z\s]+?)(\?|$)/i);
+        let targetTz = browserTimezone || "Asia/Karachi";
+
+        if (cityMatch) {
+          const city = cityMatch[1].trim();
+          const cityTzMap: Record<string, string> = {
+            "tokyo": "Asia/Tokyo",
+            "london": "Europe/London",
+            "new york": "America/New_York",
+            "los angeles": "America/Los_Angeles",
+            "paris": "Europe/Paris",
+            "berlin": "Europe/Berlin",
+            "dubai": "Asia/Dubai",
+            "sydney": "Australia/Sydney",
+            "toronto": "America/Toronto",
+            "mumbai": "Asia/Kolkata",
+            "delhi": "Asia/Kolkata",
+            "beijing": "Asia/Shanghai",
+            "shanghai": "Asia/Shanghai",
+            "moscow": "Europe/Moscow",
+            "seoul": "Asia/Seoul",
+            "singapore": "Asia/Singapore",
+            "hong kong": "Asia/Hong_Kong",
+            "istanbul": "Europe/Istanbul",
+          };
+          targetTz = cityTzMap[city] || targetTz;
+        }
+
+        const { time, date, timezone, countryCode, source, utcTimestamp, latitude, longitude } =
+          await getCurrentTimeAndLocation(req as any, targetTz);
+        const holidays = await getUpcomingHolidays(countryCode);
+
+        // Weather
+        let weatherInfo = "";
+        if (
+          lowerMsg.includes("weather") ||
+          lowerMsg.includes("temperature") ||
+          lowerMsg.includes("hot") ||
+          lowerMsg.includes("cold")
+        ) {
+          const weather = await getWeather(latitude || 0, longitude || 0, timezone);
+          if (weather) weatherInfo = `\n\n🌤️ Current weather: ${weather}`;
+        }
+
+        timeContext = `📌 ${source}
+
+Current local time and date:
+- 🕐 Time: ${time}
+- 📅 Date: ${date}
+- 🌍 Timezone: ${timezone}`;
+
+        if (cityMatch) {
+          timeContext += `\n- 📍 This is the current time for ${cityMatch[1].trim()}.`;
+        }
+
+        if (holidays.length > 0) {
+          timeContext += `\n\n🎉 Upcoming public holidays in ${countryCode}:\n${holidays.map(h => `  • ${h}`).join("\n")}`;
+        }
+
+        if (weatherInfo) timeContext += weatherInfo;
+
+        timeContext += `\n\n❗ Use the exact time, date, and timezone above in your response. Do NOT mention UTC or use approximate calculations.`;
+      } catch {}
     }
 
-    // ── Create conversation if new (TOP‑LEVEL, shared) ──
+    // ── Create conversation if new (fast, title generated after response) ──
     let finalConversationId = conversationId;
     if (!finalConversationId || newConversation) {
       finalConversationId = crypto.randomUUID();
+      const tempTitle = lastUserMessage.slice(0, 50);
       try {
-        const title = await generateTitle(lastUserMessage);
         await supabase.from("conversations").insert({
           id: finalConversationId,
           user_id: user.id,
-          title,
+          title: tempTitle,
+        });
+        Promise.resolve().then(async () => {
+          try {
+            const realTitle = await generateTitle(lastUserMessage);
+            if (realTitle) {
+              await supabase.from("conversations").update({ title: realTitle }).eq("id", finalConversationId);
+            }
+          } catch {}
         });
       } catch (dbError: any) {
         console.error("Failed to create conversation:", dbError.message);
@@ -375,14 +460,17 @@ export async function POST(req: NextRequest) {
 
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
     if (modelTier === "auto") {
-      // Include name and goal context in the conversation history for the auto router
+      // Build conversation history including time context, name, goal
       let conversationHistory = messages
         .slice(0, -1)
         .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
 
-      if (nameContext || goalContext) {
-        conversationHistory = `[System context]\n${nameContext}${goalContext}\n${conversationHistory}`;
+      const prefixParts: string[] = [];
+      if (timeContext) prefixParts.push(timeContext);
+      if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
+      if (prefixParts.length > 0) {
+        conversationHistory = `[System context]\n${prefixParts.join("\n")}\n${conversationHistory}`;
       }
 
       let liveData = "";
@@ -426,59 +514,55 @@ export async function POST(req: NextRequest) {
     const tierConfig = tiers[modelTier as keyof typeof tiers];
     if (!tierConfig) return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
 
-    // Real‑time data injection
+    // ── Live search with hard timeout ─────────────────────────
     let webContext = "";
     let wikiLink: string | null = null;
-
-    const timeKeywords = [
-      "latest", "current", "today", "now", "2026", "2025",
-      "price", "stock", "weather", "news", "happening",
-      "recent", "updated", "live", "net worth", "bitcoin",
-      "crypto", "score", "election", "earthquake", "release",
-    ];
 
     const personalQuestions = [
       "what is my name", "what's my name", "who am i",
       "what is my goal", "what are my goals", "my profile",
       "what do i like", "what is my", "who is",
     ];
+    const isPersonal = personalQuestions.some((q) => lastUserMessage.toLowerCase().includes(q));
 
-    const lowerMsg = lastUserMessage.toLowerCase();
-    const isTimeSensitive = timeKeywords.some((kw) => lowerMsg.includes(kw));
-    const isPersonal = personalQuestions.some((q) => lowerMsg.includes(q));
-
-    const shouldFetchLive =
-      (modelTier === "live" || diveDeep || isTimeSensitive) && !isPersonal;
+    const shouldFetchLive = modelTier === "live" || (diveDeep && !isPersonal);
 
     if (shouldFetchLive) {
+      const searchWithTimeout = async (fn: () => Promise<any>, ms: number) => {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
+        return Promise.race([fn(), timeout]);
+      };
+
       try {
-        const searxResult = await searchSearXNG(lastUserMessage);
-        if (searxResult) {
-          webContext = `[REAL-TIME WEB DATA (SearXNG)]\n${searxResult.text}\n\n`;
-          wikiLink = searxResult.url || null;
+        const result = await searchWithTimeout(() => searchSearXNG(lastUserMessage), 3000) as any;
+        if (result?.text) {
+          webContext = `[Web]\n${result.text}\n\n`;
+          wikiLink = result.url || null;
         }
       } catch {}
-      if (!webContext) {
+
+      if (!webContext && modelTier === "live") {
         try {
-          const jinaResult = await searchJina(lastUserMessage);
-          if (jinaResult) {
-            webContext = `[REAL-TIME WEB DATA (Jina)]\n${jinaResult.text}\n\n`;
-            wikiLink = jinaResult.url || null;
+          const result = await searchWithTimeout(() => searchJina(lastUserMessage), 3000) as any;
+          if (result?.text) {
+            webContext = `[Web]\n${result.text}\n\n`;
+            wikiLink = result.url || null;
           }
         } catch {}
       }
+
       if (!webContext) {
         try {
-          const wiki = await searchWikipedia(lastUserMessage);
-          if (wiki) {
-            webContext = `[Wikipedia]\n${wiki.summary}\n\n`;
-            wikiLink = wiki.url;
+          const result = await searchWithTimeout(() => searchWikipedia(lastUserMessage), 2000) as any;
+          if (result?.summary) {
+            webContext = `[Wikipedia]\n${result.summary}\n\n`;
+            wikiLink = result.url || null;
           }
         } catch {}
       }
     }
 
-    // Build final system prompt – always inject name and goal
+    // Build final system prompt – always inject name, goal, time
     const baseSystem = tierConfig.systemPrompt;
     const priorityInstruction = webContext
       ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names.\n\n"
@@ -487,6 +571,7 @@ export async function POST(req: NextRequest) {
     const fullSystemPrompt = (
       priorityInstruction +
       (webContext ? webContext : "") +
+      (timeContext ? `${timeContext}\n\n` : "") +
       nameContext +
       goalContext +
       baseSystem
@@ -504,7 +589,6 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check model usage limit
       const modelLimitKey = modelConfig.modelKey || modelTier;
       const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
       if (!allowed) {

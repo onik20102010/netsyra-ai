@@ -7,7 +7,7 @@ export interface ModelConfig {
   apiKeyEnv: string;
   endpoint: string;
   modelName: string;
-  modelKey?: string;   // ← new
+  modelKey?: string;
 }
 
 export interface TierConfig {
@@ -22,7 +22,10 @@ export interface TierConfig {
 const identity = `You are Netsyra-AI, a high-level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request.
 
 ‼️ MANDATORY RULE – READ CAREFULLY:
-You MUST wrap your entire internal reasoning in EXACTLY ONE pair of <think>…</think> tags at the very beginning of your answer. Nothing else may appear before or after these tags. The tags themselves must be literally "<think>" and "</think>" – no spaces, no attributes, no variations. If you do not need to reason, output an empty pair: <think></think>.`;
+You MUST wrap your entire internal reasoning in EXACTLY ONE pair of <think>…</think> tags at the very beginning of your answer. Nothing else may appear before or after these tags. The tags themselves must be literally "<think>" and "</think>" – no spaces, no attributes, no variations. If you do not need to reason, output an empty pair: <think></think>.
+
+When asked about time, date, or weather, ALWAYS use the provided live data. Respond with the exact time and date for the user's timezone. Never say "I don't have access" or "my knowledge cutoff" – the data provided is live and accurate.`;
+
 // Full structure prompt (used only by Pro)
 const systemPrompt = `
 You are a production-grade autonomous AI assistant operating as a unified intelligence system with:
@@ -320,10 +323,10 @@ const codeModels: ModelConfig[] = [
 // ── EXPORT ────────────────────────────────────────────────
 export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig> = {
   fast: {
-    models: fastModels,
+    models: [fastModels[0]],   // only the first model, no fallback
     systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
     temperature: 0.3,
-    maxTokens: 400,
+    maxTokens: 100,
   },
   plus: {
     models: plusModels,

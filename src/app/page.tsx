@@ -3,7 +3,8 @@ import HeroSection from "@/components/sections/HeroSection";
 import LiveRoutingSection from "@/components/sections/LiveRoutingSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
 import CTASection from "@/components/sections/CTASection";
-import CodeShowcaseSection from "@/components/sections/CodeShowcaseSection";   // ← added semicolon
+import CodeShowcaseSection from "@/components/sections/CodeShowcaseSection";
+import FooterSection from "@/components/sections/FooterSection";
 
 export default function Home() {
   return (
@@ -46,9 +47,9 @@ export default function Home() {
       <HeroSection />
       <LiveRoutingSection />
       <FeaturesSection />
-      <CodeShowcaseSection />   {/* ← new */}
+      <CodeShowcaseSection />
       <CTASection />
-      {/* Footer removed as requested earlier – add it back if needed */}
+      <FooterSection />
     </main>
   );
 }

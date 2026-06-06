@@ -37,7 +37,7 @@ export default function ModelSelector({
   const ref = useRef<HTMLDivElement>(null);
   const [modelStatuses, setModelStatuses] = useState<Record<string, any>>({});
 
-  // Fetch model statuses on mount and every 15 seconds
+  // Fetch model statuses on mount and every 60 seconds
   useEffect(() => {
     const fetchStatuses = async () => {
       try {
@@ -47,7 +47,7 @@ export default function ModelSelector({
       } catch {}
     };
     fetchStatuses();
-    const interval = setInterval(fetchStatuses, 15000);
+    const interval = setInterval(fetchStatuses, 60000);
     return () => clearInterval(interval);
   }, []);
 

@@ -108,6 +108,7 @@ function ThinkingBlock({ text }: { text: string }) {
   );
 }
 
+
 export default function ChatInterface({
   conversationId,
   setConversationId,
@@ -123,6 +124,7 @@ export default function ChatInterface({
   const [editContent, setEditContent] = useState("");
   const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [lineLimitReached, setLineLimitReached] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
@@ -220,7 +222,7 @@ export default function ChatInterface({
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || lineLimitReached) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -591,25 +593,40 @@ export default function ChatInterface({
               <textarea
                 ref={mainInputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  const lines = e.target.value.split("\n");
+                  if (lines.length > 40) {
+                    setLineLimitReached(true);
+                    setInput(lines.slice(0, 40).join("\n"));
+                    toast.error("Message is too long. Please reduce to 40 lines or fewer.");
+                  } else {
+                    setLineLimitReached(false);
+                    setInput(e.target.value);
+                  }
+                }}
                 placeholder="Message Netsyra..."
                 rows={1}
                 className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-3 pl-12 pr-12 text-sm max-h-[200px] overflow-y-auto"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    handleSend();
+                    if (!lineLimitReached) handleSend();
                   }
                 }}
               />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !input.trim() || lineLimitReached}
                 className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
               >
                 <Send className="w-4 h-4 text-white" />
               </button>
             </div>
+            {lineLimitReached && (
+              <p className="text-xs text-rose-500 mt-1">
+                Message is too long. Please reduce to 40 lines or fewer.
+              </p>
+            )}
             <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
               Netsyra may produce inaccurate information.
               {diveDeep && " 🌐 Dive Deep is ON"}
