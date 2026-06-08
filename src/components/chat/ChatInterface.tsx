@@ -124,6 +124,7 @@ export default function ChatInterface({
   const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
@@ -153,6 +154,7 @@ export default function ChatInterface({
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
   }, [input]);
 
+  // Fetch messages for the current conversation
   useEffect(() => {
     if (!conversationId) return;
     const fetchMessages = async () => {
@@ -169,45 +171,56 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId]);
 
-  const sendMessage = async (userContent: string, contextMessages: Message[]): Promise<{
-    assistantMessage: Message;
-    newConversationId?: string;
-  } | null> => {
+  const sendMessage = async (userContent: string, contextMessages: Message[]) => {
     setIsLoading(true);
+
+    const assistantId = (Date.now() + 1).toString();
+    const assistantMessage: Message = { id: assistantId, role: "assistant", content: "" };
+    setMessages(prev => [...prev, assistantMessage]);
+    setStreamingMessageId(assistantId);
+    setInput("");
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: contextMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: contextMessages.map(m => ({ role: m.role, content: m.content })),
           modelTier: selectedModel,
           conversationId: conversationId || crypto.randomUUID(),
           newConversation: !conversationId,
           diveDeep,
         }),
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
 
-      if (data.tiersUsed) setAutoTiersUsed(data.tiersUsed); else setAutoTiersUsed([]);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Something went wrong");
+      }
+      if (!conversationId && res.headers.get("x-conversation-id")) {
+        setConversationId(res.headers.get("x-conversation-id"));
+      }
 
-      const thinkMatch = data.reply.match(/<think\b[^>]*?>[\s\S]*?<\/think>/i);
-      const thinking = thinkMatch ? thinkMatch[0] : null;
-      const cleanReply = data.reply.replace(/<think\b[^>]*?>[\s\S]*?<\/think>/gi, "").trim();
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response body");
+      const decoder = new TextDecoder();
+      let fullContent = "";
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: cleanReply,
-        thinking,
-        wikiLink: data.wikiLink || null,
-      };
-
-      return { assistantMessage, newConversationId: data.conversationId };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullContent += decoder.decode(value, { stream: true });
+        setMessages(prev =>
+          prev.map(m => (m.id === assistantId ? { ...m, content: fullContent } : m))
+        );
+      }
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
-      return null;
-    } finally { setIsLoading(false); }
+      setMessages(prev => prev.filter(m => m.id !== assistantId));
+    } finally {
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    }
   };
 
   const handleSend = async (e?: FormEvent) => {
@@ -219,16 +232,7 @@ export default function ChatInterface({
     setInput("");
 
     const contextMessages = [...messages, userMessage].slice(-14);
-    const result = await sendMessage(userMessage.content, contextMessages);
-    if (result) {
-      if (!conversationId && result.newConversationId) {
-        setConversationId(result.newConversationId);
-        onConversationCreated?.(result.newConversationId);
-      }
-      setMessages(prev => [...prev, result.assistantMessage]);
-    } else {
-      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
-    }
+    await sendMessage(userMessage.content, contextMessages);
   };
 
   const handleRefresh = async (assistantId: string) => {
@@ -242,14 +246,7 @@ export default function ChatInterface({
     setMessages(truncated);
 
     const contextMessages = [...truncated.slice(-14)];
-    const result = await sendMessage(userMsg.content, contextMessages);
-    if (result) {
-      if (!conversationId && result.newConversationId) {
-        setConversationId(result.newConversationId);
-        onConversationCreated?.(result.newConversationId);
-      }
-      setMessages(prev => [...prev, result.assistantMessage]);
-    }
+    await sendMessage(userMsg.content, contextMessages);
   };
 
   const startEditing = (msg: Message) => {
@@ -280,14 +277,7 @@ export default function ChatInterface({
     cancelEditing();
 
     const contextMessages = truncated.slice(-14);
-    const result = await sendMessage(newContent, contextMessages);
-    if (result) {
-      if (!conversationId && result.newConversationId) {
-        setConversationId(result.newConversationId);
-        onConversationCreated?.(result.newConversationId);
-      }
-      setMessages(prev => [...prev, result.assistantMessage]);
-    }
+    await sendMessage(newContent, contextMessages);
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
@@ -455,6 +445,10 @@ export default function ChatInterface({
                             >
                               {msg.content}
                             </ReactMarkdown>
+                            {/* Blinking cursor while streaming */}
+                            {isLoading && msg.id === streamingMessageId && (
+                              <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
+                            )}
                           </div>
                           {msg.thinking && <ThinkingBlock text={msg.thinking} />}
                           {msg.wikiLink && (
@@ -556,10 +550,9 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      {/* Input – with model selector + button */}
+      {/* Input */}
       <div className="sticky bottom-0">
         <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-2 pb-1">
-          {/* Auto‑routed badge (still shown when applicable) */}
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 px-1">
               <Sparkles className="w-3 h-3 text-indigo-500" />
@@ -569,7 +562,6 @@ export default function ChatInterface({
 
           <form onSubmit={handleSend} className="relative">
             <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              {/* + button for model selector */}
               <div className="absolute left-2 bottom-2">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
               </div>

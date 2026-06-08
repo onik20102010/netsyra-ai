@@ -1,6 +1,7 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import {
   MessageSquarePlus,
   History,
@@ -8,6 +9,8 @@ import {
   PanelLeftClose,
   MessageSquare,
   Search,
+  Pin,
+  Archive,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +32,8 @@ interface ChatSidebarProps {
 type Conversation = {
   id: string;
   title: string;
+  pinned: boolean;
+  archived: boolean;
 };
 
 export default function ChatSidebar({
@@ -43,6 +48,7 @@ export default function ChatSidebar({
   refreshKey = 0,
 }: ChatSidebarProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -58,20 +64,21 @@ export default function ChatSidebar({
     const fetchConversations = async () => {
       const { data } = await supabase
         .from("conversations")
-        .select("id, title")
+        .select("id, title, pinned, archived")
         .eq("user_id", user.id)
+        .eq("archived", false)
+        .order("pinned", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(20);
       setConversations(data || []);
     };
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile name, goal, and custom instructions
+  // Load profile
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-
     const loadProfile = async () => {
       try {
         const { data, error } = await supabase
@@ -85,7 +92,6 @@ export default function ChatSidebar({
             if (!cancelled) setTimeout(loadProfile, 3000);
             return;
           }
-          console.warn("Profile load warning:", error.message);
           if (!cancelled) setNameLoaded(true);
           return;
         }
@@ -96,22 +102,39 @@ export default function ChatSidebar({
           if (data?.custom_instructions) setUserInstructions(data.custom_instructions);
           setNameLoaded(true);
         }
-      } catch (err) {
-        console.warn("Profile load warning:", err);
+      } catch {
         if (!cancelled) setNameLoaded(true);
       }
     };
-
     loadProfile();
     return () => { cancelled = true; };
   }, [user, supabase]);
 
-  // Filter conversations based on search
+  // Toggle pin
+  const togglePin = async (id: string, current: boolean) => {
+    await supabase.from("conversations").update({ pinned: !current }).eq("id", id);
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, pinned: !current } : c))
+    );
+    toast.success(current ? "Unpinned" : "Pinned");
+  };
+
+  // Archive conversation
+  const archiveConv = async (id: string) => {
+    await supabase.from("conversations").update({ archived: true }).eq("id", id);
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    toast.success("Archived");
+  };
+
+  // Filter conversations
   const filteredConversations = searchQuery.trim()
     ? conversations.filter((conv) =>
         conv.title.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : conversations;
+
+  const pinnedConversations = filteredConversations.filter((c) => c.pinned);
+  const unpinnedConversations = filteredConversations.filter((c) => !c.pinned);
 
   return (
     <>
@@ -122,7 +145,7 @@ export default function ChatSidebar({
       >
         {open && (
           <>
-            {/* Header with close button + search bar */}
+            {/* Header */}
             <div className="p-4 flex items-center gap-2 border-b border-gray-200">
               <button
                 onClick={() => setOpen(false)}
@@ -137,7 +160,7 @@ export default function ChatSidebar({
                   placeholder="Search chats..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 transition"
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-sm text-gray-700 outline-none focus:border-indigo-300 transition"
                 />
                 {searchQuery && (
                   <button
@@ -156,27 +179,22 @@ export default function ChatSidebar({
                 onClick={onNewChat}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"
               >
-                <MessageSquarePlus className="h-5 w-5 text-indigo-600" />
-                New Chat
+                <MessageSquarePlus className="h-5 w-5 text-indigo-600" /> New Chat
               </button>
               <button
                 onClick={onHistory}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"
               >
-                <History className="h-5 w-5 text-indigo-600" />
-                History
+                <History className="h-5 w-5 text-indigo-600" /> History
               </button>
 
               <button
                 onClick={() => setDiveDeep(!diveDeep)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                  diveDeep
-                    ? "bg-indigo-100 text-indigo-700 font-medium"
-                    : "text-gray-600 hover:bg-gray-200/50"
+                  diveDeep ? "bg-indigo-100 text-indigo-700 font-medium" : "text-gray-600 hover:bg-gray-200/50"
                 }`}
               >
-                <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-600" : "text-gray-400"}`} />
-                Dive Deep
+                <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-600" : "text-gray-400"}`} /> Dive Deep
                 <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}>
                   {diveDeep ? "ON" : "OFF"}
                 </span>
@@ -184,26 +202,83 @@ export default function ChatSidebar({
 
               <div className="my-3 border-t border-gray-200" />
 
-              {/* Filtered conversation pills */}
-              {filteredConversations.map((conv) => (
-                <button
+              {/* Pinned section */}
+              {pinnedConversations.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1 text-xs text-gray-400 pt-2 pb-1 px-1">
+                    <Pin className="w-3 h-3" />
+                    <span>Pinned</span>
+                  </div>
+                  {pinnedConversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSelectConversation(conv.id)}
+                      onKeyDown={(e) => { if (e.key === "Enter") onSelectConversation(conv.id); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 group cursor-pointer ${
+                        activeConversationId === conv.id
+                          ? "bg-indigo-50 text-indigo-700 font-medium"
+                          : "text-gray-500 hover:text-gray-900"
+                      }`}
+                    >
+                      <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate flex-1">{conv.title}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                        aria-label="Toggle pin"
+                      >
+                        <Pin className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                        aria-label="Archive"
+                      >
+                        <Archive className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="my-2 border-t border-gray-100" />
+                </>
+              )}
+
+              {/* Unpinned conversations */}
+              {unpinnedConversations.map((conv) => (
+                <div
                   key={conv.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectConversation(conv.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 ${
+                  onKeyDown={(e) => { if (e.key === "Enter") onSelectConversation(conv.id); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 group cursor-pointer ${
                     activeConversationId === conv.id
                       ? "bg-indigo-50 text-indigo-700 font-medium"
                       : "text-gray-500 hover:text-gray-900"
                   }`}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="truncate">{conv.title}</span>
-                </button>
+                  <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate flex-1">{conv.title}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                    aria-label="Toggle pin"
+                  >
+                    <Pin className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                    aria-label="Archive"
+                  >
+                    <Archive className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
 
               {searchQuery.trim() && filteredConversations.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">
-                  No chats found for "{searchQuery}"
-                </p>
+                <p className="text-xs text-gray-400 text-center py-4">No chats found</p>
               )}
             </div>
 
@@ -223,9 +298,7 @@ export default function ChatSidebar({
                         <p className="text-sm text-gray-900 truncate font-medium">
                           {displayName || user?.email?.split("@")[0] || "User"}
                         </p>
-                        {!displayName && (
-                          <p className="text-xs text-gray-500">Click to set your name</p>
-                        )}
+                        {!displayName && <p className="text-xs text-gray-500">Click to set your name</p>}
                       </>
                     ) : (
                       <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
@@ -237,32 +310,26 @@ export default function ChatSidebar({
           </>
         )}
       </motion.aside>
+
       <ProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         userName={displayName}
         userGoal={userGoal}
         userInstructions={userInstructions}
-        onSave={async (name: string, goal: string, instructions: string) => {
+        onSave={async (name, goal, instructions) => {
           if (!user) return;
           try {
-            const { error } = await supabase
-              .from("profiles")
-              .upsert(
-                { user_id: user.id, name, goal, custom_instructions: instructions },
-                { onConflict: "user_id" }
-              );
-            if (error) {
-              toast.error("Could not save profile.");
-              return;
-            }
+            const { error } = await supabase.from("profiles").upsert(
+              { user_id: user.id, name, goal, custom_instructions: instructions },
+              { onConflict: "user_id" }
+            );
+            if (error) { toast.error("Could not save profile."); return; }
             setDisplayName(name);
             setUserGoal(goal);
             setUserInstructions(instructions);
             toast.success("Profile updated!");
-          } catch (err) {
-            toast.error("Something went wrong.");
-          }
+          } catch { toast.error("Something went wrong."); }
         }}
       />
     </>

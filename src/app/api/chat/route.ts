@@ -6,6 +6,7 @@ import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
 import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoordinates } from "@/lib/time-utils";
 import { classifyIntent } from "@/lib/intent";
 import { deepSearch } from "@/lib/deep-search";
+import { multiStepReason } from "@/lib/chain-router";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -231,6 +232,120 @@ async function callGemini(
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
+// ─── Streaming model caller for OpenAI-compatible APIs ────────
+async function streamOpenAICompatible(
+  endpoint: string,
+  apiKey: string,
+  modelName: string,
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  temperature: number,
+  maxTokens: number,
+  controller: ReadableStreamDefaultController
+) {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      temperature,
+      max_tokens: maxTokens,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Streaming error: ${response.status} ${err}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const content = parsed.choices?.[0]?.delta?.content;
+        if (content) {
+          controller.enqueue(new TextEncoder().encode(content));
+        }
+      } catch {}
+    }
+  }
+}
+
+// ─── Streaming model caller for Gemini ────────────────────────
+async function streamGemini(
+  endpoint: string,
+  apiKey: string,
+  _modelName: string,
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  temperature: number,
+  maxTokens: number,
+  controller: ReadableStreamDefaultController
+) {
+  const contents = messages.map(msg => ({
+    role: msg.role === "assistant" ? "model" : "user",
+    parts: [{ text: getText(msg.content) }],
+  }));
+
+  const payload: any = { contents, generationConfig: { temperature, maxOutputTokens: maxTokens } };
+  if (systemPrompt) payload.systemInstruction = { parts: [{ text: systemPrompt }] };
+
+  const response = await fetch(endpoint + ":streamGenerateContent?alt=sse", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error(`Gemini streaming error: ${response.status}`);
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      try {
+        const parsed = JSON.parse(data);
+        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) controller.enqueue(new TextEncoder().encode(text));
+      } catch {}
+    }
+  }
+}
+
 // ─── SearXNG real‑time search (free, no API key) ──────────────
 async function searchSearXNG(query: string): Promise<{ text: string; url?: string } | null> {
   try {
@@ -428,20 +543,37 @@ export async function POST(req: NextRequest) {
 
     // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
     if (modelTier === "auto") {
-      let autoHistory = messages
-        .slice(0, -1)
-        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
-        .join("\n");
+      let reply = "";
+      let tiersUsed: string[] = [];
 
-      const prefixParts: string[] = [];
-      if (instructionContext) prefixParts.push(instructionContext);
-      if (ragContext) prefixParts.push(ragContext);
-      if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
-      if (prefixParts.length > 0) {
-        autoHistory = `[System context]\n${prefixParts.join("\n")}\n${autoHistory}`;
+      // Try chain router for complex queries first
+      if (intent.intent === "none" && lastUserMessage.length > 50) {
+        try {
+          const chainResult = await multiStepReason(lastUserMessage, conversationHistory);
+          reply = chainResult.reply;
+          tiersUsed = ["chain-router"];
+        } catch {}
       }
 
-      const { reply, tiersUsed } = await autoRoute(lastUserMessage, autoHistory);
+      // Fall back to standard auto‑route if chain router didn't produce a reply
+      if (!reply) {
+        let autoHistory = messages
+          .slice(0, -1)
+          .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+          .join("\n");
+
+        const prefixParts: string[] = [];
+        if (instructionContext) prefixParts.push(instructionContext);
+        if (ragContext) prefixParts.push(ragContext);
+        if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
+        if (prefixParts.length > 0) {
+          autoHistory = `[System context]\n${prefixParts.join("\n")}\n${autoHistory}`;
+        }
+
+        const result = await autoRoute(lastUserMessage, autoHistory);
+        reply = result.reply;
+        tiersUsed = result.tiersUsed;
+      }
 
       const insertNow = Date.now();
       const userTimestamp = new Date(insertNow).toISOString();
@@ -509,86 +641,87 @@ export async function POST(req: NextRequest) {
       baseSystem
     ).trim();
 
-    // Model fallback with usage limits
-    let reply: string | null = null;
-    let lastError: Error | null = null;
-    const skippedModels: string[] = [];
+    // ── Streaming response for manual models ──────────────────
+    const encoder = new TextEncoder();
+    const replyChunks: string[] = [];
 
-    for (const modelConfig of tierConfig.models) {
-      const apiKey = process.env[modelConfig.apiKeyEnv];
-      if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") {
-        skippedModels.push(modelConfig.modelName);
-        continue;
-      }
-      const modelLimitKey = modelConfig.modelKey || modelTier;
-      const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
-      if (!allowed) { skippedModels.push(modelConfig.modelName + " (limit reached)"); continue; }
+    const stream = new ReadableStream({
+      async start(controller) {
+        let success = false;
 
-      try {
-        if (modelConfig.provider === "openai") {
-          reply = await callOpenAICompatible(
-            modelConfig.endpoint, apiKey, modelConfig.modelName,
-            fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
-          );
-        } else if (modelConfig.provider === "gemini") {
-          reply = await callGemini(
-            modelConfig.endpoint, apiKey, modelConfig.modelName,
-            fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
-          );
-        }
-        if (reply) {
-          await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(reply.length / 4));
-          break;
-        }
-      } catch (error: any) {
-        lastError = error;
-        if (error.message.includes("429")) await new Promise(r => setTimeout(r, 1000));
-      }
-    }
+        for (const modelConfig of tierConfig.models) {
+          const apiKey = process.env[modelConfig.apiKeyEnv];
+          if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") continue;
 
-    if (lastError) console.warn("All models failed:", lastError.message);
-    if (!reply) {
-      const msg = lastError
-        ? `All models failed. Last error: ${lastError.message}`
-        : "All models are currently unavailable.";
-      return NextResponse.json({ error: msg }, { status: 429 });
-    }
+          const modelLimitKey = modelConfig.modelKey || modelTier;
+          const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
+          if (!allowed) continue;
 
-    // Weak reply? Inject links
-    const replyLower = reply.toLowerCase();
-    const isWeakReply = reply.length < 30 || replyLower.includes("i don't know") || replyLower.includes("i cannot") || replyLower.includes("i'm not sure") || replyLower.includes("i do not have") || replyLower.includes("no information") || replyLower.includes("unable to") || replyLower.includes("i can't");
-    if (isWeakReply) {
-      try {
-        const searxResult = await searchSearXNG(lastUserMessage);
-        if (searxResult) {
-          const links = (searxResult.text.match(/\(https?:\/\/[^\s)]+\)/g) || []).slice(0, 3).map((link: string) => link.replace(/[()]/g, ""));
-          if (links.length > 0) {
-            const linkText = links.map((link, i) => `${i + 1}. [${new URL(link).hostname}](${link})`).join("\n");
-            reply = `${reply}\n\n🔗 **Here are some helpful links:**\n${linkText}`;
-            if (!wikiLink) wikiLink = links[0];
+          try {
+            const collectController = {
+              enqueue(chunk: Uint8Array) {
+                const text = new TextDecoder().decode(chunk);
+                replyChunks.push(text);
+                controller.enqueue(chunk);
+              },
+              close() {},
+              error(e: any) {},
+            } as any;
+
+            if (modelConfig.provider === "openai") {
+              await streamOpenAICompatible(
+                modelConfig.endpoint, apiKey, modelConfig.modelName,
+                fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens,
+                collectController
+              );
+            } else if (modelConfig.provider === "gemini") {
+              await streamGemini(
+                modelConfig.endpoint, apiKey, modelConfig.modelName,
+                fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens,
+                collectController
+              );
+            }
+            success = true;
+            await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(replyChunks.join("").length / 4));
+            break;
+          } catch (err: any) {
+            console.error(`Model ${modelConfig.modelName} failed:`, err.message);
           }
         }
-      } catch {}
-    }
 
-    // Compress if reply exceeds the tier's token budget
-    const estimatedTokens = Math.ceil(reply.length / 4);
-    if (estimatedTokens > tierConfig.maxTokens) reply = await compressReply(reply, tierConfig.maxTokens, lastUserMessage);
+        if (!success) {
+          const errorMsg = "Sorry, all models are currently unavailable.";
+          replyChunks.push(errorMsg);
+          controller.enqueue(encoder.encode(errorMsg));
+        }
+        controller.close();
+      },
+    });
 
-    // Final safety: strip any remaining <think> tags
-    reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+    // Store messages in background after stream closes
+    const response = new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "x-conversation-id": finalConversationId,
+      },
+    });
 
-    // Store messages
-    const insertNow = Date.now();
-    try {
-      await supabase.from("messages").insert([
-        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
-        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
-      ]);
-      await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
-    } catch (dbError: any) { console.error("Database store failed:", dbError.message); }
+    // Background storage – doesn't block the response
+    (async () => {
+      const fullReply = replyChunks.join("").replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+      const insertNow = Date.now();
+      try {
+        await supabase.from("messages").insert([
+          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+          { conversation_id: finalConversationId, role: "assistant", content: fullReply, created_at: new Date(insertNow + 1).toISOString() },
+        ]);
+        await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
+      } catch (dbError: any) { console.error("Store failed:", dbError.message); }
+    })();
 
-    return NextResponse.json({ reply, conversationId: finalConversationId, wikiLink });
+    return response;
   } catch (error: any) {
     console.error("Chat API error:", error.message);
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });

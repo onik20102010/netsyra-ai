@@ -30,7 +30,7 @@ function ChatContent() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
-      {/* Top bar – logo + name only */}
+      {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 md:px-4 bg-white border-b border-gray-200 select-none">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
@@ -41,7 +41,6 @@ function ChatContent() {
         <div />
       </div>
 
-      {/* Floating glass hamburger – only visible when sidebar is closed */}
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
@@ -52,7 +51,6 @@ function ChatContent() {
         </button>
       )}
 
-      {/* Main content */}
       <div className="flex flex-1 pt-[46px]">
         <ChatSidebar
           open={sidebarOpen}
