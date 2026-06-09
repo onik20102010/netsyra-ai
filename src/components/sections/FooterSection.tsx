@@ -24,7 +24,8 @@ export default function FooterSection() {
               <span className="text-lg font-bold text-white">Netsyra AI</span>
             </div>
             <p className="text-white/30 text-sm leading-relaxed max-w-xs">
-              Intelligent AI orchestration platform. Route every prompt to the perfect model.
+              Netsyra AI is an intelligent AI orchestration platform that routes every prompt
+              to the best AI model, saving up to 70% on costs while delivering fast, accurate responses.
             </p>
           </div>
 
