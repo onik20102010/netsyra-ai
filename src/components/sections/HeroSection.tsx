@@ -123,17 +123,17 @@ export default function HeroSection() {
           </motion.h1>
 
           {/* Detailed description */}
-          <motion.p
-            variants={item}
-            transition={transition}
-            className="text-lg sm:text-xl text-white/50 max-w-3xl mx-auto leading-relaxed"
-          >
-            Netsyra AI is an intelligent AI orchestration platform that automatically
-            routes every prompt to the best AI model — saving up to 70% on costs while
-            delivering fast, accurate responses. We use Google authentication
-            <strong className="text-white/70">only</strong> to sign you in. We never
-            read, store, or access your Google data.
-          </motion.p>
+<motion.p
+  variants={item}
+  transition={transition}
+  className="text-lg sm:text-xl text-white/50 max-w-3xl mx-auto leading-relaxed"
+>
+  Netsyra AI is an intelligent AI orchestration platform that automatically
+  routes every prompt to the best AI model — saving up to 70% on costs while
+  delivering fast, accurate responses. We use Google authentication
+  <strong className="text-white/70">only</strong> to sign you in. We never
+  read, store, or access your Google data.
+</motion.p>
 
           {/* Key benefits */}
           <motion.div
