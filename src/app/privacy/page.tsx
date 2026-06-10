@@ -1,3 +1,4 @@
+// src/app/privacy/page.tsx
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
