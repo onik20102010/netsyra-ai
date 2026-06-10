@@ -1,7 +1,7 @@
 // src/lib/intent.ts
 
 type IntentResult = {
-  intent: "time" | "weather" | "search" | "none";
+  intent: "time" | "weather" | "search" | "reasoning" | "none";
   query: string;
   timezone?: string;
   countryCode?: string;
@@ -55,14 +55,29 @@ Output ONLY JSON.`;
     if (!response.ok) throw new Error(`Classifier error: ${response.status}`);
     const data = await response.json();
     const parsed = JSON.parse(data.choices[0].message.content);
-    return {
+    
+    const intent: IntentResult = {
       intent: parsed.intent || "none",
       query: parsed.query || userMessage,
       timezone: parsed.timezone || undefined,
       countryCode: parsed.countryCode || undefined,
     };
+    
+    // Complexity heuristic: long messages with no specific intent are treated as complex queries
+    // This activates chain‑of‑thought reasoning automatically for detailed prompts
+    if (intent.intent === "none" && userMessage.length > 60) {
+      intent.intent = "reasoning";
+      intent.query = userMessage;
+    }
+    
+    return intent;
   } catch (err) {
     console.error("Intent classification failed:", err);
-    return { intent: "none", query: userMessage };
+    // Even on failure, apply the complexity heuristic
+    const fallbackIntent: IntentResult = { intent: "none", query: userMessage };
+    if (userMessage.length > 60) {
+      fallbackIntent.intent = "reasoning";
+    }
+    return fallbackIntent;
   }
 }

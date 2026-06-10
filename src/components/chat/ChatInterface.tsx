@@ -27,6 +27,7 @@ type Message = {
   content: string;
   thinking?: string;
   wikiLink?: string | null;
+  confidence?: number; // new: confidence score from server
 };
 
 interface ChatInterfaceProps {
@@ -125,6 +126,7 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [executionOutput, setExecutionOutput] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
@@ -165,7 +167,14 @@ export default function ChatInterface({
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       if (data) {
-        setMessages(data.map((m: any) => ({ id: m.id, role: m.role, content: m.content })));
+        setMessages(data.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          thinking: m.thinking,
+          wikiLink: m.wikiLink,
+          confidence: m.confidence,
+        })));
       }
     };
     fetchMessages();
@@ -214,6 +223,10 @@ export default function ChatInterface({
           prev.map(m => (m.id === assistantId ? { ...m, content: fullContent } : m))
         );
       }
+
+      // Note: In a streaming setup, confidence may not be available yet.
+      // We can optionally fetch it separately or include it in the response.
+      // For now, we leave confidence undefined.
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
       setMessages(prev => prev.filter(m => m.id !== assistantId));
@@ -231,7 +244,7 @@ export default function ChatInterface({
     setMessages(prev => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-14);
+    const contextMessages = [...messages, userMessage].slice(-20);
     await sendMessage(userMessage.content, contextMessages);
   };
 
@@ -296,6 +309,21 @@ export default function ChatInterface({
 
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
+
+  const handleRunCode = async (code: string, language: string) => {
+    setExecutionOutput(null);
+    try {
+      const res = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language }),
+      });
+      const data = await res.json();
+      setExecutionOutput(data.output || data.error || "No output");
+    } catch {
+      setExecutionOutput("Execution failed");
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -396,6 +424,13 @@ export default function ChatInterface({
                                           <div className="flex items-center">
                                             <CopyButton code={codeString} />
                                             {(match[1] === "html" || match[1] === "htm") && <PreviewButton code={codeString} />}
+                                            <button
+                                              onClick={() => handleRunCode(codeString, match[1])}
+                                              className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition ml-2"
+                                              title="Run code"
+                                            >
+                                              ▶ Run
+                                            </button>
                                           </div>
                                         </div>
                                         <SyntaxHighlighter
@@ -450,6 +485,12 @@ export default function ChatInterface({
                               <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
                             )}
                           </div>
+                          {/* Confidence badge for low confidence responses */}
+                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
+                            <span className="inline-block text-xs text-amber-500 ml-2">
+                              ⚠️ Low confidence
+                            </span>
+                          )}
                           {msg.thinking && <ThinkingBlock text={msg.thinking} />}
                           {msg.wikiLink && (
                             <a
@@ -461,6 +502,13 @@ export default function ChatInterface({
                               <ExternalLink className="w-3.5 h-3.5" />
                               View from there
                             </a>
+                          )}
+
+                          {/* Execution output display */}
+                          {executionOutput && (
+                            <div className="mt-2 p-3 rounded-xl bg-gray-900 border border-gray-700 text-sm text-green-400 whitespace-pre-wrap font-mono">
+                              {executionOutput}
+                            </div>
                           )}
                         </div>
                       )}

@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+﻿// src/app/api/chat/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { tiers } from "@/lib/model-registry";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { autoRoute } from "@/lib/router";
@@ -7,6 +8,7 @@ import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoor
 import { classifyIntent } from "@/lib/intent";
 import { deepSearch } from "@/lib/deep-search";
 import { multiStepReason } from "@/lib/chain-router";
+import { reflectOnReply } from "@/lib/reflector";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -14,6 +16,113 @@ function getText(content: any): string {
   if (Array.isArray(content)) return content.map(part => part?.text || "").join(" ");
   if (content && typeof content === "object") return getText(content.content || content.text || "");
   return "";
+}
+
+// ─── Simple harmful content filter ────────────────────────────
+function isHarmful(text: string): boolean {
+  const lower = text.toLowerCase();
+  const patterns = [
+    // Violence / self-harm
+    "kill yourself", "suicide", "self-harm", "cut yourself",
+    "how to make a bomb", "how to build a weapon",
+    // Explicit adult
+    "pornographic", "explicit sexual content", "child abuse",
+    // Hate speech
+    "hate speech", "racial slur", "discrimination",
+    // Illegal activities
+    "how to hack", "ddos attack", "crack password",
+  ];
+  return patterns.some(pattern => lower.includes(pattern));
+}
+
+// ─── Confidence scoring heuristic ────────────────────────────
+function scoreConfidence(reply: string): number {
+  if (!reply) return 0;
+  const lower = reply.toLowerCase();
+  // Short reply (<20 chars) considered low confidence
+  if (reply.length < 20) return 0.3;
+  // Phrases indicating uncertainty
+  const uncertaintyPatterns = [
+    "i'm not sure", "i don't know", "i cannot", "unable to", "sorry",
+    "no information", "not available", "it is unclear"
+  ];
+  for (const p of uncertaintyPatterns) {
+    if (lower.includes(p)) return 0.4;
+  }
+  // Otherwise, assume moderate to high confidence based on length
+  if (reply.length > 300) return 0.9;
+  if (reply.length > 100) return 0.8;
+  return 0.7;
+}
+
+// ─── Extract persona from a conversation turn ─────────────────
+async function extractPersona(userMessage: string, existingPersona: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return existingPersona;
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: `You are a persona extractor. Given a user message and an existing persona description, update the persona to reflect any new preferences, tone, or style. Keep it concise and in second-person voice (e.g., "You prefer concise answers with bullet points, avoid markdown, and like a friendly tone."). Existing persona: ${existingPersona || "None yet."}. Only output the updated persona.`
+          },
+          { role: "user", content: userMessage }
+        ],
+        temperature: 0.2,
+        max_tokens: 200,
+      }),
+    });
+    if (!response.ok) return existingPersona;
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || existingPersona;
+  } catch {
+    return existingPersona;
+  }
+}
+
+// ─── Summarise a list of messages using a fast model ──────────
+async function summariseMessages(messages: { role: string; content: string }[]): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey || messages.length === 0) return "";
+
+  const conversationText = messages
+    .map(m => `${m.role}: ${m.content}`)
+    .join("\n");
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: "Summarize the following conversation into a concise paragraph that preserves key context, decisions, and user intent. Only output the summary."
+          },
+          { role: "user", content: conversationText }
+        ],
+        temperature: 0.2,
+        max_tokens: 300,
+      }),
+    });
+    if (!response.ok) return "";
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
+  } catch {
+    return "";
+  }
 }
 
 // ─── Compress a long reply to fit within a token budget using a fast model
@@ -409,26 +518,49 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
+    // ── Input moderation ─────────────────────────────────────
+    if (isHarmful(lastUserMessage)) {
+      return NextResponse.json(
+        { error: "Your message was flagged as potentially harmful." },
+        { status: 400 }
+      );
+    }
+
+    // ── Auto‑summarise long conversation history ──────────────
+    let extraContext = "";
+    if (messages.length > 20) {
+      const olderMsgs = messages.slice(0, -20);
+      const summary = await summariseMessages(olderMsgs);
+      if (summary) extraContext = `[Earlier conversation summary]\n${summary}\n\n`;
+    }
+
     // Fetch profile once for this request
     let profileName = "";
     let profileGoal = "";
     let customInstructions = "";
+    let persona = "";
     try {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, goal, custom_instructions")
+        .select("name, goal, custom_instructions, persona")
         .eq("user_id", user.id)
         .single();
       if (profile) {
         if (profile.name) profileName = profile.name;
         if (profile.goal) profileGoal = profile.goal;
         if (profile.custom_instructions) customInstructions = profile.custom_instructions;
+        if (profile.persona) persona = profile.persona;
       }
     } catch {}
 
     // ── Custom instructions context ──
     const instructionContext = customInstructions
       ? `📌 The user has provided these custom instructions. Follow them carefully:\n\n${customInstructions}\n\n`
+      : "";
+
+    // ── Persona context ──
+    const personaContext = persona
+      ? `Adapt your tone to match the user's preferred style: ${persona}\n\n`
       : "";
 
     // ── RAG pipeline (intent‑based retrieval) ─────────────────
@@ -546,8 +678,8 @@ export async function POST(req: NextRequest) {
       let reply = "";
       let tiersUsed: string[] = [];
 
-      // Try chain router for complex queries first
-      if (intent.intent === "none" && lastUserMessage.length > 50) {
+      // If intent is "reasoning" (long complex query), use chain-of-thought router
+      if (intent.intent === "reasoning") {
         try {
           const chainResult = await multiStepReason(lastUserMessage, conversationHistory);
           reply = chainResult.reply;
@@ -563,8 +695,10 @@ export async function POST(req: NextRequest) {
           .join("\n");
 
         const prefixParts: string[] = [];
+        if (extraContext) prefixParts.push(extraContext);
         if (instructionContext) prefixParts.push(instructionContext);
         if (ragContext) prefixParts.push(ragContext);
+        if (personaContext) prefixParts.push(personaContext);
         if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
         if (prefixParts.length > 0) {
           autoHistory = `[System context]\n${prefixParts.join("\n")}\n${autoHistory}`;
@@ -575,6 +709,25 @@ export async function POST(req: NextRequest) {
         tiersUsed = result.tiersUsed;
       }
 
+      // 🔍 Self‑reflection: review the reply before storing
+      try {
+        reply = await reflectOnReply(lastUserMessage, reply, "");
+      } catch {}
+
+      // ── Output moderation ──────────────────────────────────
+      if (isHarmful(reply)) {
+        reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
+      }
+
+      // Store reply and update persona (fire‑and‑forget)
+      Promise.resolve().then(async () => {
+        try {
+          const updatedPersona = await extractPersona(lastUserMessage, persona);
+          await supabase.from("profiles").update({ persona: updatedPersona }).eq("user_id", user.id);
+        } catch {}
+      });
+
+      const confidence = scoreConfidence(reply);
       const insertNow = Date.now();
       const userTimestamp = new Date(insertNow).toISOString();
       const assistantTimestamp = new Date(insertNow + 1).toISOString();
@@ -596,6 +749,7 @@ export async function POST(req: NextRequest) {
         reply,
         conversationId: finalConversationId,
         tiersUsed,
+        confidence,
       });
     }
 
@@ -632,7 +786,9 @@ export async function POST(req: NextRequest) {
       : "";
 
     const fullSystemPrompt = (
+      extraContext +
       instructionContext +
+      personaContext +
       priorityInstruction +
       (webContext ? webContext : "") +
       (ragContext ? `${ragContext}\n\n` : "") +
@@ -641,87 +797,136 @@ export async function POST(req: NextRequest) {
       baseSystem
     ).trim();
 
-    // ── Streaming response for manual models ──────────────────
-    const encoder = new TextEncoder();
-    const replyChunks: string[] = [];
+    let reply: string | null = null;
+    let usedModel: string | null = null;
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        let success = false;
-
-        for (const modelConfig of tierConfig.models) {
-          const apiKey = process.env[modelConfig.apiKeyEnv];
-          if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") continue;
-
-          const modelLimitKey = modelConfig.modelKey || modelTier;
-          const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
-          if (!allowed) continue;
-
-          try {
-            const collectController = {
-              enqueue(chunk: Uint8Array) {
-                const text = new TextDecoder().decode(chunk);
-                replyChunks.push(text);
-                controller.enqueue(chunk);
-              },
-              close() {},
-              error(e: any) {},
-            } as any;
-
-            if (modelConfig.provider === "openai") {
-              await streamOpenAICompatible(
-                modelConfig.endpoint, apiKey, modelConfig.modelName,
-                fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens,
-                collectController
-              );
-            } else if (modelConfig.provider === "gemini") {
-              await streamGemini(
-                modelConfig.endpoint, apiKey, modelConfig.modelName,
-                fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens,
-                collectController
-              );
-            }
-            success = true;
-            await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(replyChunks.join("").length / 4));
-            break;
-          } catch (err: any) {
-            console.error(`Model ${modelConfig.modelName} failed:`, err.message);
-          }
-        }
-
-        if (!success) {
-          const errorMsg = "Sorry, all models are currently unavailable.";
-          replyChunks.push(errorMsg);
-          controller.enqueue(encoder.encode(errorMsg));
-        }
-        controller.close();
-      },
-    });
-
-    // Store messages in background after stream closes
-    const response = new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "x-conversation-id": finalConversationId,
-      },
-    });
-
-    // Background storage – doesn't block the response
-    (async () => {
-      const fullReply = replyChunks.join("").replace(/<think[\s\S]*?<\/think>/gi, "").trim();
-      const insertNow = Date.now();
+    // ── Image understanding ──────────────────────────────────
+    const imageUrlMatch = lastUserMessage.match(/https?:\/\/\S+\.(jpg|jpeg|png|gif|webp)/i);
+    if (imageUrlMatch) {
+      const imageUrl = imageUrlMatch[0];
       try {
-        await supabase.from("messages").insert([
-          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
-          { conversation_id: finalConversationId, role: "assistant", content: fullReply, created_at: new Date(insertNow + 1).toISOString() },
-        ]);
-        await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
-      } catch (dbError: any) { console.error("Store failed:", dbError.message); }
-    })();
+        const visionRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "llama-3.2-11b-vision-preview",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: `Describe this image. User also said: "${lastUserMessage.replace(imageUrl, "").trim()}"` },
+                { type: "image_url", image_url: { url: imageUrl } },
+              ],
+            }],
+            temperature: 0.3,
+            max_tokens: 1000,
+          }),
+        });
+        if (visionRes.ok) {
+          const visionData = await visionRes.json();
+          reply = visionData.choices[0].message.content;
+          usedModel = "llama-3.2-11b-vision-preview";
+        }
+      } catch {}
+    }
 
-    return response;
+    // If no vision reply, proceed with parallel model fallback
+    if (!reply) {
+      const modelPromises: Promise<{ reply: string; modelName: string } | null>[] = [];
+      for (let i = 0; i < Math.min(2, tierConfig.models.length); i++) {
+        const modelConfig = tierConfig.models[i];
+        const apiKey = process.env[modelConfig.apiKeyEnv];
+        if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") continue;
+        const modelLimitKey = modelConfig.modelKey || modelTier;
+        const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
+        if (!allowed) continue;
+
+        modelPromises.push(
+          (async () => {
+            try {
+              let result: string;
+              if (modelConfig.provider === "openai") {
+                result = await callOpenAICompatible(
+                  modelConfig.endpoint, apiKey, modelConfig.modelName,
+                  fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
+                );
+              } else if (modelConfig.provider === "gemini") {
+                result = await callGemini(
+                  modelConfig.endpoint, apiKey, modelConfig.modelName,
+                  fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
+                );
+              } else {
+                return null;
+              }
+              await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(result.length / 4));
+              return { reply: result, modelName: modelConfig.modelName };
+            } catch (err) {
+              console.error(`Model ${modelConfig.modelName} failed:`, err);
+              return null;
+            }
+          })()
+        );
+      }
+
+      const results = await Promise.allSettled(modelPromises);
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          reply = result.value.reply;
+          usedModel = result.value.modelName;
+          break;
+        }
+      }
+    }
+
+    // Final fallback error message
+    if (!reply) {
+      reply = "Sorry, all models are currently unavailable.";
+    }
+
+    // 🔍 Self‑reflection: review the reply before storing
+    try {
+      reply = await reflectOnReply(lastUserMessage, reply, "");
+    } catch {}
+
+    // ── Output moderation ──────────────────────────────────
+    if (isHarmful(reply)) {
+      reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
+    }
+
+    // Update persona after reply (fire‑and‑forget)
+    Promise.resolve().then(async () => {
+      try {
+        const updatedPersona = await extractPersona(lastUserMessage, persona);
+        await supabase.from("profiles").update({ persona: updatedPersona }).eq("user_id", user.id);
+      } catch {}
+    });
+
+    const confidence = scoreConfidence(reply);
+    const insertNow = Date.now();
+    const userTimestamp = new Date(insertNow).toISOString();
+    const assistantTimestamp = new Date(insertNow + 1).toISOString();
+
+    try {
+      await supabase.from("messages").insert([
+        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
+        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
+      ]);
+      await supabase
+        .from("conversations")
+        .update({ message_count: (conv?.message_count ?? 0) + 1 })
+        .eq("id", finalConversationId);
+    } catch (dbError: any) {
+      console.error("Database store failed:", dbError.message);
+    }
+
+    return NextResponse.json({
+      reply,
+      conversationId: finalConversationId,
+      tiersUsed: usedModel ? [usedModel] : [],
+      confidence,
+    });
   } catch (error: any) {
     console.error("Chat API error:", error.message);
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
