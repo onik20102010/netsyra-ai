@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "Netsyra AI – The Intelligent AI Orchestration Platform",
   description:
     "Automatically route every prompt to the smartest and most cost-efficient AI model.",
+  manifest: "/manifest.json",
+  themeColor: "#4D6BFE",
 };
 
 export default function RootLayout({
@@ -20,6 +22,19 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-black text-white antialiased`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed', err));
+                });
+              }
+            `,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

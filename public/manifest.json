@@ -1,0 +1,14 @@
+{
+  "name": "Netsyra AI",
+  "short_name": "Netsyra",
+  "description": "Intelligent AI orchestration platform – route every prompt to the perfect model.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4D6BFE",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
