@@ -40,15 +40,16 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16 select-none">
-      
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16">
       {/* Animated Background Container - Only Rendered on Client */}
       {isMounted && (
         <div className="absolute inset-0 z-0 pointer-events-none">
           {/* Ambient glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full blur-[150px] opacity-10"
-               style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }} />
-          
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full blur-[150px] opacity-10"
+            style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }}
+          />
+
           {/* Floating Icons (Silver/White theme) */}
           {backgroundElements.map((el, i) => (
             <motion.div
