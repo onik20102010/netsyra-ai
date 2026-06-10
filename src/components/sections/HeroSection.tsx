@@ -9,17 +9,17 @@ const container = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
   },
 };
 
 const item = {
-  hidden: { opacity: 0, y: 15 },
+  hidden: { opacity: 0, y: 25 },
   visible: { opacity: 1, y: 0 },
 };
 
 const transition = {
-  duration: 0.5,
+  duration: 0.7,
   ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
 };
 
@@ -41,14 +41,16 @@ export default function HeroSection() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16">
-      {/* Background Elements - Only animated when mounted to prevent SSR layout shifts */}
+      {/* Animated Background Container - Only Rendered on Client */}
       {isMounted && (
         <div className="absolute inset-0 z-0 pointer-events-none">
+          {/* Ambient glow */}
           <div
             className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full blur-[150px] opacity-10"
             style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }}
           />
 
+          {/* Floating Icons (Silver/White theme) */}
           {backgroundElements.map((el, i) => (
             <motion.div
               key={i}
@@ -70,6 +72,7 @@ export default function HeroSection() {
             </motion.div>
           ))}
 
+          {/* Floating Dots (Silver/White theme) */}
           {[...Array(10)].map((_, i) => (
             <motion.div
               key={`dot-${i}`}
@@ -97,7 +100,7 @@ export default function HeroSection() {
           variants={container}
           initial="hidden"
           animate="visible"
-          className="space-y-8"
+          className="space-y-10"
         >
           {/* Badge */}
           <motion.div variants={item} transition={transition}>
@@ -113,36 +116,43 @@ export default function HeroSection() {
             transition={transition}
             className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.15]"
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 default-gradient bg-[length:200%_auto]">Netsyra</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-gradient-rotate bg-[length:200%_auto]">Netsyra</span>
             <span className="text-white"> AI </span>
             <br />
-            <span className="text-white text-3xl sm:text-5xl block mt-2 font-medium tracking-normal text-white/90">
-              AI Orchestration & Intelligent Prompt Routing Platform
-            </span>
+            <span className="text-white">New generic AI</span>
           </motion.h1>
 
-          {/* CRITICAL GOOGLE VERIFICATION BLOCK - PLACED DIRECTLY UNDER HEADLINE AND RENDERED STATICALLY WITHOUT CLIENT-SIDE GUARDS */}
+          {/* Detailed description - Marketing Hook */}
+          <motion.p
+            variants={item}
+            transition={transition}
+            className="text-lg sm:text-xl text-white/70 max-w-3xl mx-auto leading-relaxed"
+          >
+            A unified chat interface that automatically routes your prompts to the most efficient AI model, saving you up to 70% on API costs while delivering accurate responses.
+          </motion.p>
+
+          {/* DEDICATED PURPOSE AND DATA DISCLOSURE BLOCK FOR GOOGLE REVIEWERS */}
           <motion.div
             variants={item}
             transition={transition}
-            className="bg-white/5 border border-indigo-500/40 rounded-2xl p-6 text-left max-w-3xl mx-auto backdrop-blur-md space-y-4 shadow-[0_0_30px_rgba(99,102,241,0.05)]"
+            className="bg-white/5 border border-indigo-500/30 rounded-2xl p-6 text-left max-w-3xl mx-auto backdrop-blur-md space-y-4 shadow-[0_0_30px_rgba(99,102,241,0.05)]"
           >
             <div>
-              <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Brain className="w-5 h-5 text-indigo-400" />
-                Application Purpose & Functionality
+                Purpose of the Application
               </h2>
-              <p className="text-white/80 text-base leading-relaxed">
-                Netsyra AI is an artificial intelligence orchestration application designed to help users streamline interactions with various language models. The primary purpose of this platform is to provide a single, unified interface where users can submit prompts. Our system analyzes each query and automatically routes it to the most cost-effective and task-appropriate large language model (such as OpenAI's GPT or Anthropic's Claude), slashing your API costs by up to 70% while ensuring fast, accurate responses.
+              <p className="text-white/60 text-sm leading-relaxed">
+                Netsyra AI functions as an artificial intelligence orchestration system. The core purpose of this application is to allow registered users to submit text prompts through our interface, which are then evaluated and routed to external AI model providers (such as OpenAI or Anthropic) based on cost and processing efficiency.
               </p>
             </div>
             
             <div className="border-t border-white/10 pt-4">
-              <h3 className="text-sm font-semibold text-indigo-300 mb-2">
-                Google User Data Notice
+              <h3 className="text-sm font-semibold text-white mb-2">
+                Transparency Notice & Google User Data Policy
               </h3>
               <p className="text-white/60 text-sm leading-relaxed">
-                We use Google Sign-In solely for secure user account creation, identity authentication, and profile verification. We only request permission to access your basic Google profile details (specifically your full name and email address) to manage your user session. Netsyra AI does not request, store, or access any other personal Google data, Google Drive files, or Gmail records.
+                We use Google OAuth authentication solely to verify your identity and safely handle platform user accounts. When logging in, we access only your basic profile information (specifically your email address and full name). Netsyra AI does not request permissions to access, view, modify, or store data from any other Google services, including Google Drive or Gmail.
               </p>
             </div>
           </motion.div>
@@ -174,11 +184,11 @@ export default function HeroSection() {
           <motion.div
             variants={item}
             transition={transition}
-            className="flex flex-col items-center gap-4 pt-2"
+            className="flex flex-col items-center gap-4 pt-4"
           >
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/chat">
-                <Button className="bg-white text-black hover:bg-gray-200 px-8 py-6 text-lg rounded-full font-medium shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all hover:scale-105">
+                <Button className="bg-white text-black hover:bg-gray-200 px-8 py-6 text-lg rounded-full font-medium shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all hover:scale-105 hover:shadow-[0_0_60px_rgba(255,255,255,0.2)]">
                   <Sparkles className="mr-2 w-5 h-5" />
                   Start Chatting
                 </Button>
@@ -193,8 +203,9 @@ export default function HeroSection() {
               </Link>
             </div>
             
-            <div className="text-sm text-white/40 mt-4">
-              By using Netsyra AI, you agree to our{" "}
+            {/* Clear, compliant links to Privacy and Terms */}
+            <div className="text-sm text-white/40 mt-4 space-x-2">
+              <span>By using Netsyra AI, you agree to our</span>
               <Link href="/privacy" className="underline hover:text-white transition-colors">
                 Privacy Policy
               </Link>
