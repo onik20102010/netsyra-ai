@@ -122,18 +122,20 @@ export default function HeroSection() {
             <span className="text-white">New generic AI</span>
           </motion.h1>
 
-          {/* Detailed description */}
-<motion.p
-  variants={item}
-  transition={transition}
-  className="text-lg sm:text-xl text-white/50 max-w-3xl mx-auto leading-relaxed"
->
-  Netsyra AI is an intelligent AI orchestration platform that automatically
-  routes every prompt to the best AI model — saving up to 70% on costs while
-  delivering fast, accurate responses. We use Google authentication
-  <strong className="text-white/70">only</strong> to sign you in. We never
-  read, store, or access your Google data.
-</motion.p>
+          {/* Detailed description - UPDATED FOR GOOGLE VERIFICATION */}
+          <motion.div
+            variants={item}
+            transition={transition}
+            className="space-y-4 max-w-3xl mx-auto"
+          >
+            <p className="text-lg sm:text-xl text-white/70 leading-relaxed">
+              Netsyra AI is a unified chat interface that automatically routes your prompts to the most efficient AI model (like GPT or Claude), saving you up to 70% on API costs while delivering accurate responses.
+            </p>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left text-sm text-white/50 backdrop-blur-sm">
+              <strong className="text-white/80 block mb-1">How we use your data:</strong>
+              We use Google Sign-In to securely create your account and manage your active sessions. We only request your basic profile information (name and email) for account identification. We do not read, store, or access your personal Google Drive, Gmail, or any other sensitive data.
+            </div>
+          </motion.div>
 
           {/* Key benefits */}
           <motion.div
@@ -158,26 +160,36 @@ export default function HeroSection() {
             ))}
           </motion.div>
 
-          {/* CTA */}
+          {/* CTA & Legal Links - UPDATED FOR GOOGLE VERIFICATION */}
           <motion.div
             variants={item}
             transition={transition}
-            className="flex flex-wrap justify-center gap-4 pt-4"
+            className="flex flex-col items-center gap-4 pt-4"
           >
-            <Link href="/chat">
-              <Button className="bg-white text-black hover:bg-gray-200 px-8 py-6 text-lg rounded-full font-medium shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all hover:scale-105 hover:shadow-[0_0_60px_rgba(255,255,255,0.2)]">
-                <Sparkles className="mr-2 w-5 h-5" />
-                Start Chatting
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/5 px-8 py-6 text-lg rounded-full backdrop-blur-sm transition-all hover:scale-105"
-              >
-                Get Started <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link href="/chat">
+                <Button className="bg-white text-black hover:bg-gray-200 px-8 py-6 text-lg rounded-full font-medium shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all hover:scale-105 hover:shadow-[0_0_60px_rgba(255,255,255,0.2)]">
+                  <Sparkles className="mr-2 w-5 h-5" />
+                  Start Chatting
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/5 px-8 py-6 text-lg rounded-full backdrop-blur-sm transition-all hover:scale-105"
+                >
+                  Get Started <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </div>
+            
+            {/* Mandatory Privacy Policy Link */}
+            <div className="text-sm text-white/40 mt-4">
+              By continuing, you agree to our{" "}
+              <Link href="/privacy" className="underline hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+            </div>
           </motion.div>
 
           {/* Stats row */}
