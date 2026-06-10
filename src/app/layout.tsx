@@ -6,12 +6,15 @@ import Providers from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
+export const viewport = {
+  themeColor: "#4D6BFE",
+};
+
 export const metadata: Metadata = {
   title: "Netsyra AI – The Intelligent AI Orchestration Platform",
   description:
     "Automatically route every prompt to the smartest and most cost-efficient AI model.",
   manifest: "/manifest.json",
-  themeColor: "#4D6BFE",
 };
 
 export default function RootLayout({
