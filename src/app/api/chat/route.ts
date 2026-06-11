@@ -673,12 +673,33 @@ export async function POST(req: NextRequest) {
       ? `The user has selected "${profileGoal}" as their focus area. Adopt a tone and style appropriate for that field.\n\n`
       : "";
 
-    // ── AUTO‑ROUTING LOGIC ──────────────────────────────────
+    // ── AUTO‑ROUTING LOGIC (replaced) ───────────────────────
     if (modelTier === "auto") {
+      let conversationHistory = messages
+        .slice(0, -1)
+        .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+        .join("\n");
+
+      const prefixParts: string[] = [];
+      // Instead of 'timeContext' we use 'ragContext' (which contains time/weather/search info)
+      if (ragContext) prefixParts.push(ragContext);
+      if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
+      if (prefixParts.length > 0) conversationHistory = `[System context]\n${prefixParts.join("\n")}\n${conversationHistory}`;
+
+      let liveData = "";
+      try {
+        const jinaResult = await searchJina(lastUserMessage);
+        if (jinaResult) liveData = jinaResult.text;
+        else {
+          const wiki = await searchWikipedia(lastUserMessage);
+          if (wiki) liveData = wiki.summary;
+        }
+      } catch {}
+
+      // Use chain‑of‑thought for complex queries, or standard auto‑route
       let reply = "";
       let tiersUsed: string[] = [];
 
-      // If intent is "reasoning" (long complex query), use chain-of-thought router
       if (intent.intent === "reasoning") {
         try {
           const chainResult = await multiStepReason(lastUserMessage, conversationHistory);
@@ -687,70 +708,34 @@ export async function POST(req: NextRequest) {
         } catch {}
       }
 
-      // Fall back to standard auto‑route if chain router didn't produce a reply
       if (!reply) {
-        let autoHistory = messages
-          .slice(0, -1)
-          .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
-          .join("\n");
-
-        const prefixParts: string[] = [];
-        if (extraContext) prefixParts.push(extraContext);
-        if (instructionContext) prefixParts.push(instructionContext);
-        if (ragContext) prefixParts.push(ragContext);
-        if (personaContext) prefixParts.push(personaContext);
-        if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
-        if (prefixParts.length > 0) {
-          autoHistory = `[System context]\n${prefixParts.join("\n")}\n${autoHistory}`;
-        }
-
-        const result = await autoRoute(lastUserMessage, autoHistory);
+        const result = await autoRoute(lastUserMessage, conversationHistory, liveData);
         reply = result.reply;
         tiersUsed = result.tiersUsed;
       }
 
-      // 🔍 Self‑reflection: review the reply before storing
-      try {
-        reply = await reflectOnReply(lastUserMessage, reply, "");
-      } catch {}
+      // Clean up any raw JSON that might have been returned
+      reply = reply
+        .replace(/\{"reply"\s*:\s*"/g, "")   // remove leading JSON wrapper
+        .replace(/",\s*"conversationId".*$/, "") // remove trailing JSON fields
+        .trim();
 
-      // ── Output moderation ──────────────────────────────────
-      if (isHarmful(reply)) {
-        reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
-      }
+      // Remove any "Revised response:" redundancy from reflector
+      reply = reply.replace(/\bRevised response:\s*"([^"]*)"\s*/g, "$1").trim();
 
-      // Store reply and update persona (fire‑and‑forget)
-      Promise.resolve().then(async () => {
-        try {
-          const updatedPersona = await extractPersona(lastUserMessage, persona);
-          await supabase.from("profiles").update({ persona: updatedPersona }).eq("user_id", user.id);
-        } catch {}
-      });
+      // Also strip  tags
+      reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
 
-      const confidence = scoreConfidence(reply);
       const insertNow = Date.now();
-      const userTimestamp = new Date(insertNow).toISOString();
-      const assistantTimestamp = new Date(insertNow + 1).toISOString();
-
       try {
         await supabase.from("messages").insert([
-          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
-          { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
+          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+          { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
         ]);
-        await supabase
-          .from("conversations")
-          .update({ message_count: (conv?.message_count ?? 0) + 1 })
-          .eq("id", finalConversationId);
-      } catch (dbError: any) {
-        console.error("Database store failed:", dbError.message);
-      }
+        await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
+      } catch (dbError: any) { console.error("Database store failed:", dbError.message); }
 
-      return NextResponse.json({
-        reply,
-        conversationId: finalConversationId,
-        tiersUsed,
-        confidence,
-      });
+      return NextResponse.json({ reply, conversationId: finalConversationId, tiersUsed });
     }
 
     // ── NORMAL TIER HANDLING ───────────────────────────────
