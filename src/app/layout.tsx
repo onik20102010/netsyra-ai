@@ -19,6 +19,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="icon" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
+      </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-black text-white antialiased`}
       >
