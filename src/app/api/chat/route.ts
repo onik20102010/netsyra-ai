@@ -8,7 +8,6 @@ import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoor
 import { classifyIntent } from "@/lib/intent";
 import { deepSearch } from "@/lib/deep-search";
 import { multiStepReason } from "@/lib/chain-router";
-import { reflectOnReply } from "@/lib/reflector";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -22,14 +21,10 @@ function getText(content: any): string {
 function isHarmful(text: string): boolean {
   const lower = text.toLowerCase();
   const patterns = [
-    // Violence / self-harm
     "kill yourself", "suicide", "self-harm", "cut yourself",
     "how to make a bomb", "how to build a weapon",
-    // Explicit adult
     "pornographic", "explicit sexual content", "child abuse",
-    // Hate speech
     "hate speech", "racial slur", "discrimination",
-    // Illegal activities
     "how to hack", "ddos attack", "crack password",
   ];
   return patterns.some(pattern => lower.includes(pattern));
@@ -39,9 +34,7 @@ function isHarmful(text: string): boolean {
 function scoreConfidence(reply: string): number {
   if (!reply) return 0;
   const lower = reply.toLowerCase();
-  // Short reply (<20 chars) considered low confidence
   if (reply.length < 20) return 0.3;
-  // Phrases indicating uncertainty
   const uncertaintyPatterns = [
     "i'm not sure", "i don't know", "i cannot", "unable to", "sorry",
     "no information", "not available", "it is unclear"
@@ -49,7 +42,6 @@ function scoreConfidence(reply: string): number {
   for (const p of uncertaintyPatterns) {
     if (lower.includes(p)) return 0.4;
   }
-  // Otherwise, assume moderate to high confidence based on length
   if (reply.length > 300) return 0.9;
   if (reply.length > 100) return 0.8;
   return 0.7;
@@ -491,6 +483,64 @@ async function searchSearXNG(query: string): Promise<{ text: string; url?: strin
   }
 }
 
+// ─── Strip any JSON artefacts from the reply ─────────────────
+function cleanReply(text: string): string {
+  let cleaned = text.trim();
+
+  if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
+    try {
+      const obj = JSON.parse(cleaned);
+      if (obj.reply && typeof obj.reply === "string") {
+        cleaned = obj.reply;
+      }
+    } catch {}
+  }
+
+  cleaned = cleaned
+    .replace(/\{"reply"\s*:\s*"/g, "")
+    .replace(/",\s*"conversationId".*$/g, "")
+    .replace(/",\s*"tiersUsed".*$/g, "")
+    .replace(/",\s*"confidence".*$/g, "")
+    .replace(/"\}$/g, "")
+    .trim();
+
+  cleaned = cleaned
+    .replace(/\bRevised response:\s*"([^"]*)"\s*/g, "$1")
+    .replace(/\bCorrected version:\s*"([^"]*)"\s*/g, "$1")
+    .trim();
+
+  if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
+    try {
+      const obj = JSON.parse(cleaned);
+      if (obj.reply && typeof obj.reply === "string") {
+        cleaned = obj.reply;
+      }
+    } catch {}
+  }
+
+  if (cleaned.startsWith("{") && cleaned.endsWith("}") && cleaned.includes('"reply"')) {
+    cleaned = "The response could not be processed correctly. Please try again.";
+  }
+
+  return cleaned;
+}
+
+// ─── Helper to create a simple stream from a string ──────────
+function createSimpleStream(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const chunks = text.match(/.{1,5}/g) || [text]; // stream in small pieces
+  let index = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (index < chunks.length) {
+        controller.enqueue(encoder.encode(chunks[index++]));
+      } else {
+        controller.close();
+      }
+    },
+  });
+}
+
 // ─── Main POST handler ────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
@@ -518,7 +568,6 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
-    // ── Input moderation ─────────────────────────────────────
     if (isHarmful(lastUserMessage)) {
       return NextResponse.json(
         { error: "Your message was flagged as potentially harmful." },
@@ -534,7 +583,6 @@ export async function POST(req: NextRequest) {
       if (summary) extraContext = `[Earlier conversation summary]\n${summary}\n\n`;
     }
 
-    // Fetch profile once for this request
     let profileName = "";
     let profileGoal = "";
     let customInstructions = "";
@@ -553,17 +601,13 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
-    // ── Custom instructions context ──
     const instructionContext = customInstructions
       ? `📌 The user has provided these custom instructions. Follow them carefully:\n\n${customInstructions}\n\n`
       : "";
-
-    // ── Persona context ──
     const personaContext = persona
       ? `Adapt your tone to match the user's preferred style: ${persona}\n\n`
       : "";
 
-    // ── RAG pipeline (intent‑based retrieval) ─────────────────
     let ragContext = "";
     const conversationHistory = messages
       .slice(0, -1)
@@ -591,14 +635,12 @@ export async function POST(req: NextRequest) {
         if (weather) ragContext = `🌤️ Current weather: ${weather}\n\nRespond with a friendly weather report.`;
       } catch {}
     } else if (intent.intent === "search") {
-      // Deep search – fetch 5‑10 pages and summarize
       try {
         const deepResult = await deepSearch(intent.query);
         if (deepResult) {
           ragContext = `[Deep Web Research]\n\nThe following information was gathered from multiple sources:\n\n${deepResult}\n\nSynthesize a comprehensive answer using only the facts above.`;
         }
       } catch {}
-      // Fallback – single-page search if deep search fails
       if (!ragContext) {
         const searchWithTimeout = async (fn: () => Promise<any>, ms: number) => {
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
@@ -614,7 +656,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Create conversation if new (fast, title generated after response) ──
     let finalConversationId = conversationId;
     if (!finalConversationId || newConversation) {
       finalConversationId = crypto.randomUUID();
@@ -638,7 +679,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Per‑conversation message limit (10 per 8 hours) ──
     const now = new Date();
     const { data: conv } = await supabase
       .from("conversations")
@@ -665,7 +705,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Common profile context strings
     const nameContext = profileName
       ? `The user's name is ${profileName}. Address them by name naturally.\n\n`
       : "";
@@ -673,18 +712,17 @@ export async function POST(req: NextRequest) {
       ? `The user has selected "${profileGoal}" as their focus area. Adopt a tone and style appropriate for that field.\n\n`
       : "";
 
-    // ── AUTO‑ROUTING LOGIC (replaced) ───────────────────────
+    // ── AUTO‑ROUTING LOGIC (streaming wrapper) ───────────────
     if (modelTier === "auto") {
-      let conversationHistory = messages
+      let convHistory = messages
         .slice(0, -1)
         .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
         .join("\n");
 
       const prefixParts: string[] = [];
-      // Instead of 'timeContext' we use 'ragContext' (which contains time/weather/search info)
       if (ragContext) prefixParts.push(ragContext);
       if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
-      if (prefixParts.length > 0) conversationHistory = `[System context]\n${prefixParts.join("\n")}\n${conversationHistory}`;
+      if (prefixParts.length > 0) convHistory = `[System context]\n${prefixParts.join("\n")}\n${convHistory}`;
 
       let liveData = "";
       try {
@@ -696,53 +734,54 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
 
-      // Use chain‑of‑thought for complex queries, or standard auto‑route
       let reply = "";
       let tiersUsed: string[] = [];
 
       if (intent.intent === "reasoning") {
         try {
-          const chainResult = await multiStepReason(lastUserMessage, conversationHistory);
+          const chainResult = await multiStepReason(lastUserMessage, convHistory);
           reply = chainResult.reply;
           tiersUsed = ["chain-router"];
         } catch {}
       }
 
       if (!reply) {
-        const result = await autoRoute(lastUserMessage, conversationHistory, liveData);
+        const result = await autoRoute(lastUserMessage, convHistory, liveData);
         reply = result.reply;
         tiersUsed = result.tiersUsed;
       }
 
-      // Clean up any raw JSON that might have been returned
-      reply = reply
-        .replace(/\{"reply"\s*:\s*"/g, "")   // remove leading JSON wrapper
-        .replace(/",\s*"conversationId".*$/, "") // remove trailing JSON fields
-        .trim();
-
-      // Remove any "Revised response:" redundancy from reflector
-      reply = reply.replace(/\bRevised response:\s*"([^"]*)"\s*/g, "$1").trim();
-
-      // Also strip  tags
+      reply = cleanReply(reply);
       reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
 
-      const insertNow = Date.now();
-      try {
-        await supabase.from("messages").insert([
-          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
-          { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
-        ]);
-        await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
-      } catch (dbError: any) { console.error("Database store failed:", dbError.message); }
+      // Stream the reply (store in DB in background)
+      const stream = createSimpleStream(reply);
 
-      return NextResponse.json({ reply, conversationId: finalConversationId, tiersUsed });
+      const insertNow = Date.now();
+      (async () => {
+        try {
+          await supabase.from("messages").insert([
+            { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+            { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
+          ]);
+          await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
+        } catch (dbError: any) { console.error("Store failed:", dbError.message); }
+      })();
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "x-conversation-id": finalConversationId,
+        },
+      });
     }
 
-    // ── NORMAL TIER HANDLING ───────────────────────────────
+    // ── NORMAL TIER HANDLING (streaming) ─────────────────────
     const tierConfig = tiers[modelTier as keyof typeof tiers];
     if (!tierConfig) return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
 
-    // ── Live search with hard timeout ─────────────────────────
     let webContext = "";
     let wikiLink: string | null = null;
 
@@ -764,7 +803,6 @@ export async function POST(req: NextRequest) {
       if (!webContext) { try { const r = await searchWithTimeout(() => searchWikipedia(lastUserMessage), 2000) as any; if (r?.summary) { webContext = `[Wikipedia]\n${r.summary}\n\n`; wikiLink = r.url || null; } } catch {} }
     }
 
-    // Build final system prompt
     const baseSystem = tierConfig.systemPrompt;
     const priorityInstruction = webContext
       ? "‼️ CRITICAL: You MUST use the real-time web data provided below to answer the user's question. Extract exact facts, numbers, and names.\n\n"
@@ -783,9 +821,8 @@ export async function POST(req: NextRequest) {
     ).trim();
 
     let reply: string | null = null;
-    let usedModel: string | null = null;
 
-    // ── Image understanding ──────────────────────────────────
+    // Image understanding (non‑streaming, but we'll wrap later)
     const imageUrlMatch = lastUserMessage.match(/https?:\/\/\S+\.(jpg|jpeg|png|gif|webp)/i);
     if (imageUrlMatch) {
       const imageUrl = imageUrlMatch[0];
@@ -812,13 +849,12 @@ export async function POST(req: NextRequest) {
         if (visionRes.ok) {
           const visionData = await visionRes.json();
           reply = visionData.choices[0].message.content;
-          usedModel = "llama-3.2-11b-vision-preview";
         }
       } catch {}
     }
 
-    // If no vision reply, proceed with parallel model fallback
     if (!reply) {
+      // Parallel model fallback (non‑streaming)
       const modelPromises: Promise<{ reply: string; modelName: string } | null>[] = [];
       for (let i = 0; i < Math.min(2, tierConfig.models.length); i++) {
         const modelConfig = tierConfig.models[i];
@@ -859,28 +895,34 @@ export async function POST(req: NextRequest) {
       for (const result of results) {
         if (result.status === "fulfilled" && result.value) {
           reply = result.value.reply;
-          usedModel = result.value.modelName;
           break;
         }
       }
     }
 
-    // Final fallback error message
-    if (!reply) {
-      reply = "Sorry, all models are currently unavailable.";
-    }
+    if (!reply) reply = "Sorry, all models are currently unavailable.";
 
-    // 🔍 Self‑reflection: review the reply before storing
-    try {
-      reply = await reflectOnReply(lastUserMessage, reply, "");
-    } catch {}
+    reply = cleanReply(reply);
 
-    // ── Output moderation ──────────────────────────────────
     if (isHarmful(reply)) {
       reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
     }
 
-    // Update persona after reply (fire‑and‑forget)
+    // Stream the final reply
+    const stream = createSimpleStream(reply);
+
+    const insertNow = Date.now();
+    (async () => {
+      try {
+        await supabase.from("messages").insert([
+          { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+          { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: new Date(insertNow + 1).toISOString() },
+        ]);
+        await supabase.from("conversations").update({ message_count: (conv?.message_count ?? 0) + 1 }).eq("id", finalConversationId);
+      } catch (dbError: any) { console.error("Store failed:", dbError.message); }
+    })();
+
+    // Update persona (fire‑and‑forget)
     Promise.resolve().then(async () => {
       try {
         const updatedPersona = await extractPersona(lastUserMessage, persona);
@@ -888,29 +930,13 @@ export async function POST(req: NextRequest) {
       } catch {}
     });
 
-    const confidence = scoreConfidence(reply);
-    const insertNow = Date.now();
-    const userTimestamp = new Date(insertNow).toISOString();
-    const assistantTimestamp = new Date(insertNow + 1).toISOString();
-
-    try {
-      await supabase.from("messages").insert([
-        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: userTimestamp },
-        { conversation_id: finalConversationId, role: "assistant", content: reply, created_at: assistantTimestamp },
-      ]);
-      await supabase
-        .from("conversations")
-        .update({ message_count: (conv?.message_count ?? 0) + 1 })
-        .eq("id", finalConversationId);
-    } catch (dbError: any) {
-      console.error("Database store failed:", dbError.message);
-    }
-
-    return NextResponse.json({
-      reply,
-      conversationId: finalConversationId,
-      tiersUsed: usedModel ? [usedModel] : [],
-      confidence,
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "x-conversation-id": finalConversationId,
+      },
     });
   } catch (error: any) {
     console.error("Chat API error:", error.message);
