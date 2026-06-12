@@ -1,40 +1,55 @@
 // src/lib/intent.ts
 
 type IntentResult = {
-  intent: "time" | "weather" | "search" | "reasoning" | "none";
+  intent: "time" | "weather" | "search" | "none";
   query: string;
   timezone?: string;
   countryCode?: string;
 };
+
+function fallbackIntent(userMessage: string): IntentResult {
+  const lower = userMessage.toLowerCase();
+
+  if (lower.includes("what time") || lower.includes("time in")) {
+    return { intent: "time", query: userMessage };
+  }
+  if (lower.includes("weather") || lower.includes("temperature")) {
+    return { intent: "weather", query: userMessage };
+  }
+  if (
+    lower.includes("latest") || lower.includes("news") ||
+    lower.includes("current") || lower.includes("net worth") ||
+    lower.includes("price") || lower.includes("stock") ||
+    lower.includes("elon") || lower.includes("musk") ||
+    lower.includes("2026") || lower.includes("today") ||
+    lower.includes("who won") || lower.includes("score") ||
+    lower.includes("who is") || lower.includes("what is") ||
+    lower.includes("how many") || lower.includes("when did")
+  ) {
+    return { intent: "search", query: userMessage };
+  }
+  return { intent: "none", query: userMessage };
+}
 
 export async function classifyIntent(
   userMessage: string,
   conversationHistory: string
 ): Promise<IntentResult> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return { intent: "none", query: userMessage };
+  if (!apiKey) return fallbackIntent(userMessage);
 
-  const prompt = `You are an intent classifier for an AI assistant. Given the user message and conversation context, determine if the user is asking for:
+  const prompt = `Classify the user's intent. Return ONLY a JSON object with these fields:
+- "intent": one of "time", "weather", "search", or "none"
+- "query": a clean search query (or the original message if not a search)
+- "timezone": IANA timezone string if relevant, else ""
+- "countryCode": ISO country code if relevant, else ""
 
-- "time": current time or date, possibly in a specific city (e.g., "what time is it in Tokyo?")
-- "weather": current weather or temperature in a location
-- "search": factual, real‑world information that requires a web search (e.g., news, stock prices, sports scores, latest events, who won…, etc.)
-- "none": general conversation, advice, or anything that does NOT require live external data.
-
-Return a JSON object with:
-{
-  "intent": "time" | "weather" | "search" | "none",
-  "query": "a clean search query for the retrieval step",
-  "timezone": "IANA timezone name (only for 'time' intent, e.g. 'Asia/Tokyo', else empty string)",
-  "countryCode": "ISO country code (only for 'weather' or 'time' intent, else empty string)"
-}
-
-Conversation history:
+Conversation context:
 ${conversationHistory}
 
 User message: "${userMessage}"
 
-Output ONLY JSON.`;
+Output ONLY JSON, nothing else. Example: {"intent":"search","query":"Elon Musk net worth 2026","timezone":"","countryCode":""}`;
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -48,36 +63,29 @@ Output ONLY JSON.`;
         messages: [{ role: "user", content: prompt }],
         temperature: 0,
         max_tokens: 200,
-        response_format: { type: "json_object" },
       }),
     });
 
-    if (!response.ok) throw new Error(`Classifier error: ${response.status}`);
+    if (!response.ok) {
+      // Any non‑200 response → fall back to keyword check
+      console.warn(`Intent classifier returned ${response.status}, using fallback`);
+      return fallbackIntent(userMessage);
+    }
+
     const data = await response.json();
-    const parsed = JSON.parse(data.choices[0].message.content);
-    
-    const intent: IntentResult = {
+    const raw = data.choices[0].message.content.trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return fallbackIntent(userMessage);
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
       intent: parsed.intent || "none",
       query: parsed.query || userMessage,
       timezone: parsed.timezone || undefined,
       countryCode: parsed.countryCode || undefined,
     };
-    
-    // Complexity heuristic: long messages with no specific intent are treated as complex queries
-    // This activates chain‑of‑thought reasoning automatically for detailed prompts
-    if (intent.intent === "none" && userMessage.length > 60) {
-      intent.intent = "reasoning";
-      intent.query = userMessage;
-    }
-    
-    return intent;
   } catch (err) {
     console.error("Intent classification failed:", err);
-    // Even on failure, apply the complexity heuristic
-    const fallbackIntent: IntentResult = { intent: "none", query: userMessage };
-    if (userMessage.length > 60) {
-      fallbackIntent.intent = "reasoning";
-    }
-    return fallbackIntent;
+    return fallbackIntent(userMessage);
   }
 }

@@ -8,6 +8,8 @@ import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoor
 import { classifyIntent } from "@/lib/intent";
 import { deepSearch } from "@/lib/deep-search";
 import { multiStepReason } from "@/lib/chain-router";
+import { getCachedResult, setCachedResult } from "@/lib/search-cache";
+import { generateSearchQueries } from "@/lib/query-rewriter";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -528,7 +530,7 @@ function cleanReply(text: string): string {
 // ─── Helper to create a simple stream from a string ──────────
 function createSimpleStream(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  const chunks = text.match(/.{1,5}/g) || [text]; // stream in small pieces
+  const chunks = text.match(/.{1,5}/g) || [text];
   let index = 0;
   return new ReadableStream({
     pull(controller) {
@@ -635,24 +637,80 @@ export async function POST(req: NextRequest) {
         if (weather) ragContext = `🌤️ Current weather: ${weather}\n\nRespond with a friendly weather report.`;
       } catch {}
     } else if (intent.intent === "search") {
-      try {
-        const deepResult = await deepSearch(intent.query);
-        if (deepResult) {
-          ragContext = `[Deep Web Research]\n\nThe following information was gathered from multiple sources:\n\n${deepResult}\n\nSynthesize a comprehensive answer using only the facts above.`;
+      // Step 1 – generate 3 search queries
+      const queries = await generateSearchQueries(lastUserMessage, conversationHistory);
+
+      // Step 2 – search all queries in parallel via SearXNG (free)
+      const searchResults: any[] = [];
+      await Promise.all(
+        queries.map(async (query) => {
+          try {
+            const result = await searchSearXNG(query);
+            if (result) searchResults.push(result);
+          } catch {}
+        })
+      );
+
+      // Step 3 – extract URLs and deduplicate
+      const urlMap = new Map<string, { url: string; title: string; snippet: string }>();
+      for (const result of searchResults) {
+        const urls = (result.text.match(/\(https?:\/\/[^\s)]+\)/g) || [])
+          .map((link: string) => link.replace(/[()]/g, ""));
+        const lines = result.text.split("\n");
+        for (const line of lines) {
+          const match = line.match(/- (.+?): (.+?) \((https?:\/\/[^\s)]+)\)/);
+          if (match) {
+            const [, title, snippet, url] = match;
+            if (!urlMap.has(url)) {
+              urlMap.set(url, { url, title, snippet });
+            }
+          }
         }
-      } catch {}
-      if (!ragContext) {
-        const searchWithTimeout = async (fn: () => Promise<any>, ms: number) => {
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
-          return Promise.race([fn(), timeout]);
-        };
-        try { const r = await searchWithTimeout(() => searchSearXNG(intent.query), 3000) as any; if (r?.text) ragContext = `[Web]\n${r.text}\n\n`; } catch {}
-        if (!ragContext) {
-          try { const r = await searchWithTimeout(() => searchJina(intent.query), 3000) as any; if (r?.text) ragContext = `[Web]\n${r.text}\n\n`; } catch {}
-        }
-        if (!ragContext) {
-          try { const r = await searchWithTimeout(() => searchWikipedia(intent.query), 2000) as any; if (r?.summary) ragContext = `[Wikipedia]\n${r.summary}\n\n`; } catch {}
-        }
+      }
+
+      // Step 4 – select top 5 (simple scoring: prefer non‑Wikipedia for recent events)
+      const candidates = Array.from(urlMap.values());
+      const top5 = candidates
+        .sort((a, b) => {
+          const scoreA = a.url.includes("wikipedia.org") ? 1 : 2;
+          const scoreB = b.url.includes("wikipedia.org") ? 1 : 2;
+          return scoreB - scoreA;
+        })
+        .slice(0, 5);
+
+      // Step 5 – extract content from top 5 pages (via Jina Reader if key exists, else direct fetch)
+      const pageContents: string[] = [];
+      for (const item of top5) {
+        try {
+          let content = "";
+          const jinaKey = process.env.JINA_API_KEY;
+          if (jinaKey) {
+            const readerUrl = `https://r.jina.ai/${encodeURIComponent(item.url)}`;
+            const readerRes = await fetch(readerUrl, {
+              headers: { Authorization: `Bearer ${jinaKey}`, Accept: "application/json" },
+              signal: AbortSignal.timeout(3000),
+            });
+            if (readerRes.ok) {
+              const readerData = await readerRes.json();
+              content = readerData.data?.content || readerData.data?.text || "";
+            }
+          }
+          if (!content) {
+            // fallback direct fetch
+            const directRes = await fetch(item.url, { signal: AbortSignal.timeout(2000) });
+            if (directRes.ok) {
+              const html = await directRes.text();
+              content = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").substring(0, 1000);
+            }
+          }
+          if (content) {
+            pageContents.push(`[${item.title}](${item.url})\n${content.substring(0, 800)}`);
+          }
+        } catch {}
+      }
+
+      if (pageContents.length > 0) {
+        ragContext = `[Web Research]\n\n${pageContents.join("\n\n")}\n\nProvide a comprehensive answer using ONLY the information above. Include sources as clickable links.`;
       }
     }
 
@@ -737,13 +795,6 @@ export async function POST(req: NextRequest) {
       let reply = "";
       let tiersUsed: string[] = [];
 
-      if (intent.intent === "reasoning") {
-        try {
-          const chainResult = await multiStepReason(lastUserMessage, convHistory);
-          reply = chainResult.reply;
-          tiersUsed = ["chain-router"];
-        } catch {}
-      }
 
       if (!reply) {
         const result = await autoRoute(lastUserMessage, convHistory, liveData);
@@ -754,7 +805,6 @@ export async function POST(req: NextRequest) {
       reply = cleanReply(reply);
       reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
 
-      // Stream the reply (store in DB in background)
       const stream = createSimpleStream(reply);
 
       const insertNow = Date.now();
@@ -822,7 +872,6 @@ export async function POST(req: NextRequest) {
 
     let reply: string | null = null;
 
-    // Image understanding (non‑streaming, but we'll wrap later)
     const imageUrlMatch = lastUserMessage.match(/https?:\/\/\S+\.(jpg|jpeg|png|gif|webp)/i);
     if (imageUrlMatch) {
       const imageUrl = imageUrlMatch[0];
@@ -854,7 +903,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!reply) {
-      // Parallel model fallback (non‑streaming)
       const modelPromises: Promise<{ reply: string; modelName: string } | null>[] = [];
       for (let i = 0; i < Math.min(2, tierConfig.models.length); i++) {
         const modelConfig = tierConfig.models[i];
@@ -908,7 +956,6 @@ export async function POST(req: NextRequest) {
       reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
     }
 
-    // Stream the final reply
     const stream = createSimpleStream(reply);
 
     const insertNow = Date.now();
@@ -922,7 +969,6 @@ export async function POST(req: NextRequest) {
       } catch (dbError: any) { console.error("Store failed:", dbError.message); }
     })();
 
-    // Update persona (fire‑and‑forget)
     Promise.resolve().then(async () => {
       try {
         const updatedPersona = await extractPersona(lastUserMessage, persona);

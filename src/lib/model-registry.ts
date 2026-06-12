@@ -321,7 +321,7 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
     models: [fastModels[0]],   // only the first model, no fallback
     systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
     temperature: 0.3,
-    maxTokens: 100,
+    maxTokens: 200,
   },
   plus: {
     models: plusModels,
@@ -339,12 +339,12 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
     models: liveModels,
     systemPrompt: `${identity} You are currently running as N LIVE. Use real‑time web data provided.`,
     temperature: 0.3,
-    maxTokens: 2000,
+    maxTokens: 1100,
   },
   code: {
     models: codeModels,
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code.`,
     temperature: 0.2,
-    maxTokens: 4000,
+    maxTokens: 2000,
   },
 };
