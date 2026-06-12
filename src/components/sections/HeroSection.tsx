@@ -106,7 +106,7 @@ export default function HeroSection() {
           <motion.div variants={item} transition={transition}>
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              New Era of AI
+              Unified AI Workspace
             </span>
           </motion.div>
 
@@ -119,7 +119,9 @@ export default function HeroSection() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-gradient-rotate bg-[length:200%_auto]">Netsyra</span>
             <span className="text-white"> AI </span>
             <br />
-            <span className="text-white">New generic AI</span>
+            <span className="text-white">
+              AI Assistant for Chat, Research, Writing & Coding
+            </span>
           </motion.h1>
 
           {/* Detailed description - Marketing Hook */}
@@ -128,7 +130,7 @@ export default function HeroSection() {
             transition={transition}
             className="text-lg sm:text-xl text-white/70 max-w-3xl mx-auto leading-relaxed"
           >
-            A unified chat interface that automatically routes your prompts to the most efficient AI model, saving you up to 70% on API costs while delivering accurate responses.
+            Netsyra AI is an intelligent AI assistant that helps users chat, write content, conduct research, solve problems, and generate code through a single unified platform. Our system automatically selects the most suitable AI model for each request to provide fast, accurate, and efficient responses.
           </motion.p>
 
           {/* DEDICATED PURPOSE AND DATA DISCLOSURE BLOCK FOR GOOGLE REVIEWERS */}
@@ -143,7 +145,7 @@ export default function HeroSection() {
                 Purpose of the Application
               </h2>
               <p className="text-white/60 text-sm leading-relaxed">
-                Netsyra AI functions as an artificial intelligence orchestration system. The core purpose of this application is to allow registered users to submit text prompts through our interface, which are then evaluated and routed to external AI model providers (such as OpenAI or Anthropic) based on cost and processing efficiency.
+                Netsyra AI is an artificial intelligence platform that enables users to interact with advanced AI systems through a single interface. Users can ask questions, generate content, write and review code, conduct research, brainstorm ideas, and improve productivity using AI-powered tools. The platform automatically selects the most suitable AI model for each request to optimize response quality, speed, and efficiency.
               </p>
             </div>
             
@@ -152,7 +154,7 @@ export default function HeroSection() {
                 Transparency Notice & Google User Data Policy
               </h3>
               <p className="text-white/60 text-sm leading-relaxed">
-                We use Google OAuth authentication solely to verify your identity and safely handle platform user accounts. When logging in, we access only your basic profile information (specifically your email address and full name). Netsyra AI does not request permissions to access, view, modify, or store data from any other Google services, including Google Drive or Gmail.
+                Google Sign-In is used solely for account authentication and user account management. When a user signs in with Google, Netsyra AI only accesses basic profile information, including the user's name, email address, and profile picture. We do not access, read, modify, or store data from Google Drive, Gmail, Google Photos, or any other Google services.
               </p>
             </div>
           </motion.div>
@@ -202,12 +204,30 @@ export default function HeroSection() {
                 </Button>
               </Link>
             </div>
+
+            <p className="text-sm text-white/50 max-w-2xl mx-auto">
+              Create an account to access AI-powered chat, research assistance,
+              content generation, coding support, and productivity tools.
+            </p>
             
             {/* Clear, compliant links to Privacy and Terms */}
-            <div className="text-sm text-white/40 mt-4 space-x-2">
+            <div className="text-sm text-white/40 mt-4 flex flex-wrap justify-center gap-2">
               <span>By using Netsyra AI, you agree to our</span>
-              <Link href="/privacy" className="underline hover:text-white transition-colors">
+
+              <Link
+                href="/privacy"
+                className="underline hover:text-white transition-colors"
+              >
                 Privacy Policy
+              </Link>
+
+              <span>and</span>
+
+              <Link
+                href="/terms"
+                className="underline hover:text-white transition-colors"
+              >
+                Terms of Service
               </Link>
             </div>
           </motion.div>
