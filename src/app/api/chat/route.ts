@@ -6,8 +6,6 @@ import { autoRoute } from "@/lib/router";
 import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
 import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoordinates } from "@/lib/time-utils";
 import { classifyIntent } from "@/lib/intent";
-import { deepSearch } from "@/lib/deep-search";
-import { getCachedResult, setCachedResult } from "@/lib/search-cache";
 import { generateSearchQueries } from "@/lib/query-rewriter";
 import { verifyAnswer } from "@/lib/verifier";
 
