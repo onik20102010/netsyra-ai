@@ -27,7 +27,7 @@ type Message = {
   content: string;
   thinking?: string;
   wikiLink?: string | null;
-  confidence?: number; // new: confidence score from server
+  confidence?: number;
 };
 
 interface ChatInterfaceProps {
@@ -156,7 +156,6 @@ export default function ChatInterface({
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
   }, [input]);
 
-  // Fetch messages for the current conversation
   useEffect(() => {
     if (!conversationId) return;
     const fetchMessages = async () => {
@@ -223,10 +222,6 @@ export default function ChatInterface({
           prev.map(m => (m.id === assistantId ? { ...m, content: fullContent } : m))
         );
       }
-
-      // Note: In a streaming setup, confidence may not be available yet.
-      // We can optionally fetch it separately or include it in the response.
-      // For now, we leave confidence undefined.
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
       setMessages(prev => prev.filter(m => m.id !== assistantId));
@@ -480,12 +475,10 @@ export default function ChatInterface({
                             >
                               {msg.content}
                             </ReactMarkdown>
-                            {/* Blinking cursor while streaming */}
                             {isLoading && msg.id === streamingMessageId && (
                               <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
                             )}
                           </div>
-                          {/* Confidence badge for low confidence responses */}
                           {msg.confidence !== undefined && msg.confidence < 0.6 && (
                             <span className="inline-block text-xs text-amber-500 ml-2">
                               ⚠️ Low confidence
@@ -503,8 +496,6 @@ export default function ChatInterface({
                               View from there
                             </a>
                           )}
-
-                          {/* Execution output display */}
                           {executionOutput && (
                             <div className="mt-2 p-3 rounded-xl bg-gray-900 border border-gray-700 text-sm text-green-400 whitespace-pre-wrap font-mono">
                               {executionOutput}
@@ -598,19 +589,21 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      {/* Input */}
+      {/* Input – modern pill style */}
       <div className="sticky bottom-0">
-        <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-2 pb-1">
+        <div className="w-full max-w-3xl mx-auto px-4 pt-2 pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 px-1">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2 px-1">
               <Sparkles className="w-3 h-3 text-indigo-500" />
               <span>Auto‑routed via {autoTiersUsed.join(", ")}</span>
             </div>
           )}
 
           <form onSubmit={handleSend} className="relative">
-            <div className="relative bg-gray-100/50 border border-gray-200 rounded-xl focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              <div className="absolute left-2 bottom-2">
+            {/* Pill container */}
+            <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+              {/* Model selector – moved to inside the pill, left side */}
+              <div className="flex-shrink-0 pb-1">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
               </div>
 
@@ -630,7 +623,7 @@ export default function ChatInterface({
                 }}
                 placeholder="Message Netsyra..."
                 rows={1}
-                className="w-full bg-transparent resize-none outline-none text-gray-900 placeholder:text-gray-400 py-3 pl-12 pr-12 text-sm max-h-[200px] overflow-y-auto"
+                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 text-sm max-h-[120px]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -638,20 +631,22 @@ export default function ChatInterface({
                   }
                 }}
               />
+
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || lineLimitReached}
-                className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-sm"
+                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
               >
-                <Send className="w-4 h-4 text-white" />
+                <Send className="w-4 h-4" />
               </button>
             </div>
+
             {lineLimitReached && (
               <p className="text-xs text-rose-500 mt-1">
                 Message is too long. Please reduce to 40 lines or fewer.
               </p>
             )}
-            <p className="text-[11px] text-gray-400 text-center mt-0.5 leading-tight">
+            <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">
               Netsyra may produce inaccurate information.
               {diveDeep && " 🌐 Dive Deep is ON"}
             </p>
