@@ -7,9 +7,9 @@ import { checkModelLimit, incrementModelUsage } from "@/lib/model-limits";
 import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoordinates } from "@/lib/time-utils";
 import { classifyIntent } from "@/lib/intent";
 import { deepSearch } from "@/lib/deep-search";
-import { multiStepReason } from "@/lib/chain-router";
 import { getCachedResult, setCachedResult } from "@/lib/search-cache";
 import { generateSearchQueries } from "@/lib/query-rewriter";
+import { verifyAnswer } from "@/lib/verifier";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -618,6 +618,9 @@ export async function POST(req: NextRequest) {
 
     const intent = await classifyIntent(lastUserMessage, conversationHistory);
 
+    // We'll store top5 search results if the intent is search
+    let top5SearchResults: { url: string; title: string; snippet: string }[] = [];
+
     if (intent.intent === "time") {
       try {
         const tz = intent.timezone || "Asia/Karachi";
@@ -668,15 +671,37 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Step 4 – select top 5 (simple scoring: prefer non‑Wikipedia for recent events)
+      // Step 4 – select top 5 with freshness bias
+      const now = Date.now();
       const candidates = Array.from(urlMap.values());
       const top5 = candidates
-        .sort((a, b) => {
-          const scoreA = a.url.includes("wikipedia.org") ? 1 : 2;
-          const scoreB = b.url.includes("wikipedia.org") ? 1 : 2;
-          return scoreB - scoreA;
+        .map((item) => {
+          let freshness = 0;
+          const lower = lastUserMessage.toLowerCase();
+          const isNewsQuery =
+            lower.includes("news") || lower.includes("latest") ||
+            lower.includes("today") || lower.includes("2026") ||
+            lower.includes("current") || lower.includes("recent");
+
+          const dateMatch = item.snippet.match(/(\d{4})/);
+          if (dateMatch) {
+            const year = parseInt(dateMatch[1]);
+            freshness = year === new Date().getFullYear() ? 2 : year > 2020 ? 1 : 0;
+          }
+
+          const authority = item.url.includes("wikipedia.org") ? 1 : 2;
+          const relevance = item.snippet.includes(lastUserMessage.split(" ")[0]) ? 2 : 1;
+
+          const score = isNewsQuery
+            ? freshness * 0.4 + authority * 0.3 + relevance * 0.3
+            : authority * 0.6 + relevance * 0.4;
+
+          return { ...item, score };
         })
+        .sort((a, b) => b.score - a.score)
         .slice(0, 5);
+
+      top5SearchResults = top5;
 
       // Step 5 – extract content from top 5 pages (via Jina Reader if key exists, else direct fetch)
       const pageContents: string[] = [];
@@ -696,7 +721,6 @@ export async function POST(req: NextRequest) {
             }
           }
           if (!content) {
-            // fallback direct fetch
             const directRes = await fetch(item.url, { signal: AbortSignal.timeout(2000) });
             if (directRes.ok) {
               const html = await directRes.text();
@@ -737,7 +761,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const now = new Date();
+    const nowDate = new Date();
     const { data: conv } = await supabase
       .from("conversations")
       .select("message_count, message_reset_at")
@@ -746,16 +770,16 @@ export async function POST(req: NextRequest) {
 
     if (conv) {
       const resetTime = new Date(conv.message_reset_at);
-      const hoursSinceReset = (now.getTime() - resetTime.getTime()) / (1000 * 60 * 60);
+      const hoursSinceReset = (nowDate.getTime() - resetTime.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceReset >= 8) {
         await supabase
           .from("conversations")
-          .update({ message_count: 0, message_reset_at: now.toISOString() })
+          .update({ message_count: 0, message_reset_at: nowDate.toISOString() })
           .eq("id", finalConversationId);
       } else if (conv.message_count >= 10) {
         const nextReset = new Date(resetTime.getTime() + 8 * 60 * 60 * 1000);
-        const remaining = Math.ceil((nextReset.getTime() - now.getTime()) / (1000 * 60 * 60));
+        const remaining = Math.ceil((nextReset.getTime() - nowDate.getTime()) / (1000 * 60 * 60));
         return NextResponse.json(
           { error: `You've reached the limit (10 messages) for this conversation. Resets in about ${remaining} hour(s).` },
           { status: 429 }
@@ -795,7 +819,6 @@ export async function POST(req: NextRequest) {
       let reply = "";
       let tiersUsed: string[] = [];
 
-
       if (!reply) {
         const result = await autoRoute(lastUserMessage, convHistory, liveData);
         reply = result.reply;
@@ -804,6 +827,14 @@ export async function POST(req: NextRequest) {
 
       reply = cleanReply(reply);
       reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+
+      // Verify answer if it's a search intent
+      if (intent.intent === "search" && ragContext && top5SearchResults.length > 0) {
+        const sourceTexts = top5SearchResults.map((item) => item.title + ": " + item.snippet);
+        try {
+          reply = await verifyAnswer(reply, sourceTexts, lastUserMessage);
+        } catch {}
+      }
 
       const stream = createSimpleStream(reply);
 
@@ -902,6 +933,9 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    // Collect errors from each model attempt
+    const modelErrors: Error[] = [];
+
     if (!reply) {
       const modelPromises: Promise<{ reply: string; modelName: string } | null>[] = [];
       for (let i = 0; i < Math.min(2, tierConfig.models.length); i++) {
@@ -931,8 +965,10 @@ export async function POST(req: NextRequest) {
               }
               await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(result.length / 4));
               return { reply: result, modelName: modelConfig.modelName };
-            } catch (err) {
-              console.error(`Model ${modelConfig.modelName} failed:`, err);
+            } catch (err: unknown) {
+              const error = err instanceof Error ? err : new Error(String(err));
+              modelErrors.push(error);
+              console.error(`Model ${modelConfig.modelName} failed:`, error.message);
               return null;
             }
           })()
@@ -948,9 +984,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!reply) reply = "Sorry, all models are currently unavailable.";
+    // If all models failed, return a clear error
+    if (!reply) {
+      const lastError = modelErrors[0] || null;
+      const isNetworkError =
+        lastError?.message?.includes("Connect Timeout") ||
+        lastError?.message?.includes("fetch failed");
+      const msg = isNetworkError
+        ? "Network error – could not reach the AI provider. Please try again in a moment."
+        : lastError
+        ? `All models failed. Last error: ${lastError.message}`
+        : "All models are currently unavailable.";
+      return NextResponse.json({ error: msg }, { status: 429 });
+    }
 
     reply = cleanReply(reply);
+  
+
+    // Verify answer if it's a search intent
+    if (intent.intent === "search" && ragContext && top5SearchResults.length > 0) {
+      const sourceTexts = top5SearchResults.map((item) => item.title + ": " + item.snippet);
+      try {
+        reply = await verifyAnswer(reply, sourceTexts, lastUserMessage);
+      } catch {}
+    }
 
     if (isHarmful(reply)) {
       reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";

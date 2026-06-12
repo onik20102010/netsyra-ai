@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cpu, BrainCircuit, Globe, Code, Plus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const AutoIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,9 +37,12 @@ export default function ModelSelector({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [modelStatuses, setModelStatuses] = useState<Record<string, any>>({});
+  const { user } = useAuth();
 
-  // Fetch model statuses on mount and every 60 seconds
+  // Fetch model statuses only when user is authenticated
   useEffect(() => {
+    if (!user) return;
+
     const fetchStatuses = async () => {
       try {
         const res = await fetch("/api/model-status");
@@ -49,7 +53,7 @@ export default function ModelSelector({
     fetchStatuses();
     const interval = setInterval(fetchStatuses, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
