@@ -126,7 +126,6 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [executionOutput, setExecutionOutput] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
@@ -305,21 +304,6 @@ export default function ChatInterface({
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
 
-  const handleRunCode = async (code: string, language: string) => {
-    setExecutionOutput(null);
-    try {
-      const res = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language }),
-      });
-      const data = await res.json();
-      setExecutionOutput(data.output || data.error || "No output");
-    } catch {
-      setExecutionOutput("Execution failed");
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="relative flex-1">
@@ -403,6 +387,7 @@ export default function ChatInterface({
                         <div className="space-y-2">
                           <div className="prose-chat max-w-none">
                             <ReactMarkdown
+                              key={`md-${msg.id}-${msg.content.length}`}
                               remarkPlugins={[remarkGfm]}
                               components={{
                                 code({ node, inline, className, children, ...props }: any) {
@@ -416,16 +401,11 @@ export default function ChatInterface({
                                           <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
                                             {match[1]}
                                           </span>
-                                          <div className="flex items-center">
+                                          <div className="flex items-center gap-2">
                                             <CopyButton code={codeString} />
-                                            {(match[1] === "html" || match[1] === "htm") && <PreviewButton code={codeString} />}
-                                            <button
-                                              onClick={() => handleRunCode(codeString, match[1])}
-                                              className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition ml-2"
-                                              title="Run code"
-                                            >
-                                              ▶ Run
-                                            </button>
+                                            {(match[1] === "html" || match[1] === "htm") && (
+                                              <PreviewButton code={codeString} />
+                                            )}
                                           </div>
                                         </div>
                                         <SyntaxHighlighter
@@ -495,11 +475,6 @@ export default function ChatInterface({
                               <ExternalLink className="w-3.5 h-3.5" />
                               View from there
                             </a>
-                          )}
-                          {executionOutput && (
-                            <div className="mt-2 p-3 rounded-xl bg-gray-900 border border-gray-700 text-sm text-green-400 whitespace-pre-wrap font-mono">
-                              {executionOutput}
-                            </div>
                           )}
                         </div>
                       )}
