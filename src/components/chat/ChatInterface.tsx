@@ -28,6 +28,7 @@ type Message = {
   thinking?: string;
   wikiLink?: string | null;
   confidence?: number;
+  voiceMessage?: boolean;
 };
 
 interface ChatInterfaceProps {
@@ -126,6 +127,16 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+
+  // Voice input state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef("");
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const voiceReplyRef = useRef(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
@@ -178,6 +189,77 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId]);
 
+  // Initialize speech recognition once
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event: any) => {
+      let finalText = "";
+      let interimText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText += transcript + " ";
+        } else {
+          interimText += transcript;
+        }
+      }
+
+      transcriptRef.current = (transcriptRef.current + finalText).trim();
+      setInput((transcriptRef.current + " " + interimText).trim());
+    };
+
+    recognition.onerror = () => {
+      stopRecording();
+    };
+
+    recognition.onend = () => {
+      if (isRecording) {
+        stopRecording();
+      }
+    };
+
+    recognitionRef.current = recognition;
+  }, []); // Only initialize once
+
+  const startRecording = () => {
+    if (!recognitionRef.current) {
+      toast.error("Speech recognition not supported in your browser");
+      return;
+    }
+
+    transcriptRef.current = "";
+    setInput("");
+    recognitionRef.current.start();
+    setIsRecording(true);
+    setRecordingDuration(0);
+
+    durationIntervalRef.current = setInterval(() => {
+      setRecordingDuration((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const stopRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsRecording(false);
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  };
+
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
     setIsLoading(true);
 
@@ -221,6 +303,17 @@ export default function ChatInterface({
           prev.map(m => (m.id === assistantId ? { ...m, content: fullContent } : m))
         );
       }
+
+      // Auto‑speak AI reply for voice messages
+      if (voiceReplyRef.current && fullContent) {
+        const utterance = new SpeechSynthesisUtterance(fullContent);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.onstart = () => setSpeakingMessageId(assistantId);
+        utterance.onend = () => setSpeakingMessageId(null);
+        window.speechSynthesis.speak(utterance);
+        voiceReplyRef.current = false;
+      }
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
       setMessages(prev => prev.filter(m => m.id !== assistantId));
@@ -234,7 +327,19 @@ export default function ChatInterface({
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { id: Date.now().toString(), role: "user", content: input.trim() };
+    const wasRecording = isRecording;
+    if (wasRecording) {
+      stopRecording();
+      voiceReplyRef.current = true;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input.trim(),
+      voiceMessage: wasRecording,
+    };
+
     setMessages(prev => [...prev, userMessage]);
     setInput("");
 
@@ -303,6 +408,21 @@ export default function ChatInterface({
 
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
+
+  const toggleSpeak = (messageId: string, text: string) => {
+    if (speakingMessageId === messageId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(messageId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -513,6 +633,30 @@ export default function ChatInterface({
                               <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                               </button>
+
+                              {/* Speaker button – always visible on assistant messages */}
+                              <button
+                                onClick={() => toggleSpeak(msg.id, msg.content)}
+                                className={`transition ${
+                                  speakingMessageId === msg.id ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
+                                }`}
+                                title={speakingMessageId === msg.id ? "Stop speaking" : "Read aloud"}
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                  {speakingMessageId === msg.id ? (
+                                    <>
+                                      <line x1="15" y1="9" x2="19" y2="15" />
+                                      <line x1="19" y1="9" x2="15" y2="15" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                    </>
+                                  )}
+                                </svg>
+                              </button>
                             </>
                           )}
                         </div>
@@ -564,7 +708,7 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      {/* Input – modern pill style */}
+      {/* Input – modern pill style with voice input */}
       <div className="sticky bottom-0">
         <div className="w-full max-w-3xl mx-auto px-4 pt-2 pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
@@ -577,10 +721,32 @@ export default function ChatInterface({
           <form onSubmit={handleSend} className="relative">
             {/* Pill container */}
             <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              {/* Model selector – moved to inside the pill, left side */}
+              {/* Model selector */}
               <div className="flex-shrink-0 pb-1">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
               </div>
+
+              {/* Mic button with duration */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`flex-shrink-0 h-9 rounded-full flex items-center justify-center gap-1 px-2 transition ${
+                  isRecording
+                    ? "bg-red-500 text-white animate-pulse min-w-[56px]"
+                    : "w-9 bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+                title={isRecording ? "Stop recording" : "Start voice input"}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+                {isRecording && (
+                  <span className="text-xs font-mono tabular-nums">{recordingDuration}s</span>
+                )}
+              </button>
 
               <textarea
                 ref={mainInputRef}

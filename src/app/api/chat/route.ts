@@ -8,6 +8,7 @@ import { getCurrentTimeAndLocation, getUpcomingHolidays, getWeather, getCityCoor
 import { classifyIntent } from "@/lib/intent";
 import { generateSearchQueries } from "@/lib/query-rewriter";
 import { verifyAnswer } from "@/lib/verifier";
+import { retrieveMemories, extractMemories, storeMemory } from "@/lib/memory";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -608,6 +609,15 @@ export async function POST(req: NextRequest) {
       ? `Adapt your tone to match the user's preferred style: ${persona}\n\n`
       : "";
 
+    // ── Memory retrieval ──
+    let memoryContext = "";
+    try {
+      const memories = await retrieveMemories(user.id, lastUserMessage);
+      if (memories.length) {
+        memoryContext = "Important information about the user:\n" + memories.map(m => `- ${m}`).join("\n");
+      }
+    } catch {}
+
     let ragContext = "";
     const conversationHistory = messages
       .slice(0, -1)
@@ -638,10 +648,7 @@ export async function POST(req: NextRequest) {
         if (weather) ragContext = `🌤️ Current weather: ${weather}\n\nRespond with a friendly weather report.`;
       } catch {}
     } else if (intent.intent === "search") {
-      // Step 1 – generate 3 search queries
       const queries = await generateSearchQueries(lastUserMessage, conversationHistory);
-
-      // Step 2 – search all queries in parallel via SearXNG (free)
       const searchResults: any[] = [];
       await Promise.all(
         queries.map(async (query) => {
@@ -652,7 +659,6 @@ export async function POST(req: NextRequest) {
         })
       );
 
-      // Step 3 – extract URLs and deduplicate
       const urlMap = new Map<string, { url: string; title: string; snippet: string }>();
       for (const result of searchResults) {
         const urls = (result.text.match(/\(https?:\/\/[^\s)]+\)/g) || [])
@@ -669,7 +675,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Step 4 – select top 5 with freshness bias
       const now = Date.now();
       const candidates = Array.from(urlMap.values());
       const top5 = candidates
@@ -701,7 +706,6 @@ export async function POST(req: NextRequest) {
 
       top5SearchResults = top5;
 
-      // Step 5 – extract content from top 5 pages (via Jina Reader if key exists, else direct fetch)
       const pageContents: string[] = [];
       for (const item of top5) {
         try {
@@ -801,6 +805,7 @@ export async function POST(req: NextRequest) {
 
       const prefixParts: string[] = [];
       if (ragContext) prefixParts.push(ragContext);
+      if (memoryContext) prefixParts.push(memoryContext);
       if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
       if (prefixParts.length > 0) convHistory = `[System context]\n${prefixParts.join("\n")}\n${convHistory}`;
 
@@ -847,6 +852,17 @@ export async function POST(req: NextRequest) {
         } catch (dbError: any) { console.error("Store failed:", dbError.message); }
       })();
 
+      // ── Store new memories (fire‑and‑forget) ──
+      Promise.resolve().then(async () => {
+        try {
+          const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n");
+          const facts = await extractMemories(lastUserMessage, conversationContext);
+          for (const fact of facts) {
+            if (fact.importance > 0.3) await storeMemory(user.id, fact.content, fact.importance);
+          }
+        } catch {}
+      });
+
       return new Response(stream, {
         headers: {
           "Content-Type": "text/event-stream",
@@ -888,12 +904,10 @@ export async function POST(req: NextRequest) {
       : "";
 
     const fullSystemPrompt = (
-      extraContext +
       instructionContext +
-      personaContext +
-      priorityInstruction +
       (webContext ? webContext : "") +
       (ragContext ? `${ragContext}\n\n` : "") +
+      (memoryContext ? `${memoryContext}\n\n` : "") +
       nameContext +
       goalContext +
       baseSystem
@@ -997,7 +1011,6 @@ export async function POST(req: NextRequest) {
     }
 
     reply = cleanReply(reply);
-  
 
     // Verify answer if it's a search intent
     if (intent.intent === "search" && ragContext && top5SearchResults.length > 0) {
@@ -1024,6 +1037,18 @@ export async function POST(req: NextRequest) {
       } catch (dbError: any) { console.error("Store failed:", dbError.message); }
     })();
 
+    // ── Store new memories (fire‑and‑forget) ──
+    Promise.resolve().then(async () => {
+      try {
+        const conversationContext = messages.slice(0, -1).map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n");
+        const facts = await extractMemories(lastUserMessage, conversationContext);
+        for (const fact of facts) {
+          if (fact.importance > 0.3) await storeMemory(user.id, fact.content, fact.importance);
+        }
+      } catch {}
+    });
+
+    // Update persona (fire‑and‑forget)
     Promise.resolve().then(async () => {
       try {
         const updatedPersona = await extractPersona(lastUserMessage, persona);

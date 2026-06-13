@@ -24,12 +24,17 @@ const transition = {
 };
 
 const backgroundElements = [
-  { icon: Brain, top: "20%", left: "10%" },
-  { icon: Cpu, top: "60%", left: "85%" },
-  { icon: Orbit, top: "70%", left: "15%" },
-  { icon: Sparkles, top: "30%", left: "80%" },
-  { icon: Zap, top: "15%", left: "90%" },
-  { icon: Activity, top: "80%", left: "40%" },
+  { icon: Brain, top: "18%", left: "10%" },
+  { icon: Cpu, top: "60%", left: "84%" },
+  { icon: Orbit, top: "70%", left: "14%" },
+  { icon: Sparkles, top: "28%", left: "78%" },
+  { icon: Zap, top: "14%", left: "90%" },
+  { icon: Activity, top: "78%", left: "42%" },
+  { icon: Shield, top: "45%", left: "8%" },
+  { icon: Sparkles, top: "10%", left: "60%" },
+  { icon: Orbit, top: "52%", left: "65%" },
+  { icon: Cpu, top: "35%", left: "25%" },
+  { icon: Brain, top: "82%", left: "78%" },
 ];
 
 export default function HeroSection() {
