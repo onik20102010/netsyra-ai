@@ -1,7 +1,7 @@
 ﻿{
   "headers": [
     {
-      "source": "/(.*\\.(png|jpg|svg|ico|woff2?|ttf|eot|css))",
+      "source": "/_next/static/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
