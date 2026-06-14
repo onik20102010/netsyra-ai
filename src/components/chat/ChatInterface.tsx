@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import WebViewer from "./WebViewer";
 
 type Message = {
   id: string;
@@ -28,7 +29,6 @@ type Message = {
   thinking?: string;
   wikiLink?: string | null;
   confidence?: number;
-  voiceMessage?: boolean;
 };
 
 interface ChatInterfaceProps {
@@ -127,15 +127,17 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
+  const [partialReply, setPartialReply] = useState("");
 
-  // Voice input state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const transcriptRef = useRef("");
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const voiceReplyRef = useRef(false);
+  // ── Thinking / typing indicators ──────────────────────────
+  const [isThinking, setIsThinking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showStream, setShowStream] = useState(false);
+
+  const typedBufferRef = useRef<string>("");
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const TYPING_DELAY = 2000;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -143,7 +145,7 @@ export default function ChatInterface({
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages, partialReply]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -157,7 +159,7 @@ export default function ChatInterface({
 
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [messages]);
+  }, [messages, partialReply]);
 
   useEffect(() => {
     const textarea = mainInputRef.current;
@@ -189,83 +191,122 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId]);
 
-  // Initialize speech recognition once
+  // Cleanup typing timer on unmount
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event: any) => {
-      let finalText = "";
-      let interimText = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalText += transcript + " ";
-        } else {
-          interimText += transcript;
-        }
-      }
-
-      transcriptRef.current = (transcriptRef.current + finalText).trim();
-      setInput((transcriptRef.current + " " + interimText).trim());
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
+  }, []);
 
-    recognition.onerror = () => {
-      stopRecording();
-    };
-
-    recognition.onend = () => {
-      if (isRecording) {
-        stopRecording();
-      }
-    };
-
-    recognitionRef.current = recognition;
-  }, []); // Only initialize once
-
-  const startRecording = () => {
-    if (!recognitionRef.current) {
-      toast.error("Speech recognition not supported in your browser");
-      return;
-    }
-
-    transcriptRef.current = "";
-    setInput("");
-    recognitionRef.current.start();
-    setIsRecording(true);
-    setRecordingDuration(0);
-
-    durationIntervalRef.current = setInterval(() => {
-      setRecordingDuration((prev) => prev + 1);
-    }, 1000);
+  const toggleLink = (url: string) => {
+    setExpandedLinks((prev) => ({
+      ...prev,
+      [url]: !prev[url],
+    }));
   };
 
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsRecording(false);
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
-  };
+  const MarkdownRenderer = ({ content }: { content: string }) => (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a({ href, children, ...props }: any) {
+          if (!href) return <span>{children}</span>;
+          const isExpanded = expandedLinks[href] || false;
+          return (
+            <span className="inline">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleLink(href);
+                }}
+                className="text-blue-600 underline cursor-pointer hover:text-blue-800"
+                {...props}
+              >
+                {children}
+              </button>
+              {isExpanded && (
+                <WebViewer url={href} onClose={() => toggleLink(href)} />
+              )}
+            </span>
+          );
+        },
+        code({ node, inline, className, children, ...props }: any) {
+          const match = /language-(\w+)/.exec(className || "");
+          const codeString = String(children).replace(/\n$/, "");
+
+          if (!inline && match) {
+            return (
+              <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                  <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    {match[1]}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <CopyButton code={codeString} />
+                    {(match[1] === "html" || match[1] === "htm") && (
+                      <PreviewButton code={codeString} />
+                    )}
+                  </div>
+                </div>
+                <SyntaxHighlighter
+                  language={match[1]}
+                  style={vscDarkPlus}
+                  customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                  codeTagProps={{ className: "text-sm" }}
+                >
+                  {codeString}
+                </SyntaxHighlighter>
+              </div>
+            );
+          }
+          return (
+            <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+              {children}
+            </code>
+          );
+        },
+        table({ children }: any) {
+          return (
+            <div className="overflow-x-auto my-4">
+              <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                {children}
+              </table>
+            </div>
+          );
+        },
+        th({ children }: any) {
+          return (
+            <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
+              {children}
+            </th>
+          );
+        },
+        td({ children }: any) {
+          return (
+            <td className="border border-gray-300 px-4 py-2 text-gray-700">
+              {children}
+            </td>
+          );
+        },
+        hr({ node, ...props }: any) {
+          return <hr className="my-8 border-t border-gray-300" {...props} />;
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
     setIsLoading(true);
+    setIsThinking(true);
+    setIsTyping(false);
+    setShowStream(false);
+    setPartialReply("");
+    typedBufferRef.current = "";
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
 
     const assistantId = (Date.now() + 1).toString();
-    const assistantMessage: Message = { id: assistantId, role: "assistant", content: "" };
-    setMessages(prev => [...prev, assistantMessage]);
     setStreamingMessageId(assistantId);
     setInput("");
 
@@ -292,33 +333,50 @@ export default function ChatInterface({
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
-      const decoder = new TextDecoder();
+
       let fullContent = "";
+      let firstChunkReceived = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        fullContent += decoder.decode(value, { stream: true });
-        setMessages(prev =>
-          prev.map(m => (m.id === assistantId ? { ...m, content: fullContent } : m))
-        );
+
+        const chunkText = new TextDecoder().decode(value, { stream: true });
+        fullContent += chunkText;
+
+        if (!firstChunkReceived) {
+          firstChunkReceived = true;
+          setIsThinking(false);
+          setIsTyping(true);
+
+          typedBufferRef.current = chunkText;
+          typingTimerRef.current = setTimeout(() => {
+            setPartialReply(typedBufferRef.current);
+            setShowStream(true);
+            setIsTyping(false);
+            typedBufferRef.current = "";
+          }, TYPING_DELAY);
+        } else if (isTyping && !showStream) {
+          typedBufferRef.current += chunkText;
+        } else if (showStream) {
+          setPartialReply(prev => prev + chunkText);
+        }
       }
 
-      // Auto‑speak AI reply for voice messages
-      if (voiceReplyRef.current && fullContent) {
-        const utterance = new SpeechSynthesisUtterance(fullContent);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.onstart = () => setSpeakingMessageId(assistantId);
-        utterance.onend = () => setSpeakingMessageId(null);
-        window.speechSynthesis.speak(utterance);
-        voiceReplyRef.current = false;
-      }
+      const assistantMessage: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: fullContent,
+      };
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
-      setMessages(prev => prev.filter(m => m.id !== assistantId));
     } finally {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       setIsLoading(false);
+      setIsThinking(false);
+      setIsTyping(false);
+      setShowStream(false);
       setStreamingMessageId(null);
     }
   };
@@ -327,23 +385,16 @@ export default function ChatInterface({
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const wasRecording = isRecording;
-    if (wasRecording) {
-      stopRecording();
-      voiceReplyRef.current = true;
-    }
-
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
-      voiceMessage: wasRecording,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-20);
+    const contextMessages = [...messages, userMessage].slice(-30);
     await sendMessage(userMessage.content, contextMessages);
   };
 
@@ -357,7 +408,7 @@ export default function ChatInterface({
     const truncated = messages.slice(0, idx);
     setMessages(truncated);
 
-    const contextMessages = [...truncated.slice(-14)];
+    const contextMessages = [...truncated.slice(-30)];
     await sendMessage(userMsg.content, contextMessages);
   };
 
@@ -388,7 +439,7 @@ export default function ChatInterface({
     setMessages(truncated);
     cancelEditing();
 
-    const contextMessages = truncated.slice(-14);
+    const contextMessages = truncated.slice(-30);
     await sendMessage(newContent, contextMessages);
   };
 
@@ -409,28 +460,13 @@ export default function ChatInterface({
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
 
-  const toggleSpeak = (messageId: string, text: string) => {
-    if (speakingMessageId === messageId) {
-      window.speechSynthesis.cancel();
-      setSpeakingMessageId(null);
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.onend = () => setSpeakingMessageId(null);
-    setSpeakingMessageId(messageId);
-    window.speechSynthesis.speak(utterance);
-  };
-
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="relative flex-1">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
           <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-6 pb-0 space-y-6">
             <AnimatePresence initial={false}>
-              {messages.length === 0 && (
+              {messages.length === 0 && !isThinking && !isTyping && !showStream && (
                 <motion.div
                   key="empty-state"
                   initial={{ opacity: 0 }}
@@ -450,6 +486,7 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
+              {/* Static messages */}
               {messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
                 const isEditing = editingMessageId === msg.id;
@@ -505,80 +542,7 @@ export default function ChatInterface({
                         <p>{msg.content}</p>
                       ) : (
                         <div className="space-y-2">
-                          <div className="prose-chat max-w-none">
-                            <ReactMarkdown
-                              key={`md-${msg.id}-${msg.content.length}`}
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({ node, inline, className, children, ...props }: any) {
-                                  const match = /language-(\w+)/.exec(className || "");
-                                  const codeString = String(children).replace(/\n$/, "");
-
-                                  if (!inline && match) {
-                                    return (
-                                      <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
-                                        <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-                                          <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                            {match[1]}
-                                          </span>
-                                          <div className="flex items-center gap-2">
-                                            <CopyButton code={codeString} />
-                                            {(match[1] === "html" || match[1] === "htm") && (
-                                              <PreviewButton code={codeString} />
-                                            )}
-                                          </div>
-                                        </div>
-                                        <SyntaxHighlighter
-                                          language={match[1]}
-                                          style={vscDarkPlus}
-                                          customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                                          codeTagProps={{ className: "text-sm" }}
-                                        >
-                                          {codeString}
-                                        </SyntaxHighlighter>
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
-                                      {children}
-                                    </code>
-                                  );
-                                },
-                                table({ children }: any) {
-                                  return (
-                                    <div className="overflow-x-auto my-4">
-                                      <table className="min-w-full border-collapse border border-gray-300 text-sm">
-                                        {children}
-                                      </table>
-                                    </div>
-                                  );
-                                },
-                                th({ children }: any) {
-                                  return (
-                                    <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
-                                      {children}
-                                    </th>
-                                  );
-                                },
-                                td({ children }: any) {
-                                  return (
-                                    <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                      {children}
-                                    </td>
-                                  );
-                                },
-                                hr({ node, ...props }: any) {
-                                  return <hr className="my-8 border-t border-gray-300" {...props} />;
-                                },
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
-                            {isLoading && msg.id === streamingMessageId && (
-                              <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
-                            )}
-                          </div>
+                          <MarkdownRenderer content={msg.content} />
                           {msg.confidence !== undefined && msg.confidence < 0.6 && (
                             <span className="inline-block text-xs text-amber-500 ml-2">
                               ⚠️ Low confidence
@@ -633,30 +597,6 @@ export default function ChatInterface({
                               <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                               </button>
-
-                              {/* Speaker button – always visible on assistant messages */}
-                              <button
-                                onClick={() => toggleSpeak(msg.id, msg.content)}
-                                className={`transition ${
-                                  speakingMessageId === msg.id ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
-                                }`}
-                                title={speakingMessageId === msg.id ? "Stop speaking" : "Read aloud"}
-                              >
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                  {speakingMessageId === msg.id ? (
-                                    <>
-                                      <line x1="15" y1="9" x2="19" y2="15" />
-                                      <line x1="19" y1="9" x2="15" y2="15" />
-                                    </>
-                                  ) : (
-                                    <>
-                                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                    </>
-                                  )}
-                                </svg>
-                              </button>
                             </>
                           )}
                         </div>
@@ -666,16 +606,76 @@ export default function ChatInterface({
                 );
               })}
 
-              {isLoading && (
+              {/* Netsyra is thinking… */}
+              {isThinking && (
                 <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  key="thinking-indicator"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2">
+                    <span className="text-gray-500">Netsyra is thinking</span>
+                    <motion.span
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ repeat: Infinity, duration: 1.4 }}
+                    >
+                      …
+                    </motion.span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Netsyra is typing… */}
+              {isTyping && (
+                <motion.div
+                  key="typing-indicator"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2">
+                    <span className="text-gray-500">Netsyra is typing</span>
+                    <motion.span
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ repeat: Infinity, duration: 1.4 }}
+                    >
+                      …
+                    </motion.span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Partial reply */}
+              {showStream && partialReply && (
+                <motion.div
+                  key="streaming-bubble"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="flex gap-3 justify-start"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                     <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                   </div>
+                  <div className="max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2">
+                    <MarkdownRenderer content={partialReply} />
+                    {isLoading && (
+                      <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Loading fallback */}
+              {isLoading && !isThinking && !isTyping && !showStream && (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex gap-3 justify-start pl-12"
+                >
                   <div className="text-gray-400 pt-1 space-y-2">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -708,7 +708,7 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      {/* Input – modern pill style with voice input */}
+      {/* Input area */}
       <div className="sticky bottom-0">
         <div className="w-full max-w-3xl mx-auto px-4 pt-2 pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
@@ -719,34 +719,11 @@ export default function ChatInterface({
           )}
 
           <form onSubmit={handleSend} className="relative">
-            {/* Pill container */}
             <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
               {/* Model selector */}
               <div className="flex-shrink-0 pb-1">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
               </div>
-
-              {/* Mic button with duration */}
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`flex-shrink-0 h-9 rounded-full flex items-center justify-center gap-1 px-2 transition ${
-                  isRecording
-                    ? "bg-red-500 text-white animate-pulse min-w-[56px]"
-                    : "w-9 bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-                title={isRecording ? "Stop recording" : "Start voice input"}
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="23" />
-                  <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-                {isRecording && (
-                  <span className="text-xs font-mono tabular-nums">{recordingDuration}s</span>
-                )}
-              </button>
 
               <textarea
                 ref={mainInputRef}

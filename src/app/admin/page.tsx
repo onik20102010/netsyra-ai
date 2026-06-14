@@ -26,6 +26,19 @@ export default function AdminPage() {
   const [fetching, setFetching] = useState(true);
   const supabase = createClient();
 
+  // Groq usage warning state
+  const [groqUsage, setGroqUsage] = useState<{ percentUsed: number; isWarning: boolean; isCritical: boolean } | null>(null);
+
+  // Fetch Groq usage on mount
+  useEffect(() => {
+    fetch("/api/admin/usage")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.error) setGroqUsage(d);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) {
       router.push("/chat");
@@ -143,6 +156,26 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Groq usage warning banner */}
+        {groqUsage && groqUsage.isWarning && (
+          <div
+            className={`p-4 rounded-xl border mb-6 ${
+              groqUsage.isCritical
+                ? "bg-red-500/10 border-red-500/30 text-red-400"
+                : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+            }`}
+          >
+            <p className="font-semibold">
+              {groqUsage.isCritical ? "🚨 Critical" : "⚠️ Warning"}: Groq API usage at {groqUsage.percentUsed}%
+            </p>
+            <p className="text-sm opacity-80">
+              {groqUsage.isCritical
+                ? "Daily limit almost reached. Consider reducing usage or adding more API keys."
+                : "Usage is high. Monitor closely."}
+            </p>
+          </div>
+        )}
+
         {/* User table */}
         {fetching ? (
           <div className="flex justify-center py-12">
@@ -168,9 +201,13 @@ export default function AdminPage() {
                     <td className="p-3 text-white/70">{u.email}</td>
                     <td className="p-3 text-white/70">{u.name || "-"}</td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        u.tier === "paid" ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          u.tier === "paid"
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-gray-500/20 text-gray-400"
+                        }`}
+                      >
                         {u.tier}
                       </span>
                     </td>

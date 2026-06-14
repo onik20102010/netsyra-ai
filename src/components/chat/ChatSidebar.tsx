@@ -311,8 +311,9 @@ export default function ChatSidebar({
         )}
       </motion.aside>
 
+      {/* Portal‑based ProfileModal – rendered outside the sidebar container */}
       <ProfileModal
-        open={profileOpen}
+        isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
         userName={displayName}
         userGoal={userGoal}
@@ -324,12 +325,17 @@ export default function ChatSidebar({
               { user_id: user.id, name, goal, custom_instructions: instructions },
               { onConflict: "user_id" }
             );
-            if (error) { toast.error("Could not save profile."); return; }
+            if (error) {
+              toast.error("Could not save profile.");
+              return;
+            }
             setDisplayName(name);
             setUserGoal(goal);
             setUserInstructions(instructions);
             toast.success("Profile updated!");
-          } catch { toast.error("Something went wrong."); }
+          } catch {
+            toast.error("Something went wrong.");
+          }
         }}
       />
     </>

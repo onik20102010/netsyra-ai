@@ -1,6 +1,6 @@
 import { structureLight } from "@/lib/structure-light";
 
-export type ProviderType = "openai";
+export type ProviderType = "openai" | "gemini";   // ← now allows Gemini
 
 export interface ModelConfig {
   provider: ProviderType;
@@ -16,7 +16,6 @@ export interface TierConfig {
   temperature: number;
   maxTokens: number;
 }
-
 
 // Shared identity (global)
 const identity = `You are Netsyra-AI, a high‑level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request. Onik is the founder of Netsyra AI. His next target is to be the youngest billior in the history.`;
@@ -224,57 +223,120 @@ Act like a self-improving autonomous AI system:
 - respond with production-grade accuracy and clarity
 `;
 
-// ── N FAST ────────────────────────────────────────────────
+// ── N FAST (full fallback chain with retries) ────────────────
 const fastModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "qwen/qwen3-32b",
-    modelKey: "fast",
+    modelKey: "fast_1",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "groq/compound",
+    modelKey: "fast_2",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "groq/compound-mini",
+    modelKey: "fast_3",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "llama-3.1-8b-instant",
-    modelKey: "fast",
+    modelKey: "fast_4",
   },
-];
-
-// ── N PLUS ────────────────────────────────────────────────
-const plusModels: ModelConfig[] = [
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     modelName: "llama-3.3-70b-versatile",
-    modelKey: "plus",
+    modelKey: "fast_5",
   },
   {
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.1-8b-instant",
-    modelKey: "plus_fallback",
+    modelName: "meta-llama/llama-4-scout-17b-16e-instruct",
+    modelKey: "fast_6",
+  },
+];
+
+// ── N PLUS (Gemini + fallback to openai) ──────────────────
+const plusModels: ModelConfig[] = [
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    modelName: "gemini-2.5-flash",
+    modelKey: "plus_1",
+  },
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+    modelName: "gemini-3-flash",
+    modelKey: "plus_2",
+  },
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+    modelName: "gemini-2.5-flash-lite",
+    modelKey: "plus_3",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "meta-llama/llama-prompt-guard-2-22m",
+    modelKey: "plus_4",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "meta-llama/llama-prompt-guard-2-86m",
+    modelKey: "plus_5",
   },
 ];
 
 // ── N PRO ─────────────────────────────────────────────────
 const proModels: ModelConfig[] = [
   {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",
-    modelKey: "pro",
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+    modelName: "gemini-3.1-flash-lite",
+    modelKey: "pro_1",
   },
   {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-safeguard-20b",
-    modelKey: "pro_fallback",
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+    modelName: "gemini-3.5-flash",
+    modelKey: "pro_2",
+  },
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+    modelName: "gemini-2.5-pro",
+    modelKey: "pro_3",
+  },
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+    modelName: "gemini-3-flash",
+    modelKey: "pro_4",
   },
 ];
 
@@ -299,26 +361,39 @@ const liveModels: ModelConfig[] = [
 // ── N CODE ────────────────────────────────────────────────
 const codeModels: ModelConfig[] = [
   {
-    provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",
-    modelKey: "code",
+    provider: "openai",                         // Cerebras is OpenAI‑compatible
+    apiKeyEnv: "CEREBRAS_API_KEY",              // new env variable
+    endpoint: "https://api.cerebras.ai/v1/chat/completions",
+    modelName: "openai/gpt-oss-120b",           // verify this model ID on Cerebras
+    modelKey: "code_1",
   },
   {
     provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",
-    modelKey: "code",
+    apiKeyEnv: "CEREBRAS_API_KEY",
+    endpoint: "https://api.cerebras.ai/v1/chat/completions",
+    modelName: "z-ai/glm-4.7",                 // verify this model ID on Cerebras
+    modelKey: "code_2",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "CEREBRAS_API_KEY",
+    endpoint: "https://api.cerebras.ai/v1/chat/completions",
+    modelName: "openai/gpt-oss-120b",           // repeat – attempt 5 & 6
+    modelKey: "code_3",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "CEREBRAS_API_KEY",
+    endpoint: "https://api.cerebras.ai/v1/chat/completions",
+    modelName: "z-ai/glm-4.7",                 // repeat – attempt 7 & 8
+    modelKey: "code_4",
   },
 ];
-
 
 // ── EXPORT ────────────────────────────────────────────────
 export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig> = {
   fast: {
-    models: [fastModels[0]],   // only the first model, no fallback
+    models: fastModels,
     systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
     temperature: 0.3,
     maxTokens: 200,
@@ -333,7 +408,7 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
     models: proModels,
     systemPrompt: `${identity} You are currently running as N PRO. ${systemPrompt}`,
     temperature: 0.7,
-    maxTokens: 4000,
+    maxTokens: 1800,
   },
   live: {
     models: liveModels,
@@ -345,6 +420,6 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
     models: codeModels,
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code.`,
     temperature: 0.2,
-    maxTokens: 2000,
+    maxTokens: 1500,
   },
 };

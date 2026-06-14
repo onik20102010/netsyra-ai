@@ -9,6 +9,9 @@ import { classifyIntent } from "@/lib/intent";
 import { generateSearchQueries } from "@/lib/query-rewriter";
 import { verifyAnswer } from "@/lib/verifier";
 import { retrieveMemories, extractMemories, storeMemory } from "@/lib/memory";
+import { isLowQuality } from "@/lib/quality-check";
+import { getCachedReply, setCachedReply, getNextGroqKey, isDuplicateRequest } from "@/lib/scale";
+import { summariseMessages } from "@/lib/summariser";
 
 // ─── Safe text extractor ─────────────────────────────────────
 function getText(content: any): string {
@@ -50,8 +53,7 @@ function scoreConfidence(reply: string): number {
 
 // ─── Extract persona from a conversation turn ─────────────────
 async function extractPersona(userMessage: string, existingPersona: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return existingPersona;
+  const apiKey = getNextGroqKey();
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -81,51 +83,13 @@ async function extractPersona(userMessage: string, existingPersona: string): Pro
   }
 }
 
-// ─── Summarise a list of messages using a fast model ──────────
-async function summariseMessages(messages: { role: string; content: string }[]): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey || messages.length === 0) return "";
-
-  const conversationText = messages
-    .map(m => `${m.role}: ${m.content}`)
-    .join("\n");
-
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "system",
-            content: "Summarize the following conversation into a concise paragraph that preserves key context, decisions, and user intent. Only output the summary."
-          },
-          { role: "user", content: conversationText }
-        ],
-        temperature: 0.2,
-        max_tokens: 300,
-      }),
-    });
-    if (!response.ok) return "";
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "";
-  } catch {
-    return "";
-  }
-}
-
 // ─── Compress a long reply to fit within a token budget using a fast model
 async function compressReply(
   text: string,
   maxTokens: number,
   userMessage: string
 ): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return text;
+  const apiKey = getNextGroqKey();
 
   try {
     const prompt = `The following AI response is too long. Summarize it to fit within ${maxTokens} tokens while keeping the main points and a natural conclusion. Only output the shortened response.
@@ -484,10 +448,14 @@ async function searchSearXNG(query: string): Promise<{ text: string; url?: strin
   }
 }
 
-// ─── Strip any JSON artefacts from the reply ─────────────────
+// ─── Strip any JSON artefacts and <think> blocks from the reply ─
 function cleanReply(text: string): string {
   let cleaned = text.trim();
 
+  // Remove <think>...</think> blocks (including multiline)
+  cleaned = cleaned.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+
+  // Existing JSON cleanup
   if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
     try {
       const obj = JSON.parse(cleaned);
@@ -576,12 +544,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Auto‑summarise long conversation history ──────────────
-    let extraContext = "";
-    if (messages.length > 20) {
-      const olderMsgs = messages.slice(0, -20);
+    // ── Deduplication check ──
+    if (isDuplicateRequest(user.id, lastUserMessage)) {
+      return NextResponse.json({ error: "Duplicate request – already processing" }, { status: 429 });
+    }
+
+    // ── Conversation summarisation ─────────────────────────
+    let summaryContext = "";
+    if (messages.length > 15) {
+      const olderMsgs = messages.slice(0, -15);   // everything before the last 15
       const summary = await summariseMessages(olderMsgs);
-      if (summary) extraContext = `[Earlier conversation summary]\n${summary}\n\n`;
+      if (summary) {
+        summaryContext = `[Earlier conversation summary]\n${summary}\n\n`;
+      }
     }
 
     let profileName = "";
@@ -789,6 +764,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Semantic cache check ──
+    const cachedReply = getCachedReply(lastUserMessage);
+    if (cachedReply) {
+      // Return cached reply immediately (skip AI call)
+      const insertNow = Date.now();
+      await supabase.from("messages").insert([
+        { conversation_id: finalConversationId, role: "user", content: lastUserMessage, created_at: new Date(insertNow).toISOString() },
+        { conversation_id: finalConversationId, role: "assistant", content: cachedReply, created_at: new Date(insertNow + 1).toISOString() },
+      ]);
+      return NextResponse.json({ reply: cachedReply, conversationId: finalConversationId, cached: true });
+    }
+
     const nameContext = profileName
       ? `The user's name is ${profileName}. Address them by name naturally.\n\n`
       : "";
@@ -804,6 +791,7 @@ export async function POST(req: NextRequest) {
         .join("\n");
 
       const prefixParts: string[] = [];
+      if (summaryContext) prefixParts.push(summaryContext);
       if (ragContext) prefixParts.push(ragContext);
       if (memoryContext) prefixParts.push(memoryContext);
       if (nameContext || goalContext) prefixParts.push(`${nameContext}${goalContext}`);
@@ -830,6 +818,9 @@ export async function POST(req: NextRequest) {
 
       reply = cleanReply(reply);
       reply = reply.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+
+      // Store in cache
+      setCachedReply(lastUserMessage, reply);
 
       // Verify answer if it's a search intent
       if (intent.intent === "search" && ragContext && top5SearchResults.length > 0) {
@@ -904,6 +895,7 @@ export async function POST(req: NextRequest) {
       : "";
 
     const fullSystemPrompt = (
+      summaryContext +
       instructionContext +
       (webContext ? webContext : "") +
       (ragContext ? `${ragContext}\n\n` : "") +
@@ -923,7 +915,7 @@ export async function POST(req: NextRequest) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            Authorization: `Bearer ${getNextGroqKey()}`,
           },
           body: JSON.stringify({
             model: "llama-3.2-11b-vision-preview",
@@ -947,53 +939,85 @@ export async function POST(req: NextRequest) {
 
     // Collect errors from each model attempt
     const modelErrors: Error[] = [];
+    let successfulModel: string | null = null;   // ← add this
 
     if (!reply) {
-      const modelPromises: Promise<{ reply: string; modelName: string } | null>[] = [];
-      for (let i = 0; i < Math.min(2, tierConfig.models.length); i++) {
-        const modelConfig = tierConfig.models[i];
+      // ── Sequential fallback with retries (2 attempts per model) ──
+      for (const modelConfig of tierConfig.models) {
         const apiKey = process.env[modelConfig.apiKeyEnv];
         if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") continue;
+
         const modelLimitKey = modelConfig.modelKey || modelTier;
         const { allowed } = await checkModelLimit(supabase, user.id, modelLimitKey);
         if (!allowed) continue;
 
-        modelPromises.push(
-          (async () => {
-            try {
-              let result: string;
-              if (modelConfig.provider === "openai") {
-                result = await callOpenAICompatible(
-                  modelConfig.endpoint, apiKey, modelConfig.modelName,
-                  fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
-                );
-              } else if (modelConfig.provider === "gemini") {
-                result = await callGemini(
-                  modelConfig.endpoint, apiKey, modelConfig.modelName,
-                  fullSystemPrompt, messages, tierConfig.temperature, tierConfig.maxTokens
-                );
-              } else {
-                return null;
-              }
-              await incrementModelUsage(supabase, user.id, modelLimitKey, Math.ceil(result.length / 4));
-              return { reply: result, modelName: modelConfig.modelName };
-            } catch (err: unknown) {
-              const error = err instanceof Error ? err : new Error(String(err));
-              modelErrors.push(error);
-              console.error(`Model ${modelConfig.modelName} failed:`, error.message);
-              return null;
-            }
-          })()
-        );
-      }
+        let modelSucceeded = false;
 
-      const results = await Promise.allSettled(modelPromises);
-      for (const result of results) {
-        if (result.status === "fulfilled" && result.value) {
-          reply = result.value.reply;
-          break;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            console.log(
+              `[Netsyra] Trying ${modelConfig.modelName} (attempt ${attempt + 1}/2)`
+            );
+
+            let result: string;
+            if (modelConfig.provider === "openai") {
+              result = await callOpenAICompatible(
+                modelConfig.endpoint,
+                apiKey,
+                modelConfig.modelName,
+                fullSystemPrompt,
+                messages,
+                tierConfig.temperature,
+                tierConfig.maxTokens,
+              );
+            } else if (modelConfig.provider === "gemini") {
+              result = await callGemini(
+                modelConfig.endpoint,
+                apiKey,
+                modelConfig.modelName,
+                fullSystemPrompt,
+                messages,
+                tierConfig.temperature,
+                tierConfig.maxTokens,
+              );
+            } else {
+              // unsupported provider → skip this model entirely
+              break;
+            }
+
+            await incrementModelUsage(
+              supabase,
+              user.id,
+              modelLimitKey,
+              Math.ceil(result.length / 4),
+            );
+
+            reply = result;
+            successfulModel = modelConfig.modelName;   // ← add this
+            modelSucceeded = true;
+            break; // exit the attempt loop
+          } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            modelErrors.push(error);
+            console.error(
+              `[Netsyra] ${modelConfig.modelName} attempt ${attempt + 1} failed:`,
+              error.message,
+            );
+
+            if (attempt === 0) {
+              // Short delay before the same‑model retry
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
         }
+
+        if (modelSucceeded) break; // stop the chain — we have a valid reply
       }
+    }
+
+    // Log the successful model
+    if (reply && successfulModel) {
+      console.log(`✅ Responded with model: ${successfulModel} (tier: ${modelTier})`);
     }
 
     // If all models failed, return a clear error
@@ -1010,21 +1034,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 429 });
     }
 
-    reply = cleanReply(reply);
+    reply = cleanReply(reply!);
+
+    // Store in cache
+    setCachedReply(lastUserMessage, reply!);
+
+    // Quality check – retry with Pro if weak
+    if (isLowQuality(reply!) && modelTier !== "pro") {
+      const proConfig = tiers.pro.models[0];
+      const proKey = process.env[proConfig.apiKeyEnv];
+      if (proKey) {
+        try {
+          const retryReply = await callOpenAICompatible(
+            proConfig.endpoint, proKey, proConfig.modelName,
+            fullSystemPrompt, messages, tiers.pro.temperature, tiers.pro.maxTokens
+          );
+          if (!isLowQuality(retryReply)) {
+            reply = retryReply;
+          }
+        } catch {}
+      }
+    }
 
     // Verify answer if it's a search intent
     if (intent.intent === "search" && ragContext && top5SearchResults.length > 0) {
       const sourceTexts = top5SearchResults.map((item) => item.title + ": " + item.snippet);
       try {
-        reply = await verifyAnswer(reply, sourceTexts, lastUserMessage);
+        reply = await verifyAnswer(reply!, sourceTexts, lastUserMessage);
       } catch {}
     }
 
-    if (isHarmful(reply)) {
+    if (isHarmful(reply!)) {
       reply = "There is so much load on servers so currently I'm unable to generate that response. Please ask something else or try again later.";
     }
 
-    const stream = createSimpleStream(reply);
+    const stream = createSimpleStream(reply!);
 
     const insertNow = Date.now();
     (async () => {
