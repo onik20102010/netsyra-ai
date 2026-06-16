@@ -299,7 +299,7 @@ async function callGemini(
 }
 
 // ─── Streaming model caller for OpenAI-compatible APIs ────────
-async function streamOpenAICompatible(
+export async function streamOpenAICompatible(   // ← exported
   endpoint: string,
   apiKey: string,
   modelName: string,
@@ -939,7 +939,7 @@ export async function POST(req: NextRequest) {
 
     // Collect errors from each model attempt
     const modelErrors: Error[] = [];
-    let successfulModel: string | null = null;   // ← add this
+    let successfulModel: string | null = null;
 
     if (!reply) {
       // ── Sequential fallback with retries (2 attempts per model) ──
@@ -993,7 +993,7 @@ export async function POST(req: NextRequest) {
             );
 
             reply = result;
-            successfulModel = modelConfig.modelName;   // ← add this
+            successfulModel = modelConfig.modelName;
             modelSucceeded = true;
             break; // exit the attempt loop
           } catch (err: unknown) {

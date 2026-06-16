@@ -63,12 +63,8 @@ export default function TopNav() {
               </Button>
             </a>
 
-            {/* Code IDE button – works on Vercel after IDE build is copied to public/ide */}
-            <a
-              href="/ide/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            {/* Code IDE button – now links to /ide */}
+            <Link href="/ide">
               <Button
                 variant="ghost"
                 className="text-white/80 hover:text-white hover:bg-white/10 rounded-full px-3 sm:px-4 text-sm transition-all"
@@ -76,7 +72,7 @@ export default function TopNav() {
                 <Code className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Code IDE</span>
               </Button>
-            </a>
+            </Link>
 
             {/* Separator */}
             <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
