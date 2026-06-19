@@ -85,7 +85,8 @@ export async function openLocalFolder(): Promise<Record<string, string>> {
   const root = dirHandle!;
   const files: Record<string, string> = {};
   const readDir = async (handle: FileSystemDirectoryHandle, parentPath: string) => {
-    for await (const [name, childHandle] of handle.entries()) {
+    // @ts-ignore – entries() is available in modern browsers
+    for await (const [name, childHandle] of (handle as any).entries()) {
       const childPath = parentPath ? `${parentPath}/${name}` : name;
       if (childHandle.kind === "file") {
         const file = await (childHandle as FileSystemFileHandle).getFile();
