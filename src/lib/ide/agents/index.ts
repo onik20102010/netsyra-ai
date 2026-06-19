@@ -7,11 +7,13 @@ export async function executeAgent(
     context: any;
     messages: { role: string; content: string }[];
     mode: string;
+    systemPromptOverride?: string;   // new optional parameter
+    pipelineStages?: string[];       // ← added
   },
   modelChain: IdeModelConfig[]
 ) {
-  const { agentType, context, messages, mode } = params;
-  const systemPrompt = `You are an IDE agent in ${mode} mode. Help with coding tasks.\n\nCurrent context: ${JSON.stringify(context)}`;
+  const { agentType, context, messages, mode, systemPromptOverride } = params;
+  const systemPrompt = systemPromptOverride || `You are an IDE agent in ${mode} mode. Help with coding tasks.\n\nCurrent context: ${JSON.stringify(context)}`;
 
   const encoder = new TextEncoder();
 

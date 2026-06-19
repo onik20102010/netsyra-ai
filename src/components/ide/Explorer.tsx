@@ -21,8 +21,10 @@ interface ExplorerProps {
   onDelete: (path: string) => void;
   onRefresh: () => void;
   onImportProject?: (projectName: string, files: Record<string, string>) => void;
+  onOpenFolder?: () => void;   // new optional prop for folder mode
   loaded?: boolean;
   dirtyFiles?: Set<string>;
+  rootFolderName?: string;   // e.g., "my-project" when a local folder is opened
 }
 
 // ─── Tree builder ──────────────────────────────────
@@ -73,8 +75,10 @@ export default function Explorer({
   onDelete,
   onRefresh,
   onImportProject,
+  onOpenFolder,   // destructure new prop
   loaded,
   dirtyFiles,
+  rootFolderName,   // ← destructure
 }: ExplorerProps) {
   const tree = useMemo(() => buildTree(files), [files]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -183,7 +187,7 @@ export default function Explorer({
     setCreating(null);
   };
 
-  // ── Open Folder (local folder import) ──────────
+  // ── Open Folder (local folder import) – fallback if onOpenFolder not provided ──
   const handleOpenFolder = async () => {
     try {
       // @ts-ignore - File System Access API
@@ -228,6 +232,13 @@ export default function Explorer({
     const isFolder = node.type === "folder";
     const isSelectedFolder = isFolder && selectedFolder === node.path;
 
+    // Tooltip: show full path relative to project root or browser storage
+    const tooltip = node.type === "file"
+      ? rootFolderName
+        ? `${rootFolderName}/${node.path}`         // local folder mode
+        : `Browser storage: ${node.path}`           // IndexedDB mode
+      : node.path;                                   // folder: just show path
+
     // Indentation guides: vertical lines at each depth
     const guideStyle = depth > 0
       ? {
@@ -271,6 +282,7 @@ export default function Explorer({
             "text-gray-300"
           }`}
           style={{ paddingLeft: `${depth * 16 + 4}px` }}
+          title={tooltip}
           onClick={() => {
             if (isFolder) {
               toggleExpand(node.path);
@@ -356,7 +368,7 @@ export default function Explorer({
         <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Explorer</span>
         <div className="flex items-center gap-1">
           <button
-            onClick={handleOpenFolder}
+            onClick={onOpenFolder || handleOpenFolder}
             className="p-1 rounded hover:bg-[#2a2d2e] text-gray-400"
             title="Open Folder"
           >

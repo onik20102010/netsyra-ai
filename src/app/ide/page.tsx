@@ -1,3 +1,4 @@
+// src/app/ide/page.tsx – with persistent project graph loading
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +10,20 @@ import MobileDrawer from "@/components/ide/MobileDrawer";
 import BottomTabs from "@/components/ide/BottomTabs";
 import { Button } from "@/components/ui/button";
 import { Loader2, Menu, X, PanelLeftClose, PanelRightClose } from "lucide-react";
+import {
+  loadFilesFromIndexedDB,
+  saveFileToIndexedDB,
+  deleteFileFromIndexedDB,
+  supportsFileSystemAccess,
+  openLocalFolder,
+  writeLocalFile,
+  deleteLocalFile,
+} from "@/lib/ide/local-files";
+import {
+  loadPersistedGraph,
+  buildProjectGraph,
+  setProjectGraph,
+} from "@/lib/ide/brain/project-graph";   // new imports
 
 type View = "explorer" | "search" | "chat" | "editor";
 
@@ -20,10 +35,20 @@ export default function IdePage() {
   const [dirtyFiles, setDirtyFiles] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const [mobileDrawer, setMobileDrawer] = useState<View | null>(null);
+  const [isLocalFolder, setIsLocalFolder] = useState(false);
 
   // Detect screen size
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+
+  // Local folder name for display
+  const [localFolderName, setLocalFolderName] = useState<string | null>(null);
+
+  // ── Workspace Intelligence ──────────────────────
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [recentEdits, setRecentEdits] = useState<{ path: string; timestamp: number }[]>([]);
+  const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number } | null>(null);
+  const [currentErrors, setCurrentErrors] = useState<string[]>([]);
 
   useEffect(() => {
     const checkSize = () => {
@@ -35,82 +60,114 @@ export default function IdePage() {
     return () => window.removeEventListener("resize", checkSize);
   }, []);
 
-  // Load files from Supabase on mount
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  const dirtyPathsRef = useRef<Set<string>>(new Set());
+  const initialIndexDone = useRef(false);
+
+  const indexAllFiles = async (files: Record<string, string>) => {
+    for (const [path, content] of Object.entries(files)) {
+      fetch("/api/ide/index-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, content }),
+      }).catch(() => {});
+    }
+  };
+
   useEffect(() => {
-    const loadFiles = async () => {
+    const loadLocal = async () => {
       try {
-        const res = await fetch("/api/ide/files");
-        if (res.ok) {
-          const data = await res.json();
-          setFiles(data.files || {});
+        const stored = await loadFilesFromIndexedDB();
+        if (Object.keys(stored).length > 0) {
+          setFiles(stored);
         }
       } catch (err) {
-        console.error("Failed to load IDE files:", err);
+        console.error("Failed to load from IndexedDB:", err);
       } finally {
         setLoaded(true);
       }
     };
-    if (user) loadFiles();
+    if (user) loadLocal();
   }, [user]);
 
-  // Debounced auto-save (2 seconds after last change)
-  const saveQueue = useRef<Record<string, string>>({});
-  const saveTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const scheduleSave = useCallback((path: string, content: string) => {
-    saveQueue.current[path] = content;
-    setDirtyFiles(prev => new Set(prev).add(path));
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const toSave = { ...saveQueue.current };
-      saveQueue.current = {};
-      Object.entries(toSave).forEach(([p, c]) => {
-        fetch("/api/ide/files", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: p, content: c }),
-        }).catch(console.error);
-      });
-      setDirtyFiles(prev => {
-        const next = new Set(prev);
-        Object.keys(toSave).forEach(p => next.delete(p));
-        return next;
-      });
-    }, 2000);
-  }, []);
-
-  // Ctrl+S immediate save
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        const toSave = { ...saveQueue.current };
-        saveQueue.current = {};
-        Object.entries(toSave).forEach(([p, c]) => {
-          fetch("/api/ide/files", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: p, content: c }),
-          }).catch(console.error);
+    if (loaded && !initialIndexDone.current && Object.keys(files).length > 0) {
+      indexAllFiles(files);
+      initialIndexDone.current = true;
+    }
+  }, [loaded, files]);
+
+  // ── Load persisted project graph on files change ──
+  useEffect(() => {
+    if (Object.keys(files).length > 0) {
+      loadPersistedGraph().then(saved => {
+        if (saved) {
+          setProjectGraph(saved);
+        }
+        // Build a fresh graph to reflect current files
+        buildProjectGraph(files);
+      });
+    }
+  }, [files]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isLocalFolder) {
+        dirtyPathsRef.current.forEach(path => {
+          const content = filesRef.current[path] || "";
+          saveFileToIndexedDB(path, content).catch(console.error);
         });
+        dirtyPathsRef.current.clear();
         setDirtyFiles(new Set());
       }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [files, isLocalFolder]);
 
-  // File operations
-  const handleNewFile = (path: string) => {
-    setFiles(prev => ({ ...prev, [path]: "" }));
-    setActiveFile(path);
-    if (isMobile || isTablet) setActiveView("editor");
+  const handleImmediateSave = async (path: string, content: string) => {
+    if (isLocalFolder) {
+      writeLocalFile(path, content).catch(() => {});
+    } else {
+      saveFileToIndexedDB(path, content).catch(() => {});
+    }
+    fetch("/api/ide/index-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content }),
+    }).catch(() => {});
   };
-  const handleNewFolder = (path: string) => {
+
+  const handleSelectFile = (path: string) => {
+    setActiveFile(path);
+    setOpenFiles(prev => {
+      const filtered = prev.filter(f => f !== path);
+      return [path, ...filtered].slice(0, 10);
+    });
+  };
+
+  const handleNewFile = async (path: string) => {
+    setFiles(prev => ({ ...prev, [path]: "" }));
+    handleSelectFile(path);
+    if (isMobile || isTablet) setActiveView("editor");
+    await handleImmediateSave(path, "");
+  };
+
+  const handleNewFolder = async (path: string) => {
     const placeholderPath = path + "/.gitkeep";
     setFiles(prev => ({ ...prev, [placeholderPath]: "" }));
+    if (isLocalFolder) {
+      writeLocalFile(placeholderPath, "").catch(console.error);
+    } else {
+      saveFileToIndexedDB(placeholderPath, "").catch(console.error);
+    }
+    fetch("/api/ide/index-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: placeholderPath, content: "" }),
+    }).catch(console.error);
   };
+
   const handleRename = (oldPath: string, newPath: string) => {
     setFiles(prev => {
       const newFiles: Record<string, string> = {};
@@ -121,26 +178,49 @@ export default function IdePage() {
           newFiles[newPath + relative] = content;
         } else newFiles[p] = content;
       }
-      if (activeFile === oldPath) setActiveFile(newPath);
+      if (activeFile === oldPath) handleSelectFile(newPath);
       return newFiles;
     });
   };
+
   const handleDelete = async (path: string) => {
-    // Immediately remove from state
     setFiles(prev => {
       const newFiles = { ...prev };
       for (const p in newFiles) {
         if (p === path || p.startsWith(path + "/")) delete newFiles[p];
       }
-      if (activeFile?.startsWith(path)) setActiveFile(null);
+      if (activeFile?.startsWith(path)) {
+        setActiveFile(null);
+        setOpenFiles(prev => prev.filter(f => f !== path));
+      }
       return newFiles;
     });
-    // Delete from backend
-    fetch(`/api/ide/files?path=${encodeURIComponent(path)}`, { method: "DELETE" }).catch(console.error);
+    if (isLocalFolder) {
+      deleteLocalFile(path).catch(console.error);
+    } else {
+      deleteFileFromIndexedDB(path).catch(console.error);
+    }
   };
+
   const handleRefresh = () => {};
 
-  // Import project handler
+  const handleOpenLocalFolder = async () => {
+    if (!supportsFileSystemAccess()) {
+      alert("File System Access not supported. Files will be stored in your browser.");
+      return;
+    }
+    try {
+      const localFiles = await openLocalFolder();
+      setFiles(localFiles);
+      setIsLocalFolder(true);
+      const { dirHandle } = await import("@/lib/ide/local-files");
+      if (dirHandle) setLocalFolderName(dirHandle.name);
+      indexAllFiles(localFiles);
+    } catch (err) {
+      console.log("Folder picker cancelled or error:", err);
+    }
+  };
+
   const handleImportProject = (projectName: string, importedFiles: Record<string, string>) => {
     const prefixedFiles: Record<string, string> = {};
     for (const [path, content] of Object.entries(importedFiles)) {
@@ -148,9 +228,9 @@ export default function IdePage() {
       prefixedFiles[newPath] = content;
     }
     setFiles(prev => ({ ...prev, ...prefixedFiles }));
+    indexAllFiles(prefixedFiles);
   };
 
-  // Handle view change
   const handleViewChange = (view: View) => {
     if (isMobile || isTablet) {
       setMobileDrawer(view === activeView ? null : view);
@@ -159,7 +239,34 @@ export default function IdePage() {
     }
   };
 
-  // Loading / auth states
+  const renderEditor = () => (
+    <Editor
+      fileName={activeFile}
+      content={activeFile ? files[activeFile] || "" : ""}
+      onChange={(value: string | undefined) => {
+        if (activeFile && value !== undefined) {
+          setFiles(prev => ({ ...prev, [activeFile]: value }));
+          setRecentEdits(prev => {
+            const filtered = prev.filter(e => e.path !== activeFile);
+            return [{ path: activeFile, timestamp: Date.now() }, ...filtered].slice(0, 10);
+          });
+          dirtyPathsRef.current.add(activeFile);
+          if (isLocalFolder) writeLocalFile(activeFile, value).catch(console.error);
+        }
+      }}
+      onCursorChange={(line, column) => setCursorPosition({ line, column })}
+      onSave={() => {}}
+    />
+  );
+
+  // Shared ChatPanel props (workspace intelligence)
+  const chatPanelWorkspaceProps = {
+    openFiles,
+    recentEdits,
+    cursorPosition,
+    currentErrors,
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#1e1e1e]">
@@ -179,7 +286,6 @@ export default function IdePage() {
   if (isMobile) {
     return (
       <div className="h-screen bg-[#1e1e1e] text-gray-300 flex flex-col">
-        {/* Top bar */}
         <div className="h-10 border-b border-[#2d2d2d] flex items-center px-3 bg-[#181818] text-[13px] shrink-0">
           <button
             onClick={() => setMobileDrawer(mobileDrawer === "explorer" ? null : "explorer")}
@@ -191,22 +297,10 @@ export default function IdePage() {
           <span className="text-gray-500 ml-2 text-xs">{activeFile?.split("/").pop()}</span>
         </div>
 
-        {/* Editor (always visible) */}
         <div className="flex-1 min-h-0">
-          <Editor
-            fileName={activeFile}
-            content={activeFile ? files[activeFile] || "" : ""}
-            onChange={(value: string | undefined) => {
-              if (activeFile && value !== undefined) {
-                setFiles(prev => ({ ...prev, [activeFile!]: value }));
-                scheduleSave(activeFile, value);
-              }
-            }}
-            onSave={() => {}}
-          />
+          {renderEditor()}
         </div>
 
-        {/* Bottom tabs */}
         <BottomTabs
           activeView={activeView}
           onViewChange={(view) => {
@@ -215,7 +309,6 @@ export default function IdePage() {
           }}
         />
 
-        {/* Mobile drawer (slide-over) */}
         <MobileDrawer
           open={mobileDrawer !== null}
           onClose={() => setMobileDrawer(null)}
@@ -224,15 +317,17 @@ export default function IdePage() {
             <Explorer
               files={files}
               activeFile={activeFile}
-              onSelectFile={(path) => { setActiveFile(path); setMobileDrawer(null); setActiveView("editor"); }}
+              onSelectFile={(path) => { handleSelectFile(path); setMobileDrawer(null); setActiveView("editor"); }}
               onNewFile={handleNewFile}
               onNewFolder={handleNewFolder}
               onRename={handleRename}
               onDelete={handleDelete}
               onRefresh={handleRefresh}
               onImportProject={handleImportProject}
+              onOpenFolder={handleOpenLocalFolder}
               loaded={loaded}
               dirtyFiles={dirtyFiles}
+              rootFolderName={localFolderName || undefined}
             />
           )}
           {mobileDrawer === "chat" && (
@@ -241,8 +336,11 @@ export default function IdePage() {
               fileContent={activeFile ? files[activeFile] : ""}
               onFileWrite={(path: string, content: string) => {
                 setFiles(prev => ({ ...prev, [path]: content }));
-                setActiveFile(path);
+                handleSelectFile(path);
               }}
+              onImmediateSave={handleImmediateSave}
+              allFiles={files}
+              {...chatPanelWorkspaceProps}
             />
           )}
         </MobileDrawer>
@@ -254,7 +352,6 @@ export default function IdePage() {
   if (isTablet) {
     return (
       <div className="h-screen bg-[#1e1e1e] text-gray-300 flex flex-col">
-        {/* Top bar */}
         <div className="h-10 border-b border-[#2d2d2d] flex items-center px-3 bg-[#181818] text-[13px] shrink-0">
           <button
             onClick={() => setActiveView(activeView === "explorer" ? "editor" : "explorer")}
@@ -265,41 +362,31 @@ export default function IdePage() {
           <span className="font-medium">Netsyra IDE</span>
         </div>
 
-        {/* Main area */}
         <div className="flex-1 flex overflow-hidden">
           {activeView === "explorer" && (
             <div className="w-64 flex-shrink-0 border-r border-[#2d2d2d]">
               <Explorer
                 files={files}
                 activeFile={activeFile}
-                onSelectFile={(path) => { setActiveFile(path); setActiveView("editor"); }}
+                onSelectFile={(path) => { handleSelectFile(path); setActiveView("editor"); }}
                 onNewFile={handleNewFile}
                 onNewFolder={handleNewFolder}
                 onRename={handleRename}
                 onDelete={handleDelete}
                 onRefresh={handleRefresh}
                 onImportProject={handleImportProject}
+                onOpenFolder={handleOpenLocalFolder}
                 loaded={loaded}
                 dirtyFiles={dirtyFiles}
+                rootFolderName={localFolderName || undefined}
               />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <Editor
-              fileName={activeFile}
-              content={activeFile ? files[activeFile] || "" : ""}
-              onChange={(value: string | undefined) => {
-                if (activeFile && value !== undefined) {
-                  setFiles(prev => ({ ...prev, [activeFile!]: value }));
-                  scheduleSave(activeFile, value);
-                }
-              }}
-              onSave={() => {}}
-            />
+            {renderEditor()}
           </div>
         </div>
 
-        {/* Bottom tabs */}
         <BottomTabs
           activeView={activeView}
           onViewChange={(view) => {
@@ -315,51 +402,37 @@ export default function IdePage() {
   // ─── DESKTOP LAYOUT ─────────────────────────────
   return (
     <div className="h-screen bg-[#1e1e1e] text-gray-300 flex flex-col">
-      {/* Title bar */}
       <div className="h-8 border-b border-[#2d2d2d] flex items-center px-3 bg-[#323233] text-[13px] shrink-0">
         Netsyra IDE
       </div>
 
-      {/* Main layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Activity Bar – accepts string; we cast internally */}
         <ActivityBar activeView={activeView} onViewChange={(v: string) => setActiveView(v as View)} />
 
-        {/* Explorer */}
         {activeView === "explorer" && (
           <div className="w-72 flex-shrink-0 border-r border-[#2d2d2d]">
             <Explorer
               files={files}
               activeFile={activeFile}
-              onSelectFile={setActiveFile}
+              onSelectFile={handleSelectFile}
               onNewFile={handleNewFile}
               onNewFolder={handleNewFolder}
               onRename={handleRename}
               onDelete={handleDelete}
               onRefresh={handleRefresh}
               onImportProject={handleImportProject}
+              onOpenFolder={handleOpenLocalFolder}
               loaded={loaded}
               dirtyFiles={dirtyFiles}
+              rootFolderName={localFolderName || undefined}
             />
           </div>
         )}
 
-        {/* Editor */}
         <div className="flex-1 min-w-0">
-          <Editor
-            fileName={activeFile}
-            content={activeFile ? files[activeFile] || "" : ""}
-            onChange={(value: string | undefined) => {
-              if (activeFile && value !== undefined) {
-                setFiles(prev => ({ ...prev, [activeFile!]: value }));
-                scheduleSave(activeFile, value);
-              }
-            }}
-            onSave={() => {}}
-          />
+          {renderEditor()}
         </div>
 
-        {/* AI Chat */}
         {activeView === "chat" && (
           <div className="w-96 flex-shrink-0 border-l border-[#2d2d2d]">
             <ChatPanel
@@ -367,8 +440,11 @@ export default function IdePage() {
               fileContent={activeFile ? files[activeFile] : ""}
               onFileWrite={(path: string, content: string) => {
                 setFiles(prev => ({ ...prev, [path]: content }));
-                setActiveFile(path);
+                handleSelectFile(path);
               }}
+              onImmediateSave={handleImmediateSave}
+              allFiles={files}
+              {...chatPanelWorkspaceProps}
             />
           </div>
         )}

@@ -1,11 +1,11 @@
-﻿// src/lib/embeddings.ts
-// Uses Gemini embedding-001 (free tier, 768 dimensions)
+﻿// Gemini text-embedding-004 (free tier, 768 dimensions)
 export async function generateEmbedding(text: string): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent";
-
+  const url =
+  "https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent";
+  
   const response = await fetch(url, {
     method: "POST",
     headers: {

@@ -46,7 +46,6 @@ export async function DELETE(req: NextRequest) {
   const path = searchParams.get("path");
   if (!path) return NextResponse.json({ error: "Path required" }, { status: 400 });
 
-  // Delete file or folder (all paths starting with path/)
   const { error } = await supabase
     .from("ide_files")
     .delete()
