@@ -853,8 +853,9 @@ export default function ChatPanel({
         <div ref={chatEndRef} />
       </div>
 
-      <div className="p-2 border-t border-gray-700">
-        <div className="flex gap-2">
+      {/* Input area — VS Code styled */}
+      <div className="p-3 border-t border-[#2d2d2d] bg-[#1e1e1e]">
+        <div className="flex items-end gap-2 bg-[#3c3c3c] border border-[#3c3c3c] rounded-md px-3 py-2 focus-within:border-[#007acc] transition-colors">
           <Textarea
             value={input}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
@@ -864,13 +865,23 @@ export default function ChatPanel({
                 handleSend();
               }
             }}
-            placeholder={`Ask ${mode === "plan" ? "to plan" : mode === "agent" ? "agent to act" : "a question"}...`}
-            className="chat-input min-h-[40px] bg-gray-800 border-gray-700 text-white resize-none"
+            placeholder="Ask Netsyra..."
+            className="min-h-[24px] max-h-[120px] bg-transparent border-none text-[#cccccc] placeholder-[#8b949e] text-sm resize-none flex-1 outline-none p-0"
             rows={1}
           />
-          <Button onClick={handleSend} disabled={isLoading} size="icon" className="bg-blue-600 hover:bg-blue-700">
-            {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-          </Button>
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !input.trim()}
+            className="p-1.5 rounded-md bg-[#0e639c] text-white hover:bg-[#1177bb] disabled:bg-transparent disabled:text-[#5a5a5a] transition-colors shrink-0"
+          >
+            <Send size={16} />
+          </button>
+        </div>
+        <div className="flex items-center justify-between mt-1.5 px-1">
+          <span className="text-[11px] text-[#8b949e]">Enter to send, Shift+Enter for new line</span>
+          <div className="flex gap-2">
+            {/* Commit button can go here */}
+          </div>
         </div>
       </div>
     </div>
