@@ -1,282 +1,130 @@
-// src/app/api/ide-agent/route.ts
 import { NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { AgentMode, classifyIntentWithConfidence } from "@/lib/ide/agent-router";
-import { buildSystemContext } from "@/lib/ide/context-builder";
-import { executeAgent } from "@/lib/ide/agents";
-import { IDE_MODEL_CHAIN, selectModelForComplexity } from "@/lib/ide/model-selector";
-import { getCachedResponse, setCachedResponse } from "@/lib/ide/response-cache";
-import { generateWorkspaceSummary, setWorkspaceSummary, getWorkspaceSummary } from "@/lib/ide/workspace-cache";
-import { storeDecision } from "@/lib/ide/brain/project-brain";
-import {
-  buildAskPrompt,
-  buildPlanPrompt,
-  buildCodingPrompt,
-  buildDebugPrompt,
-  buildRefactorPrompt,
-  buildReviewPrompt,
-  buildProjectPrompt,
-  buildTerminalPrompt,
-  buildMasterSystemPrompt,
-  buildMasterSwarmPrompt,
-  buildBuilderPrompt,
-  buildPatchPrompt,
-  buildFeaturePrompt,
-} from "@/lib/ide/brain/all-prompts";
-import { generateEmbedding } from "@/lib/embeddings";
-import { analyzeProjectWithAI } from "@/lib/ide/brain/ai-project-analyzer";
-import { analyzeWorkspace } from "@/lib/ide/brain/workspace-analyzer";
-import {
-  buildProjectGraph,
-  getProjectGraph,
-  formatGraphContext,
-  getRelatedFiles,
-  getImpactAnalysis,
-  formatImpactContext,
-} from "@/lib/ide/brain/project-graph";
+import { getNextGroqKey } from "@/lib/scale";
+
+const DAILY_TOKEN_LIMIT = 10_000;
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const body = await req.json();
-  const { messages, activeFile, fileContent, mode, projectFiles, files } = body;
-  const userMessage = messages[messages.length - 1]?.content || "";
+  // ── Token limit check ──────────────────────────
+  let { data: usage } = await supabase
+    .from("ide_token_usage")
+    .select("tokens_used, reset_at")
+    .eq("user_id", user.id)
+    .single();
 
-  // ── Admin bypass (unlimited usage) ─────────────
-  if (user.email === "onik20102010@gmail.com") {
-    // skip limits
-  } else {
-    const REQUEST_LIMIT = 20;
-    const TOKEN_LIMIT = 15_000;
+  const now = new Date();
 
-    let { data: usage } = await supabase
-      .from("ide_token_usage")
-      .select("requests_count, tokens_used, reset_at")
-      .eq("user_id", user.id)
-      .single();
+  if (!usage) {
+    await supabase.from("ide_token_usage").insert({
+      user_id: user.id,
+      tokens_used: 0,
+      reset_at: now.toISOString(),
+    });
+    usage = { tokens_used: 0, reset_at: now.toISOString() };
+  }
 
-    if (!usage) {
-      await supabase.from("ide_token_usage").insert({
-        user_id: user.id,
-        requests_count: 0,
-        tokens_used: 0,
-        reset_at: new Date().toISOString(),
-      });
-      usage = { requests_count: 0, tokens_used: 0, reset_at: new Date().toISOString() };
-    }
-
-    const now = new Date();
-    const resetTime = new Date(usage.reset_at);
-    if (now.getTime() - resetTime.getTime() > 24 * 60 * 60 * 1000) {
-      await supabase
-        .from("ide_token_usage")
-        .update({ requests_count: 0, tokens_used: 0, reset_at: now.toISOString() })
-        .eq("user_id", user.id);
-      usage.requests_count = 0;
-      usage.tokens_used = 0;
-    }
-
-    if (usage.requests_count >= REQUEST_LIMIT) {
-      return new Response("Daily request limit reached (20). Try again later.", { status: 429 });
-    }
-    if (usage.tokens_used >= TOKEN_LIMIT) {
-      return new Response("Daily token limit reached (15,000). Try again later.", { status: 429 });
-    }
-
-    const requestTokens = Math.ceil(
-      (JSON.stringify(messages).length + JSON.stringify(activeFile).length + (fileContent?.length || 0)) / 4
-    );
-
-    if (usage.tokens_used + requestTokens > TOKEN_LIMIT) {
-      return new Response("This request would exceed your daily token limit. Try again later or use a smaller request.", { status: 429 });
-    }
-
+  const resetTime = new Date(usage.reset_at);
+  if (now.getTime() - resetTime.getTime() > 24 * 60 * 60 * 1000) {
+    // Reset after 24h
     await supabase
       .from("ide_token_usage")
-      .update({
-        requests_count: usage.requests_count + 1,
-        tokens_used: usage.tokens_used + requestTokens,
-      })
+      .update({ tokens_used: 0, reset_at: now.toISOString() })
       .eq("user_id", user.id);
+    usage.tokens_used = 0;
+    usage.reset_at = now.toISOString();
   }
 
-  // ── Build / update project graph ─────────────────
-  if (files && Object.keys(files).length > 0) {
-    const existingGraph = getProjectGraph();
-    if (!existingGraph || existingGraph.builtAt < Date.now() - 60000) {
-      buildProjectGraph(files);
-    }
+  if (usage.tokens_used >= DAILY_TOKEN_LIMIT) {
+    const timeLeft = 24 * 60 * 60 * 1000 - (now.getTime() - resetTime.getTime());
+    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    return new Response(
+      `Token limit reached. Resets in ${hours}h ${minutes}m.`,
+      { status: 429 }
+    );
   }
 
-  // Workspace summary
-  if (!getWorkspaceSummary() && files) {
-    const summary = generateWorkspaceSummary(files);
-    setWorkspaceSummary(summary);
-  }
+  const body = await req.json();
+  const { messages, projectName, drive, directory, fileNames, isProjectEmpty } = body;
 
-  // Deduplication cache
-  const cacheKey = userMessage + (activeFile || "");
-  const cached = getCachedResponse(cacheKey);
-  if (cached) {
-    return new Response(cached, {
-      status: 200,
-      headers: { "Content-Type": "text/plain", "x-cached": "true" },
-    });
-  }
+  // ── Build diff‑only system prompt ──────────────
+  const systemPrompt = buildSystemPrompt(projectName, drive, directory, fileNames || [], isProjectEmpty);
 
-  // Context building
-  const context = buildSystemContext({
-    activeFile,
-    fileContent,
-    projectFiles,
-    messages,
-    files,
+  const trimmedMessages = (messages || []).slice(-4).map((m: any) => ({
+    role: m.role,
+    content: (m.content || "").slice(0, 150),
+  }));
+
+  const apiKey = getNextGroqKey();
+  const model = "llama-3.3-70b-versatile"; // updated model
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "system", content: systemPrompt }, ...trimmedMessages],
+      temperature: 0.2,
+      max_tokens: 4096,
+      stream: true,
+    }),
   });
 
-  // AI project scan
-  let projectScan = "";
-  if (files && Object.keys(files).length > 0) {
-    try {
-      projectScan = await analyzeProjectWithAI(files);
-    } catch (e) {
-      console.error("AI project scan failed:", e);
-    }
+  if (!response.ok) {
+    const err = await response.text();
+    return new Response(err, { status: response.status });
   }
 
-  // RAG (semantic‑aware)
-  let ragContext = "";
-  try {
-    const queryEmbedding = await generateEmbedding(userMessage);
-    if (queryEmbedding) {
-      const { data: chunks, error: chunkError } = await supabase.rpc("match_ide_chunks", {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.7,
-        match_count: 8,
-        p_user_id: user.id,
-      });
-      if (chunks && !chunkError) {
-        ragContext = chunks
-          .map((c: any) => {
-            const meta = c.metadata || {};
-            const label = meta.name ? `**${meta.name}** (${meta.type || "code"})` : c.path;
-            return `### ${label} — \`${c.path}\`\n\`\`\`\n${c.content}\n\`\`\``;
-          })
-          .join("\n\n");
+  // Stream back to client, and accumulate tokens for usage tracking
+  const reader = response.body?.getReader();
+  const encoder = new TextEncoder();
+  let tokenCount = 0;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              tokenCount += content.length; // rough token count
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
+            // Check for usage info
+            if (parsed.x_groq?.usage) {
+              tokenCount = parsed.x_groq.usage.total_tokens;
+            }
+          } catch {}
+        }
       }
-    }
-  } catch (e) {
-    console.error("RAG search failed:", e);
-  }
+      controller.close();
 
-  // Graph context
-  const graphContext = formatGraphContext();
-
-  // Merge base context
-  const baseFullContext = [projectScan, graphContext, context, ragContext ? "\n\n## Relevant Code Snippets\n" + ragContext : ""]
-    .filter(Boolean)
-    .join("\n");
-
-  // ── Workspace analysis ───────────────────────────
-  const workspace = analyzeWorkspace(files || {});
-
-  // ── Confidence‑based classification ──────────────
-  const conversationHistory = messages?.slice(-4).map((m: any) => m.content).join("\n");
-  const classification = await classifyIntentWithConfidence(userMessage, conversationHistory);
-
-  let finalMode: AgentMode;
-
-  // Explicit build requests override everything
-  if (classification.mode === "builder") {
-    finalMode = "builder";
-  }
-  // Empty workspace -> builder
-  else if (workspace.isEmpty) {
-    finalMode = "builder";
-  }
-  // Coding intent on existing project -> patch mode
-  else if (classification.mode === "coding" && !workspace.isEmpty) {
-    finalMode = "patch";
-  }
-  // For other modes, use the classified mode unless confidence is very low
-  else {
-    if (classification.confidence < 0.4 && classification.mode !== "ask") {
-      finalMode = "ask";
-    } else {
-      finalMode = classification.mode;
-    }
-  }
-
-  // UI override
-  if (mode === "ask" || mode === "plan" || mode === "agent") {
-    finalMode = mode === "agent" ? "patch" : mode;
-  }
-
-  // ── Impact analysis for file modifications ─────────
-  let impactContext = "";
-  if (activeFile && ["coding", "debug", "refactor", "patch", "feature"].includes(finalMode)) {
-    const impact = getImpactAnalysis(activeFile);
-    impactContext = formatImpactContext(impact);
-  }
-
-  // Final context with impact
-  const fullContext = baseFullContext + impactContext;
-
-  // Build system prompt
-  let systemPrompt = "";
-  switch (finalMode) {
-    case "builder":
-      systemPrompt = buildBuilderPrompt(fullContext);
-      break;
-    case "patch":
-      systemPrompt = buildPatchPrompt(fullContext);
-      break;
-    case "plan":
-      systemPrompt = buildPlanPrompt(fullContext);
-      break;
-    case "ask":
-      systemPrompt = buildAskPrompt(fullContext);
-      break;
-    case "debug":
-      systemPrompt = buildDebugPrompt(fullContext);
-      break;
-    case "refactor":
-      systemPrompt = buildRefactorPrompt(fullContext);
-      break;
-    case "terminal":
-      systemPrompt = buildTerminalPrompt(fullContext);
-      break;
-    case "feature":
-      systemPrompt = buildFeaturePrompt(fullContext);
-      break;
-    default:
-      systemPrompt = buildAskPrompt(fullContext);
-  }
-
-  // Model selection based on confidence/complexity
-  const complexity = classification.scores && classification.confidence < 0.7 ? "low" : "medium";
-  const overrideModel = selectModelForComplexity(complexity);
-  const chain = overrideModel ? [overrideModel] : IDE_MODEL_CHAIN;
-
-  const stream = await executeAgent(
-    {
-      agentType: finalMode,
-      context: fullContext,
-      messages,
-      mode: finalMode,
-      systemPromptOverride: systemPrompt,
+      // Update token usage in DB
+      await supabase
+        .from("ide_token_usage")
+        .update({ tokens_used: usage.tokens_used + tokenCount })
+        .eq("user_id", user.id);
     },
-    chain
-  );
-
-  // Store decision
-  storeDecision({
-    route: finalMode,
-    normalized: userMessage,
-    constraints: {},
-    timestamp: new Date().toISOString(),
-  }).catch(console.error);
+  });
 
   return new Response(stream, {
     headers: {
@@ -285,4 +133,60 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
+}
+
+function buildSystemPrompt(
+  projectName: string,
+  drive: string,
+  directory: string,
+  fileNames: string[],
+  isProjectEmpty: boolean
+): string {
+  if (isProjectEmpty) {
+    return `You are a helpful coding assistant. The user has an empty project "${projectName}" on ${drive}:\\${directory}.
+Ask for the project path if missing. Output PowerShell commands inside @" ... "@ blocks.`;
+  }
+
+  let folderSummary = "";
+  if (fileNames.length > 0) {
+    const tree = buildCompactTree(fileNames);
+    folderSummary = `\nFiles: ${tree}`;
+  }
+
+  return `You are a coding assistant.
+Project: ${projectName}
+Location: ${drive}:\\${directory}${folderSummary}
+
+**CRITICAL OUTPUT RULES – YOU MUST FOLLOW EXACTLY:**
+
+1. NEVER output the entire file. Only show the CHANGED LINES.
+2. For every change, use this EXACT format:
+
+**File: \`path/to/file.ext\`**
+Replace lines 10-15 with:
+\`\`\`
+new code here
+\`\`\`
+
+3. Always include the LINE NUMBERS where the change goes.
+4. If the user asks to fix something, first show the CURRENT code (with line numbers), then show the REPLACEMENT code.
+5. If the user asks to add something, show the EXACT location (e.g., "After line 25, add:").
+6. Do NOT output full files. Only the lines that change.
+7. Use \`\`\`diff blocks when showing what changed (lines starting with + or -).
+8. Provide clear, detailed explanations when needed. You may output longer responses.`;
+}
+
+function buildCompactTree(paths: string[]): string {
+  const folders = new Set<string>();
+  const files: string[] = [];
+  for (const p of paths) {
+    const parts = p.split("/");
+    if (parts.length > 1) folders.add(parts[0]);
+    files.push(parts.pop()!);
+  }
+  let result = `${files.length} files`;
+  if (folders.size > 0) result += ` in ${folders.size} folder(s)`;
+  if (files.length <= 10) result += `: ${files.join(", ")}`;
+  else result += ` (top: ${files.slice(0, 5).join(", ")})`;
+  return result;
 }

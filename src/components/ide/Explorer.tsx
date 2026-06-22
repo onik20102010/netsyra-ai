@@ -207,7 +207,7 @@ export default function Explorer({
       };
       await readDir(dirHandle, "");
       if (onImportProject) {
-        const projectName = dirHandle.name || "project";
+        const projectName = (dirHandle as any).name || "project";
         onImportProject(projectName, importedFiles);
       } else {
         // Fallback: merge into existing files
@@ -283,13 +283,22 @@ export default function Explorer({
           }`}
           style={{ paddingLeft: `${depth * 16 + 4}px` }}
           title={tooltip}
+          draggable={node.type === "file"}
+          onDragStart={(e) => {
+            if (node.type === "file") {
+              e.dataTransfer.setData("text/plain", node.path);
+              e.dataTransfer.effectAllowed = "copy";
+            } else {
+              e.preventDefault();
+            }
+          }}
           onClick={() => {
             if (isFolder) {
               toggleExpand(node.path);
-              setSelectedFolder(node.path);          // ← select the folder
+              setSelectedFolder(node.path);
             } else {
               onSelectFile(node.path);
-              setSelectedFolder(null);               // ← deselect folder when file clicked
+              setSelectedFolder(null);
             }
           }}
           onContextMenu={(e) => handleContextMenu(e, node)}

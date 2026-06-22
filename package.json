@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "set NODE_OPTIONS=--max-old-space-size=8192 && next dev",
+    "dev": "set NODE_OPTIONS=--max-old-space-size=16384 && next dev",
+    "dev:legacy": "set NODE_OPTIONS=--max-old-space-size=16384 && next dev --no-turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

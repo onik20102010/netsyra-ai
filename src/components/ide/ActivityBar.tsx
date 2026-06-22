@@ -1,9 +1,10 @@
 "use client";
-import { Files, Search, MessageSquare } from "lucide-react";
+import { Files, Search, MessageSquare, FolderOpen } from "lucide-react";
 
 interface ActivityBarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  onOpenProject?: () => void;
 }
 
 const activities = [
@@ -12,9 +13,20 @@ const activities = [
   { id: "chat", icon: MessageSquare, label: "AI Chat" },
 ];
 
-export default function ActivityBar({ activeView, onViewChange }: ActivityBarProps) {
+export default function ActivityBar({ activeView, onViewChange, onOpenProject }: ActivityBarProps) {
   return (
     <div className="flex flex-col items-center w-12 h-full bg-[#333333] border-r border-[#252526] py-2 space-y-4">
+      {/* Open Project Button */}
+      <button
+        onClick={onOpenProject}
+        className="p-2 rounded-md transition-colors text-gray-400 hover:text-white hover:bg-[#2a2d2e]"
+        title="Open Project"
+      >
+        <FolderOpen size={24} />
+      </button>
+
+      <div className="w-8 h-px bg-[#252526]" />
+
       {activities.map(({ id, icon: Icon, label }) => (
         <button
           key={id}

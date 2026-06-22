@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  turbopack: false as any,   // disables Turbopack, prevents OOM crashes
 };
 
 export default nextConfig;

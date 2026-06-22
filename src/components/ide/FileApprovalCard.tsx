@@ -1,12 +1,13 @@
 "use client";
-import { File, CheckCircle, XCircle } from "lucide-react";
-import { ValidationError } from "@/lib/ide/brain/patch-validator";
+import { File, CheckCircle, XCircle, HardDrive } from "lucide-react";
+import { useState } from "react";
+import FileSystemConfirmDialog from "./FileSystemConfirmDialog";
+import { getFileSystemManager } from "@/lib/ide/file-system-manager";
 
 export interface PendingFile {
   path: string;
   content: string;
   status: "pending" | "accepted" | "rejected" | "error";
-  errors?: ValidationError[];
   type?: "file" | "diff";   // added for diff support
 }
 
@@ -14,11 +15,11 @@ interface FileApprovalCardProps {
   files: PendingFile[];
   onAcceptFile: (path: string, content: string) => void;
   onRejectFile: (path: string) => void;
-  onConfirmFile?: (path: string) => void;
-  confirmingFile: string | null;
+  onConfirmFile?: (path: string, content: string) => void;
   onCommit: () => void;
   commitEnabled: boolean;
-  validationErrors: ValidationError[];
+  useFileSystem?: boolean;  // New prop to enable file system operations
+  projectName?: string;
 }
 
 // Helper to colorize diff lines
@@ -46,14 +47,69 @@ export default function FileApprovalCard({
   onAcceptFile,
   onRejectFile,
   onConfirmFile,
-  confirmingFile,
   onCommit,
   commitEnabled,
-  validationErrors,
+  useFileSystem = false,
+  projectName,
 }: FileApprovalCardProps) {
   if (files.length === 0) return null;
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ path: string; content: string }[]>([]);
+
   const acceptedCount = files.filter(f => f.status === "accepted").length;
+
+  const handleAcceptFile = (path: string, content: string) => {
+    if (useFileSystem) {
+      // For file system mode, collect files and show confirmation dialog
+      setPendingFiles([{ path, content }]);
+      setShowConfirmDialog(true);
+    } else {
+      // For regular mode, use the existing callback
+      onConfirmFile?.(path, content);
+    }
+  };
+
+  const handleConfirmFileSystem = async () => {
+    try {
+      const fsManager = getFileSystemManager();
+      
+      // Verify permission
+      const hasPermission = await fsManager.verifyPermission();
+      if (!hasPermission) {
+        alert("Permission denied. Please grant access to write files.");
+        setShowConfirmDialog(false);
+        return;
+      }
+
+      // Write all pending files to the filesystem
+      for (const file of pendingFiles) {
+        await fsManager.writeFile(file.path, file.content);
+      }
+
+      // Call the original accept callback
+      for (const file of pendingFiles) {
+        onConfirmFile?.(file.path, file.content);
+      }
+
+      setShowConfirmDialog(false);
+      setPendingFiles([]);
+    } catch (error) {
+      console.error("Failed to write files:", error);
+      alert("Failed to save files to your device. Please try again.");
+      setShowConfirmDialog(false);
+    }
+  };
+
+  const handleCommitWithFileSystem = async () => {
+    if (useFileSystem) {
+      const acceptedFiles = files.filter(f => f.status === "accepted");
+      setPendingFiles(acceptedFiles.map(f => ({ path: f.path, content: f.content })));
+      setShowConfirmDialog(true);
+    } else {
+      onCommit();
+    }
+  };
 
   return (
     <div className="mt-2 space-y-3">
@@ -94,55 +150,22 @@ export default function FileApprovalCard({
             </pre>
           )}
 
-          {/* Validation errors */}
-          {file.errors && file.errors.length > 0 && (
-            <div className="mt-2 bg-red-900/20 border border-red-800 rounded p-2">
-              {file.errors.map((err, i) => (
-                <div key={i} className="text-xs text-red-400">
-                  ⚠ Line {err.line}: {err.message}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Action buttons */}
+          {/* Action buttons – single Accept / Reject */}
           {file.status === "pending" && (
-            confirmingFile === file.path ? (
-              <div className="flex gap-2 mt-3 items-center">
-                <span className="text-xs text-yellow-400">
-                  {file.type === "diff"
-                    ? "Apply this patch to your file?"
-                    : "Write this file to your project?"}
-                </span>
-                <button
-                  onClick={() => onAcceptFile(file.path, file.content)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-700 text-white rounded hover:bg-green-600 text-xs font-medium"
-                >
-                  <CheckCircle size={14} /> Yes
-                </button>
-                <button
-                  onClick={() => onRejectFile(file.path)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 text-xs font-medium"
-                >
-                  No
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => onConfirmFile?.(file.path)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-700 text-white rounded hover:bg-green-600 text-xs font-medium"
-                >
-                  <CheckCircle size={14} /> Accept
-                </button>
-                <button
-                  onClick={() => onRejectFile(file.path)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-800 text-white rounded hover:bg-red-700 text-xs font-medium"
-                >
-                  <XCircle size={14} /> Reject
-                </button>
-              </div>
-            )
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => handleAcceptFile(file.path, file.content)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-700 text-white rounded hover:bg-green-600 text-xs font-medium"
+              >
+                <CheckCircle size={14} /> Accept
+              </button>
+              <button
+                onClick={() => onRejectFile(file.path)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-800 text-white rounded hover:bg-red-700 text-xs font-medium"
+              >
+                <XCircle size={14} /> Reject
+              </button>
+            </div>
           )}
         </div>
       ))}
@@ -154,27 +177,40 @@ export default function FileApprovalCard({
             <span className="text-sm font-medium text-gray-300">
               {acceptedCount} file(s) accepted
             </span>
-            {validationErrors.length > 0 && (
-              <span className="text-xs text-red-400">
-                ⚠ {validationErrors.length} error(s) found
-              </span>
+            {useFileSystem && (
+              <div className="flex items-center gap-1 text-xs text-blue-400">
+                <HardDrive size={12} />
+                <span>Local File System</span>
+              </div>
             )}
           </div>
           <button
-            onClick={onCommit}
-            disabled={validationErrors.length > 0}
+            onClick={handleCommitWithFileSystem}
+            disabled={!commitEnabled}
             className={`w-full py-2 rounded text-sm font-medium ${
-              validationErrors.length > 0
+              !commitEnabled
                 ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                 : "bg-green-700 text-white hover:bg-green-600"
             }`}
           >
-            {validationErrors.length > 0
-              ? "Fix errors before committing"
+            {useFileSystem
+              ? `Save to Device (${acceptedCount} files)`
               : `Commit All Changes (${acceptedCount} files)`}
           </button>
         </div>
       )}
+
+      {/* File System Confirmation Dialog */}
+      <FileSystemConfirmDialog
+        isOpen={showConfirmDialog}
+        files={pendingFiles}
+        onConfirm={handleConfirmFileSystem}
+        onCancel={() => {
+          setShowConfirmDialog(false);
+          setPendingFiles([]);
+        }}
+        projectName={projectName}
+      />
     </div>
   );
 }

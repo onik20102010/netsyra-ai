@@ -5,47 +5,45 @@ export interface IdeModelConfig {
   endpoint: string;
 }
 
-// Full chain used for complex tasks – all models are verified Groq IDs
 export const IDE_MODEL_CHAIN: IdeModelConfig[] = [
   {
     provider: "groq",
-    model: "qwen-2.5-coder-32b",          // Qwen 2.5 Coder 32B – fast & code‑focused
+    model: "llama-3.1-8b-instant",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
   {
     provider: "groq",
-    model: "qwen-2.5-coder-32b",          // retry the same model
+    model: "llama-3.1-8b-instant",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
   {
     provider: "groq",
-    model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+    model: "gemma2-9b-it",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
   {
     provider: "groq",
-    model: "meta-llama/llama-4-maverick-17b-128e-instruct",   // retry
+    model: "gemma2-9b-it",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
   {
     provider: "groq",
-    model: "llama-3.3-70b-versatile",     // robust fallback (replaces non‑Groq model)
+    model: "qwen-2.5-32b",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
   {
     provider: "groq",
-    model: "llama-3.3-70b-versatile",     // retry
+    model: "qwen-2.5-32b",
     apiKeyEnv: "GROQ_API_KEY_2",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
   },
 ];
 
-// Smart model selection: use the smallest Groq model for simple asks
 export function selectModelForComplexity(
   complexity: "low" | "medium" | "high"
 ): IdeModelConfig | null {
@@ -57,5 +55,5 @@ export function selectModelForComplexity(
       endpoint: "https://api.groq.com/openai/v1/chat/completions",
     };
   }
-  return null; // medium / high → use full chain
+  return null;
 }

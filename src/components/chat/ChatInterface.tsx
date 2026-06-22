@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import WebViewer from "./WebViewer";
 
 type Message = {
   id: string;
@@ -127,7 +126,6 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [partialReply, setPartialReply] = useState("");
 
   // ── Thinking / typing indicators ──────────────────────────
@@ -198,36 +196,21 @@ export default function ChatInterface({
     };
   }, []);
 
-  const toggleLink = (url: string) => {
-    setExpandedLinks((prev) => ({
-      ...prev,
-      [url]: !prev[url],
-    }));
-  };
-
   const MarkdownRenderer = ({ content }: { content: string }) => (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         a({ href, children, ...props }: any) {
-          if (!href) return <span>{children}</span>;
-          const isExpanded = expandedLinks[href] || false;
           return (
-            <span className="inline">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleLink(href);
-                }}
-                className="text-blue-600 underline cursor-pointer hover:text-blue-800"
-                {...props}
-              >
-                {children}
-              </button>
-              {isExpanded && (
-                <WebViewer url={href} onClose={() => toggleLink(href)} />
-              )}
-            </span>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
+              {...props}
+            >
+              {children}
+            </a>
           );
         },
         code({ node, inline, className, children, ...props }: any) {
@@ -331,35 +314,52 @@ export default function ChatInterface({
         setConversationId(res.headers.get("x-conversation-id"));
       }
 
+      // ── New SSE parsing loop ──────────────────────
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
 
       let fullContent = "";
       let firstChunkReceived = false;
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunkText = new TextDecoder().decode(value, { stream: true });
-        fullContent += chunkText;
+        buffer += new TextDecoder().decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-        if (!firstChunkReceived) {
-          firstChunkReceived = true;
-          setIsThinking(false);
-          setIsTyping(true);
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
 
-          typedBufferRef.current = chunkText;
-          typingTimerRef.current = setTimeout(() => {
-            setPartialReply(typedBufferRef.current);
-            setShowStream(true);
-            setIsTyping(false);
-            typedBufferRef.current = "";
-          }, TYPING_DELAY);
-        } else if (isTyping && !showStream) {
-          typedBufferRef.current += chunkText;
-        } else if (showStream) {
-          setPartialReply(prev => prev + chunkText);
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullContent += content;
+
+              if (!firstChunkReceived) {
+                firstChunkReceived = true;
+                setIsThinking(false);
+                setIsTyping(true);
+
+                typedBufferRef.current = content;
+                typingTimerRef.current = setTimeout(() => {
+                  setPartialReply(typedBufferRef.current);
+                  setShowStream(true);
+                  setIsTyping(false);
+                  typedBufferRef.current = "";
+                }, TYPING_DELAY);
+              } else if (isTyping && !showStream) {
+                typedBufferRef.current += content;
+              } else if (showStream) {
+                setPartialReply(prev => prev + content);
+              }
+            }
+          } catch {}
         }
       }
 
