@@ -1,11 +1,14 @@
+// src/app/dashboard/page.tsx
 "use client";
+
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { Home, MessageSquare, LogOut, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 
-// ── Policy data ──────────────────────────────────────────
+// ── Policy data ────────────────────────────────────────
 const sections = [
   {
     title: "TERMS OF SERVICE",
@@ -146,125 +149,194 @@ export default function DashboardPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
 
+  // 3D tilt effect on cards (simple mouse tracking)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const cards = cardRefs.current;
+    const handlers: ((e: MouseEvent) => void)[] = [];
+    cards.forEach((card, i) => {
+      if (!card) return;
+      const onMove = (e: MouseEvent) => {
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        const rotX = y * -6;
+        const rotY = x * 6;
+        card.style.transform = `perspective(1200px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.01,1.01,1.01)`;
+      };
+      const onLeave = () => {
+        card.style.transform = "perspective(1200px) rotateX(0) rotateY(0) scale3d(1,1,1)";
+      };
+      card.addEventListener("mousemove", onMove);
+      card.addEventListener("mouseleave", onLeave);
+      handlers.push(onMove, onLeave);
+    });
+    return () => {
+      cards.forEach((card, i) => {
+        if (!card) return;
+        card.removeEventListener("mousemove", handlers[i * 2]);
+        card.removeEventListener("mouseleave", handlers[i * 2 + 1]);
+      });
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-black text-gray-300 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <motion.div
-          animate={{ scale: [1, 1.3, 1], rotate: [0, 180, 360] }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full bg-purple-900/15 blur-[150px]"
-        />
-        <motion.div
-          animate={{ scale: [1.3, 1, 1.3], rotate: [0, -180, -360] }}
-          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full rounded-full bg-indigo-900/10 blur-[150px]"
-        />
-        <motion.div
-          animate={{ scale: [0.8, 1.1, 0.8], x: [0, 80, 0], y: [0, -40, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-900/10 blur-[120px]"
-        />
-      </div>
-
-      {/* Scrollable content */}
-      <div className="relative z-10 px-6 py-16 max-w-4xl mx-auto">
-        {/* ── Dashboard hero ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-center mb-24"
-        >
-          <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center p-2 ring-1 ring-purple-500/20 shadow-lg shadow-purple-500/5">
-              <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-            </div>
+    <div className="space-y-16">
+      {/* ── Dashboard hero ──────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] as const }}
+        className="text-center mb-24"
+      >
+        <div className="flex justify-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center p-2 ring-1 ring-purple-500/20 shadow-lg shadow-purple-500/5">
+            <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-light text-white mb-2">Welcome back</h1>
-          <p className="text-sm text-white/30 mb-10">
-            Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
-          </p>
+        </div>
+        <h1 className="text-3xl font-light text-white mb-2">Welcome back</h1>
+        <p className="text-sm text-white/30 mb-10">
+          Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
+        </p>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all"
-              >
-                <Home className="w-4 h-4" />
-                Home
-              </motion.button>
-            </Link>
-            <Link href="/chat">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/[0.08] transition-all"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Chat
-                <Sparkles className="w-3.5 h-3.5 opacity-50" />
-              </motion.button>
-            </Link>
-          </div>
-
-          <button
-            onClick={async () => { await signOut(); router.push("/login"); }}
-            className="mt-8 flex items-center justify-center gap-2 mx-auto px-5 py-2.5 rounded-full text-white/20 hover:text-white/60 hover:bg-white/[0.03] transition-all text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </motion.div>
-
-        {/* ── Policy content ───────────────────────────────── */}
-        <div className="space-y-16">
-          {sections.map((section, idx) => (
-            <motion.div
-              key={idx}
-              variants={sectionVariant}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-40px" }}
-              className="space-y-4"
+        <div className="flex flex-wrap justify-center gap-4">
+          <Link href="/">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all"
             >
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                {section.title}
-              </h2>
-              {section.subtitle && (
-                <motion.p
-                  variants={paragraphVariant}
-                  className="text-purple-400 font-mono text-sm"
-                >
-                  {section.subtitle}
-                </motion.p>
-              )}
-              <div className="space-y-3">
-                {section.content && section.content.map((text, pIdx) => (
-                  <motion.p
-                    key={pIdx}
-                    variants={paragraphVariant}
-                    className="text-gray-400 leading-relaxed"
-                  >
-                    {text}
-                  </motion.p>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+              <Home className="w-4 h-4" />
+              Home
+            </motion.button>
+          </Link>
+          <Link href="/chat">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/[0.08] transition-all"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Chat
+              <Sparkles className="w-3.5 h-3.5 opacity-50" />
+            </motion.button>
+          </Link>
+        </div>
 
-          <motion.p
+        <button
+          onClick={async () => { await signOut(); router.push("/login"); }}
+          className="mt-8 flex items-center justify-center gap-2 mx-auto px-5 py-2.5 rounded-full text-white/20 hover:text-white/60 hover:bg-white/[0.03] transition-all text-sm"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign out
+        </button>
+      </motion.div>
+
+      {/* ── Policy content ───────────────────────────────── */}
+      <div className="space-y-16">
+        {sections.map((section, idx) => (
+          <motion.div
+            key={idx}
+            ref={(el) => { cardRefs.current[idx] = el; }}
             variants={sectionVariant}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true }}
-            className="text-gray-500 text-sm text-center pt-10"
+            viewport={{ once: true, margin: "-40px" }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5"
           >
-            This document was last updated on June 1, 2026.
-          </motion.p>
-        </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+              {section.title}
+            </h2>
+            {section.subtitle && (
+              <motion.p
+                variants={paragraphVariant}
+                className="text-gray-400 font-mono text-sm mt-1"
+              >
+                {section.subtitle}
+              </motion.p>
+            )}
+            <div className="space-y-3 mt-4">
+              {section.content && section.content.map((text, pIdx) => (
+                <motion.p
+                  key={pIdx}
+                  variants={paragraphVariant}
+                  className="text-gray-300 leading-relaxed"
+                >
+                  {text}
+                </motion.p>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+
+        {/* Important Notes Grid (SVG icons) */}
+        <motion.div
+          variants={sectionVariant}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10"
+        >
+          <h3 className="text-xl font-semibold text-white flex items-center gap-2 mb-6">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Important Notes
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { icon: "M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zM18 16l-4-4 4-4 1.5 1.5L17 12l2.5 2.5z", label: "Please read carefully" },
+              { icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", label: "Legally binding agreement" },
+              { icon: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z", label: "Protects both you and us" },
+              { icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm1-13h-2v6l5.25 3.15L17 12.23l-4-2.37V7z", label: "Ensures safe AI experience" },
+              { icon: "M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z", label: "Updated regularly" },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center text-center p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition">
+                <svg className="w-8 h-8 text-gray-400 mb-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d={item.icon} />
+                </svg>
+                <span className="text-xs text-gray-300">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Need Help */}
+        <motion.div
+          variants={sectionVariant}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex items-center gap-4">
+            <svg className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
+            </svg>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Need Help?</h3>
+              <p className="text-gray-400 text-sm">
+                If you have any questions, feel free to contact us.<br />
+                <a href="mailto:onik20102010@gmail.com" className="text-gray-300 hover:text-white transition">onik20102010@gmail.com</a>
+              </p>
+            </div>
+          </div>
+          <button className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-gray-600 to-gray-400 rounded-full text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+            <span>I agree &amp; Continue</span>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+            </svg>
+          </button>
+        </motion.div>
+
+        <motion.p
+          variants={sectionVariant}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="text-gray-500 text-sm text-center pt-10"
+        >
+          This document was last updated on June 1, 2026.
+        </motion.p>
       </div>
     </div>
   );
