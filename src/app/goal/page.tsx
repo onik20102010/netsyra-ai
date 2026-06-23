@@ -1,4 +1,4 @@
-// app/about/page.tsx
+// app/goal/page.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -28,47 +28,70 @@ const item = {
 const features = [
   {
     icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
-    title: "Intelligent Routing",
-    desc: "Real‑time analysis of complexity, cost, latency, and context to select the optimal model for every request.",
+    title: "Intelligent by Design",
+    desc: "Every prompt is analyzed in real time. Complexity, cost, latency, and context determine which model responds—no manual tuning required.",
   },
   {
     icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-    title: "Cost Optimization",
-    desc: "Automatically routes routine queries to lightweight models, saving up to 70% on AI costs without sacrificing quality.",
+    title: "Radically Efficient",
+    desc: "Our routing engine slashes AI costs by up to 70% while improving response quality. Lightweight models handle the routine; premium models tackle the complex.",
+  },
+  {
+    icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+    title: "Built for Builders",
+    desc: "Designed for developers, researchers, and businesses who demand performance without the overhead of managing multiple keys, contracts, and benchmarks.",
   },
   {
     icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
     title: "Privacy First",
-    desc: "Per‑user encryption, secure conversation storage, and intelligent memory that learns about you without compromising privacy.",
-  },
-  {
-    icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
-    title: "Real‑Time Web Search",
-    desc: "Live queries trigger instant web searches, delivering current information alongside AI reasoning for up‑to‑date answers.",
-  },
-  {
-    icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    title: "Developer‑First API",
-    desc: "Clean, RESTful endpoints with drop‑in integration for existing workflows. No complex configuration required.",
+    desc: "Conversations of the users are used to improve our models and achieve our goals quickly in a month.",
   },
   {
     icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z",
     title: "Blazing Fast",
-    desc: "Optimized infrastructure and intelligent caching deliver responses in under 7 seconds — often much less.",
+    desc: "Optimized infrastructure and intelligent caching deliver responses in under 7 seconds—often much less.",
+  },
+  {
+    icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
+    title: "Context‑Aware Memory",
+    desc: "Remembers user preferences and facts across sessions without compromising privacy.",
   },
 ];
 
 const stats = [
-  { number: "70%", label: "Average Cost Savings" },
+  { number: "70%", label: "Cost Reduction" },
   { number: "<7s", label: "Avg. Response Time" },
-  { number: "50+", label: "AI Models Integrated" },
-  { number: "99.9%", label: "Uptime Reliability" },
+  { number: "100+", label: "Provider Models" },
+  { number: "24/7", label: "Intelligent Routing" },
 ];
 
-export default function AboutPage() {
+const differentiators = [
+  {
+    num: "01",
+    title: "Multi‑Provider Routing",
+    desc: "Automatically selects the best model, and more—per request, in real time.",
+  },
+  {
+    num: "02",
+    title: "Developer‑First API",
+    desc: "Clean, RESTful endpoints. Drop‑in integration with existing workflows. No complex configuration.",
+  },
+  {
+    num: "03",
+    title: "Context‑Aware Memory",
+    desc: "Remembers user preferences and facts across sessions without compromising privacy.",
+  },
+  {
+    num: "04",
+    title: "Real‑Time Web Search",
+    desc: "Live queries trigger instant web searches, delivering current information alongside AI reasoning.",
+  },
+];
+
+export default function GoalPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ── Three.js 3D Particle Nebula Background ──────────────
+  // ── Three.js Particle Nebula Background ──────────────
   useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -309,10 +332,10 @@ export default function AboutPage() {
           <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white transition">
             Legal
           </Link>
-          <Link href="/goal" className="text-sm text-gray-400 hover:text-white transition">
+          <Link href="/goal" className="text-sm text-white font-medium">
             Goal
           </Link>
-          <Link href="/about" className="text-sm text-white font-medium">
+          <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">
             About
           </Link>
           <Link
@@ -334,15 +357,15 @@ export default function AboutPage() {
         >
           {/* ── Hero ── */}
           <motion.div variants={item} className="text-center space-y-6">
-            <span className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#6c5ce7] border border-[#6c5ce7]/20 px-4 py-1.5 rounded-full bg-[#6c5ce7]/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#6c5ce7] animate-pulse" />
-              Who We Are
+            <span className="inline-block text-xs tracking-[0.2em] uppercase text-gray-500 border border-white/5 px-4 py-1.5 rounded-full">
+              ✦ The Next Generation
             </span>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-[#6c5ce7] bg-clip-text text-transparent leading-[1.1]">
-              About Netsyra AI
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-gray-400 bg-clip-text text-transparent leading-[1.1]">
+              The Future of AI Orchestration
             </h1>
             <p className="text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
-              We&apos;re building the intelligent orchestration layer that connects every prompt to the perfect AI model — automatically, efficiently, and at scale.
+              We&apos;re building the standard layer for AI‑powered applications—where every prompt
+              finds its perfect model, automatically.
             </p>
             <div>
               <Link
@@ -357,83 +380,28 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          {/* ── About Card ── */}
+          {/* ── Mission ── */}
           <motion.div
             variants={item}
-            className="p-6 md:p-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-4"
+            className="text-center space-y-4 p-8 md:p-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
           >
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              <span className="text-white font-medium">Netsyra AI</span> is an intelligent AI
-              orchestration platform that routes every prompt to the smartest and most cost-efficient
-              AI model. We combine the power of multiple AI providers into one seamless API, helping
-              developers and businesses <span className="text-[#6c5ce7] font-medium">save up to 70%
-              on AI costs</span> while improving response quality.
+            <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Our Mission</span>
+            <p className="text-gray-300 text-lg max-w-3xl mx-auto leading-relaxed">
+              To make AI accessible, affordable, and intelligent for everyone. We believe no single
+              model is perfect for every task—so we built Netsyra to route each request to the
+              best model automatically. We aim to become the definitive orchestration layer for
+              AI‑powered applications worldwide.
             </p>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              Unlike traditional single‑model services, Netsyra automatically analyses every request
-              in real time. A simple factual question is instantly handled by a lightweight, low‑cost
-              model. A complex coding problem is automatically escalated to a deep‑reasoning engine.
-              A question about current events instantly searches the live web and integrates the
-              latest information into the answer. All of this happens behind a single, unified
-              interface — the user only sees <span className="text-white font-medium">fast, accurate,
-              and context‑aware responses</span>.
-            </p>
-
-            <div className="border-l-3 border-[#6c5ce7] pl-6 py-2 my-4 bg-[#6c5ce7]/5 rounded-r-xl">
-              <p className="text-gray-200 text-base md:text-lg italic">
-                &quot;We believe no single model is perfect for every task — so we built Netsyra to
-                route each request to the best model, automatically.&quot;
-              </p>
-            </div>
-
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              Under the hood, Netsyra integrates with leading AI providers as well as local and
-              self‑hosted models. Our intelligent router evaluates complexity, latency, token cost,
-              and availability across providers, then selects the best model for every single message
-              — <span className="text-white font-medium">no manual configuration required</span>. For
-              users who want full control, individual model tiers can be selected manually at any time.
-            </p>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              The platform is built for <span className="text-white font-medium">speed and
-              reliability</span>. A live performance dashboard tracks latency, token usage, cost
-              savings, and routing decisions in real time. Conversations are stored securely with
-              per‑user encryption, and our context window is also very high level — meaning the
-              conversation history maintains natural, flowing dialogue. Intelligent memory systems
-              recall important user facts across sessions, so Netsyra learns about you{" "}
-              <span className="text-[#6c5ce7] font-medium">without ever compromising privacy</span>.
-            </p>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              Netsyra AI is designed for developers, researchers, businesses, and anyone who demands
-              the best from artificial intelligence — without the overhead of managing multiple API
-              keys, provider contracts, and model benchmarks. From rapid prototyping to production‑grade
-              applications, Netsyra delivers <span className="text-white font-medium">the right answer,
-              from the right model, at the right cost</span> — every single time.
-            </p>
-          </motion.div>
-
-          {/* ── Stats ── */}
-          <motion.div
-            variants={container}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
-          >
-            {stats.map((s, i) => (
-              <motion.div key={i} variants={item} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-[#6c5ce7] bg-clip-text text-transparent">
-                  {s.number}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">{s.label}</div>
-              </motion.div>
-            ))}
           </motion.div>
 
           {/* ── Features Grid ── */}
           <motion.div variants={container} className="space-y-4">
             <motion.div variants={item} className="text-center">
-              <span className="text-xs tracking-[0.2em] uppercase text-gray-500">What We Do</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-1">Core Capabilities</h2>
+              <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Why Netsyra</span>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mt-1">Intelligent by Design</h2>
               <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
-                Netsyra combines intelligent routing, real‑time optimization, and seamless integration
-                to deliver the best AI experience.
+                Every prompt is analyzed in real time. Complexity, cost, latency, and context determine
+                which model responds—no manual tuning required.
               </p>
             </motion.div>
 
@@ -451,6 +419,53 @@ export default function AboutPage() {
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
                   <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ── Stats ── */}
+          <motion.div
+            variants={container}
+            className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
+          >
+            {stats.map((s, i) => (
+              <motion.div key={i} variants={item} className="text-center">
+                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-[#6c5ce7] bg-clip-text text-transparent">
+                  {s.number}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">{s.label}</div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* ── What Sets Us Apart ── */}
+          <motion.div
+            variants={container}
+            className="space-y-6 p-6 md:p-10 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
+          >
+            <motion.div variants={item} className="text-center">
+              <span className="text-xs tracking-[0.2em] uppercase text-gray-500">What Sets Us Apart</span>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mt-1">Beyond the Ordinary</h2>
+              <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
+                Four pillars that define our orchestration layer.
+              </p>
+            </motion.div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {differentiators.map((d, i) => (
+                <motion.div
+                  key={i}
+                  variants={item}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition"
+                >
+                  <span className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-semibold text-gray-400 flex-shrink-0 mt-0.5">
+                    {d.num}
+                  </span>
+                  <div>
+                    <h4 className="text-white font-medium text-sm">{d.title}</h4>
+                    <p className="text-gray-400 text-xs mt-1 leading-relaxed">{d.desc}</p>
+                  </div>
                 </motion.div>
               ))}
             </div>
