@@ -12,6 +12,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   X,
+  ArrowUpRight,   // ← added
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import ReactMarkdown from "react-markdown";
@@ -229,6 +230,17 @@ export default function ChatInterface({
                     {(match[1] === "html" || match[1] === "htm") && (
                       <PreviewButton code={codeString} />
                     )}
+                    {/* ── New: Open in IDE button ── */}
+                    <a
+                      href="/ide"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
+                      title="Open in IDE"
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <span>IDE</span>
+                    </a>
                   </div>
                 </div>
                 <SyntaxHighlighter
