@@ -771,7 +771,6 @@ function removePhoto() {
   updatePreview();
 }
 
-// ==================== PREVIEW ====================
 function updatePreview() {
   // Sync personal info from form fields
   userData.personalInfo.fullName = document.getElementById('fullName').value;
@@ -841,8 +840,9 @@ function updatePreview() {
     sidebarHTML += `</div>`; // close cv-sidebar
   }
 
-  // Build main content HTML based on sectionConfig
-  let mainHTML = '';
+  // ===== FIX: Wrap main content in .cv-main =====
+  let mainHTML = `<div class="cv-main" style="width:${mainWidth}%; background:${userTheme.mainBg}; padding:${userTheme.pageMargin}px;">`;
+
   sectionConfig.forEach(sec => {
     if (!sec.visible) return;
     if (['skills','languages'].includes(sec.id)) return; // already rendered in sidebar
@@ -871,6 +871,8 @@ function updatePreview() {
     if (sectionContent) mainHTML += sectionContent;
   });
 
+  mainHTML += `</div>`; // close cv-main
+
   // Assemble the final HTML
   let innerHTML = '';
   if (userTheme.sidebarPos === 'right') {
@@ -886,7 +888,7 @@ function updatePreview() {
   // Apply theme
   applyThemeToCV();
 
-  // Adjust widths
+  // Adjust widths (already set inline, but keep for consistency)
   const sidebarEl = cvInner.querySelector('.cv-sidebar');
   const mainEl = cvInner.querySelector('.cv-main');
   if (sidebarEl) sidebarEl.style.width = sidebarWidth + '%';
