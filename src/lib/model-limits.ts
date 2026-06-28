@@ -56,6 +56,18 @@ export const modelLimits: Record<string, ModelLimit> = {
     tokensPerDay: 2500,    // not limited (adjust if needed)
     messagesPerDay: 30,
   },
+  aai: {
+    modelId: "aai",
+    label: "N AAI",
+    tokensPerDay: 5000,    // higher limit for AAI
+    messagesPerDay: 25,   // fewer messages due to complexity
+  },
+  aai_fallback: {
+    modelId: "aai",
+    label: "N AAI (fallback)",
+    tokensPerDay: 5000,
+    messagesPerDay: 25,
+  },
 };
 
 /**

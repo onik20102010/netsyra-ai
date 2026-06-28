@@ -58,7 +58,8 @@ let userTheme = {
   lineHeight: 1.5, letterSpacing: 0.5,
   dividerStyle: 'solid', photoRadius: 50, pageRadius: 4,
   sectionGap: 30, entryGap: 15,
-  skillBarHeight: 5, skillBarRadius: 3
+  skillBarHeight: 5, skillBarRadius: 3,
+  bgImage: '' // new – background image as dataURL
 };
 
 function loadThemeFromSettings() {
@@ -116,6 +117,8 @@ function applyThemeToUI() {
   document.getElementById('dpSkillBarHeightVal').textContent = userTheme.skillBarHeight + 'px';
   document.getElementById('dpSkillBarRadius').value = userTheme.skillBarRadius;
   document.getElementById('dpSkillBarRadiusVal').textContent = userTheme.skillBarRadius + 'px';
+  
+  updateBackgroundPreview(); // new – show preview if bgImage is set
 }
 
 function updateThemeFromControls() {
@@ -177,6 +180,12 @@ function applyThemeToCV() {
   cv.style.lineHeight = userTheme.lineHeight;
   cv.style.letterSpacing = userTheme.letterSpacing + 'px';
   cv.style.borderRadius = userTheme.pageRadius + 'px';
+  
+  // Apply background image if any
+  cv.style.backgroundImage = userTheme.bgImage ? `url(${userTheme.bgImage})` : 'none';
+  cv.style.backgroundSize = userTheme.bgImage ? 'cover' : '';
+  cv.style.backgroundPosition = userTheme.bgImage ? 'center' : '';
+  cv.style.backgroundRepeat = 'no-repeat';
   
   cv.style.setProperty('--cv-section-gap', userTheme.sectionGap + 'px');
   cv.style.setProperty('--cv-entry-gap', userTheme.entryGap + 'px');
@@ -771,6 +780,49 @@ function removePhoto() {
   updatePreview();
 }
 
+// ---- Background Image (new) ----
+function handleBackgroundUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Image must be under 2MB', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    userTheme.bgImage = e.target.result;
+    userData.settings.theme = userTheme;
+    saveToStorage();
+    applyThemeToCV();
+    updateBackgroundPreview();
+    updatePreview();
+    showToast('Background image updated!', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeBackgroundImage() {
+  userTheme.bgImage = '';
+  userData.settings.theme = userTheme;
+  saveToStorage();
+  applyThemeToCV();
+  updateBackgroundPreview();
+  updatePreview();
+  showToast('Background removed', 'success');
+}
+
+function updateBackgroundPreview() {
+  const container = document.getElementById('bgPreviewContainer');
+  const img = document.getElementById('bgPreview');
+  if (!container || !img) return;
+  if (userTheme.bgImage) {
+    img.src = userTheme.bgImage;
+    container.style.display = 'block';
+  } else {
+    container.style.display = 'none';
+  }
+}
+
 function updatePreview() {
   // Sync personal info from form fields
   userData.personalInfo.fullName = document.getElementById('fullName').value;
@@ -944,15 +996,18 @@ function exportCoverLetter() {
 
 function exportPNG() {
   if (typeof html2canvas === 'undefined') {
-    showToast('html2canvas not loaded. Please include the library.', 'error');
+    showToast('PNG library not loaded. Please check your internet connection.', 'error');
     return;
   }
-  html2canvas(document.getElementById('cvPage'), { scale: 2, useCORS: true }).then(canvas => {
+  const cv = document.getElementById('cvPage');
+  html2canvas(cv, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
     const link = document.createElement('a');
     link.download = 'CV_' + (userData.personalInfo.fullName || 'export') + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('PNG exported!', 'success');
+  }).catch(err => {
+    showToast('Export failed: ' + err, 'error');
   });
 }
 

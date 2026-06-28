@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cpu, BrainCircuit, Globe, Code, Plus } from "lucide-react";
+import { Cpu, BrainCircuit, Globe, Code, Plus, Sparkles, Brain } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const AutoIcon = () => (
@@ -23,6 +23,7 @@ const models = [
   { id: "pro", name: "N Pro", icon: BrainCircuit, desc: "Deep reasoning" },
   { id: "live", name: "N Live", icon: Globe, desc: "Real‑time" },
   { id: "code", name: "N Code", icon: Code, desc: "Expert coding" },
+  { id: "aai", name: "N AAI", icon: Brain, desc: "Autonomous AI" },   // ← replaced agi with aai
 ];
 
 export default function ModelSelector({

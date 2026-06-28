@@ -1,6 +1,7 @@
 import { structureLight } from "@/lib/structure-light";
+import { AAI_SYSTEM_PROMPT } from "@/lib/aai/prompt";
 
-export type ProviderType = "openai" | "gemini";   // ← now allows Gemini
+export type ProviderType = "openai" | "gemini";
 
 export interface ModelConfig {
   provider: ProviderType;
@@ -20,7 +21,7 @@ export interface TierConfig {
 // Shared identity (global)
 const identity = `You are Netsyra-AI, a high‑level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request. Onik is the founder of Netsyra AI. His next target is to be the youngest billior in the history.`;
 
-// Full structure prompt (used only by Pro)
+// Full structure prompt (used only by Pro) – Mermaid instruction added to RESPONSE STYLE
 const systemPrompt = `
 You are a production-grade autonomous AI assistant operating as a unified intelligence system with:
 
@@ -200,6 +201,7 @@ RESPONSE STYLE
 - Minimal redundancy
 - Clear over complex wording
 - Formatting only when it improves understanding
+- For architectural explanations, system design, or workflows, generate a Mermaid diagram inside a \`\`\`mermaid code block. Use directed arrows (-->) and labels where appropriate.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 QUALITY CONTROL FINAL GATE
@@ -361,37 +363,55 @@ const liveModels: ModelConfig[] = [
 // ── N CODE ────────────────────────────────────────────────
 const codeModels: ModelConfig[] = [
   {
-    provider: "openai",                         // Cerebras is OpenAI‑compatible
-    apiKeyEnv: "CEREBRAS_API_KEY",              // new env variable
+    provider: "openai",
+    apiKeyEnv: "CEREBRAS_API_KEY",
     endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",           // verify this model ID on Cerebras
+    modelName: "gpt-oss-120b",
     modelKey: "code_1",
   },
   {
     provider: "openai",
     apiKeyEnv: "CEREBRAS_API_KEY",
     endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "z-ai/glm-4.7",                 // verify this model ID on Cerebras
+    modelName: "glm-4.7",
     modelKey: "code_2",
   },
   {
     provider: "openai",
     apiKeyEnv: "CEREBRAS_API_KEY",
     endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "openai/gpt-oss-120b",           // repeat – attempt 5 & 6
+    modelName: "gpt-oss-120b",
     modelKey: "code_3",
   },
   {
     provider: "openai",
     apiKeyEnv: "CEREBRAS_API_KEY",
     endpoint: "https://api.cerebras.ai/v1/chat/completions",
-    modelName: "z-ai/glm-4.7",                 // repeat – attempt 7 & 8
+    modelName: "glm-4.7",
     modelKey: "code_4",
   },
 ];
 
+// ── N AAI (Llama‑powered, advanced autonomous intelligence) ──
+const aaiModels: ModelConfig[] = [
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "llama-3.3-70b-versatile",
+    modelKey: "aai",
+  },
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "qwen/qwen3-32b",
+    modelKey: "aai_fallback",
+  },
+];
+
 // ── EXPORT ────────────────────────────────────────────────
-export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig> = {
+export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", TierConfig> = {
   fast: {
     models: fastModels,
     systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
@@ -400,7 +420,7 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
   },
   plus: {
     models: plusModels,
-    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. ${structureLight}`,
+    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. When explaining architecture, system design, or workflows, always include a Mermaid diagram inside a \`\`\`mermaid code block (use proper Mermaid syntax with arrows: --> for relationship, -->|label| for labeled edges, etc.). Keep diagrams simple and readable. ${structureLight}`,
     temperature: 0.5,
     maxTokens: 600,
   },
@@ -421,5 +441,11 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code", TierConfig
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code.`,
     temperature: 0.2,
     maxTokens: 1500,
+  },
+  aai: {
+    models: aaiModels,
+    systemPrompt: `${identity} You are currently running as N AAI. ${AAI_SYSTEM_PROMPT}`,
+    temperature: 0.7,
+    maxTokens: 4096,
   },
 };

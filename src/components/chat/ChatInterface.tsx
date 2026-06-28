@@ -12,9 +12,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   X,
-  ArrowUpRight,   // ← added
+  ArrowUpRight,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
+import MermaidDiagram from "./MermaidDiagram";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,11 @@ function ThinkingBlock({ text }: { text: string }) {
   );
 }
 
+// Helper to remove <think> blocks completely
+function stripThinkTags(content: string): string {
+  return content.replace(/<think[\s\S]*?<\/think>/g, "");
+}
+
 export default function ChatInterface({
   conversationId,
   setConversationId,
@@ -129,7 +135,6 @@ export default function ChatInterface({
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [partialReply, setPartialReply] = useState("");
 
-  // ── Thinking / typing indicators ──────────────────────────
   const [isThinking, setIsThinking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showStream, setShowStream] = useState(false);
@@ -190,107 +195,117 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId]);
 
-  // Cleanup typing timer on unmount
   useEffect(() => {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
 
-  const MarkdownRenderer = ({ content }: { content: string }) => (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a({ href, children, ...props }: any) {
-          return (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
-              {...props}
-            >
-              {children}
-            </a>
-          );
-        },
-        code({ node, inline, className, children, ...props }: any) {
-          const match = /language-(\w+)/.exec(className || "");
-          const codeString = String(children).replace(/\n$/, "");
-
-          if (!inline && match) {
+  const MarkdownRenderer = ({ content }: { content: string }) => {
+    const clean = stripThinkTags(content);   // remove <think> segments
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a({ href, children, ...props }: any) {
             return (
-              <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
-                <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-                  <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    {match[1]}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <CopyButton code={codeString} />
-                    {(match[1] === "html" || match[1] === "htm") && (
-                      <PreviewButton code={codeString} />
-                    )}
-                    {/* ── New: Open in IDE button ── */}
-                    <a
-                      href="/ide"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
-                      title="Open in IDE"
-                    >
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                      <span>IDE</span>
-                    </a>
-                  </div>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
+                {...props}
+              >
+                {children}
+              </a>
+            );
+          },
+          code({ node, inline, className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || "");
+            const codeString = String(children).replace(/\n$/, "");
+
+            // Mermaid diagram wrapped in a nice bubble
+            if (!inline && match && match[1] === "mermaid") {
+              return (
+                <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
+                  <MermaidDiagram chart={codeString} />
                 </div>
-                <SyntaxHighlighter
-                  language={match[1]}
-                  style={vscDarkPlus}
-                  customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                  codeTagProps={{ className: "text-sm" }}
-                >
-                  {codeString}
-                </SyntaxHighlighter>
+              );
+            }
+
+            if (!inline && match) {
+              return (
+                <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                  <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                    <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      {match[1]}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <CopyButton code={codeString} />
+                      {(match[1] === "html" || match[1] === "htm") && (
+                        <PreviewButton code={codeString} />
+                      )}
+                      <a
+                        href="/ide"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
+                        title="Open in IDE"
+                      >
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        <span>IDE</span>
+                      </a>
+                    </div>
+                  </div>
+                  <SyntaxHighlighter
+                    language={match[1]}
+                    style={vscDarkPlus}
+                    customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                    codeTagProps={{ className: "text-sm" }}
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            }
+            return (
+              <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                {children}
+              </code>
+            );
+          },
+          table({ children }: any) {
+            return (
+              <div className="overflow-x-auto my-4">
+                <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                  {children}
+                </table>
               </div>
             );
-          }
-          return (
-            <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
-              {children}
-            </code>
-          );
-        },
-        table({ children }: any) {
-          return (
-            <div className="overflow-x-auto my-4">
-              <table className="min-w-full border-collapse border border-gray-300 text-sm">
+          },
+          th({ children }: any) {
+            return (
+              <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
                 {children}
-              </table>
-            </div>
-          );
-        },
-        th({ children }: any) {
-          return (
-            <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
-              {children}
-            </th>
-          );
-        },
-        td({ children }: any) {
-          return (
-            <td className="border border-gray-300 px-4 py-2 text-gray-700">
-              {children}
-            </td>
-          );
-        },
-        hr({ node, ...props }: any) {
-          return <hr className="my-8 border-t border-gray-300" {...props} />;
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
+              </th>
+            );
+          },
+          td({ children }: any) {
+            return (
+              <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                {children}
+              </td>
+            );
+          },
+          hr({ node, ...props }: any) {
+            return <hr className="my-8 border-t border-gray-300" {...props} />;
+          },
+        }}
+      >
+        {clean}
+      </ReactMarkdown>
+    );
+  };
 
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
     setIsLoading(true);
@@ -326,7 +341,6 @@ export default function ChatInterface({
         setConversationId(res.headers.get("x-conversation-id"));
       }
 
-      // ── New SSE parsing loop ──────────────────────
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
 
@@ -498,7 +512,6 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              {/* Static messages */}
               {messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
                 const isEditing = editingMessageId === msg.id;
@@ -518,6 +531,7 @@ export default function ChatInterface({
                       </div>
                     )}
 
+                    {/* assistant bubble – original style */}
                     <div
                       className={cn(
                         msg.role === "user"
@@ -618,7 +632,6 @@ export default function ChatInterface({
                 );
               })}
 
-              {/* Netsyra is thinking… */}
               {isThinking && (
                 <motion.div
                   key="thinking-indicator"
@@ -627,7 +640,7 @@ export default function ChatInterface({
                   exit={{ opacity: 0, y: -10 }}
                   className="flex justify-start"
                 >
-                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2">
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2 shadow-sm">
                     <span className="text-gray-500">Netsyra is thinking</span>
                     <motion.span
                       animate={{ opacity: [0.4, 1, 0.4] }}
@@ -639,7 +652,6 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              {/* Netsyra is typing… */}
               {isTyping && (
                 <motion.div
                   key="typing-indicator"
@@ -648,7 +660,7 @@ export default function ChatInterface({
                   exit={{ opacity: 0, y: -10 }}
                   className="flex justify-start"
                 >
-                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2">
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2 shadow-sm">
                     <span className="text-gray-500">Netsyra is typing</span>
                     <motion.span
                       animate={{ opacity: [0.4, 1, 0.4] }}
@@ -660,7 +672,6 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              {/* Partial reply */}
               {showStream && partialReply && (
                 <motion.div
                   key="streaming-bubble"
@@ -680,7 +691,6 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              {/* Loading fallback */}
               {isLoading && !isThinking && !isTyping && !showStream && (
                 <motion.div
                   key="loading"
@@ -720,7 +730,6 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      {/* Input area */}
       <div className="sticky bottom-0">
         <div className="w-full max-w-3xl mx-auto px-4 pt-2 pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
@@ -732,7 +741,6 @@ export default function ChatInterface({
 
           <form onSubmit={handleSend} className="relative">
             <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              {/* Model selector */}
               <div className="flex-shrink-0 pb-1">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
               </div>
