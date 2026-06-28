@@ -18,6 +18,7 @@ import { PatternDetector } from "./patterns/detector";
 import { RoutingPolicy } from "./policies/routing";
 import { RewardModel } from "./rewards/reward-model";
 import { PromptOptimizer } from "./optimization/prompt";
+import { PolicyOptimizer } from "./optimization/policy";  // ← new import
 import { SimulationSandbox } from "./simulation/sandbox";
 import { EvolutionEngine } from "./evolution/self-improvement";
 
@@ -53,6 +54,7 @@ export class LearningManager {
 
   // Optimization System
   private promptOptimizer: PromptOptimizer;
+  private policyOptimizer: PolicyOptimizer;  // ← new property
 
   // Simulation System
   private simulationSandbox: SimulationSandbox;
@@ -90,12 +92,13 @@ export class LearningManager {
 
     // Initialize optimization system
     this.promptOptimizer = new PromptOptimizer();
+    this.policyOptimizer = new PolicyOptimizer();  // ← new initialization
 
     // Initialize simulation system
     this.simulationSandbox = new SimulationSandbox();
 
     // Initialize evolution system
-    this.evolutionEngine = new EvolutionEngine();
+    this.evolutionEngine = EvolutionEngine.getInstance();
   }
 
   /**
@@ -135,8 +138,8 @@ export class LearningManager {
       // Step 4: Analyze mistakes
       const mistakes = await this.mistakeAnalyzer.analyze(experience, reflection);
 
-      // Step 5: Generate lessons
-      const lessons = await this.lessonGenerator.generate(mistakes);
+      // Step 5: Generate lessons (wrap mistakes in array if needed)
+      const lessons = await this.lessonGenerator.generate([mistakes] as any);
       for (const lesson of lessons) {
         this.sessionManager.addLesson(session.id, lesson);
       }
@@ -153,7 +156,7 @@ export class LearningManager {
         this.sessionManager.addPattern(session.id, pattern);
       }
 
-      // Step 8: Optimize policies
+      // Step 8: Optimize policies (now using the new policyOptimizer property)
       const policyUpdates = await this.policyOptimizer.optimize(experience, reflection);
       for (const policy of policyUpdates) {
         this.sessionManager.addPolicyUpdate(session.id, policy);
