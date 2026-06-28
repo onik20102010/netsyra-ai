@@ -19,33 +19,24 @@ function ChatContent() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);
-  const [conversationId, setConversationId] =
-    useState<string | null>(initialId);
+  const [conversationId, setConversationId] = useState<string | null>(initialId);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
-
   const [hoverOpened, setHoverOpened] = useState(false);
 
   const router = useRouter();
-
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-open sidebar on desktop
+  // Store the sidebar's addConversation function
+  const addConversationRef = useRef<((conv: any) => void) | null>(null);
+
   useEffect(() => {
     const updateLayout = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
+      if (window.innerWidth >= 1024) setSidebarOpen(true);
+      else setSidebarOpen(false);
     };
-
     updateLayout();
-
     window.addEventListener("resize", updateLayout);
-
-    return () => {
-      window.removeEventListener("resize", updateLayout);
-    };
+    return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
   const handleNewChat = () => {
@@ -62,19 +53,27 @@ function ChatContent() {
     router.push(`/chat?conversation=${id}`);
   };
 
-  const handleConversationCreated = () => {
+  // Called when a new conversation is created from ChatInterface
+  const handleConversationCreated = (id: string, firstMessage?: string) => {
+    setConversationId(id);
+    router.push(`/chat?conversation=${id}`);
+    // Instantly add to sidebar
+    if (addConversationRef.current) {
+      addConversationRef.current({
+        id,
+        title: firstMessage?.slice(0, 50) || "New conversation",
+        pinned: false,
+        archived: false,
+      });
+    }
+    // Also refresh in background to catch any title updates
     setSidebarRefreshKey((k) => k + 1);
   };
 
   // Desktop hover-open
   const handleHoverEnter = useCallback(() => {
     if (window.innerWidth < 1024) return;
-
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-
+    if (closeTimer.current) clearTimeout(closeTimer.current);
     if (!sidebarOpen) {
       setSidebarOpen(true);
       setHoverOpened(true);
@@ -83,7 +82,6 @@ function ChatContent() {
 
   const handleSidebarMouseLeave = useCallback(() => {
     if (!hoverOpened) return;
-
     closeTimer.current = setTimeout(() => {
       setSidebarOpen(false);
       setHoverOpened(false);
@@ -91,10 +89,7 @@ function ChatContent() {
   }, [hoverOpened]);
 
   const toggleSidebar = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-    }
-
+    if (closeTimer.current) clearTimeout(closeTimer.current);
     setHoverOpened(false);
     setSidebarOpen((prev) => !prev);
   };
@@ -111,19 +106,9 @@ function ChatContent() {
 
       {/* Sidebar */}
       <div
-        className={`
-          fixed lg:relative
-          inset-y-0 left-0
-          z-40
-          w-[85vw] max-w-[320px] lg:w-72
-          transform transition-transform duration-200 ease-out
-          bg-white
-          ${
-            sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full"
-          }
-        `}
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72 transform transition-transform duration-200 ease-out bg-white ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
         onMouseLeave={handleSidebarMouseLeave}
       >
         <ChatSidebar
@@ -139,6 +124,9 @@ function ChatContent() {
           diveDeep={diveDeep}
           setDiveDeep={setDiveDeep}
           refreshKey={sidebarRefreshKey}
+          onAddConversationReady={(addFn) => {
+            addConversationRef.current = addFn;
+          }}
         />
       </div>
 
@@ -155,44 +143,22 @@ function ChatContent() {
 
       {/* Main Area */}
       <div className="flex flex-1 min-w-0 flex-col relative">
-        {/* Floating Menu Button – closer to ChatGPT style */}
         <button
           onClick={toggleSidebar}
           aria-label="Toggle sidebar"
-          className="
-            fixed
-            top-4
-            left-4
-            z-50
-            flex
-            h-9
-            w-9
-            items-center
-            justify-center
-            rounded-full
-            bg-white/80
-            backdrop-blur-md
-            text-gray-600
-            hover:bg-gray-100
-            hover:text-gray-900
-            transition-all
-            duration-200
-          "
+          className="fixed top-4 left-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
         >
           <Menu className="h-5 w-5" strokeWidth={2.2} />
         </button>
 
-        {/* Chat Area */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0">
-            <ChatInterface
-              conversationId={conversationId}
-              setConversationId={setConversationId}
-              diveDeep={diveDeep}
-              onConversationCreated={handleConversationCreated}
-              initialModel={initialModel}
-            />
-          </div>
+        <div className="flex-1 min-h-0">
+          <ChatInterface
+            conversationId={conversationId}
+            setConversationId={setConversationId}
+            diveDeep={diveDeep}
+            onConversationCreated={handleConversationCreated}
+            initialModel={initialModel}
+          />
         </div>
       </div>
     </div>
@@ -201,13 +167,7 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-dvh items-center justify-center bg-white">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-white"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" /></div>}>
       <ChatContent />
     </Suspense>
   );

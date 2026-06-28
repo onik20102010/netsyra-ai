@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, type FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { createClient } from "@/lib/supabase/client";
+import { useChatUsage } from "@/hooks/useChatUsage";
 
 type Message = {
   id: string;
@@ -36,7 +38,7 @@ interface ChatInterfaceProps {
   conversationId: string | null;
   setConversationId: (id: string | null) => void;
   diveDeep: boolean;
-  onConversationCreated?: (id: string) => void;
+  onConversationCreated?: (id: string, firstMessage: string) => void;
   initialModel?: string;
 }
 
@@ -111,7 +113,6 @@ function ThinkingBlock({ text }: { text: string }) {
   );
 }
 
-// Helper to remove <think> blocks completely
 function stripThinkTags(content: string): string {
   return content.replace(/<think[\s\S]*?<\/think>/g, "");
 }
@@ -148,19 +149,24 @@ export default function ChatInterface({
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
+  const supabase = createClient();
+
+  // Chat usage tracking – keep refetch but remove visible counter
+  const { refetch: refetchUsage } = useChatUsage();
+
+  const MAX_LINES = 80;
+
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => { scrollToBottom(); }, [messages, partialReply]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
     const handleScroll = () => {
       const isNearBottom =
         container.scrollHeight - container.scrollTop - container.clientHeight < 200;
       setShowScrollButton(!isNearBottom);
     };
-
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
   }, [messages, partialReply]);
@@ -175,25 +181,37 @@ export default function ChatInterface({
   useEffect(() => {
     if (!conversationId) return;
     const fetchMessages = async () => {
-      const supabase = (await import("@/lib/supabase/client")).createClient();
-      const { data } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select("id, conversation_id, user_id, role, content, created_at")
         .eq("conversation_id", conversationId)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: true });
+      if (error) {
+        console.error("Fetch messages error:", error);
+        return;
+      }
       if (data) {
         setMessages(data.map((m: any) => ({
           id: m.id,
           role: m.role,
           content: m.content,
-          thinking: m.thinking,
-          wikiLink: m.wikiLink,
-          confidence: m.confidence,
         })));
       }
     };
     fetchMessages();
-  }, [conversationId]);
+  }, [conversationId, supabase]);
+
+  useEffect(() => {
+    const firstUserMsg = messages.find(m => m.role === "user");
+    if (firstUserMsg) {
+      document.title = firstUserMsg.content.slice(0, 50) + " - Netsyra";
+    } else {
+      document.title = "Netsyra";
+    }
+  }, [messages]);
 
   useEffect(() => {
     return () => {
@@ -202,7 +220,7 @@ export default function ChatInterface({
   }, []);
 
   const MarkdownRenderer = ({ content }: { content: string }) => {
-    const clean = stripThinkTags(content);   // remove <think> segments
+    const clean = stripThinkTags(content);
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -224,7 +242,6 @@ export default function ChatInterface({
             const match = /language-(\w+)/.exec(className || "");
             const codeString = String(children).replace(/\n$/, "");
 
-            // Mermaid diagram wrapped in a nice bubble
             if (!inline && match && match[1] === "mermaid") {
               return (
                 <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
@@ -334,11 +351,22 @@ export default function ChatInterface({
       });
 
       if (!res.ok) {
+        if (res.status === 429) {
+          const data = await res.json();
+          // Show a popup (toast) instead of inline message
+          toast.error(data.error || "Limit reached", { duration: 6000 });
+          refetchUsage();
+          setIsLoading(false); // stop loading state
+          return;
+        }
         const data = await res.json();
         throw new Error(data.error || "Something went wrong");
       }
+
       if (!conversationId && res.headers.get("x-conversation-id")) {
-        setConversationId(res.headers.get("x-conversation-id"));
+        const newConvId = res.headers.get("x-conversation-id")!;
+        setConversationId(newConvId);
+        onConversationCreated?.(newConvId, userContent);
       }
 
       const reader = res.body?.getReader();
@@ -363,7 +391,7 @@ export default function ChatInterface({
 
           try {
             const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
+            const content = parsed.content || parsed.choices?.[0]?.delta?.content || "";
             if (content) {
               fullContent += content;
 
@@ -395,6 +423,7 @@ export default function ChatInterface({
         content: fullContent,
       };
       setMessages(prev => [...prev, assistantMessage]);
+      refetchUsage(); // keep backend usage synced
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
     } finally {
@@ -531,7 +560,6 @@ export default function ChatInterface({
                       </div>
                     )}
 
-                    {/* assistant bubble – original style */}
                     <div
                       className={cn(
                         msg.role === "user"
@@ -720,7 +748,6 @@ export default function ChatInterface({
               exit={{ opacity: 0, y: 10 }}
               onClick={scrollToBottom}
               className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 p-2.5 rounded-full bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all"
-              aria-label="Scroll to bottom"
             >
               <svg className="w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9" />
@@ -750,10 +777,10 @@ export default function ChatInterface({
                 value={input}
                 onChange={(e) => {
                   const lines = e.target.value.split("\n");
-                  if (lines.length > 40) {
+                  if (lines.length > MAX_LINES) {
                     setLineLimitReached(true);
-                    setInput(lines.slice(0, 40).join("\n"));
-                    toast.error("Message is too long. Please reduce to 40 lines or fewer.");
+                    setInput(lines.slice(0, MAX_LINES).join("\n"));
+                    toast.error("Message is too long. Please reduce to 80 lines or fewer.");
                   } else {
                     setLineLimitReached(false);
                     setInput(e.target.value);
@@ -779,9 +806,14 @@ export default function ChatInterface({
               </button>
             </div>
 
+            {/* Live line counter */}
+            <div className="text-xs text-gray-400 text-right pr-1 mt-1">
+              {input.split("\n").length}/{MAX_LINES} lines
+            </div>
+
             {lineLimitReached && (
               <p className="text-xs text-rose-500 mt-1">
-                Message is too long. Please reduce to 40 lines or fewer.
+                Message is too long. Please reduce to 80 lines or fewer.
               </p>
             )}
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">

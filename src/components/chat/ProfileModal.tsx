@@ -128,13 +128,13 @@ export default function ProfileModal({
             onClick={onClose}
           />
 
-          {/* Centered modal */}
+          {/* Centered modal – narrower width */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm mx-4"
           >
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
               {/* Header + tabs */}
