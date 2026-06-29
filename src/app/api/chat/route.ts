@@ -2,6 +2,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/aai";
 import { tiers } from "@/lib/model-registry";
+import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -46,7 +47,6 @@ async function checkAndUpdateUsage(
   const now = new Date();
   const limit = MODEL_LIMITS[modelTier] || 10;
 
-  // No record or limit period expired → reset
   if (!usage || new Date(usage.reset_at) < now) {
     const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
     await supabase
@@ -62,7 +62,6 @@ async function checkAndUpdateUsage(
     return { allowed: false, remaining: 0, resetAt: usage.reset_at };
   }
 
-  // Increment usage
   await supabase
     .from("chat_usage")
     .update({ messages_used: usage.messages_used + 1 })
@@ -93,7 +92,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing messages" }, { status: 400 });
     }
 
-    // Enforce 80‑line limit per message
     for (const msg of messages) {
       const lines = (msg.content || "").split("\n");
       if (lines.length > 80) {
@@ -108,7 +106,10 @@ export async function POST(req: NextRequest) {
     const userMessage = lastMessage.content;
     const convId = conversationId || crypto.randomUUID();
 
-    // Check rate limit for the selected tier
+    // ── Intent classification ─────────────────
+    const intent = await classifyIntent(userMessage);
+    const intentInstruction = getIntentInstruction(intent);
+
     const usageCheck = await checkAndUpdateUsage(supabase, user.id, modelTier);
     if (!usageCheck.allowed) {
       const resetTime = new Date(usageCheck.resetAt);
@@ -121,12 +122,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create conversation if new
     if (newConversation || !conversationId) {
       await createConversation(supabase, user.id, convId, userMessage);
     }
 
-    // Save user message
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
     // ── AAI branch ─────────────────────────────
@@ -177,10 +176,34 @@ export async function POST(req: NextRequest) {
 
     // ── Regular tier with fallback ────────────
     const tier = tiers[modelTier as keyof typeof tiers] || tiers.fast;
+
+    const { data: prefs } = await supabase
+      .from("user_preferences")
+      .select("warmth, enthusiasm, formatting, conciseness")
+      .eq("user_id", user.id)
+      .single();
+
+    let toneInjection = "";
+    if (prefs) {
+      toneInjection = `\n\n--- USER PERSONALIZATION ---\n`;
+      if (prefs.warmth > 0) toneInjection += `- Be warm and empathetic. Use phrases like "I understand" where appropriate.\n`;
+      if (prefs.warmth < 0) toneInjection += `- Be objective and direct. Avoid emotional language.\n`;
+      if (prefs.enthusiasm > 0) toneInjection += `- Use positive, energetic language with occasional exclamation marks.\n`;
+      if (prefs.enthusiasm < 0) toneInjection += `- Keep a neutral, measured tone.\n`;
+      if (prefs.formatting > 0) toneInjection += `- Use headers, lists, and structured formatting extensively.\n`;
+      if (prefs.formatting < 0) toneInjection += `- Prefer paragraphs over heavy Markdown formatting.\n`;
+      if (prefs.conciseness > 0) toneInjection += `- Be extremely concise. Short sentences, minimal fluff.\n`;
+      if (prefs.conciseness < 0) toneInjection += `- Be thorough and detailed, even if responses become longer.\n`;
+    }
+
     const apiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: tier.systemPrompt },
       ...messages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
+
+    // Append tone and intent instructions to the system message
+    apiMessages[0].content += toneInjection;
+    apiMessages[0].content += `\n\n--- DYNAMIC FORMATTING INSTRUCTION ---\nQuery type detected: ${intent}. ${intentInstruction}`;
 
     let lastError: string | null = null;
 
@@ -283,7 +306,6 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Stream and accumulate
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
         let fullContent = "";
@@ -324,7 +346,6 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              // Save the full assistant message to DB
               saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);
 
               controller.enqueue(encoder.encode("data: [DONE]\n\n"));
