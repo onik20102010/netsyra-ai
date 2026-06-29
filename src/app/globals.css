@@ -234,3 +234,28 @@
   scrollbar-width: thin;
   scrollbar-color: #424242 transparent;
 }
+
+/* Light theme (default) */
+:root {
+  --mermaid-bg: #ffffff;
+  --mermaid-primary: #e9ecef;
+  --mermaid-border: #dee2e6;
+  --mermaid-text: #212529;
+  --mermaid-line: #495057;
+  --mermaid-secondary: #f1f3f5;
+  --mermaid-tertiary: #f8f9fa;
+  --mermaid-toolbar-bg: #f1f3f5;
+}
+
+/* Dark theme (add this class to <html> or <body> for dark mode) */
+.dark-theme,
+[data-theme="dark"] {
+  --mermaid-bg: #1e1e2e;
+  --mermaid-primary: #2b2b3c;
+  --mermaid-border: #444466;
+  --mermaid-text: #e0e0e0;
+  --mermaid-line: #a0a0b8;
+  --mermaid-secondary: #2a2a3a;
+  --mermaid-tertiary: #252535;
+  --mermaid-toolbar-bg: #252535;
+}

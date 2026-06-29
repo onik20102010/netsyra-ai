@@ -1,387 +1,178 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import {
-  MessageSquarePlus,
-  History,
-  BrainCircuit,
-  PanelLeftClose,
-  MessageSquare,
-  Search,
-  Pin,
-  Archive,
-  Link as LinkIcon,
-} from "lucide-react";
-import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 
-interface ChatSidebarProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  onNewChat: () => void;
-  onHistory: () => void;
-  onSelectConversation: (id: string) => void;
-  activeConversationId: string | null;
-  diveDeep: boolean;
-  setDiveDeep: (val: boolean) => void;
-  refreshKey?: number;
-  onAddConversationReady?: (addFn: (conv: Conversation) => void) => void;
-}
-
-type Conversation = {
-  id: string;
-  title: string;
-  pinned: boolean;
-  archived: boolean;
-};
-
-export default function ChatSidebar({
-  open,
-  setOpen,
-  onNewChat,
-  onHistory,
-  onSelectConversation,
-  activeConversationId,
-  diveDeep,
-  setDiveDeep,
-  refreshKey = 0,
-  onAddConversationReady,
-}: ChatSidebarProps) {
+export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [displayName, setDisplayName] = useState("");
-  const [nameLoaded, setNameLoaded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
 
-  const handleAddConversation = useCallback((conv: Conversation) => {
-    setConversations((prev) => [conv, ...prev]);
-  }, []);
+  const [displayName, setDisplayName] = useState("");
+  const [userGoal, setUserGoal] = useState("");
+  const [userInstructions, setUserInstructions] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (onAddConversationReady) {
-      onAddConversationReady(handleAddConversation);
-    }
-  }, [onAddConversationReady, handleAddConversation]);
-
-  // Fetch conversations
+  // Load profile data
   useEffect(() => {
     if (!user) return;
-    const fetchConversations = async () => {
-      const { data } = await supabase
-        .from("conversations")
-        .select("id, title, pinned, archived")
-        .eq("user_id", user.id)
-        .eq("archived", false)
-        .order("pinned", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setConversations(data || []);
-    };
-    fetchConversations();
-  }, [user, supabase, refreshKey]);
-
-  // Load profile
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
     const loadProfile = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (error) {
-          if (error.message.includes("JWT issued at future")) {
-            if (!cancelled) setTimeout(loadProfile, 3000);
-            return;
-          }
-          if (!cancelled) setNameLoaded(true);
-          return;
-        }
-
-        if (!cancelled) {
-          if (data?.name) setDisplayName(data.name);
-          setNameLoaded(true);
-        }
-      } catch {
-        if (!cancelled) setNameLoaded(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("name, goal, custom_instructions")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setDisplayName(data.name || "");
+        setUserGoal(data.goal || "");
+        setUserInstructions(data.custom_instructions || "");
       }
+      setLoading(false);
     };
     loadProfile();
-    return () => { cancelled = true; };
   }, [user, supabase]);
 
-  const togglePin = async (id: string, current: boolean) => {
-    await supabase.from("conversations").update({ pinned: !current }).eq("id", id);
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: !current } : c))
+  // Save handler
+  const handleSave = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        user_id: user.id,
+        name: displayName,
+        goal: userGoal,
+        custom_instructions: userInstructions,
+      },
+      { onConflict: "user_id" }
     );
-    toast.success(current ? "Unpinned" : "Pinned");
+    if (error) {
+      toast.error("Failed to save profile.");
+      return;
+    }
+    toast.success("Profile saved!");
   };
 
-  const archiveConv = async (id: string) => {
-    await supabase.from("conversations").update({ archived: true }).eq("id", id);
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    toast.success("Archived");
+  // Compute avatar initials
+  const getInitials = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return "?";
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const copyLink = (id: string) => {
-    const link = `${window.location.origin}/chat?conversation=${id}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copied to clipboard!");
-  };
-
-  const filteredConversations = searchQuery.trim()
-    ? conversations.filter((conv) =>
-        conv.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : conversations;
-
-  const pinnedConversations = filteredConversations.filter((c) => c.pinned);
-  const unpinnedConversations = filteredConversations.filter((c) => !c.pinned);
+  if (!user) return null;
 
   return (
-    <motion.aside
-      animate={{ width: open ? 300 : 0 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="h-full bg-zinc-950 border-r border-zinc-800 flex flex-col overflow-hidden relative"
-    >
-      {open && (
-        <>
-          {/* Header - Glassmorphic */}
-          <div className="p-5 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all"
-              >
-                <PanelLeftClose className="h-5 w-5" />
-              </button>
-              <div className="text-xl font-semibold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                Netsyra
-              </div>
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 p-4 relative overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="absolute -top-20 -right-20 w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-purple-300/20 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Enhanced Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-zinc-900 border border-zinc-700 rounded-2xl text-sm placeholder:text-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                >
-                  ✕
-                </button>
-              )}
+      <div className="w-full max-w-lg relative z-10">
+        {/* Glass card */}
+        <div className="bg-white/75 backdrop-blur-xl border border-white/50 rounded-3xl shadow-2xl shadow-indigo-500/10 p-7 md:p-8 space-y-6 transition-all duration-300 hover:shadow-indigo-500/20 hover:-translate-y-1">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => router.back()}
+                className="text-slate-500 hover:text-slate-800 flex items-center gap-1.5 text-sm font-medium transition-all hover:-translate-x-1"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight mt-1">Profile</h1>
+              <p className="text-sm text-slate-500 font-medium -mt-0.5">Manage your personal preferences</p>
+            </div>
+            {/* Avatar with ring */}
+            <div className="flex-shrink-0 p-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105 transition-transform duration-300 hover:-rotate-3">
+              <div className="w-[72px] h-[72px] md:w-[72px] md:h-[72px] rounded-full bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center text-2xl font-semibold text-indigo-600">
+                {getInitials(displayName)}
+              </div>
             </div>
           </div>
 
-          {/* Navigation & Content */}
-          <div className="flex-1 p-3 overflow-y-auto custom-scrollbar">
-            {/* Quick Actions */}
-            <div className="space-y-1 mb-6">
-              <button
-                onClick={onNewChat}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.985]"
-              >
-                <MessageSquarePlus className="h-5 w-5" />
-                New Chat
-              </button>
+          {loading ? (
+            /* Loading skeleton */
+            <div className="space-y-4 pt-1 animate-pulse">
+              <div className="space-y-1.5">
+                <div className="h-4 bg-slate-200/70 rounded w-1/4" />
+                <div className="h-10 bg-slate-200/60 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-4 bg-slate-200/70 rounded w-1/3" />
+                <div className="h-10 bg-slate-200/60 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-4 bg-slate-200/70 rounded w-2/5" />
+                <div className="h-24 bg-slate-200/60 rounded-xl" />
+              </div>
+              <div className="h-11 bg-slate-200/60 rounded-xl w-full" />
+            </div>
+          ) : (
+            /* Form */
+            <div className="space-y-5 pt-1">
+              {/* Display Name */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Display name
+                </label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  placeholder="Your name"
+                />
+              </div>
 
-              <button
-                onClick={onHistory}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-zinc-300 hover:bg-zinc-900 hover:text-white transition-all"
-              >
-                <History className="h-5 w-5" />
-                History
-              </button>
+              {/* Goal */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                  Goal
+                </label>
+                <input
+                  value={userGoal}
+                  onChange={(e) => setUserGoal(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  placeholder="e.g., Learn to code"
+                />
+              </div>
 
-              {/* Dive Deep Toggle - Futuristic */}
+              {/* Custom Instructions */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg>
+                  Custom instructions
+                </label>
+                <textarea
+                  value={userInstructions}
+                  onChange={(e) => setUserInstructions(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  placeholder="Tell us how you'd like Netsyra to respond..."
+                />
+              </div>
+
+              {/* Save Button */}
               <button
-                onClick={() => setDiveDeep(!diveDeep)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm transition-all group relative overflow-hidden ${
-                  diveDeep 
-                    ? "bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30" 
-                    : "hover:bg-zinc-900"
-                }`}
+                onClick={handleSave}
+                className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-indigo-500/30 active:scale-95 relative overflow-hidden group"
               >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className={`p-2 rounded-xl ${diveDeep ? "bg-indigo-500/10" : "bg-zinc-800"}`}>
-                    <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-400" : "text-zinc-400"}`} />
-                  </div>
-                  <span className="font-medium">Dive Deep</span>
-                </div>
-                
-                <div className={`px-3 py-1 text-xs font-mono rounded-full border transition-all ${
-                  diveDeep 
-                    ? "bg-emerald-500 text-black border-emerald-500" 
-                    : "bg-zinc-800 text-zinc-400 border-zinc-700 group-hover:border-zinc-600"
-                }`}>
-                  {diveDeep ? "ENABLED" : "OFF"}
-                </div>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <Save className="w-4 h-4" />
+                Save Profile
               </button>
             </div>
-
-            <div className="h-px bg-zinc-800 my-4" />
-
-            {/* Pinned */}
-            {pinnedConversations.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 px-3 mb-2 text-xs uppercase tracking-widest text-zinc-500">
-                  <Pin className="w-3.5 h-3.5" />
-                  Pinned
-                </div>
-                {pinnedConversations.map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conv={conv}
-                    isActive={activeConversationId === conv.id}
-                    onSelect={onSelectConversation}
-                    onTogglePin={togglePin}
-                    onArchive={archiveConv}
-                    onCopyLink={copyLink}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* All Conversations */}
-            {unpinnedConversations.length > 0 && (
-              <div>
-                <div className="px-3 mb-2 text-xs uppercase tracking-widest text-zinc-500">Recent</div>
-                {unpinnedConversations.map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conv={conv}
-                    isActive={activeConversationId === conv.id}
-                    onSelect={onSelectConversation}
-                    onTogglePin={togglePin}
-                    onArchive={archiveConv}
-                    onCopyLink={copyLink}
-                  />
-                ))}
-              </div>
-            )}
-
-            {searchQuery.trim() && filteredConversations.length === 0 && (
-              <div className="text-center py-12 text-zinc-500 text-sm">
-                No conversations found
-              </div>
-            )}
-          </div>
-
-          {/* User Footer */}
-          <div className="p-4 border-t border-zinc-800 bg-zinc-950">
-            <button
-              onClick={() => router.push("/profile")}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-900 group transition-all"
-            >
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-violet-500 flex items-center justify-center text-white font-semibold shadow-inner ring-1 ring-white/20">
-                {(displayName || user?.email || "U").charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                {nameLoaded ? (
-                  <p className="font-medium text-sm text-white truncate">
-                    {displayName || user?.email?.split("@")[0] || "User"}
-                  </p>
-                ) : (
-                  <div className="w-24 h-4 bg-zinc-800 rounded animate-pulse" />
-                )}
-                <p className="text-xs text-zinc-500 truncate">View profile</p>
-              </div>
-            </button>
-          </div>
-        </>
-      )}
-    </motion.aside>
-  );
-}
-
-// Extracted Conversation Item for cleaner code
-function ConversationItem({
-  conv,
-  isActive,
-  onSelect,
-  onTogglePin,
-  onArchive,
-  onCopyLink,
-}: {
-  conv: Conversation;
-  isActive: boolean;
-  onSelect: (id: string) => void;
-  onTogglePin: (id: string, pinned: boolean) => void;
-  onArchive: (id: string) => void;
-  onCopyLink: (id: string) => void;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(conv.id)}
-      onKeyDown={(e) => { if (e.key === "Enter") onSelect(conv.id); }}
-      className={`group px-4 py-3 rounded-2xl flex items-center gap-3 cursor-pointer mb-1 transition-all hover:bg-zinc-900 ${
-        isActive 
-          ? "bg-zinc-900 border border-indigo-500/30 shadow-sm" 
-          : "hover:shadow-sm"
-      }`}
-    >
-      <MessageSquare className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-
-      <span className="truncate flex-1 text-sm text-zinc-200 font-light pr-2">
-        {conv.title}
-      </span>
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ActionButton 
-          icon={<LinkIcon className="w-3.5 h-3.5" />} 
-          onClick={(e) => { e.stopPropagation(); onCopyLink(conv.id); }}
-          label="Copy link"
-        />
-        <ActionButton 
-          icon={<Pin className="w-3.5 h-3.5" />} 
-          onClick={(e) => { e.stopPropagation(); onTogglePin(conv.id, conv.pinned); }}
-          label="Pin"
-        />
-        <ActionButton 
-          icon={<Archive className="w-3.5 h-3.5" />} 
-          onClick={(e) => { e.stopPropagation(); onArchive(conv.id); }}
-          label="Archive"
-        />
+          )}
+        </div>
       </div>
     </div>
-  );
-}
-
-function ActionButton({ 
-  icon, 
-  onClick, 
-  label 
-}: { 
-  icon: React.ReactNode; 
-  onClick: (e: React.MouseEvent) => void; 
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors"
-      aria-label={label}
-    >
-      {icon}
-    </button>
   );
 }

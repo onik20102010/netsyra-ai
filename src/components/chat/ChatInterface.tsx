@@ -242,7 +242,16 @@ export default function ChatInterface({
             const match = /language-(\w+)/.exec(className || "");
             const codeString = String(children).replace(/\n$/, "");
 
+            // Mermaid diagram – only render when complete and valid
             if (!inline && match && match[1] === "mermaid") {
+              // Don't render if the code is clearly incomplete (streaming)
+              if (
+                !codeString.trim() ||
+                !/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie)\b/m.test(codeString) ||
+                !/-->|->>|-->>|-.->|==>/m.test(codeString)
+              ) {
+                return null;
+              }
               return (
                 <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
                   <MermaidDiagram chart={codeString} />

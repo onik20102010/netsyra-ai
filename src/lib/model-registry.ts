@@ -21,7 +21,7 @@ export interface TierConfig {
 // Shared identity (global)
 const identity = `You are Netsyra-AI, a high‑level AI chatbot designed by Netsyra. You are powered by an intelligent routing system that selects the best model for each request. Onik is the founder of Netsyra AI. His next target is to be the youngest billior in the history.`;
 
-// Full structure prompt (used only by Pro) – Mermaid instruction added to RESPONSE STYLE
+// Full structure prompt (used only by Pro)
 const systemPrompt = `
 You are a production-grade autonomous AI assistant operating as a unified intelligence system with:
 
@@ -284,7 +284,6 @@ RESPONSE STYLE
 - Minimal redundancy.
 - Clear over complex wording.
 - Formatting only when it improves understanding.
-- For architectural explanations, system design, or workflows, generate a Mermaid diagram inside a \`\`\`mermaid code block. Use directed arrows (-->) and labels where appropriate.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 QUALITY CONTROL FINAL GATE
@@ -308,6 +307,31 @@ Act like a self-improving autonomous AI system:
 - improve iteratively
 - dynamically embody any of the 50+ specialized roles
 - respond with production-grade accuracy, clarity, and persona-appropriate flair
+`;
+
+// ── Proactive Mermaid instruction block ─────────────────
+const PROACTIVE_MERMAID_BLOCK = `
+━━━━━━━━━━━━━━━━━━━━━━━━
+PROACTIVE DIAGRAMS (Mermaid)
+━━━━━━━━━━━━━━━━━━━━━━━━
+When explaining any of the following, you SHOULD include a clean, syntactically correct Mermaid diagram:
+• System architectures
+• Data flows or pipelines
+• Workflows, decision trees, or processes
+• Component relationships
+• Sequence of steps or interactions
+• Classification hierarchies
+
+Use ONLY these diagram types:
+flowchart TD, sequenceDiagram, classDiagram, graph TD
+
+Rules for the diagram:
+- Keep it simple and readable.
+- Use proper arrow syntax: -->, ->>, -->, etc.
+- Never use square brackets inside node labels.
+- Put the diagram inside \`\`\`mermaid ... \`\`\`.
+- Make sure the diagram can render without errors.
+- If a diagram would NOT add clarity, skip it.
 `;
 
 // ── N FAST (full fallback chain with retries) ────────────────
@@ -505,13 +529,13 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", Ti
   },
   plus: {
     models: plusModels,
-    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. When explaining architecture, system design, or workflows, always include a Mermaid diagram inside a \`\`\`mermaid code block (use proper Mermaid syntax with arrows: --> for relationship, -->|label| for labeled edges, etc.). Keep diagrams simple and readable. ${structureLight}`,
+    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. ${structureLight}\n${PROACTIVE_MERMAID_BLOCK}`,
     temperature: 0.5,
     maxTokens: 600,
   },
   pro: {
     models: proModels,
-    systemPrompt: `${identity} You are currently running as N PRO. ${systemPrompt}`,
+    systemPrompt: `${identity} You are currently running as N PRO. ${systemPrompt}\n${PROACTIVE_MERMAID_BLOCK}`,
     temperature: 0.7,
     maxTokens: 1800,
   },
@@ -529,8 +553,8 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", Ti
   },
   aai: {
     models: aaiModels,
-    systemPrompt: `${identity} You are currently running as N AAI. ${AAI_SYSTEM_PROMPT}`,
+    systemPrompt: `${identity} You are currently running as N AAI. ${AAI_SYSTEM_PROMPT}\n${PROACTIVE_MERMAID_BLOCK}`,
     temperature: 0.7,
-    maxTokens: 4096,
+    maxTokens: 2000,
   },
 };
