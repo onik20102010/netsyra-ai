@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
+import WeatherWidget from "./WeatherWidget";
+import ClockWidget from "./ClockWidget";
+import CalendarWidget from "./CalendarWidget";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -139,6 +142,7 @@ export default function ChatInterface({
   const [isThinking, setIsThinking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showStream, setShowStream] = useState(false);
+  const [searching, setSearching] = useState(false); // new: web search indicator
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -151,10 +155,12 @@ export default function ChatInterface({
 
   const supabase = createClient();
 
-  // Chat usage tracking – keep refetch but remove visible counter
   const { refetch: refetchUsage } = useChatUsage();
 
   const MAX_LINES = 80;
+
+  // Track whether this conversation was just created by our own action
+  const isSelfCreatedConv = useRef(false);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => { scrollToBottom(); }, [messages, partialReply]);
@@ -178,8 +184,33 @@ export default function ChatInterface({
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
   }, [input]);
 
+  // ── Reset when conversationId becomes null (New Chat) ──
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      setMessages([]);
+      setInput("");
+      document.title = "Netsyra";
+      setPartialReply("");
+      setIsThinking(false);
+      setIsTyping(false);
+      setShowStream(false);
+      setStreamingMessageId(null);
+    }
+  }, [conversationId]);
+
+  // Fetch messages only for existing conversations (not self-created)
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+
+    // If this conversation was just created by our own send, do NOT fetch
+    if (isSelfCreatedConv.current) {
+      isSelfCreatedConv.current = false;
+      return;
+    }
+
     const fetchMessages = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -204,14 +235,15 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId, supabase]);
 
+  // Set document title when messages change (only if conversationId exists)
   useEffect(() => {
     const firstUserMsg = messages.find(m => m.role === "user");
     if (firstUserMsg) {
       document.title = firstUserMsg.content.slice(0, 50) + " - Netsyra";
-    } else {
+    } else if (conversationId) {
       document.title = "Netsyra";
     }
-  }, [messages]);
+  }, [messages, conversationId]);
 
   useEffect(() => {
     return () => {
@@ -219,118 +251,164 @@ export default function ChatInterface({
     };
   }, []);
 
+  // ── Widget rendering inside Markdown ──
+  function renderContent(content: string): React.ReactNode {
+    const widgets: { index: number; component: React.ReactNode }[] = [];
+
+    // Replace weather markers
+    let cleanContent = content.replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
+      const data = JSON.parse(json);
+      const idx = widgets.length;
+      widgets.push({ index: idx, component: <WeatherWidget key={`weather-${idx}`} data={data} /> });
+      return `[[WIDGET:${idx}]]`;
+    });
+
+    // Replace clock markers
+    cleanContent = cleanContent.replace(/<!--WIDGET:CLOCK:(.*?)-->/g, (_, json) => {
+      const data = JSON.parse(json);
+      const idx = widgets.length;
+      widgets.push({ index: idx, component: <ClockWidget key={`clock-${idx}`} data={data} /> });
+      return `[[WIDGET:${idx}]]`;
+    });
+
+    // Replace calendar markers
+    cleanContent = cleanContent.replace(/<!--WIDGET:CALENDAR:(.*?)-->/g, (_, json) => {
+      try {
+        const data = JSON.parse(json);
+        const idx = widgets.length;
+        widgets.push({ index: idx, component: <CalendarWidget key={`calendar-${idx}`} data={data} /> });
+        return `[[WIDGET:${idx}]]`;
+      } catch { return ""; }
+    });
+
+    // Split content by widget placeholders and render
+    const parts = cleanContent.split(/(\[\[WIDGET:\d+\]\])/g);
+    return (
+      <>
+        {parts.map((part, i) => {
+          const match = part.match(/\[\[WIDGET:(\d+)\]\]/);
+          if (match) {
+            const widgetIdx = parseInt(match[1]);
+            return widgets[widgetIdx]?.component;
+          }
+          // Render markdown fragment
+          return (
+            <ReactMarkdown
+              key={i}
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a({ href, children, ...props }: any) {
+                  return (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
+                      {...props}
+                    >
+                      {children}
+                    </a>
+                  );
+                },
+                code({ node, inline, className, children, ...props }: any) {
+                  const match = /language-(\w+)/.exec(className || "");
+                  const codeString = String(children).replace(/\n$/, "");
+
+                  if (!inline && match && match[1] === "mermaid") {
+                    if (
+                      !codeString.trim() ||
+                      !/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie)\b/m.test(codeString.trim()) ||
+                      !/-->|->>|-->>|-.->|==>/m.test(codeString.trim())
+                    ) {
+                      return null;
+                    }
+                    return (
+                      <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
+                        <MermaidDiagram chart={codeString} />
+                      </div>
+                    );
+                  }
+
+                  if (!inline && match) {
+                    return (
+                      <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                        <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                          <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            {match[1]}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <CopyButton code={codeString} />
+                            {(match[1] === "html" || match[1] === "htm") && (
+                              <PreviewButton code={codeString} />
+                            )}
+                            <a
+                              href="/ide"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
+                              title="Open in IDE"
+                            >
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <span>IDE</span>
+                            </a>
+                          </div>
+                        </div>
+                        <SyntaxHighlighter
+                          language={match[1]}
+                          style={vscDarkPlus}
+                          customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                          codeTagProps={{ className: "text-sm" }}
+                        >
+                          {codeString}
+                        </SyntaxHighlighter>
+                      </div>
+                    );
+                  }
+                  return (
+                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                table({ children }: any) {
+                  return (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                        {children}
+                      </table>
+                    </div>
+                  );
+                },
+                th({ children }: any) {
+                  return (
+                    <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
+                      {children}
+                    </th>
+                  );
+                },
+                td({ children }: any) {
+                  return (
+                    <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                      {children}
+                    </td>
+                  );
+                },
+                hr({ node, ...props }: any) {
+                  return <hr className="my-8 border-t border-gray-300" {...props} />;
+                },
+              }}
+            >
+              {part}
+            </ReactMarkdown>
+          );
+        })}
+      </>
+    );
+  }
+
   const MarkdownRenderer = ({ content }: { content: string }) => {
     const clean = stripThinkTags(content);
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a({ href, children, ...props }: any) {
-            return (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
-                {...props}
-              >
-                {children}
-              </a>
-            );
-          },
-          code({ node, inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || "");
-            const codeString = String(children).replace(/\n$/, "");
-
-            // Mermaid diagram – only render when complete and valid
-            if (!inline && match && match[1] === "mermaid") {
-              // Don't render if the code is clearly incomplete (streaming)
-              if (
-                !codeString.trim() ||
-                !/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie)\b/m.test(codeString) ||
-                !/-->|->>|-->>|-.->|==>/m.test(codeString)
-              ) {
-                return null;
-              }
-              return (
-                <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
-                  <MermaidDiagram chart={codeString} />
-                </div>
-              );
-            }
-
-            if (!inline && match) {
-              return (
-                <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
-                  <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-                    <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      {match[1]}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <CopyButton code={codeString} />
-                      {(match[1] === "html" || match[1] === "htm") && (
-                        <PreviewButton code={codeString} />
-                      )}
-                      <a
-                        href="/ide"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
-                        title="Open in IDE"
-                      >
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                        <span>IDE</span>
-                      </a>
-                    </div>
-                  </div>
-                  <SyntaxHighlighter
-                    language={match[1]}
-                    style={vscDarkPlus}
-                    customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                    codeTagProps={{ className: "text-sm" }}
-                  >
-                    {codeString}
-                  </SyntaxHighlighter>
-                </div>
-              );
-            }
-            return (
-              <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
-                {children}
-              </code>
-            );
-          },
-          table({ children }: any) {
-            return (
-              <div className="overflow-x-auto my-4">
-                <table className="min-w-full border-collapse border border-gray-300 text-sm">
-                  {children}
-                </table>
-              </div>
-            );
-          },
-          th({ children }: any) {
-            return (
-              <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
-                {children}
-              </th>
-            );
-          },
-          td({ children }: any) {
-            return (
-              <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                {children}
-              </td>
-            );
-          },
-          hr({ node, ...props }: any) {
-            return <hr className="my-8 border-t border-gray-300" {...props} />;
-          },
-        }}
-      >
-        {clean}
-      </ReactMarkdown>
-    );
+    return <div className="space-y-2">{renderContent(clean)}</div>;
   };
 
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
@@ -362,18 +440,25 @@ export default function ChatInterface({
       if (!res.ok) {
         if (res.status === 429) {
           const data = await res.json();
-          // Show a popup (toast) instead of inline message
           toast.error(data.error || "Limit reached", { duration: 6000 });
           refetchUsage();
-          setIsLoading(false); // stop loading state
+          setIsLoading(false);
           return;
         }
         const data = await res.json();
         throw new Error(data.error || "Something went wrong");
       }
 
+      // Check if search was performed and show searching indicator
+      if (res.headers.get("x-search-performed") === "true") {
+        setIsThinking(false);
+        setSearching(true);
+        setTimeout(() => setSearching(false), 2000); // estimate 2 seconds
+      }
+
       if (!conversationId && res.headers.get("x-conversation-id")) {
         const newConvId = res.headers.get("x-conversation-id")!;
+        isSelfCreatedConv.current = true;   // mark as self-created
         setConversationId(newConvId);
         onConversationCreated?.(newConvId, userContent);
       }
@@ -432,7 +517,7 @@ export default function ChatInterface({
         content: fullContent,
       };
       setMessages(prev => [...prev, assistantMessage]);
-      refetchUsage(); // keep backend usage synced
+      refetchUsage();
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
     } finally {
@@ -442,6 +527,7 @@ export default function ChatInterface({
       setIsTyping(false);
       setShowStream(false);
       setStreamingMessageId(null);
+      setSearching(false); // clear searching state in case it's still active
     }
   };
 
@@ -530,7 +616,7 @@ export default function ChatInterface({
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
           <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-6 pb-0 space-y-6">
             <AnimatePresence initial={false}>
-              {messages.length === 0 && !isThinking && !isTyping && !showStream && (
+              {messages.length === 0 && !isThinking && !isTyping && !showStream && !searching && (
                 <motion.div
                   key="empty-state"
                   initial={{ opacity: 0 }}
@@ -689,6 +775,20 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
+              {searching && (
+                <motion.div
+                  key="searching-indicator"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2 shadow-sm">
+                    <span className="text-gray-500">🌐 Netsyra is searching the web…</span>
+                  </div>
+                </motion.div>
+              )}
+
               {isTyping && (
                 <motion.div
                   key="typing-indicator"
@@ -728,7 +828,7 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              {isLoading && !isThinking && !isTyping && !showStream && (
+              {isLoading && !isThinking && !isTyping && !showStream && !searching && (
                 <motion.div
                   key="loading"
                   initial={{ opacity: 0 }}
@@ -815,7 +915,6 @@ export default function ChatInterface({
               </button>
             </div>
 
-            {/* Live line counter */}
             <div className="text-xs text-gray-400 text-right pr-1 mt-1">
               {input.split("\n").length}/{MAX_LINES} lines
             </div>

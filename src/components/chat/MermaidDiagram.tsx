@@ -4,6 +4,18 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import mermaid from "mermaid";
 import { Copy, Download, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 
+// ── Suppress ALL Mermaid console noise (warn + error) ──
+const originalWarn = console.warn;
+const originalError = console.error;
+console.warn = (msg: any, ...args: any[]) => {
+  if (typeof msg === "string" && /mermaid|syntax error/i.test(msg)) return;
+  originalWarn(msg, ...args);
+};
+console.error = (msg: any, ...args: any[]) => {
+  if (typeof msg === "string" && /mermaid|syntax error/i.test(msg)) return;
+  originalError(msg, ...args);
+};
+
 // ── One‑time, crisp Mermaid config ─────────────────
 let mermaidInitialized = false;
 if (!mermaidInitialized) {
@@ -32,13 +44,14 @@ if (!mermaidInitialized) {
   mermaidInitialized = true;
 }
 
-// ── Robust AI‑generated Mermaid sanitizer ──────────
+// ── Sanitize AI‑generated Mermaid ──────────
 function sanitizeMermaid(code: string): string {
   return code
     .replace(/subgraph\s+(\w+)\s*\(([^)]*)\)/g, 'subgraph $1["$2"]')
     .replace(/`/g, "")
-    .replace(/“|”/g, '"')
-    .replace(/‘|’/g, "'")
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[()]/g, "")
     .trim();
 }
 
@@ -71,9 +84,17 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
   const isDragging = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
   const rafId = useRef<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [svgCode, setSvgCode] = useState<string>("");
   const lastChartRef = useRef("");
+
+  // ── Remove any stray Mermaid error divs from the DOM ──
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll(".mermaid-error").forEach((el) => el.remove());
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   // ── DOM transform (no state re‑render) ─────────────
   const applyTransform = useCallback(() => {
@@ -101,22 +122,16 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
     applyTransform();
   }, [applyTransform]);
 
-// ── Wheel handler – zoom only with Ctrl/Cmd, otherwise allow normal scroll ──
-const handleWheel = useCallback(
-  (e: WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return; // do nothing → allow page scroll
-    e.preventDefault(); // prevent page scroll only when zooming
+  // ── Wheel handler – zoom only with Ctrl/Cmd, otherwise allow normal scroll ──
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
     if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(() => {
-      scaleRef.current = Math.min(
-        3,
-        Math.max(0.3, scaleRef.current + (e.deltaY > 0 ? -0.1 : 0.1))
-      );
+      scaleRef.current = Math.min(3, Math.max(0.3, scaleRef.current + (e.deltaY > 0 ? -0.1 : 0.1)));
       applyTransform();
     });
-  },
-  [applyTransform]
-);
+  }, [applyTransform]);
 
   // ── Mouse pan ──────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -209,11 +224,11 @@ const handleWheel = useCallback(
     URL.revokeObjectURL(url);
   }, [svgCode]);
 
-  // ── Render & attach wheel listener ─────────────────
+  // ── Render diagram ─────────────────────────────────
   useEffect(() => {
     if (chart === lastChartRef.current) return;
     lastChartRef.current = chart;
-    setError(null);
+    setSvgCode("");
     if (!innerRef.current) return;
 
     const sanitized = sanitizeMermaid(chart.trim());
@@ -229,36 +244,11 @@ const handleWheel = useCallback(
           resetView();
         }
       })
-      .catch((err) => {
-        console.error("Mermaid render error:", err);
-        setError(chart);
+      .catch(() => {
+        // Silent fail – no output, no console noise
+        setSvgCode("");
       });
-
-    const outerEl = outerRef.current;
-    if (outerEl) {
-      outerEl.addEventListener("wheel", handleWheel, { passive: false });
-      return () => outerEl.removeEventListener("wheel", handleWheel);
-    }
-  }, [chart, handleWheel, resetView]);
-
-  // ── Error fallback (DeepSeek dark panel) ───────────
-  if (error) {
-    return (
-      <div className="my-4 rounded-xl overflow-hidden border border-amber-600/40 bg-[#1a1a1a] shadow-xl">
-        <div className="px-4 py-2 bg-amber-900/30 border-b border-amber-600/40 text-xs font-medium text-amber-400 uppercase tracking-wide flex items-center gap-2">
-          <span>⚠ Mermaid Diagram (invalid syntax – raw code)</span>
-          <button
-            onClick={copyCode}
-            className="ml-auto text-amber-400/80 hover:text-amber-300 transition-colors"
-            title="Copy raw code"
-          >
-            <Copy size={14} />
-          </button>
-        </div>
-        <pre className="text-sm text-gray-300 p-4 whitespace-pre-wrap font-mono">{error}</pre>
-      </div>
-    );
-  }
+  }, [chart, resetView]);
 
   // ── DeepSeek‑style diagram container ───────────────
   return (
@@ -266,7 +256,7 @@ const handleWheel = useCallback(
       {/* Toolbar with zoom in/out */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900/60 border-b border-gray-700/30">
         <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-          Mermaid Diagram
+          For Example
         </span>
         <div className="flex gap-1">
           <button
@@ -283,7 +273,6 @@ const handleWheel = useCallback(
           >
             <Download size={14} />
           </button>
-          {/* ── Zoom buttons ── */}
           <button
             onClick={zoomOut}
             className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
@@ -298,7 +287,6 @@ const handleWheel = useCallback(
           >
             <ZoomIn size={14} />
           </button>
-          {/* ── Reset ── */}
           <button
             onClick={resetView}
             className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
@@ -319,6 +307,7 @@ const handleWheel = useCallback(
           willChange: "transform",
           background: "radial-gradient(circle at center, #1a1a1a 0%, #0f0f0f 70%)",
         }}
+        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

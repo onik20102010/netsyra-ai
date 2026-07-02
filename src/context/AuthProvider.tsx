@@ -29,12 +29,19 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
-  // Only create the client on the client side
   useEffect(() => {
     try {
       const supabase = createClient();
       supabaseRef.current = supabase;
 
+      // 1. Recover existing session immediately
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
+      });
+
+      // 2. Listen for future auth state changes
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -58,9 +58,12 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
 
-  // Function to instantly add a conversation
+  // Function to instantly add a conversation (with duplicate check)
   const handleAddConversation = useCallback((conv: Conversation) => {
-    setConversations((prev) => [conv, ...prev]);
+    setConversations((prev) => {
+      if (prev.some((c) => c.id === conv.id)) return prev; // already exists
+      return [conv, ...prev];
+    });
   }, []);
 
   // Pass the function up to the parent
