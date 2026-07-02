@@ -5,7 +5,15 @@ import { aaiRuntime } from "@/lib/aai";
 import { tiers } from "@/lib/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
 import { extractTopic } from "@/lib/memory/topic-extractor";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/services/real-time";
+import { getWeather, getCurrentTimeCard, getCurrentCalendarCard, getNews } from "@/lib/services/real-time";
+import {
+  getFootballPlayerGoals,
+  getCricketScore,
+  getWikipediaSummary,
+  getCurrentEvents,
+  getForbesNetWorth,
+  getStockPrice,
+} from "@/lib/services/live-data";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -338,7 +346,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isSpecialService =
-      /weather|temperature|rain|forecast|time|clock|date|calendar/i.test(userMessage);
+      /weather|temperature|rain|forecast|time|clock|date|calendar|news|headline|trending|goals|career goals|cricket|match|score|result|net worth|stock price|stock|who is|what is|define|explain|wiki|exchange rate|usd to pkr|pkr to usd/i.test(userMessage);
     const isFactualQuery =
       /news|net worth|current|latest|today|202[4-9]|stock|price|how much|how many|who is|what is/i.test(userMessage);
     const shouldSearch = isSpecialService || (diveDeep && isFactualQuery);
@@ -359,24 +367,67 @@ export async function POST(req: NextRequest) {
       if (shouldSearch) {
         searchAttempted = true;
 
+        // ── Weather ──
         if (/weather|temperature|rain|forecast/i.test(userMessage)) {
           const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
           const city = cityMatch?.[1]?.trim() || "Lahore";
           liveData = await getWeather(city);
-        } else if (/time|clock/i.test(userMessage)) {
+        }
+        // ── Time ──
+        else if (/time|clock/i.test(userMessage)) {
           const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
           const zone = zoneMatch?.[1]?.trim() || undefined;
           liveData = await getCurrentTimeCard(zone);
-        } else if (/date|calendar/i.test(userMessage)) {
+        }
+        // ── Date / Calendar ──
+        else if (/date|calendar/i.test(userMessage)) {
           const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
           const zone = zoneMatch?.[1]?.trim() || undefined;
           liveData = await getCurrentCalendarCard(zone);
-        } else if (isFactualQuery) {
+        }
+        // ── News ──
+        else if (/news|headline|trending/i.test(userMessage)) {
+          liveData = await getNews(userMessage) || await getCurrentEvents();
+        }
+        // ── Sports: goals / cricket ──
+        else if (/goals|career goals/i.test(userMessage)) {
+          const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+          const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
+          liveData = await getFootballPlayerGoals(name);
+        }
+        else if (/cricket|match|score|result/i.test(userMessage)) {
+          liveData = await getCricketScore(userMessage);
+        }
+        // ── Financial ──
+        else if (/net worth/i.test(userMessage)) {
+          const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+          const name = nameMatch?.[1]?.trim() || "Elon Musk";
+          liveData = await getForbesNetWorth(name);
+        }
+        else if (/stock price|stock/i.test(userMessage)) {
+          const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
+          const sym = symMatch?.[1] || "TSLA";
+          liveData = await getStockPrice(sym);
+        }
+        // ── Education / definitions ──
+        else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
+          const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
+          liveData = await getWikipediaSummary(topic);
+        }
+        // ── Exchange rate ──
+        else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
+          try {
+            const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+            const data = await res.json();
+            const rate = data.rates.PKR;
+            if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
+          } catch {}
+        }
+        // ── Fallback: deep web search ──
+        else {
           const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
           if (searchUsage.allowed) {
             liveData = await performDeepSearch(userMessage);
-          } else {
-            // Search limit reached – we'll inject this into system prompt below
           }
         }
       }
@@ -387,9 +438,6 @@ export async function POST(req: NextRequest) {
       }
       if (liveData) {
         extendedMessage += `--- REAL-TIME DATA (display exactly as is) ---\n${liveData}\nUse this HTML/Markdown directly in your response. Do not modify the HTML.\n\n`;
-      }
-      if (shouldSearch && !liveData && !isFactualQuery) {
-        // no live data but special service failed, nothing to do
       }
       extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]\n\nUser: ${userMessage}`;
 
@@ -491,34 +539,79 @@ export async function POST(req: NextRequest) {
     // ── Dynamic Rich Content Engine ──
     apiMessages[0].content += DYNAMIC_RICH_CONTENT_ENGINE;
 
-    // ── Web search / real-time data injection ──
-    let liveData = "";
+    // ── Comprehensive live-data router ──
     if (shouldSearch) {
       searchAttempted = true;
+      let liveData = "";
 
+      // ── Weather ──
       if (/weather|temperature|rain|forecast/i.test(userMessage)) {
         const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
         const city = cityMatch?.[1]?.trim() || "Lahore";
         liveData = await getWeather(city);
-      } else if (/time|clock/i.test(userMessage)) {
+      }
+      // ── Time ──
+      else if (/time|clock/i.test(userMessage)) {
         const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
         const zone = zoneMatch?.[1]?.trim() || undefined;
         liveData = await getCurrentTimeCard(zone);
-      } else if (/date|calendar/i.test(userMessage)) {
+      }
+      // ── Date / Calendar ──
+      else if (/date|calendar/i.test(userMessage)) {
         const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
         const zone = zoneMatch?.[1]?.trim() || undefined;
         liveData = await getCurrentCalendarCard(zone);
-      } else if (isFactualQuery) {
+      }
+      // ── News ──
+      else if (/news|headline|trending/i.test(userMessage)) {
+        liveData = await getNews(userMessage) || await getCurrentEvents();
+      }
+      // ── Sports: goals / cricket ──
+      else if (/goals|career goals/i.test(userMessage)) {
+        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+        const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
+        liveData = await getFootballPlayerGoals(name);
+      }
+      else if (/cricket|match|score|result/i.test(userMessage)) {
+        liveData = await getCricketScore(userMessage);
+      }
+      // ── Financial ──
+      else if (/net worth/i.test(userMessage)) {
+        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+        const name = nameMatch?.[1]?.trim() || "Elon Musk";
+        liveData = await getForbesNetWorth(name);
+      }
+      else if (/stock price|stock/i.test(userMessage)) {
+        const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
+        const sym = symMatch?.[1] || "TSLA";
+        liveData = await getStockPrice(sym);
+      }
+      // ── Education / definitions ──
+      else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
+        const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
+        liveData = await getWikipediaSummary(topic);
+      }
+      // ── Exchange rate ──
+      else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
+        try {
+          const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+          const data = await res.json();
+          const rate = data.rates.PKR;
+          if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
+        } catch {}
+      }
+      // ── Fallback: deep web search (Tavily + Firecrawl + Groq) ──
+      else {
         const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
         if (searchUsage.allowed) {
           liveData = await performDeepSearch(userMessage);
         } else {
-          apiMessages[0].content += `\n\nNote: The user's daily web search limit has been reached. Answer without live data.`;
+          apiMessages[0].content += `\n\nNote: Daily web search limit reached.`;
         }
       }
 
       if (liveData) {
-        apiMessages[0].content += liveData;
+        apiMessages[0].content += `\n\n${liveData}`;
       }
     }
 
