@@ -142,7 +142,7 @@ export default function ChatInterface({
   const [isThinking, setIsThinking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showStream, setShowStream] = useState(false);
-  const [searching, setSearching] = useState(false); // new: web search indicator
+  const [searching, setSearching] = useState(false);
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -205,7 +205,6 @@ export default function ChatInterface({
       return;
     }
 
-    // If this conversation was just created by our own send, do NOT fetch
     if (isSelfCreatedConv.current) {
       isSelfCreatedConv.current = false;
       return;
@@ -251,47 +250,48 @@ export default function ChatInterface({
     };
   }, []);
 
-  // ── Widget rendering inside Markdown ──
-  function renderContent(content: string): React.ReactNode {
-    const widgets: { index: number; component: React.ReactNode }[] = [];
+  // ── Widget‑aware Markdown renderer ─────────────────
+  const MarkdownRenderer = ({ content }: { content: string }) => {
+    const clean = stripThinkTags(content);
+    const widgets: React.ReactNode[] = [];
 
-    // Replace weather markers
-    let cleanContent = content.replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
-      const data = JSON.parse(json);
-      const idx = widgets.length;
-      widgets.push({ index: idx, component: <WeatherWidget key={`weather-${idx}`} data={data} /> });
-      return `[[WIDGET:${idx}]]`;
-    });
+    const processed = clean
+      .replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
+        try {
+          const data = JSON.parse(json);
+          const idx = widgets.length;
+          widgets.push(<WeatherWidget key={`w-${idx}`} data={data} />);
+          return `[[WIDGET:${idx}]]`;
+        } catch { return ""; }
+      })
+      .replace(/<!--WIDGET:CLOCK:(.*?)-->/g, (_, json) => {
+        try {
+          const data = JSON.parse(json);
+          const idx = widgets.length;
+          widgets.push(<ClockWidget key={`c-${idx}`} data={data} />);
+          return `[[WIDGET:${idx}]]`;
+        } catch { return ""; }
+      })
+      .replace(/<!--WIDGET:CALENDAR:(.*?)-->/g, (_, json) => {
+        try {
+          const data = JSON.parse(json);
+          const idx = widgets.length;
+          widgets.push(<CalendarWidget key={`cal-${idx}`} data={data} />);
+          return `[[WIDGET:${idx}]]`;
+        } catch { return ""; }
+      });
 
-    // Replace clock markers
-    cleanContent = cleanContent.replace(/<!--WIDGET:CLOCK:(.*?)-->/g, (_, json) => {
-      const data = JSON.parse(json);
-      const idx = widgets.length;
-      widgets.push({ index: idx, component: <ClockWidget key={`clock-${idx}`} data={data} /> });
-      return `[[WIDGET:${idx}]]`;
-    });
+    const parts = processed.split(/(\[\[WIDGET:\d+\]\])/);
 
-    // Replace calendar markers
-    cleanContent = cleanContent.replace(/<!--WIDGET:CALENDAR:(.*?)-->/g, (_, json) => {
-      try {
-        const data = JSON.parse(json);
-        const idx = widgets.length;
-        widgets.push({ index: idx, component: <CalendarWidget key={`calendar-${idx}`} data={data} /> });
-        return `[[WIDGET:${idx}]]`;
-      } catch { return ""; }
-    });
-
-    // Split content by widget placeholders and render
-    const parts = cleanContent.split(/(\[\[WIDGET:\d+\]\])/g);
     return (
-      <>
+      <div className="space-y-2">
         {parts.map((part, i) => {
-          const match = part.match(/\[\[WIDGET:(\d+)\]\]/);
+          const match = part.match(/^\[\[WIDGET:(\d+)\]\]$/);
           if (match) {
             const widgetIdx = parseInt(match[1]);
-            return widgets[widgetIdx]?.component;
+            return <span key={i}>{widgets[widgetIdx]}</span>;
           }
-          // Render markdown fragment
+          if (!part.trim()) return null;
           return (
             <ReactMarkdown
               key={i}
@@ -402,13 +402,8 @@ export default function ChatInterface({
             </ReactMarkdown>
           );
         })}
-      </>
+      </div>
     );
-  }
-
-  const MarkdownRenderer = ({ content }: { content: string }) => {
-    const clean = stripThinkTags(content);
-    return <div className="space-y-2">{renderContent(clean)}</div>;
   };
 
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
@@ -453,12 +448,12 @@ export default function ChatInterface({
       if (res.headers.get("x-search-performed") === "true") {
         setIsThinking(false);
         setSearching(true);
-        setTimeout(() => setSearching(false), 2000); // estimate 2 seconds
+        setTimeout(() => setSearching(false), 2000);
       }
 
       if (!conversationId && res.headers.get("x-conversation-id")) {
         const newConvId = res.headers.get("x-conversation-id")!;
-        isSelfCreatedConv.current = true;   // mark as self-created
+        isSelfCreatedConv.current = true;
         setConversationId(newConvId);
         onConversationCreated?.(newConvId, userContent);
       }
@@ -527,7 +522,7 @@ export default function ChatInterface({
       setIsTyping(false);
       setShowStream(false);
       setStreamingMessageId(null);
-      setSearching(false); // clear searching state in case it's still active
+      setSearching(false);
     }
   };
 

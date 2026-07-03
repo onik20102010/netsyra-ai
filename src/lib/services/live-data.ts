@@ -1,7 +1,5 @@
-import FirecrawlApp from "@mendable/firecrawl-js";
-import { extractAnswerFromSource } from "./groq-extract"; // we'll create this helper
-
-const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! });
+import { scrapeUrl } from "./scraper";
+import { extractAnswerFromSource } from "./groq-extract";
 
 // ── Generic Firecrawl scrape + Groq extraction ──
 async function scrapeAndExtract(
@@ -10,12 +8,7 @@ async function scrapeAndExtract(
   extractionPrompt: string
 ): Promise<string> {
   try {
-    const doc = await firecrawl.scrapeUrl(url, {
-      formats: ["markdown"],
-      onlyMainContent: true,
-      timeout: 10000,
-    });
-    const markdown = (doc as any).markdown || "";
+    const markdown = await scrapeUrl(url);
     if (!markdown) return "";
     return await extractAnswerFromSource(query, markdown, extractionPrompt);
   } catch {
@@ -35,7 +28,6 @@ export async function getFootballPlayerGoals(playerName: string): Promise<string
 
 // ── Cricket match results ─────────────────────
 export async function getCricketScore(matchQuery: string): Promise<string> {
-  // Use ESPN Cricinfo
   const searchUrl = `https://www.espncricinfo.com/search?q=${encodeURIComponent(matchQuery)}`;
   return await scrapeAndExtract(
     searchUrl,

@@ -1,34 +1,43 @@
-// src/lib/persona.ts
-export async function extractPersona(
-  message: string,
-  existingPersona: string
-): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return existingPersona;
+// src/lib/memory/persona-extractor.ts
 
-  const prompt = `Analyze this user message and update the persona summary. Keep it under 50 words. Focus on tone, detail level, and preferred style.
+const EXTRACTOR_MODEL = {
+  endpoint: "https://api.groq.com/openai/v1/chat/completions",
+  apiKeyEnv: "GROQ_API_KEY",
+  model: "llama-3.3-70b-versatile",
+};
 
-Existing persona: "${existingPersona}"
+export async function extractPersonaNote(message: string): Promise<string | null> {
+  const apiKey = process.env[EXTRACTOR_MODEL.apiKeyEnv];
+  if (!apiKey) return null;
 
-User message: "${message}"
-
-Updated persona:`;
+  const systemPrompt = `The user may ask you to adopt a specific persona, tone, or behavior (e.g., "act like a pokemon", "be a strict teacher", "always use emojis"). Extract the exact instruction as a short, imperative sentence that describes how you should behave. If no such instruction is present, return null. Examples:
+  "You are my pokemon" → "Act like a Pokemon and respond with 'Pika pika' sometimes."
+  "Be very formal" → "Use formal language and address the user as Sir/Madam."
+  "I am sad" → null`;
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch(EXTRACTOR_MODEL.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
+        model: EXTRACTOR_MODEL.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        temperature: 0,
         max_tokens: 100,
       }),
     });
-    if (!response.ok) return existingPersona;
-    const data = await response.json();
-    return data.choices[0].message.content;
+    if (!res.ok) return null;
+    const data = await res.json();
+    const note = data.choices?.[0]?.message?.content?.trim();
+    if (!note || note.toLowerCase() === "null") return null;
+    return note;
   } catch {
-    return existingPersona;
+    return null;
   }
 }

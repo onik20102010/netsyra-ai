@@ -1,5 +1,44 @@
 // src/lib/services/real-time.ts
 
+// A reliable city‑to‑timezone map (can be extended, but Open‑Meteo will catch the rest)
+const HARDCODED_TIMEZONES: Record<string, string> = {
+  lahore: "Asia/Karachi",
+  karachi: "Asia/Karachi",
+  islamabad: "Asia/Karachi",
+  "new york": "America/New_York",
+  london: "Europe/London",
+  tokyo: "Asia/Tokyo",
+  paris: "Europe/Paris",
+  sydney: "Australia/Sydney",
+  dubai: "Asia/Dubai",
+  mumbai: "Asia/Kolkata",
+  delhi: "Asia/Kolkata",
+  singapore: "Asia/Singapore",
+  berlin: "Europe/Berlin",
+  toronto: "America/Toronto",
+};
+
+async function resolveCityToTimezone(city: string): Promise<string | null> {
+  // 1. Check hardcoded map
+  const key = city.toLowerCase().trim();
+  if (HARDCODED_TIMEZONES[key]) return HARDCODED_TIMEZONES[key];
+
+  // 2. Use Open‑Meteo geocoding (free, no key)
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results?.length > 0) {
+        return data.results[0].timezone; // e.g. "Asia/Karachi"
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
 // ── Weather (returns widget marker) ──────────
 export async function getWeather(city: string): Promise<string> {
   const key = process.env.OPENWEATHER_API_KEY;
@@ -27,46 +66,28 @@ export async function getWeather(city: string): Promise<string> {
   }
 }
 
-// ── Dynamic city‑to‑timezone resolver (worldwide, no hardcoding) ──
-async function resolveCityToTimezone(city: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      return data.results[0].timezone;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function looksLikeTimezone(str: string): boolean {
-  return /^[A-Za-z_]+\/[A-Za-z_]+$/.test(str);
-}
-
 // ── Unified time/date data fetcher (used by clock & calendar) ──
 async function fetchTimeData(zone?: string): Promise<{
   utcDatetime: string;
   timezone: string;
   label: string;
 } | null> {
-  // If no zone or it's a city name, resolve to IANA timezone
   let resolvedZone = zone || "UTC";
-  if (zone && !looksLikeTimezone(zone)) {
+
+  // If a zone was provided and it's not already an IANA timezone, resolve it
+  if (zone && !/^[A-Za-z_]+\/[A-Za-z_]+$/.test(zone)) {
     const resolved = await resolveCityToTimezone(zone);
-    if (resolved) {
-      resolvedZone = resolved;
+    if (resolved) resolvedZone = resolved;
+    else {
+      // Could not resolve – return null and let the caller decide
+      console.warn("Could not resolve timezone for:", zone);
+      return null;
     }
-    // If resolution fails, fall through to UTC fallback
   }
 
-  // Try TimeZoneDB first (if key available)
+  // Try TimeZoneDB (if key exists)
   const tzKey = process.env.TIMEZONEDB_API_KEY;
-  if (tzKey && resolvedZone) {
+  if (tzKey) {
     try {
       const res = await fetch(
         `https://api.timezonedb.com/v2.1/get-time-zone?key=${tzKey}&format=json&by=zone&zone=${encodeURIComponent(resolvedZone)}`
@@ -77,7 +98,7 @@ async function fetchTimeData(zone?: string): Promise<{
           return {
             utcDatetime: new Date(data.timestamp * 1000).toISOString(),
             timezone: data.zoneName,
-            label: data.zoneName,
+            label: `${zone || data.zoneName}`,
           };
         }
       }
@@ -85,49 +106,21 @@ async function fetchTimeData(zone?: string): Promise<{
   }
 
   // Fallback: worldtimeapi.org
-  if (resolvedZone) {
-    try {
-      const res = await fetch(
-        `https://worldtimeapi.org/api/timezone/${encodeURIComponent(resolvedZone)}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          utcDatetime: data.utc_datetime,
-          timezone: data.timezone,
-          label: data.timezone,
-        };
-      }
-    } catch {}
-  }
-
-  // Own IP time (timeapi.world)
   try {
-    const res = await fetch("https://timeapi.world/clock/api/json");
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        utcDatetime: new Date(data.currentDateTime).toISOString(),
-        timezone: data.timezone,
-        label: `Your location (${data.timezone})`,
-      };
-    }
-  } catch {}
-
-  // Ultimate fallback: UTC
-  try {
-    const res = await fetch("https://worldtimeapi.org/api/timezone/UTC");
+    const res = await fetch(
+      `https://worldtimeapi.org/api/timezone/${encodeURIComponent(resolvedZone)}`
+    );
     if (res.ok) {
       const data = await res.json();
       return {
         utcDatetime: data.utc_datetime,
-        timezone: "UTC",
-        label: "UTC",
+        timezone: data.timezone,
+        label: `${zone || data.timezone}`,
       };
     }
   } catch {}
 
-  return null;
+  return null; // No more fallbacks – if we can't get the time, we return null
 }
 
 // ── Time (returns clock widget marker) ───────

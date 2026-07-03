@@ -4,7 +4,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/aai";
 import { tiers } from "@/lib/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
-import { extractTopic } from "@/lib/memory/topic-extractor";
 import { getWeather, getCurrentTimeCard, getCurrentCalendarCard, getNews } from "@/lib/services/real-time";
 import {
   getFootballPlayerGoals,
@@ -83,19 +82,6 @@ async function checkAndUpdateUsage(
   return { allowed: true, remaining: limit - (usage.messages_used + 1), resetAt: usage.reset_at };
 }
 
-function getTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return `${diffWeeks} week(s) ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths} month(s) ago`;
-}
-
 // ── Tavily + Firecrawl + Groq search ─────────
 async function tavilySearch(query: string): Promise<
   { title: string; url: string; snippet: string }[]
@@ -168,11 +154,7 @@ async function extractAnswer(query: string, urls: string[], contents: string[]):
       messages: [
         {
           role: "system",
-          content: `You are a precise data extractor. Given a user question and several web sources, extract the EXACT numeric answer with its unit (e.g., "$986.8 billion") and the source name (e.g., "Forbes"). 
-- Always pick the MOST RECENT figure.
-- If multiple sources disagree, state the range and cite both.
-- Include inline citation like [Source 1].
-- If no exact number is found, say "I couldn't find a reliable current figure."`,
+          content: `You are a precise information extractor. Given a user question and web page content, extract the most relevant facts. Present them as bullet points (one per line) with [Source X] citations. If the sources don't contain the answer, say "I couldn't find reliable information on this topic." Do NOT add information from your own knowledge.`,
         },
         { role: "user", content: `Question: ${query}\n\nSources:\n${combined}` },
       ],
@@ -188,18 +170,15 @@ async function extractAnswer(query: string, urls: string[], contents: string[]):
 
 // ── Updated performDeepSearch (freshness hints, top 3) ──
 async function performDeepSearch(query: string): Promise<string> {
-  // 1. Append freshness & authority hints to the query
   const enhancedQuery = `${query} latest most recent Forbes Bloomberg`;
   const results = await tavilySearch(enhancedQuery);
   if (!results.length) return "";
 
-  // 2. Fetch full content of top 3 results via Firecrawl
   const topResults = results.slice(0, 3);
   const urls = topResults.map(r => r.url);
   const snippets = topResults.map(r => r.snippet);
   const fullContents = await Promise.all(urls.map(firecrawlExtract));
 
-  // 3. Combine snippets + full content for extraction
   const allContent = snippets.map((s, i) => `[Source ${i + 1} snippet]: ${s}`).concat(
     fullContents.filter(Boolean).map((c, i) => `[Source ${i + 1} full]: ${c}`)
   );
@@ -296,14 +275,6 @@ export async function POST(req: NextRequest) {
 
     const lastMessage = messages[messages.length - 1];
     const userMessage = lastMessage.content;
-    // ── Extract and store topic (fire‑and‑forget) ──
-    extractTopic(userMessage).then(async (topic) => {
-      if (topic) {
-        await supabase
-          .from("user_topics")
-          .upsert({ user_id: user.id, topic }, { onConflict: "user_id, topic" });
-      }
-    });
     const convId = conversationId || crypto.randomUUID();
 
     // ── Intent classification ─────────────────
@@ -347,12 +318,23 @@ export async function POST(req: NextRequest) {
 
     const isSpecialService =
       /weather|temperature|rain|forecast|time|clock|date|calendar|news|headline|trending|goals|career goals|cricket|match|score|result|net worth|stock price|stock|who is|what is|define|explain|wiki|exchange rate|usd to pkr|pkr to usd/i.test(userMessage);
+    // Expanded to include "know about", "tell me about"
     const isFactualQuery =
-      /news|net worth|current|latest|today|202[4-9]|stock|price|how much|how many|who is|what is/i.test(userMessage);
+      /news|net worth|current|latest|today|202[4-9]|stock|price|how much|how many|who is|what is|know about|tell me about|what do you know/i.test(userMessage);
     const shouldSearch = isSpecialService || (diveDeep && isFactualQuery);
 
     // Flag for response header
     let searchAttempted = false;
+
+    // Fetch persona notes once (used by both branches)
+    const { data: personaNotes } = await supabase
+      .from("bot_persona_notes")
+      .select("note")
+      .eq("user_id", user.id);
+    let personaNoteText = "";
+    if (personaNotes && personaNotes.length > 0) {
+      personaNoteText = personaNotes.map((n: any) => `- ${n.note}`).join("\n");
+    }
 
     // ── AAI branch ─────────────────────────────
     if (modelTier === "aai") {
@@ -367,64 +349,45 @@ export async function POST(req: NextRequest) {
       if (shouldSearch) {
         searchAttempted = true;
 
-        // ── Weather ──
         if (/weather|temperature|rain|forecast/i.test(userMessage)) {
           const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
           const city = cityMatch?.[1]?.trim() || "Lahore";
           liveData = await getWeather(city);
-        }
-        // ── Time ──
-        else if (/time|clock/i.test(userMessage)) {
+        } else if (/time|clock/i.test(userMessage)) {
           const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
           const zone = zoneMatch?.[1]?.trim() || undefined;
           liveData = await getCurrentTimeCard(zone);
-        }
-        // ── Date / Calendar ──
-        else if (/date|calendar/i.test(userMessage)) {
+        } else if (/date|calendar/i.test(userMessage)) {
           const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
           const zone = zoneMatch?.[1]?.trim() || undefined;
           liveData = await getCurrentCalendarCard(zone);
-        }
-        // ── News ──
-        else if (/news|headline|trending/i.test(userMessage)) {
+        } else if (/news|headline|trending/i.test(userMessage)) {
           liveData = await getNews(userMessage) || await getCurrentEvents();
-        }
-        // ── Sports: goals / cricket ──
-        else if (/goals|career goals/i.test(userMessage)) {
+        } else if (/goals|career goals/i.test(userMessage)) {
           const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
           const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
           liveData = await getFootballPlayerGoals(name);
-        }
-        else if (/cricket|match|score|result/i.test(userMessage)) {
+        } else if (/cricket|match|score|result/i.test(userMessage)) {
           liveData = await getCricketScore(userMessage);
-        }
-        // ── Financial ──
-        else if (/net worth/i.test(userMessage)) {
+        } else if (/net worth/i.test(userMessage)) {
           const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
           const name = nameMatch?.[1]?.trim() || "Elon Musk";
           liveData = await getForbesNetWorth(name);
-        }
-        else if (/stock price|stock/i.test(userMessage)) {
+        } else if (/stock price|stock/i.test(userMessage)) {
           const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
           const sym = symMatch?.[1] || "TSLA";
           liveData = await getStockPrice(sym);
-        }
-        // ── Education / definitions ──
-        else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
+        } else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
           const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
           liveData = await getWikipediaSummary(topic);
-        }
-        // ── Exchange rate ──
-        else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
+        } else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
           try {
             const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
             const data = await res.json();
             const rate = data.rates.PKR;
             if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
           } catch {}
-        }
-        // ── Fallback: deep web search ──
-        else {
+        } else {
           const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
           if (searchUsage.allowed) {
             liveData = await performDeepSearch(userMessage);
@@ -432,14 +395,26 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const widgetInstruction = `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
+Weather marker: <!--WIDGET:WEATHER:{"city":"...","temp":34,"condition":"scattered clouds","humidity":36,"windSpeed":3.1,"icon":"cloud"}-->
+Time marker:   <!--WIDGET:CLOCK:{"hours":14,"minutes":6,"seconds":0,"timezone":"Asia/Karachi","label":"Lahore, PK"}-->
+Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"Asia/Karachi","label":"Today"}-->]\n\n`;
+
       let extendedMessage = "";
       if (profileNote) {
         extendedMessage += `--- USER PROFILE ---\n${profileNote}\n\n`;
       }
-      if (liveData) {
-        extendedMessage += `--- REAL-TIME DATA (display exactly as is) ---\n${liveData}\nUse this HTML/Markdown directly in your response. Do not modify the HTML.\n\n`;
+      if (personaNoteText) {
+        extendedMessage += `--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.\n\n`;
       }
-      extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]\n\nUser: ${userMessage}`;
+      if (liveData) {
+        // Force the model to use only the search results
+        extendedMessage += `--- REAL-TIME SEARCH RESULTS (USE ONLY THIS DATA) ---\nThe user asked about a specific topic. You have been provided with the latest web search results below. Answer the user's question using ONLY these results. Do NOT use your own training data. If the results are insufficient, say "I searched for this but couldn't find enough reliable information."\n\n${liveData}\n\n`;
+      }
+      extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]`;
+
+      // Prepend widget instruction
+      extendedMessage = widgetInstruction + extendedMessage + `\n\nUser: ${userMessage}`;
 
       const aaiResult = await aaiRuntime.processRequest({
         userMessage: extendedMessage,
@@ -514,94 +489,64 @@ export async function POST(req: NextRequest) {
       apiMessages[0].content += `\n\n--- USER PROFILE ---\n${profileNote}`;
     }
 
-    // ── Inject user topic memory ──
-    const { data: topics } = await supabase
-      .from("user_topics")
-      .select("topic, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    if (topics && topics.length > 0) {
-      const topicLines = topics.map((t: any) => {
-        const timeAgo = getTimeAgo(new Date(t.created_at));
-        return `- ${t.topic} (${timeAgo})`;
-      });
-      apiMessages[0].content += `\n\n--- USER TOPIC HISTORY ---\nThe user has previously discussed or expressed interest in these topics:\n${topicLines.join("\n")}\nUse this context to personalize your responses and make relevant connections.`;
-    }
-
     // ── Inject user preferences ──
     apiMessages[0].content += toneInjection;
 
-    // ── Inject intent label (just the label, no forced formatting) ──
+    // ── Inject intent label ──
     apiMessages[0].content += `\n\nIntent: ${intent}`;
 
     // ── Dynamic Rich Content Engine ──
     apiMessages[0].content += DYNAMIC_RICH_CONTENT_ENGINE;
+
+    // ── Inject bot persona notes ──
+    if (personaNoteText) {
+      apiMessages[0].content += `\n\n--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.`;
+    }
 
     // ── Comprehensive live-data router ──
     if (shouldSearch) {
       searchAttempted = true;
       let liveData = "";
 
-      // ── Weather ──
       if (/weather|temperature|rain|forecast/i.test(userMessage)) {
         const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
         const city = cityMatch?.[1]?.trim() || "Lahore";
         liveData = await getWeather(city);
-      }
-      // ── Time ──
-      else if (/time|clock/i.test(userMessage)) {
+      } else if (/time|clock/i.test(userMessage)) {
         const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
         const zone = zoneMatch?.[1]?.trim() || undefined;
         liveData = await getCurrentTimeCard(zone);
-      }
-      // ── Date / Calendar ──
-      else if (/date|calendar/i.test(userMessage)) {
+      } else if (/date|calendar/i.test(userMessage)) {
         const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
         const zone = zoneMatch?.[1]?.trim() || undefined;
         liveData = await getCurrentCalendarCard(zone);
-      }
-      // ── News ──
-      else if (/news|headline|trending/i.test(userMessage)) {
+      } else if (/news|headline|trending/i.test(userMessage)) {
         liveData = await getNews(userMessage) || await getCurrentEvents();
-      }
-      // ── Sports: goals / cricket ──
-      else if (/goals|career goals/i.test(userMessage)) {
+      } else if (/goals|career goals/i.test(userMessage)) {
         const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
         const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
         liveData = await getFootballPlayerGoals(name);
-      }
-      else if (/cricket|match|score|result/i.test(userMessage)) {
+      } else if (/cricket|match|score|result/i.test(userMessage)) {
         liveData = await getCricketScore(userMessage);
-      }
-      // ── Financial ──
-      else if (/net worth/i.test(userMessage)) {
+      } else if (/net worth/i.test(userMessage)) {
         const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
         const name = nameMatch?.[1]?.trim() || "Elon Musk";
         liveData = await getForbesNetWorth(name);
-      }
-      else if (/stock price|stock/i.test(userMessage)) {
+      } else if (/stock price|stock/i.test(userMessage)) {
         const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
         const sym = symMatch?.[1] || "TSLA";
         liveData = await getStockPrice(sym);
-      }
-      // ── Education / definitions ──
-      else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
+      } else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
         const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
         liveData = await getWikipediaSummary(topic);
-      }
-      // ── Exchange rate ──
-      else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
+      } else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
         try {
           const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
           const data = await res.json();
           const rate = data.rates.PKR;
           if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
         } catch {}
-      }
-      // ── Fallback: deep web search (Tavily + Firecrawl + Groq) ──
-      else {
+      } else {
         const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
         if (searchUsage.allowed) {
           liveData = await performDeepSearch(userMessage);
@@ -611,7 +556,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (liveData) {
-        apiMessages[0].content += `\n\n${liveData}`;
+        apiMessages[0].content += `\n\n--- REAL-TIME SEARCH RESULTS (USE ONLY THIS DATA) ---\nThe user asked about a specific topic. You have been provided with the latest web search results below. Answer the user's question using ONLY these results. Do NOT use your own training data. If the results are insufficient, say "I searched for this but couldn't find enough reliable information."\n\n${liveData}`;
       }
     }
 
@@ -643,7 +588,6 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         continue;
       }
 
-      // Compute hard cap: double the soft target, minimum 800 tokens
       const hardCap = Math.max(tier.maxTokens * 2, 800);
 
       try {
