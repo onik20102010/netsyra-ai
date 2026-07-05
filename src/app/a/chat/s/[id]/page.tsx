@@ -10,8 +10,9 @@ export default function ChatThreadPage() {
   const router = useRouter();
   const conversationId = params.id as string;
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);   // ✅ renamed
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("fast");   // ✅ added
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const supabase = createClient();
 
@@ -94,6 +95,8 @@ export default function ChatThreadPage() {
             conversationId={conversationId}
             setConversationId={() => {}}
             diveDeep={diveDeep}
+            selectedModel={selectedModel}          // ← added
+            setSelectedModel={setSelectedModel}    // ← added
           />
         </div>
       </div>
