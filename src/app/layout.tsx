@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://netsyraai.com"),   // added
   title: {
     default: "Netsyra AI – Advanced AI Assistant",
     template: "%s | Netsyra AI",
