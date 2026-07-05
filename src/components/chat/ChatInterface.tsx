@@ -13,6 +13,8 @@ import {
   ThumbsDown,
   X,
   ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -43,6 +45,8 @@ interface ChatInterfaceProps {
   diveDeep: boolean;
   onConversationCreated?: (id: string, firstMessage: string) => void;
   initialModel?: string;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
 }
 
 function CopyButton({ code }: { code: string }) {
@@ -116,8 +120,62 @@ function ThinkingBlock({ text }: { text: string }) {
   );
 }
 
+function SourcesDropdown({ sources }: { sources: { title: string; url: string }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition text-sm text-gray-600"
+      >
+        <div className="flex items-center gap-2">
+          <ExternalLink className="w-4 h-4 text-indigo-500" />
+          <span className="font-medium">Sources ({sources.length})</span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="bg-white px-4 py-3 space-y-2">
+          {sources.map((source, i) => (
+            <a
+              key={i}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-sm text-gray-700 hover:text-indigo-600 hover:bg-gray-50 px-2 py-1.5 rounded-lg transition"
+            >
+              <span className="text-gray-400 mr-2">[{i + 1}]</span>
+              {source.title}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function stripThinkTags(content: string): string {
   return content.replace(/<think[\s\S]*?<\/think>/g, "");
+}
+
+function extractSources(content: string): {
+  cleanContent: string;
+  sources: { title: string; url: string }[];
+} {
+  const regex = /## Sources\s*\n((?:- \[[^\]]+\]\([^)]+\)\n?)+)/;
+  const match = content.match(regex);
+  if (!match) return { cleanContent: content, sources: [] };
+
+  const sourcesBlock = match[1];
+  const cleanContent = content.replace(match[0], "").trim();
+
+  const lines = sourcesBlock.match(/- \[([^\]]+)\]\(([^)]+)\)/g);
+  const sources = (lines || []).map((line) => {
+    const m = line.match(/- \[([^\]]+)\]\(([^)]+)\)/);
+    return { title: m![1], url: m![2] };
+  });
+
+  return { cleanContent, sources };
 }
 
 export default function ChatInterface({
@@ -125,11 +183,11 @@ export default function ChatInterface({
   setConversationId,
   diveDeep,
   onConversationCreated,
-  initialModel = "fast",
+  selectedModel,
+  setSelectedModel,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState(initialModel);
   const [isLoading, setIsLoading] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -159,7 +217,6 @@ export default function ChatInterface({
 
   const MAX_LINES = 80;
 
-  // Track whether this conversation was just created by our own action
   const isSelfCreatedConv = useRef(false);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -184,7 +241,6 @@ export default function ChatInterface({
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
   }, [input]);
 
-  // ── Reset when conversationId becomes null (New Chat) ──
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -198,7 +254,6 @@ export default function ChatInterface({
     }
   }, [conversationId]);
 
-  // Fetch messages only for existing conversations (not self-created)
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -234,7 +289,6 @@ export default function ChatInterface({
     fetchMessages();
   }, [conversationId, supabase]);
 
-  // Set document title when messages change (only if conversationId exists)
   useEffect(() => {
     const firstUserMsg = messages.find(m => m.role === "user");
     if (firstUserMsg) {
@@ -250,7 +304,6 @@ export default function ChatInterface({
     };
   }, []);
 
-  // ── Widget‑aware Markdown renderer ─────────────────
   const MarkdownRenderer = ({ content }: { content: string }) => {
     const clean = stripThinkTags(content);
     const widgets: React.ReactNode[] = [];
@@ -444,7 +497,6 @@ export default function ChatInterface({
         throw new Error(data.error || "Something went wrong");
       }
 
-      // Check if search was performed and show searching indicator
       if (res.headers.get("x-search-performed") === "true") {
         setIsThinking(false);
         setSearching(true);
@@ -685,26 +737,32 @@ export default function ChatInterface({
                       ) : isUser ? (
                         <p>{msg.content}</p>
                       ) : (
-                        <div className="space-y-2">
-                          <MarkdownRenderer content={msg.content} />
-                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
-                            <span className="inline-block text-xs text-amber-500 ml-2">
-                              ⚠️ Low confidence
-                            </span>
-                          )}
-                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
-                          {msg.wikiLink && (
-                            <a
-                              href={msg.wikiLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              View from there
-                            </a>
-                          )}
-                        </div>
+                        (() => {
+                          const { cleanContent, sources } = extractSources(msg.content);
+                          return (
+                            <>
+                              <MarkdownRenderer content={cleanContent} />
+                              {msg.confidence !== undefined && msg.confidence < 0.6 && (
+                                <span className="inline-block text-xs text-amber-500 ml-2">
+                                  ⚠️ Low confidence
+                                </span>
+                              )}
+                              {msg.thinking && <ThinkingBlock text={msg.thinking} />}
+                              {msg.wikiLink && (
+                                <a
+                                  href={msg.wikiLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  View from there
+                                </a>
+                              )}
+                              {sources.length > 0 && <SourcesDropdown sources={sources} />}
+                            </>
+                          );
+                        })()
                       )}
                       {!isEditing && (
                         <div

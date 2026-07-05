@@ -17,13 +17,16 @@ function ChatContent() {
   const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const initialId = searchParams.get("conversation");
-  const initialModel = searchParams.get("model") || "auto";
+  const initialModel = searchParams.get("model") || "fast";  // default to "fast" if not provided
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(initialId);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [hoverOpened, setHoverOpened] = useState(false);
+
+  // Lifted model state – shared between sidebar (maybe for future use) and chat interface
+  const [selectedModel, setSelectedModel] = useState<string>(initialModel);
 
   const router = useRouter();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,6 +148,7 @@ function ChatContent() {
           onAddConversationReady={(addFn) => {
             addConversationRef.current = addFn;
           }}
+          selectedModel={selectedModel}   // NEW: pass model to sidebar (future use)
         />
       </div>
 
@@ -173,7 +177,9 @@ function ChatContent() {
             setConversationId={setConversationId}
             diveDeep={diveDeep}
             onConversationCreated={handleConversationCreated}
-            initialModel={initialModel}
+            initialModel={selectedModel}           // keep for backward compat, but will be overridden
+            selectedModel={selectedModel}          // NEW controlled prop
+            setSelectedModel={setSelectedModel}    // NEW setter for ChatInterface to use
           />
         </div>
       </div>

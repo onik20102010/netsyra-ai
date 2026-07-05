@@ -18,6 +18,7 @@ import {
 } from "@/lib/services/live-data";
 import { cleanSearchQuery } from "@/lib/services/query-cleaner";
 import { routeToCuratedSources } from "@/lib/services/curated-router";
+import { shouldForceWebSearch } from "@/lib/services/ambiguity-detector";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -171,9 +172,9 @@ export async function POST(req: NextRequest) {
     const userMessage = lastMessage.content;
     const convId = conversationId || crypto.randomUUID();
 
-    // Tier restriction for web search
-    const WEB_SEARCH_TIERS = ["plus", "pro", "live", "code", "aai"];
-    let canWebSearch = WEB_SEARCH_TIERS.includes(modelTier);
+    // Tier restriction for web search – only N Live can search the web
+    const WEB_SEARCH_TIERS = ["live"];
+    const canWebSearch = WEB_SEARCH_TIERS.includes(modelTier);
 
     // Clean the query for curated matching + web search
     const cleanedQuery = canWebSearch ? await cleanSearchQuery(userMessage) : userMessage;
@@ -222,10 +223,18 @@ export async function POST(req: NextRequest) {
 
     const isSpecialService =
       /weather|temperature|rain|forecast|time|clock|date|calendar|news|headline|trending|goals|career goals|cricket|match|score|result|net worth|stock price|stock|who is|what is|define|explain|wiki|exchange rate|usd to pkr|pkr to usd/i.test(userMessage);
-    // Expanded to include "know about", "tell me about"
     const isFactualQuery =
       /news|net worth|current|latest|today|202[4-9]|stock|price|how much|how many|who is|what is|know about|tell me about|what do you know/i.test(userMessage);
     let shouldSearch = isSpecialService || (diveDeep && isFactualQuery);
+
+    // Force web search if ambiguity detector triggers and tier allows it
+    if (!shouldSearch && canWebSearch) {
+      const forceSearch = await shouldForceWebSearch(userMessage);
+      if (forceSearch) {
+        shouldSearch = true;
+        console.log("⚠️ Ambiguity detected – forcing web search");
+      }
+    }
 
     // Flag for response header
     let searchAttempted = false;
@@ -250,9 +259,6 @@ export async function POST(req: NextRequest) {
       }));
 
       let liveData = "";
-      console.log(`🔎 SEARCH DEBUG: tier=${modelTier}, canWebSearch=${canWebSearch}, shouldSearch=${shouldSearch}, diveDeep=${diveDeep}, query="${userMessage.slice(0, 60)}..."`);
-      shouldSearch = true;  // force for debugging
-      canWebSearch = true;
       if (shouldSearch) {
         searchAttempted = true;
 
@@ -337,6 +343,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       }
       if (liveData) {
         extendedMessage += `--- REAL-TIME SEARCH (use this data) ---\n${liveData}\n\n`;
+        extendedMessage += `IMPORTANT: After your answer, add a "## Sources" section with one bullet point per source, like this:\n- [Title](URL)\n- [Title](URL)\nDo NOT skip this section.\n\n`;
       }
       extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]`;
 
@@ -431,42 +438,80 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
     }
 
     // ── Comprehensive live-data router ──
-    console.log(`🔎 SEARCH DEBUG: tier=${modelTier}, canWebSearch=${canWebSearch}, shouldSearch=${shouldSearch}, diveDeep=${diveDeep}, query="${userMessage.slice(0, 60)}..."`);
-    shouldSearch = true;  // force for debugging
-    canWebSearch = true;
     if (shouldSearch) {
-      console.log("🟢 ENTERED SEARCH BLOCK");
-
-      const cleanQ = cleanedQuery;
-
-      // 1. Groq router picks best curated sources
-      const curatedSources = await routeToCuratedSources(cleanQ);
-      console.log(`📚 Curated router returned: ${curatedSources.length > 0 ? curatedSources.map(s => s.title).join(", ") : "none"}`);
-
+      searchAttempted = true;
       let liveData = "";
 
-      if (curatedSources.length > 0) {
-        console.log(`✅ USING CURATED SOURCE(s): ${curatedSources.map(s => s.url).join(", ")}`);
-        const curatedContents = await Promise.all(curatedSources.map(s => scrapePage(s.url)));
-        liveData = await extractAnswer(cleanQ, curatedSources.map(s => s.url), curatedContents);
-      }
-
-      // 2. Fallback to deep web search
-      if (!liveData) {
-        console.log(`🌐 FALLING BACK TO TAVILY WEB SEARCH for: "${cleanQ}"`);
-        const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
-        if (searchUsage.allowed) {
-          liveData = await performDeepSearch(cleanQ);
-        } else {
-          console.log("⚠️ Web search limit reached");
-          apiMessages[0].content += `\n\nNote: Daily web search limit reached.`;
+      if (/weather|temperature|rain|forecast/i.test(userMessage)) {
+        const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+        const city = cityMatch?.[1]?.trim() || "Lahore";
+        liveData = await getWeather(city);
+      } else if (/time|clock/i.test(userMessage)) {
+        const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
+        const zone = zoneMatch?.[1]?.trim() || undefined;
+        liveData = await getCurrentTimeCard(zone);
+      } else if (/date|calendar/i.test(userMessage)) {
+        const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
+        const zone = zoneMatch?.[1]?.trim() || undefined;
+        liveData = await getCurrentCalendarCard(zone);
+      } else if (/news|headline|trending/i.test(userMessage)) {
+        liveData = await getNews(userMessage) || await getCurrentEvents();
+      } else if (/goals|career goals/i.test(userMessage)) {
+        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+        const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
+        liveData = await getFootballPlayerGoals(name);
+      } else if (/cricket|match|score|result/i.test(userMessage)) {
+        liveData = await getCricketScore(userMessage);
+      } else if (/net worth/i.test(userMessage)) {
+        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+        const name = nameMatch?.[1]?.trim() || "Elon Musk";
+        liveData = await getForbesNetWorth(name);
+      } else if (/stock price|stock/i.test(userMessage)) {
+        const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
+        const sym = symMatch?.[1] || "TSLA";
+        liveData = await getStockPrice(sym);
+      } else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
+        const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
+        liveData = await getWikipediaSummary(topic);
+      } else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
+        try {
+          const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+          const data = await res.json();
+          const rate = data.rates.PKR;
+          if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
+        } catch {}
+      } else if (canWebSearch) {
+        const cleanQ = cleanedQuery;
+        // 1. Groq router picks best curated sources
+        const curatedSources = await routeToCuratedSources(cleanQ);
+        console.log(
+          `📚 Curated router returned: ${
+            curatedSources.length > 0
+              ? curatedSources.map((s) => s.title).join(", ")
+              : "none"
+          }`
+        );
+        if (curatedSources.length > 0) {
+          console.log(`✅ USING CURATED SOURCE(s): ${curatedSources.map((s) => s.url).join(", ")}`);
+          const curatedContents = await Promise.all(curatedSources.map(s => scrapePage(s.url)));
+          liveData = await extractAnswer(cleanQ, curatedSources.map(s => s.url), curatedContents);
+        }
+        // 2. Fallback to deep web search
+        if (!liveData) {
+          console.log(`🌐 FALLING BACK TO TAVILY WEB SEARCH for: "${cleanQ}"`);
+          const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
+          if (searchUsage.allowed) {
+            liveData = await performDeepSearch(cleanQ);
+          } else {
+            console.log(`⚠️ Web search limit reached`);
+            apiMessages[0].content += `\n\nNote: Daily web search limit reached.`;
+          }
         }
       }
 
       if (liveData) {
         apiMessages[0].content += `\n\n--- REAL-TIME SEARCH (use this data) ---\n${liveData}`;
-      } else {
-        console.log("❌ No live data obtained");
+        apiMessages[0].content += `\n\nIMPORTANT: After your answer, add a "## Sources" section with one bullet point per source, like this:\n- [Title](URL)\n- [Title](URL)\nDo NOT skip this section.`;
       }
     }
 

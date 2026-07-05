@@ -29,6 +29,7 @@ interface ChatSidebarProps {
   refreshKey?: number;
   // New: parent provides a callback to get the addConversation function
   onAddConversationReady?: (addFn: (conv: Conversation) => void) => void;
+  selectedModel?: string; // NEW
 }
 
 type Conversation = {
@@ -49,6 +50,7 @@ export default function ChatSidebar({
   setDiveDeep,
   refreshKey = 0,
   onAddConversationReady,
+  selectedModel, // NEW
 }: ChatSidebarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -57,6 +59,15 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
+
+  // Automatically enable Dive Deep when model becomes live, disable otherwise
+  useEffect(() => {
+    if (selectedModel === "live") {
+      setDiveDeep(true);
+    } else {
+      setDiveDeep(false);
+    }
+  }, [selectedModel, setDiveDeep]);
 
   // Function to instantly add a conversation (with duplicate check)
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -203,15 +214,32 @@ export default function ChatSidebar({
             >
               <History className="h-5 w-5 text-indigo-600" /> History
             </button>
+
+            {/* Updated Dive Deep button */}
             <button
-              onClick={() => setDiveDeep(!diveDeep)}
+              onClick={() => {
+                if (selectedModel !== "live") {
+                  toast.info("Dive Deep is only available with N Live. Switch to N Live to enable web searching.", {
+                    description: "N Live has real‑time web access.",
+                    duration: 5000,
+                  });
+                  return;
+                }
+                setDiveDeep(!diveDeep);
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                diveDeep ? "bg-indigo-100 text-indigo-700 font-medium" : "text-gray-600 hover:bg-gray-200/50"
+                diveDeep && selectedModel === "live"
+                  ? "bg-cyan-100 text-cyan-700 font-medium"
+                  : "text-gray-600 hover:bg-gray-200/50"
               }`}
+              title={selectedModel !== "live" ? "Only available in N Live" : undefined}
             >
-              <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-indigo-600" : "text-gray-400"}`} /> Dive Deep
-              <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${diveDeep ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}>
-                {diveDeep ? "ON" : "OFF"}
+              <BrainCircuit className={`h-5 w-5 ${diveDeep && selectedModel === "live" ? "text-cyan-600" : "text-gray-400"}`} />
+              Dive Deep
+              <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                diveDeep && selectedModel === "live" ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
+              }`}>
+                {selectedModel === "live" ? (diveDeep ? "ON" : "OFF") : "🔒"}
               </span>
             </button>
 
