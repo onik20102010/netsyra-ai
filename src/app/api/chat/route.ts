@@ -4,21 +4,10 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/aai";
 import { tiers } from "@/lib/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard, getNews } from "@/lib/services/real-time";
-import {
-  getFootballPlayerGoals,
-  getCricketScore,
-  getWikipediaSummary,
-  getCurrentEvents,
-  getForbesNetWorth,
-  getStockPrice,
-  performDeepSearch,
-  scrapePage,
-  extractAnswer,
-} from "@/lib/services/live-data";
+import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/services/real-time";
+import { performDeepSearch } from "@/lib/services/live-data";
+import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQuery } from "@/lib/services/query-cleaner";
-import { routeToCuratedSources } from "@/lib/services/curated-router";
-import { shouldForceWebSearch } from "@/lib/services/ambiguity-detector";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -86,6 +75,56 @@ async function checkAndUpdateUsage(
     .eq("model_tier", modelTier);
 
   return { allowed: true, remaining: limit - (usage.messages_used + 1), resetAt: usage.reset_at };
+}
+
+// ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
+async function scrapePage(url: string): Promise<string> {
+  // 1. Try Firecrawl
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (apiKey) {
+    try {
+      const fc = new FirecrawlApp({ apiKey });
+      const doc = await fc.scrapeUrl(url, {
+        formats: ["markdown"],
+        onlyMainContent: true,
+        timeout: 12000,
+      });
+      const md = (doc as any).markdown || "";
+      if (md.trim().length > 200) return md.slice(0, 5000);
+    } catch {
+      console.log("⚡ Firecrawl failed, trying direct fetch...");
+    }
+  }
+
+  // 2. Fallback: direct fetch with browser‑like headers
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.5",
+      },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return "";
+    const html = await res.text();
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 5000);
+    return text;
+  } catch {
+    // 3. Final fallback: Groq‑based scraper
+    console.log("⚡ Direct fetch failed, trying Groq scraper...");
+    const { groqScrape } = await import("@/lib/services/groq-scraper");
+    return await groqScrape(url);
+  }
 }
 
 // ── Dynamic Rich Content Engine ──────────────────────────────
@@ -182,6 +221,10 @@ export async function POST(req: NextRequest) {
       console.log(`🧹 Cleaned query: "${userMessage}" → "${cleanedQuery}"`);
     }
 
+    // N Live always searches the web when Dive Deep is on (except for very short messages)
+    const isGreeting = /^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you)[\s!.]*$/i.test(userMessage.trim());
+    const shouldSearch = canWebSearch && diveDeep && !isGreeting;
+
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
 
@@ -221,21 +264,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const isSpecialService =
-      /weather|temperature|rain|forecast|time|clock|date|calendar|news|headline|trending|goals|career goals|cricket|match|score|result|net worth|stock price|stock|who is|what is|define|explain|wiki|exchange rate|usd to pkr|pkr to usd/i.test(userMessage);
-    const isFactualQuery =
-      /news|net worth|current|latest|today|202[4-9]|stock|price|how much|how many|who is|what is|know about|tell me about|what do you know/i.test(userMessage);
-    let shouldSearch = isSpecialService || (diveDeep && isFactualQuery);
-
-    // Force web search if ambiguity detector triggers and tier allows it
-    if (!shouldSearch && canWebSearch) {
-      const forceSearch = await shouldForceWebSearch(userMessage);
-      if (forceSearch) {
-        shouldSearch = true;
-        console.log("⚠️ Ambiguity detected – forcing web search");
-      }
-    }
-
     // Flag for response header
     let searchAttempted = false;
 
@@ -262,70 +290,26 @@ export async function POST(req: NextRequest) {
       if (shouldSearch) {
         searchAttempted = true;
 
-        if (/weather|temperature|rain|forecast/i.test(userMessage)) {
+        // Widget queries – use exact whole-question patterns to avoid false positives
+        const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+        const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
+        const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+
+        if (isWeatherQuery) {
           const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          const city = cityMatch?.[1]?.trim() || "Lahore";
-          liveData = await getWeather(city);
-        } else if (/time|clock/i.test(userMessage)) {
-          const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
-          const zone = zoneMatch?.[1]?.trim() || undefined;
-          liveData = await getCurrentTimeCard(zone);
-        } else if (/date|calendar/i.test(userMessage)) {
-          const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
-          const zone = zoneMatch?.[1]?.trim() || undefined;
-          liveData = await getCurrentCalendarCard(zone);
-        } else if (/news|headline|trending/i.test(userMessage)) {
-          liveData = await getNews(userMessage) || await getCurrentEvents();
-        } else if (/goals|career goals/i.test(userMessage)) {
-          const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
-          const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
-          liveData = await getFootballPlayerGoals(name);
-        } else if (/cricket|match|score|result/i.test(userMessage)) {
-          liveData = await getCricketScore(userMessage);
-        } else if (/net worth/i.test(userMessage)) {
-          const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
-          const name = nameMatch?.[1]?.trim() || "Elon Musk";
-          liveData = await getForbesNetWorth(name);
-        } else if (/stock price|stock/i.test(userMessage)) {
-          const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
-          const sym = symMatch?.[1] || "TSLA";
-          liveData = await getStockPrice(sym);
-        } else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
-          const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
-          liveData = await getWikipediaSummary(topic);
-        } else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
-          try {
-            const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-            const data = await res.json();
-            const rate = data.rates.PKR;
-            if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
-          } catch {}
-        } else if (canWebSearch) {
+          liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+        } else if (isTimeQuery) {
+          liveData = await getCurrentTimeCard();
+        } else if (isDateQuery) {
+          liveData = await getCurrentCalendarCard();
+        } else {
+          // Universal web search for everything else
           const cleanQ = cleanedQuery;
-          // 1. Groq router picks best curated sources
-          const curatedSources = await routeToCuratedSources(cleanQ);
-          console.log(
-            `📚 Curated router returned: ${
-              curatedSources.length > 0
-                ? curatedSources.map((s) => s.title).join(", ")
-                : "none"
-            }`
-          );
-          if (curatedSources.length > 0) {
-            console.log(`✅ USING CURATED SOURCE(s): ${curatedSources.map((s) => s.url).join(", ")}`);
-            const curatedContents = await Promise.all(curatedSources.map(s => scrapePage(s.url)));
-            liveData = await extractAnswer(cleanQ, curatedSources.map(s => s.url), curatedContents);
-          }
-          // 2. Fallback to deep web search
+          liveData = await performDeepSearch(cleanQ);
           if (!liveData) {
-            console.log(`🌐 FALLING BACK TO TAVILY WEB SEARCH for: "${cleanQ}"`);
-            const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
-            if (searchUsage.allowed) {
-              liveData = await performDeepSearch(cleanQ);
-            } else {
-              console.log(`⚠️ Web search limit reached`);
-            }
+            liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
           }
+          console.log(`✅ Search results obtained (${liveData.length} chars)`);
         }
       }
 
@@ -349,6 +333,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
       // Prepend widget instruction
       extendedMessage = widgetInstruction + extendedMessage + `\n\nUser: ${userMessage}`;
+      console.log(`📝 AAI extendedMessage now has ${extendedMessage.length} chars`);
 
       const aaiResult = await aaiRuntime.processRequest({
         userMessage: extendedMessage,
@@ -360,7 +345,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         },
       });
 
-      const replyText = aaiResult.response || "";
+      let replyText = aaiResult.response || "";
+      // Hard fallback for empty response
+      if (!replyText.trim()) {
+        replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
+      }
       await saveMessage(supabase, user.id, convId, "assistant", replyText);
 
       const encoder = new TextEncoder();
@@ -437,95 +426,94 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       apiMessages[0].content += `\n\n--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.`;
     }
 
-    // ── Comprehensive live-data router ──
+    // ── AI‑routed live‑data injection ──
+    let liveData = "";
     if (shouldSearch) {
       searchAttempted = true;
-      let liveData = "";
 
-      if (/weather|temperature|rain|forecast/i.test(userMessage)) {
+      // Widget queries – use exact whole-question patterns to avoid false positives
+      const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+      const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
+      const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+
+      if (isWeatherQuery) {
         const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-        const city = cityMatch?.[1]?.trim() || "Lahore";
-        liveData = await getWeather(city);
-      } else if (/time|clock/i.test(userMessage)) {
-        const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
-        const zone = zoneMatch?.[1]?.trim() || undefined;
-        liveData = await getCurrentTimeCard(zone);
-      } else if (/date|calendar/i.test(userMessage)) {
-        const zoneMatch = userMessage.match(/(?:in|for)\s+([A-Za-z\/_]+?)(\?|$)/i);
-        const zone = zoneMatch?.[1]?.trim() || undefined;
-        liveData = await getCurrentCalendarCard(zone);
-      } else if (/news|headline|trending/i.test(userMessage)) {
-        liveData = await getNews(userMessage) || await getCurrentEvents();
-      } else if (/goals|career goals/i.test(userMessage)) {
-        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
-        const name = nameMatch?.[1]?.trim() || "Cristiano Ronaldo";
-        liveData = await getFootballPlayerGoals(name);
-      } else if (/cricket|match|score|result/i.test(userMessage)) {
-        liveData = await getCricketScore(userMessage);
-      } else if (/net worth/i.test(userMessage)) {
-        const nameMatch = userMessage.match(/(?:of|for)\s+([A-Za-z\s]+?)(?:\?|$)/i);
-        const name = nameMatch?.[1]?.trim() || "Elon Musk";
-        liveData = await getForbesNetWorth(name);
-      } else if (/stock price|stock/i.test(userMessage)) {
-        const symMatch = userMessage.match(/\(?([A-Z]{1,5})\)?/);
-        const sym = symMatch?.[1] || "TSLA";
-        liveData = await getStockPrice(sym);
-      } else if (/who is|what is|define|explain|wiki/i.test(userMessage)) {
-        const topic = userMessage.replace(/who is|what is|define|explain|wiki/gi, "").trim();
-        liveData = await getWikipediaSummary(topic);
-      } else if (/exchange rate|usd to pkr|pkr to usd/i.test(userMessage)) {
-        try {
-          const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-          const data = await res.json();
-          const rate = data.rates.PKR;
-          if (rate) liveData = `1 USD = ${rate} PKR (Source: ExchangeRate-API)`;
-        } catch {}
-      } else if (canWebSearch) {
+        liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+      } else if (isTimeQuery) {
+        liveData = await getCurrentTimeCard();
+      } else if (isDateQuery) {
+        liveData = await getCurrentCalendarCard();
+      } else {
+        // Universal web search for everything else
         const cleanQ = cleanedQuery;
-        // 1. Groq router picks best curated sources
-        const curatedSources = await routeToCuratedSources(cleanQ);
-        console.log(
-          `📚 Curated router returned: ${
-            curatedSources.length > 0
-              ? curatedSources.map((s) => s.title).join(", ")
-              : "none"
-          }`
-        );
-        if (curatedSources.length > 0) {
-          console.log(`✅ USING CURATED SOURCE(s): ${curatedSources.map((s) => s.url).join(", ")}`);
-          const curatedContents = await Promise.all(curatedSources.map(s => scrapePage(s.url)));
-          liveData = await extractAnswer(cleanQ, curatedSources.map(s => s.url), curatedContents);
-        }
-        // 2. Fallback to deep web search
+        liveData = await performDeepSearch(cleanQ);
         if (!liveData) {
-          console.log(`🌐 FALLING BACK TO TAVILY WEB SEARCH for: "${cleanQ}"`);
-          const searchUsage = await checkAndUpdateUsage(supabase, user.id, "web_search");
-          if (searchUsage.allowed) {
-            liveData = await performDeepSearch(cleanQ);
-          } else {
-            console.log(`⚠️ Web search limit reached`);
-            apiMessages[0].content += `\n\nNote: Daily web search limit reached.`;
-          }
+          liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
         }
+        console.log(`✅ Search results obtained (${liveData.length} chars)`);
       }
 
       if (liveData) {
-        apiMessages[0].content += `\n\n--- REAL-TIME SEARCH (use this data) ---\n${liveData}`;
-        apiMessages[0].content += `\n\nIMPORTANT: After your answer, add a "## Sources" section with one bullet point per source, like this:\n- [Title](URL)\n- [Title](URL)\nDo NOT skip this section.`;
+        apiMessages[0].content += `\n\n--- REAL-TIME SEARCH (use this data) ---\n${liveData}\n\nIMPORTANT: After your answer, add a "## Sources" section with one bullet point per source.`;
       }
     }
 
-    // ── Soft token target + upgrade hint ──
-    const tierUpgrade: Record<string, string | null> = {
-      fast: "Plus",
-      plus: "Pro",
-      pro: "AAI",
-      live: "Pro",
-      code: "Pro",
-      aai: null,
-    };
-    const nextTier = tierUpgrade[modelTier];
-    apiMessages[0].content += `\n\n--- OUTPUT SIZE CONTROL ---
+    // ── Live tier: stream Tavily answer directly, bypass the LLM ──
+    if (liveData && modelTier === "live") {
+      // Keep the system prompt extremely short for live tier
+      apiMessages[0].content = `${tier.systemPrompt}\n\nThe web search results will be shown directly. Do NOT answer – the system will handle the reply.`;
+
+      // Extract Tavily answer and sources from liveData
+      const answerMatch = liveData.match(/--- WEB SEARCH ---\n([\s\S]*?)(?:\n\n## Sources|$)/);
+      const sourcesMatch = liveData.match(/## Sources\n([\s\S]*)/);
+
+      const answerText = answerMatch?.[1]?.trim() || liveData;
+      const sourcesText = sourcesMatch?.[1]?.trim() || "";
+
+      // Format the final message with markdown
+      const finalMessage = `${answerText}\n\n${sourcesText ? `**Sources:**\n${sourcesText}` : ""}`;
+
+      // Stream it back word by word
+      const words = finalMessage.split(/\s+/);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          for (const word of words) {
+            const chunk = { choices: [{ delta: { content: word + " " } }] };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            await new Promise(r => setTimeout(r, 10));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      // Save the answer to the database
+      await saveMessage(supabase, user.id, convId, "assistant", finalMessage);
+
+      const headers: Record<string, string> = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "x-conversation-id": convId,
+        "x-search-performed": "true",
+      };
+
+      return new Response(stream, { headers });
+    }
+
+    // ── Soft token target + upgrade hint (skip for live tier) ──
+    if (modelTier !== "live") {
+      const tierUpgrade: Record<string, string | null> = {
+        fast: "Plus",
+        plus: "Pro",
+        pro: "AAI",
+        live: "Pro",
+        code: "Pro",
+        aai: null,
+      };
+      const nextTier = tierUpgrade[modelTier];
+      apiMessages[0].content += `\n\n--- OUTPUT SIZE CONTROL ---
 Your **target** response length is exactly ${tier.maxTokens} tokens.
 - Stop generating **before** you reach this limit.
 - End with a complete sentence, a brief summary, or a period.
@@ -533,6 +521,18 @@ Your **target** response length is exactly ${tier.maxTokens} tokens.
 - If the answer requires more space, give a short summary and add:
   "→ For a longer explanation, switch to N ${nextTier || 'Pro'}."
 The system will cut you off if you exceed twice this limit, so plan ahead.`;
+    }
+
+    // ── Force minimum token allocation for reply (all tiers except live) ──
+    if (modelTier !== "live") {
+      const HARD_RESPONSE_TOKENS = 300;
+      const systemTokens = Math.ceil(apiMessages[0].content.length / 4);
+      const availableTokens = tier.maxTokens - systemTokens;
+      if (availableTokens < HARD_RESPONSE_TOKENS) {
+        apiMessages[0].content = apiMessages[0].content.slice(0, (tier.maxTokens - HARD_RESPONSE_TOKENS) * 4);
+        console.log(`✂️ System prompt trimmed to ${apiMessages[0].content.length} chars (${tier.maxTokens - HARD_RESPONSE_TOKENS} tokens for reply)`);
+      }
+    }
 
     let lastError: string | null = null;
 
@@ -544,6 +544,12 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
 
       const hardCap = Math.max(tier.maxTokens * 2, 800);
+
+      // Token budget log only for non‑live tiers
+      if (modelTier !== "live") {
+        const remainingTokens = tier.maxTokens - Math.ceil(apiMessages[0].content.length / 4);
+        console.log(`📊 Token budget: ${tier.maxTokens} total, ~${Math.ceil(apiMessages[0].content.length / 4)} for system, ${remainingTokens} remaining for reply`);
+      }
 
       try {
         // ── Gemini branch ────────────────────────
@@ -582,10 +588,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           }
 
           const data = await aiRes.json();
-          const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          let replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
           if (!replyText.trim()) {
-            lastError = "Empty response from Gemini";
-            continue;
+            const fallbackMsg = "I searched the web but couldn't retrieve the full information. Please try again.";
+            replyText = fallbackMsg;
           }
 
           await saveMessage(supabase, user.id, convId, "assistant", replyText);
@@ -678,6 +684,13 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                     // skip invalid JSON
                   }
                 }
+              }
+
+              // Hard fallback – never send empty response
+              if (!fullContent.trim()) {
+                const fallbackMsg = "I searched the web but couldn't retrieve the full information. Please try again.";
+                fullContent = fallbackMsg;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fallbackMsg } }] })}\n\n`));
               }
 
               saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);

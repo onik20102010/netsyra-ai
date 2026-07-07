@@ -3314,5 +3314,2536 @@ export const CURATED_SOURCES: CuratedSource[] = [
   { url: "https://www.samhsa.gov", title: "Substance Abuse and Mental Health Services Administration (SAMHSA)" },
   { url: "https://www.gpo.gov", title: "Government Publishing Office (GPO)" },
   { url: "https://www.archives.gov", title: "National Archives (NARA)" },
+
+    // US Health & Medical – New Sources
+  // Federal Government & National Public Health Agencies
+  { url: "https://www.cms.gov", title: "Centers for Medicare & Medicaid Services (CMS)" },
+  { url: "https://www.ahrq.gov", title: "Agency for Healthcare Research and Quality (AHRQ)" },
+  { url: "https://www.hrsa.gov", title: "Health Resources and Services Administration (HRSA)" },
+  { url: "https://www.surgeongeneral.gov", title: "Office of the Surgeon General" },
+  { url: "https://health.gov/healthypeople", title: "Healthy People 2030" },
+  { url: "https://clinicaltrials.gov", title: "ClinicalTrials.gov" },
+  { url: "https://www.vaccines.gov", title: "Vaccines.gov" },
+  { url: "https://www.phf.org", title: "Public Health Foundation" },
+  { url: "https://www.usphs.gov", title: "U.S. Public Health Service (USPHS)" },
+
+  // NIH Institutes (select key ones)
+  { url: "https://www.cancer.gov", title: "National Cancer Institute (NCI)" },
+  { url: "https://www.niaid.nih.gov", title: "National Institute of Allergy and Infectious Diseases (NIAID)" },
+  { url: "https://www.nhlbi.nih.gov", title: "National Heart, Lung, and Blood Institute (NHLBI)" },
+  { url: "https://www.niddk.nih.gov", title: "National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK)" },
+  { url: "https://www.nimh.nih.gov", title: "National Institute of Mental Health (NIMH)" },
+  { url: "https://www.nia.nih.gov", title: "National Institute on Aging (NIA)" },
+  { url: "https://www.nei.nih.gov", title: "National Eye Institute (NEI)" },
+  { url: "https://www.niams.nih.gov", title: "National Institute of Arthritis and Musculoskeletal and Skin Diseases (NIAMS)" },
+  { url: "https://www.nichd.nih.gov", title: "Eunice Kennedy Shriver National Institute of Child Health and Human Development (NICHD)" },
+  { url: "https://www.ninds.nih.gov", title: "National Institute of Neurological Disorders and Stroke (NINDS)" },
+
+  // Major Hospitals & Academic Medical Centers
+  { url: "https://www.clevelandclinic.org", title: "Cleveland Clinic" },
+  { url: "https://www.hopkinsmedicine.org", title: "Johns Hopkins Medicine" },
+  { url: "https://www.massgeneral.org", title: "Massachusetts General Hospital" },
+  { url: "https://stanfordhealthcare.org", title: "Stanford Health Care" },
+  { url: "https://www.ucsfhealth.org", title: "UCSF Health" },
+  { url: "https://www.mdanderson.org", title: "MD Anderson Cancer Center" },
+  { url: "https://www.mountsinai.org", title: "Mount Sinai Health System" },
+  { url: "https://nyulangone.org", title: "NYU Langone Health" },
+  { url: "https://www.brighamandwomens.org", title: "Brigham and Women's Hospital" },
+  { url: "https://www.childrenshospital.org", title: "Boston Children's Hospital" },
+  { url: "https://www.michiganmedicine.org", title: "Michigan Medicine" },
+  { url: "https://www.uclahealth.org", title: "UCLA Health" },
+  { url: "https://www.dukehealth.org", title: "Duke Health" },
+  { url: "https://www.pennmedicine.org", title: "Penn Medicine" },
+  { url: "https://www.columbiadoctors.org", title: "ColumbiaDoctors" },
+  { url: "https://www.cedars-sinai.org", title: "Cedars‑Sinai" },
+  { url: "https://www.northwesternmedicine.org", title: "Northwestern Medicine" },
+  { url: "https://www.emoryhealthcare.org", title: "Emory Healthcare" },
+  { url: "https://mayoclinichealthsystem.org", title: "Mayo Clinic Health System" },
+  { url: "https://www.keckmedicine.org", title: "Keck Medicine of USC" },
+  { url: "https://www.utswmedicine.org", title: "UT Southwestern Medical Center" },
+  { url: "https://www.vumc.org", title: "Vanderbilt University Medical Center" },
+  { url: "https://www.barnesjewish.org", title: "Barnes-Jewish Hospital" },
+  { url: "https://www.upmc.com", title: "UPMC" },
+  { url: "https://www.rush.edu", title: "Rush University Medical Center" },
+  { url: "https://www.jeffersonhealth.org", title: "Jefferson Health" },
+  { url: "https://www.hackensackmeridianhealth.org", title: "Hackensack Meridian Health" },
+  { url: "https://www.adventhealth.com", title: "AdventHealth" },
+  { url: "https://healthy.kaiserpermanente.org", title: "Kaiser Permanente" },
+
+  // State & Territorial Health Departments (select examples; full 50 states can be added)
+  { url: "https://www.health.ny.gov", title: "New York State Department of Health" },
+  { url: "https://www.dhcs.ca.gov", title: "California Department of Health Care Services" },
+  { url: "https://www.dshs.texas.gov", title: "Texas Department of State Health Services" },
+  { url: "https://www.floridahealth.gov", title: "Florida Department of Health" },
+  { url: "https://www.health.state.mn.us", title: "Minnesota Department of Health" },
+  { url: "https://dph.illinois.gov", title: "Illinois Department of Public Health" },
+  { url: "https://www.health.pa.gov", title: "Pennsylvania Department of Health" },
+  { url: "https://www.mass.gov/orgs/department-of-public-health", title: "Massachusetts Department of Public Health" },
+  { url: "https://odh.ohio.gov", title: "Ohio Department of Health" },
+  { url: "https://www.michigan.gov/mdhhs", title: "Michigan Department of Health and Human Services" },
+
+  // Disease-Specific Organizations & Foundations
+  { url: "https://www.heart.org", title: "American Heart Association" },
+  { url: "https://www.cancer.org", title: "American Cancer Society" },
+  { url: "https://www.diabetes.org", title: "American Diabetes Association" },
+  { url: "https://www.alz.org", title: "Alzheimer's Association" },
+  { url: "https://www.arthritis.org", title: "Arthritis Foundation" },
+  { url: "https://www.lung.org", title: "American Lung Association" },
+  { url: "https://www.kidney.org", title: "National Kidney Foundation" },
+  { url: "https://www.nationalmssociety.org", title: "National Multiple Sclerosis Society" },
+  { url: "https://www.crohnscolitisfoundation.org", title: "Crohn's & Colitis Foundation" },
+  { url: "https://www.parkinson.org", title: "Parkinson's Foundation" },
+  { url: "https://www.sicklecell.org", title: "Sickle Cell Disease Association of America" },
+  { url: "https://www.cysticfibrosis.org", title: "Cystic Fibrosis Foundation" },
+  { url: "https://www.lls.org", title: "Leukemia & Lymphoma Society" },
+  { url: "https://www.breastcancer.org", title: "Breastcancer.org" },
+  { url: "https://mhanational.org", title: "Mental Health America" },
+  { url: "https://www.nami.org", title: "National Alliance on Mental Illness (NAMI)" },
+
+  // Professional Medical Associations & Societies
+  { url: "https://www.ama-assn.org", title: "American Medical Association (AMA)" },
+  { url: "https://www.aafp.org", title: "American Academy of Family Physicians (AAFP)" },
+  { url: "https://www.acponline.org", title: "American College of Physicians (ACP)" },
+  { url: "https://www.acog.org", title: "American College of Obstetricians and Gynecologists (ACOG)" },
+  { url: "https://www.aap.org", title: "American Academy of Pediatrics (AAP)" },
+  { url: "https://www.facs.org", title: "American College of Surgeons (ACS)" },
+  { url: "https://www.apa.org", title: "American Psychological Association (APA)" },
+  { url: "https://www.aanp.org", title: "American Association of Nurse Practitioners (AANP)" },
+  { url: "https://www.apha.org", title: "American Public Health Association (APHA)" },
+  { url: "https://www.ashp.org", title: "American Society of Health-System Pharmacists (ASHP)" },
+  { url: "https://www.idsociety.org", title: "Infectious Diseases Society of America (IDSA)" },
+
+  // Regulatory, Accreditation & Oversight Bodies
+  { url: "https://www.jointcommission.org", title: "The Joint Commission" },
+  { url: "https://www.urac.org", title: "URAC" },
+  { url: "https://www.ncqa.org", title: "National Committee for Quality Assurance (NCQA)" },
+  { url: "https://www.usp.org", title: "U.S. Pharmacopeia (USP)" },
+
+  // Medical Journals & Research Databases
+  { url: "https://jamanetwork.com", title: "JAMA Network" },
+  { url: "https://www.nejm.org", title: "New England Journal of Medicine (NEJM)" },
+  { url: "https://www.cochrane.org", title: "Cochrane" },
+  { url: "https://www.annals.org", title: "Annals of Internal Medicine" },
+  { url: "https://www.thelancet.com", title: "The Lancet (US content)" },
+
+  // Consumer Health & Education Portals (new)
+  { url: "https://www.healthline.com", title: "Healthline" },
+  { url: "https://www.mayoclinic.org/patient-care-and-health-information", title: "Mayo Clinic Patient Care & Health Information" },
+  { url: "https://www.familydoctor.org", title: "FamilyDoctor.org" },
+  { url: "https://www.kidshealth.org", title: "KidsHealth" },
+  { url: "https://www.myplate.gov", title: "MyPlate (Nutrition)" },
+  { url: "https://www.eatright.org", title: "Academy of Nutrition and Dietetics" },
+
+  // Additional Specialized Resources
+  { url: "https://www.va.gov/health-care", title: "Veterans Health Administration" },
+  { url: "https://www.tricare.mil", title: "TRICARE" },
+  { url: "https://www.healthit.gov", title: "Health IT" },
+  { url: "https://www.ruralhealthinfo.org", title: "Rural Health Information Hub" },
+  { url: "https://www.minorityhealth.hhs.gov", title: "Office of Minority Health" },
+  { url: "https://www.womenshealth.gov", title: "Office on Women's Health" },
+  { url: "https://health.gov", title: "Office of Disease Prevention and Health Promotion" },
+  { url: "https://prevention.nih.gov", title: "NIH Office of Disease Prevention" },
+
+    // UK Health & Medical – New Sources
+  // National Government & Public Health Agencies (new domains/subpages)
+  { url: "https://www.ukhsa.gov.uk", title: "UK Health Security Agency (UKHSA)" },
+  { url: "https://www.scot.nhs.uk", title: "NHS Scotland" },
+  { url: "https://www.wales.nhs.uk", title: "NHS Wales" },
+  { url: "https://www.health-ni.gov.uk", title: "Health and Social Care Northern Ireland" },
+  { url: "https://www.medicines.org.uk", title: "Medicines and Healthcare products Regulatory Agency (MHRA) – Public Information" },
+  { url: "https://www.gov.uk/government/organisations/mhra", title: "MHRA – Official Regulator Page" },
+  { url: "https://www.digital.nhs.uk", title: "NHS Digital" },
+  { url: "https://www.improvement.nhs.uk", title: "NHS Improvement" },
+  { url: "https://www.hscic.gov.uk", title: "NHS Digital (legacy HSCIC)" },
+
+  // Major Hospitals & Academic Medical Centres
+  { url: "https://www.uclh.nhs.uk", title: "University College London Hospitals" },
+  { url: "https://www.gstt.nhs.uk", title: "Guy's and St Thomas' NHS Foundation Trust" },
+  { url: "https://www.mft.nhs.uk", title: "Manchester University NHS Foundation Trust" },
+  { url: "https://www.uhb.nhs.uk", title: "University Hospitals Birmingham" },
+  { url: "https://www.imperial.nhs.uk", title: "Imperial College Healthcare NHS Trust" },
+  { url: "https://www.papworthhospital.nhs.uk", title: "Royal Papworth Hospital" },
+  { url: "https://www.leedsth.nhs.uk", title: "Leeds Teaching Hospitals" },
+  { url: "https://www.nuh.nhs.uk", title: "Nottingham University Hospitals" },
+  { url: "https://www.sheffield.nhs.uk", title: "Sheffield Teaching Hospitals" },
+  { url: "https://www.cambridgeuniversityhospitals.nhs.uk", title: "Cambridge University Hospitals (Addenbrooke's)" },
+  { url: "https://www.oxforduniversityhospitals.nhs.uk", title: "Oxford University Hospitals" },
+  { url: "https://www.kingshealthpartners.org", title: "King's Health Partners" },
+  { url: "https://www.bartshealth.nhs.uk", title: "Barts Health NHS Trust" },
+  { url: "https://www.gosh.nhs.uk", title: "Great Ormond Street Hospital for Children" },
+  { url: "https://www.royalfree.nhs.uk", title: "Royal Free London NHS Foundation Trust" },
+  { url: "https://www.moorfields.nhs.uk", title: "Moorfields Eye Hospital" },
+  { url: "https://www.royalmarsden.nhs.uk", title: "The Royal Marsden (Cancer specialist)" },
+
+  // Research Institutes & Funding Bodies (new)
+  { url: "https://www.wellcome.org", title: "Wellcome Trust" },
+  { url: "https://www.nihr.ac.uk", title: "National Institute for Health and Care Research (NIHR)" },
+  { url: "https://www.cruk.org", title: "Cancer Research UK" },
+  { url: "https://www.bhf.org.uk", title: "British Heart Foundation" },
+  { url: "https://www.alzheimersresearchuk.org", title: "Alzheimer's Research UK" },
+  { url: "https://www.diabetes.org.uk", title: "Diabetes UK" },
+  { url: "https://www.versusarthritis.org", title: "Versus Arthritis" },
+  { url: "https://www.parkinsons.org.uk", title: "Parkinson's UK" },
+  { url: "https://www.stroke.org.uk", title: "Stroke Association" },
+
+  // Professional Medical Associations & Royal Colleges
+  { url: "https://www.bma.org.uk", title: "British Medical Association (BMA)" },
+  { url: "https://www.rcplondon.ac.uk", title: "Royal College of Physicians (RCP)" },
+  { url: "https://www.rcseng.ac.uk", title: "Royal College of Surgeons of England (RCS)" },
+  { url: "https://www.rcog.org.uk", title: "Royal College of Obstetricians and Gynaecologists (RCOG)" },
+  { url: "https://www.rcpch.ac.uk", title: "Royal College of Paediatrics and Child Health (RCPCH)" },
+  { url: "https://www.rcpsych.ac.uk", title: "Royal College of Psychiatrists (RCPsych)" },
+  { url: "https://www.rcgp.org.uk", title: "Royal College of General Practitioners (RCGP)" },
+  { url: "https://www.rcn.org.uk", title: "Royal College of Nursing (RCN)" },
+  { url: "https://www.rpharms.com", title: "Royal Pharmaceutical Society (RPS)" },
+  { url: "https://www.britishgeriatrics.org.uk", title: "British Geriatrics Society" },
+  { url: "https://www.britishcardiovascularsociety.org.uk", title: "British Cardiovascular Society" },
+  { url: "https://www.britishinfection.org", title: "British Infection Association" },
+
+  // Disease-Specific & Charity Organizations (new)
+  { url: "https://www.alzheimers.org.uk", title: "Alzheimer's Society" },
+  { url: "https://www.mind.org.uk", title: "Mind (mental health)" },
+  { url: "https://www.macmillan.org.uk", title: "Macmillan Cancer Support" },
+  { url: "https://www.terrencehiggins.org.uk", title: "Terrence Higgins Trust (HIV)" },
+  { url: "https://www.asthma.org.uk", title: "Asthma + Lung UK (formerly Asthma UK)" },
+  { url: "https://www.blf.org.uk", title: "British Lung Foundation" },
+  { url: "https://www.epilepsy.org.uk", title: "Epilepsy Society" },
+  { url: "https://www.coeliac.org.uk", title: "Coeliac UK" },
+  { url: "https://www.crohnsandcolitis.org.uk", title: "Crohn's & Colitis UK" },
+
+  // Regulatory, Accreditation & Oversight (new)
+  { url: "https://www.cqc.org.uk", title: "Care Quality Commission (CQC)" },
+  { url: "https://www.bnf.nice.org.uk", title: "British National Formulary (BNF)" },
+  { url: "https://www.evidence.nhs.uk", title: "NICE Evidence Search" },
+
+  // Medical Journals & Research Databases (UK-focused)
+  { url: "https://www.bmj.com", title: "The BMJ" },
+  { url: "https://www.onlinelibrary.wiley.com", title: "Wiley Online Library (UK journals)" },
+  { url: "https://www.cochranelibrary.com", title: "Cochrane Library" },
+
+  // Consumer Health & Education Portals (new)
+  { url: "https://www.nhs.uk/conditions", title: "NHS – Health A-Z (Conditions)" },
+  { url: "https://www.nhs.uk/live-well", title: "NHS – Live Well (Healthy Living)" },
+  { url: "https://www.patient.info", title: "Patient.info (Patient UK)" },
+  { url: "https://www.healthtalk.org", title: "Healthtalk.org" },
+  { url: "https://www.behindtheheadlines.org.uk", title: "Behind the Headlines (NHS evidence-based news)" },
+
+  // Additional Specialized Resources (new)
+  { url: "https://www.gov.uk/government/collections/nhs-england", title: "NHS England Policy & Guidance" },
+  { url: "https://www.scot.nhs.uk/public-health", title: "NHS Scotland Public Health" },
+  { url: "https://www.publichealthwales.org.uk", title: "Public Health Wales" },
+  { url: "https://www.nidirect.gov.uk/articles/health-and-social-care", title: "NI Direct – Health and Social Care" },
+
+    // Canada – Health & Medical (new)
+  // Federal Government & National Agencies
+  { url: "https://www.canada.ca/en/health.html", title: "Health Canada – Main Portal" },
+  { url: "https://www.phac-aspc.gc.ca", title: "Public Health Agency of Canada (PHAC)" },
+  { url: "https://www.cihi.ca", title: "Canadian Institute for Health Information (CIHI)" },
+  { url: "https://www.canada.ca/en/public-health", title: "Public Health – Government of Canada" },
+  { url: "https://www.hc-sc.gc.ca", title: "Health Canada (HC-SC)" },
+  { url: "https://www.canada.ca/en/services/health", title: "Canada.ca – Health Services" },
+  { url: "https://www.drugshortagescanada.ca", title: "Drug Shortages Canada" },
+  { url: "https://www.canada.ca/en/health-canada/services/drugs-health-products", title: "Health Canada – Drugs & Health Products" },
+  { url: "https://www.ic.gc.ca", title: "Innovation, Science and Economic Development Canada (Health Tech)" },
+  { url: "https://www.statcan.gc.ca", title: "Statistics Canada – Health Statistics" },
+
+  // Major Hospitals & Academic Medical Centres
+  { url: "https://www.uhn.ca", title: "University Health Network (Toronto General)" },
+  { url: "https://www.sunnybrook.ca", title: "Sunnybrook Health Sciences Centre" },
+  { url: "https://www.sickkids.ca", title: "Hospital for Sick Children (SickKids)" },
+  { url: "https://www.mountsinai.on.ca", title: "Mount Sinai Hospital Toronto" },
+  { url: "https://www.torontocentralhealthline.ca", title: "Toronto Central Healthline" },
+  { url: "https://www.ottawaheart.ca", title: "University of Ottawa Heart Institute" },
+  { url: "https://www.mcgill.ca", title: "McGill University Health Centre" },
+  { url: "https://www.muhc.ca", title: "McGill University Health Centre (MUHC)" },
+  { url: "https://www.umanitoba.ca", title: "Health Sciences Centre Winnipeg" },
+  { url: "https://www.albertahealthservices.ca", title: "Alberta Health Services" },
+  { url: "https://www.vch.ca", title: "Vancouver Coastal Health" },
+  { url: "https://www.providencehealthcare.org", title: "Providence Health Care (BC)" },
+  { url: "https://www.kingstonhsc.ca", title: "Kingston Health Sciences Centre" },
+  { url: "https://www.hamiltonhealthsciences.ca", title: "Hamilton Health Sciences" },
+  { url: "https://www.unityhealth.to", title: "Unity Health Toronto" },
+  { url: "https://www.sinaihealth.ca", title: "Sinai Health" },
+  { url: "https://www.womenscollegehospital.ca", title: "Women's College Hospital" },
+  { url: "https://www.camh.ca", title: "Centre for Addiction and Mental Health (CAMH)" },
+  { url: "https://www.baycrest.org", title: "Baycrest" },
+
+  // Provincial & Territorial Health Authorities (using official domains)
+  { url: "https://www.ontario.ca/page/ministry-health", title: "Ontario Ministry of Health" },
+  { url: "https://www.alberta.ca/health", title: "Alberta Health" },
+  { url: "https://www.gov.bc.ca/health", title: "British Columbia Ministry of Health" },
+  { url: "https://www.quebec.ca/sante", title: "Santé Québec" },
+  { url: "https://www.saskatchewan.ca/government/health", title: "Saskatchewan Health" },
+  { url: "https://www.gov.mb.ca/health", title: "Manitoba Health" },
+  { url: "https://www.novascotia.ca/dhw", title: "Nova Scotia Department of Health and Wellness" },
+  { url: "https://www2.gnb.ca", title: "New Brunswick Health" },
+  { url: "https://www.gov.nl.ca/health", title: "Newfoundland & Labrador Department of Health and Community Services" },
+  { url: "https://www.princeedwardisland.ca", title: "PEI Health" },
+  { url: "https://www.yukon.ca/en/health-and-social-services", title: "Yukon Health and Social Services" },
+  { url: "https://www.gov.nt.ca", title: "Northwest Territories Health and Social Services" },
+  { url: "https://www.gov.nu.ca", title: "Nunavut Health" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.cihr-irsc.gc.ca", title: "Canadian Institutes of Health Research (CIHR)" },
+  { url: "https://www.nserc-crsng.gc.ca", title: "Natural Sciences and Engineering Research Council (NSERC)" },
+  { url: "https://www.genomebc.ca", title: "Genome BC" },
+  { url: "https://www.genomequebec.com", title: "Génome Québec" },
+  { url: "https://www.ontario.ca/page/ontario-research-fund", title: "Ontario Research Fund" },
+  { url: "https://www.frq.gouv.qc.ca", title: "Fonds de recherche du Québec – Santé" },
+  { url: "https://www.partnershipagainstcancer.ca", title: "Canadian Partnership Against Cancer" },
+  { url: "https://www.braincanada.ca", title: "Brain Canada" },
+  { url: "https://www.stemcellnetwork.ca", title: "Stem Cell Network" },
+
+  // Disease-Specific Organizations & Foundations
+  { url: "https://www.heartandstroke.ca", title: "Heart & Stroke Foundation" },
+  { url: "https://www.cancer.ca", title: "Canadian Cancer Society" },
+  { url: "https://www.diabetes.ca", title: "Diabetes Canada" },
+  { url: "https://www.alzheimer.ca", title: "Alzheimer Society of Canada" },
+  { url: "https://www.arthritis.ca", title: "Arthritis Society Canada" },
+  { url: "https://www.lung.ca", title: "Canadian Lung Association" },
+  { url: "https://www.kidneycanada.ca", title: "Kidney Cancer Canada (also Kidney Foundation exists, but this is from list)" },
+  { url: "https://www.mssociety.ca", title: "Multiple Sclerosis Society of Canada" },
+  { url: "https://www.parkinson.ca", title: "Parkinson Canada" },
+  { url: "https://www.crohnsandcolitis.ca", title: "Crohn's and Colitis Canada" },
+  { url: "https://www.camh.ca", title: "CAMH (Mental Health) – already listed, but included for completeness" },
+  { url: "https://www.cmha.ca", title: "Canadian Mental Health Association" },
+  { url: "https://www.cysticfibrosis.ca", title: "Cystic Fibrosis Canada" },
+  { url: "https://www.epilepsy.ca", title: "Epilepsy Canada" },
+
+  // Professional Medical Associations & Colleges
+  { url: "https://www.cma.ca", title: "Canadian Medical Association (CMA)" },
+  { url: "https://www.cfpc.ca", title: "College of Family Physicians of Canada (CFPC)" },
+  { url: "https://www.royalcollege.ca", title: "Royal College of Physicians and Surgeons of Canada" },
+  { url: "https://www.cna-aiic.ca", title: "Canadian Nurses Association (CNA)" },
+  { url: "https://www.caphcr.ca", title: "Canadian Association of Provincial Cancer Agencies (CAPCA)" },
+  { url: "https://www.cps.ca", title: "Canadian Paediatric Society" },
+  { url: "https://www.canadiangeriatrics.ca", title: "Canadian Geriatrics Society" },
+  { url: "https://www.cacp.ca", title: "Canadian Association of Community Pharmacists (CACP)" },
+  { url: "https://www.csih.ca", title: "Canadian Society for International Health (CSIH)" },
+
+  // Regulatory & Oversight Bodies
+  { url: "https://www.napra.ca", title: "National Association of Pharmacy Regulatory Authorities (NAPRA)" },
+  { url: "https://www.ccohs.ca", title: "Canadian Centre for Occupational Health and Safety (CCOHS)" },
+  { url: "https://www.patientombudsman.ca", title: "Patient Ombudsman (Ontario)" },
+
+  // Medical Journals & Research Databases (Canadian-specific)
+  { url: "https://www.cmaj.ca", title: "Canadian Medical Association Journal (CMAJ)" },
+  { url: "https://www.cmajopen.ca", title: "CMAJ Open" },
+  { url: "https://www.jmir.org", title: "Journal of Medical Internet Research (JMIR) – Canadian studies" },
+
+  // Consumer Health & Education Portals
+  { url: "https://www.healthycanadians.gc.ca", title: "Healthy Canadians" },
+  { url: "https://www.aboutkidshealth.ca", title: "AboutKidsHealth" },
+  { url: "https://www.myhealth.alberta.ca", title: "MyHealth.Alberta.ca" },
+  { url: "https://www.healthlinkbc.ca", title: "HealthLink BC" },
+  { url: "https://www.ontario.ca/page/health-care-ontario", title: "Health Care Ontario" },
+
+  // Additional Specialized Resources
+  { url: "https://www.canada.ca/en/services/health/covid-19", title: "Canada.ca – COVID-19 (pandemic archives)" },
+  { url: "https://www.infobase.phac-aspc.gc.ca", title: "Public Health Infobase" },
+  { url: "https://www.secure.cihi.ca", title: "CIHI Data Portal" },
+
+    // Germany – Health & Medical (new)
+  // Federal Government & National Agencies
+  { url: "https://www.bundesgesundheitsministerium.de", title: "Federal Ministry of Health (BMG)" },
+  { url: "https://www.rki.de", title: "Robert Koch Institute (RKI)" },
+  { url: "https://www.bfarm.de", title: "Federal Institute for Drugs and Medical Devices (BfArM)" },
+  { url: "https://www.pei.de", title: "Paul-Ehrlich-Institut (vaccines & biomedicines)" },
+  { url: "https://www.iqwig.de", title: "Institute for Quality and Efficiency in Health Care (IQWiG)" },
+  { url: "https://www.g-ba.de", title: "Federal Joint Committee (G-BA)" },
+  { url: "https://www.dimdi.de", title: "German Institute of Medical Documentation and Information (DIMDI)" },
+  { url: "https://www.zaeq.de", title: "Central Institute for Quality Assurance (ZÄQ)" },
+
+  // Major University Hospitals & Medical Centres
+  { url: "https://www.charite.de", title: "Charité – Universitätsmedizin Berlin" },
+  { url: "https://www.uniklinik-heidelberg.de", title: "University Hospital Heidelberg" },
+  { url: "https://www.uniklinikum-dresden.de", title: "University Hospital Dresden" },
+  { url: "https://www.uniklinik-freiburg.de", title: "University Hospital Freiburg" },
+  { url: "https://www.klinikum.uni-muenchen.de", title: "LMU Munich University Hospital" },
+  { url: "https://www.med.uni-muenchen.de", title: "Technical University Munich – Medical Center" },
+  { url: "https://www.uk-essen.de", title: "University Hospital Essen" },
+  { url: "https://www.uniklinik-tuebingen.de", title: "University Hospital Tübingen" },
+  { url: "https://www.uniklinikum-wuerzburg.de", title: "University Hospital Würzburg" },
+  { url: "https://www.uniklinik-koeln.de", title: "University Hospital Cologne" },
+  { url: "https://www.medizin.uni-leipzig.de", title: "University Hospital Leipzig" },
+  { url: "https://www.uniklinikum-jena.de", title: "University Hospital Jena" },
+  { url: "https://www.uke.de", title: "University Medical Center Hamburg-Eppendorf (UKE)" },
+  { url: "https://www.mhh.de", title: "Hannover Medical School (MHH)" },
+  { url: "https://www.uniklinik-duesseldorf.de", title: "University Hospital Düsseldorf" },
+  { url: "https://www.ukmuenster.de", title: "University Hospital Münster" },
+  { url: "https://www.uniklinik-rwth-aachen.de", title: "University Hospital RWTH Aachen" },
+  { url: "https://www.deutsches-krankenhausverzeichnis.de", title: "German Hospital Directory" },
+
+  // State-Level Health Authorities (examples – 16 states; key ones added)
+  { url: "https://www.berlin.de", title: "Berlin Health Services" },
+  { url: "https://www.bayern.de", title: "Bavaria Health" },
+  { url: "https://www.nrw.de", title: "North Rhine-Westphalia Health" },
+  { url: "https://www.baden-wuerttemberg.de", title: "Baden-Württemberg Health" },
+  { url: "https://www.hessen.de", title: "Hesse Health" },
+  { url: "https://www.sachsen.de", title: "Saxony Health" },
+  { url: "https://www.niedersachsen.de", title: "Lower Saxony Health" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.mpg.de", title: "Max Planck Society (medical institutes)" },
+  { url: "https://www.helmholtz.de", title: "Helmholtz Association (health research)" },
+  { url: "https://www.dfg.de", title: "German Research Foundation (DFG)" },
+  { url: "https://www.dzne.de", title: "German Center for Neurodegenerative Diseases (DZNE)" },
+  { url: "https://www.dkfz.de", title: "German Cancer Research Center (DKFZ)" },
+  { url: "https://www.dzhk.de", title: "German Centre for Cardiovascular Research (DZHK)" },
+  { url: "https://www.dzif.de", title: "German Centre for Infection Research (DZIF)" },
+  { url: "https://www.fraunhofer.de", title: "Fraunhofer (health-related institutes)" },
+  { url: "https://www.leibniz-gemeinschaft.de", title: "Leibniz Association" },
+
+  // Disease-Specific Organizations & Foundations
+  { url: "https://www.deutschekrebshilfe.de", title: "German Cancer Aid" },
+  { url: "https://www.herzstiftung.de", title: "German Heart Foundation" },
+  { url: "https://www.diabetes-deutschland.de", title: "Diabetes Germany" },
+  { url: "https://www.deutsche-alzheimer.de", title: "German Alzheimer Society" },
+  { url: "https://www.deutsche-multiple-sklerose-gesellschaft.de", title: "German Multiple Sclerosis Society" },
+  { url: "https://www.drk.de", title: "German Red Cross (DRK)" },
+  { url: "https://www.aktion-deutschland-hilft.de", title: "Aktion Deutschland Hilft (health-related aid)" },
+
+  // Professional Medical Associations & Chambers
+  { url: "https://www.bundesaerztekammer.de", title: "German Medical Association (BÄK)" },
+  { url: "https://www.aerztekammern.de", title: "State Medical Chambers" },
+  { url: "https://www.dgim.de", title: "German Society of Internal Medicine (DGIM)" },
+  { url: "https://www.dgn.org", title: "German Society of Neurology (DGN)" },
+  { url: "https://www.dgch.de", title: "German Society of Surgery (DGCH)" },
+  { url: "https://www.deutsche-gesellschaft-fuer-chirurgie.de", title: "German Society for Surgery" },
+  { url: "https://www.kbv.de", title: "National Association of Statutory Health Insurance Physicians (KBV)" },
+
+  // Health Insurers with Public Health Information (large funds)
+  { url: "https://www.aok.de", title: "AOK Health Insurance" },
+  { url: "https://www.tk.de", title: "Techniker Krankenkasse (TK) Health Portal" },
+  { url: "https://www.barmer.de", title: "Barmer Health Information" },
+
+  // Medical Journals & Research Databases (Germany-focused)
+  { url: "https://www.aerzteblatt.de", title: "Deutsches Ärzteblatt" },
+  { url: "https://www.springer.com", title: "Springer (German medical journals)" },
+  { url: "https://www.thieme.de", title: "Thieme (medical publishers)" },
+  { url: "https://www.deutschesaerzteblatt.de", title: "Deutsches Ärzteblatt (alternative domain)" },
+
+  // Consumer Health & Patient Information Portals
+  { url: "https://gesund.bund.de", title: "Federal Health Portal (gesund.bund.de)" },
+  { url: "https://www.patienten-information.de", title: "Patient Information Portal" },
+  { url: "https://www.onkopedia.com", title: "Onkopedia (cancer guidelines)" },
+  { url: "https://www.gesundheitsinformation.de", title: "IQWiG Patient Information (gesundheitsinformation.de)" },
+  { url: "https://www.apotheken-umschau.de", title: "Apotheken Umschau" },
+
+  // Additional Specialized Resources
+  { url: "https://www.ebm-netzwerk.de", title: "German Network for Evidence-Based Medicine" },
+  { url: "https://www.leitlinien.de", title: "National Care Guidelines (Versorgungsleitlinien)" },
+
+    // India – Health & Medical (new)
+  // Central Government & National Agencies
+  { url: "https://www.mohfw.gov.in", title: "Ministry of Health and Family Welfare" },
+  { url: "https://www.nhm.gov.in", title: "National Health Mission (NHM)" },
+  { url: "https://www.icmr.gov.in", title: "Indian Council of Medical Research (ICMR)" },
+  { url: "https://www.cdsco.gov.in", title: "Central Drugs Standard Control Organisation (CDSCO)" },
+  { url: "https://www.ncdc.gov.in", title: "National Centre for Disease Control (NCDC)" },
+  { url: "https://www.aiims.edu", title: "All India Institute of Medical Sciences (AIIMS), Delhi" },
+  { url: "https://www.pib.gov.in", title: "Press Information Bureau – Health Releases" },
+  { url: "https://www.jssk.nhm.gov.in", title: "Janani Shishu Suraksha Karyakram (JSSK)" },
+  { url: "https://www.pmjay.gov.in", title: "Ayushman Bharat – Pradhan Mantri Jan Arogya Yojana (PM-JAY)" },
+
+  // Major Hospitals & Medical Institutions
+  { url: "https://www.aiimsjodhpur.edu.in", title: "AIIMS Jodhpur" },
+  { url: "https://www.aiimspatna.edu.in", title: "AIIMS Patna" },
+  { url: "https://www.pgimer.edu.in", title: "PGIMER Chandigarh" },
+  { url: "https://www.sgpgims.in", title: "Sanjay Gandhi Postgraduate Institute of Medical Sciences, Lucknow" },
+  { url: "https://www.nimhans.ac.in", title: "NIMHANS Bengaluru" },
+  { url: "https://www.tmc.gov.in", title: "Tata Memorial Centre (Cancer Hospital), Mumbai" },
+  { url: "https://www.cmc.edu.in", title: "Christian Medical College, Vellore" },
+  { url: "https://www.apollohospitals.com", title: "Apollo Hospitals" },
+  { url: "https://www.fortishealthcare.com", title: "Fortis Healthcare" },
+  { url: "https://www.narayanahealth.org", title: "Narayana Health" },
+  { url: "https://www.medanta.org", title: "Medanta – The Medicity" },
+  { url: "https://www.maxhealthcare.in", title: "Max Healthcare" },
+  { url: "https://www.lilavatihospital.com", title: "Lilavati Hospital & Research Centre" },
+  { url: "https://www.hindujahospital.com", title: "Hinduja Hospital" },
+  { url: "https://www.sankaraeye.com", title: "Sankara Nethralaya" },
+  { url: "https://www.lvpei.org", title: "L V Prasad Eye Institute" },
+
+  // State Health Departments & Missions
+  { url: "https://health.delhi.gov.in", title: "Delhi Health Department" },
+  { url: "https://www.arogyasri.telangana.gov.in", title: "Telangana Aarogyasri Health Scheme" },
+  { url: "https://nhm.assam.gov.in", title: "NHM Assam" },
+  { url: "https://health.up.gov.in", title: "Uttar Pradesh Health Department" },
+  { url: "https://www.punjab.gov.in", title: "Punjab Government – Health" },
+  { url: "https://www.karnataka.gov.in", title: "Karnataka Government – Health" },
+  { url: "https://www.kerala.gov.in", title: "Kerala Government – Health" },
+  { url: "https://www.gujarat.gov.in", title: "Gujarat Government – Health" },
+
+  // Research Institutes & Councils
+  { url: "https://www.niti.gov.in", title: "NITI Aayog – Health Policy" },
+  { url: "https://www.dbtindia.gov.in", title: "Department of Biotechnology" },
+  { url: "https://www.dst.gov.in", title: "Department of Science & Technology" },
+  { url: "https://www.csir.res.in", title: "CSIR (Council of Scientific & Industrial Research)" },
+  { url: "https://www.iisc.ac.in", title: "Indian Institute of Science" },
+  { url: "https://www.iitkgp.ac.in", title: "IIT Kharagpur" },
+  { url: "https://www.iitd.ac.in", title: "IIT Delhi" },
+  { url: "https://www.thsti.res.in", title: "Translational Health Science and Technology Institute" },
+  { url: "https://www.rguhs.ac.in", title: "Rajiv Gandhi University of Health Sciences" },
+
+  // Disease-Specific Organizations & Programs
+  { url: "https://www.naco.gov.in", title: "National AIDS Control Organisation (NACO)" },
+  { url: "https://www.rntcp.org", title: "National TB Elimination Programme (NTEP)" },
+  { url: "https://www.tb.gov.in", title: "Central TB Division" },
+  { url: "https://www.npcDCS.in", title: "National Programme for Prevention and Control of Cancer, Diabetes, Cardiovascular Diseases & Stroke" },
+  { url: "https://www.nhp.gov.in", title: "National Health Portal" },
+  { url: "https://www.cancerindia.org.in", title: "Cancer India" },
+  { url: "https://www.diabetesindia.org", title: "Diabetes India" },
+  { url: "https://www.heartcarefoundation.org", title: "Heart Care Foundation of India" },
+
+  // Professional Medical Associations
+  { url: "https://www.ima-india.org", title: "Indian Medical Association (IMA)" },
+  { url: "https://www.apiindia.org", title: "Association of Physicians of India (API)" },
+  { url: "https://www.iaps.net.in", title: "Indian Academy of Pediatrics (IAP)" },
+  { url: "https://www.ficsonline.org", title: "Fellowship of Indian College of Surgeons (FICS)" },
+  { url: "https://www.cardiologicalsocietyofindia.org", title: "Cardiological Society of India (CSI)" },
+  { url: "https://www.neurologicalsocietyofindia.com", title: "Neurological Society of India" },
+
+  // Regulatory & Quality Bodies
+  { url: "https://www.nabh.co", title: "National Accreditation Board for Hospitals & Healthcare Providers (NABH)" },
+  { url: "https://www.nmc.org.in", title: "National Medical Commission (NMC)" },
+  { url: "https://www.pci.nic.in", title: "Pharmacy Council of India" },
+  { url: "https://www.inc.nic.in", title: "Indian Nursing Council" },
+
+  // Medical Journals & Research Databases
+  { url: "https://www.ijmr.org.in", title: "Indian Journal of Medical Research (IJMR)" },
+  { url: "https://www.ncbi.nlm.nih.gov", title: "NCBI (PubMed with Indian research)" },
+  { url: "https://www.medknow.com", title: "Medknow Publications" },
+  { url: "https://www.indianjournals.com", title: "IndianJournals.com" },
+  { url: "https://www.japi.org", title: "Journal of the Association of Physicians of India (JAPI)" },
+
+  // Consumer Health & Information Portals
+  { url: "https://www.mohfw.gov.in/ayush", title: "AYUSH – Traditional Medicine Portal" },
+  { url: "https://www.fitindia.gov.in", title: "Fit India Movement (Health)" },
+  { url: "https://www.mygov.in", title: "MyGov – Health Sections" },
+  { url: "https://www.vikaspedia.in/health", title: "Vikaspedia Health Knowledge Portal" },
+  { url: "https://www.india.gov.in/topics/health", title: "India.gov.in – Health Topics" },
+  { url: "https://www.ayush.gov.in", title: "Ministry of AYUSH" },
+
+    // Australia – Health & Medical (new)
+  // National Agencies & Organisations (new)
+  { url: "https://www.aihw.gov.au", title: "Australian Institute of Health and Welfare (AIHW)" },
+  { url: "https://www.healthdirect.gov.au", title: "Healthdirect Australia" },
+  { url: "https://www.safetyandquality.gov.au", title: "Australian Commission on Safety and Quality in Health Care" },
+  { url: "https://www.phaa.org.au", title: "Public Health Association of Australia" },
+  { url: "https://www.digitalhealth.gov.au", title: "Australian Digital Health Agency" },
+
+  // Major Hospitals & Medical Centres
+  { url: "https://www.rch.org.au", title: "Royal Children’s Hospital Melbourne" },
+  { url: "https://www.swslhd.health.nsw.gov.au", title: "South Western Sydney Local Health District (Liverpool Hospital)" },
+  { url: "https://www.themh.org.au", title: "Royal Melbourne Hospital (Melbourne Health)" },
+  { url: "https://www.metronorth.health.qld.gov.au", title: "Metro North Health (Royal Brisbane and Women’s Hospital)" },
+  { url: "https://www.wslhd.health.nsw.gov.au", title: "Western Sydney Local Health District (Westmead Hospital)" },
+  { url: "https://www.alfred.org.au", title: "The Alfred Hospital, Melbourne" },
+  { url: "https://www.monashhealth.org", title: "Monash Health" },
+  { url: "https://www.svhm.org.au", title: "St Vincent's Hospital Melbourne" },
+  { url: "https://www.calvarycare.com.au", title: "Calvary Health Care" },
+  { url: "https://www.epworth.org.au", title: "Epworth HealthCare" },
+  { url: "https://www.petermac.org", title: "Peter MacCallum Cancer Centre" },
+
+  // State & Territory Health Departments (new sub-sites)
+  { url: "https://www.health.nsw.gov.au", title: "NSW Health" },
+  { url: "https://www.health.qld.gov.au", title: "Queensland Health" },
+  { url: "https://www.health.vic.gov.au", title: "Victoria Department of Health" },
+  { url: "https://www.sahealth.sa.gov.au", title: "SA Health (South Australia)" },
+  { url: "https://www.health.wa.gov.au", title: "Western Australia Department of Health" },
+  { url: "https://www.health.act.gov.au", title: "ACT Health" },
+  { url: "https://www.health.tas.gov.au", title: "Tasmanian Department of Health" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.nhmrc.gov.au", title: "National Health and Medical Research Council (NHMRC)" },
+  { url: "https://www.arc.gov.au", title: "Australian Research Council" },
+  { url: "https://www.garvan.org.au", title: "Garvan Institute of Medical Research" },
+  { url: "https://www.wehi.edu.au", title: "Walter and Eliza Hall Institute (WEHI)" },
+  { url: "https://www.baker.edu.au", title: "Baker Heart and Diabetes Institute" },
+  { url: "https://www.qimrberghofer.edu.au", title: "QIMR Berghofer Medical Research Institute" },
+  { url: "https://www.mcri.edu.au", title: "Murdoch Children's Research Institute" },
+  { url: "https://www.georgeinstitute.org.au", title: "The George Institute for Global Health" },
+  { url: "https://www.menzies.edu.au", title: "Menzies School of Health Research" },
+
+  // Disease-Specific Organisations & Foundations
+  { url: "https://www.cancer.org.au", title: "Cancer Council Australia" },
+  { url: "https://www.heartfoundation.org.au", title: "Heart Foundation" },
+  { url: "https://www.diabetesaustralia.com.au", title: "Diabetes Australia" },
+  { url: "https://www.alzheimers.org.au", title: "Dementia Australia" },
+  { url: "https://www.arthritis.org.au", title: "Arthritis Australia" },
+  { url: "https://www.lungfoundation.com.au", title: "Lung Foundation Australia" },
+  { url: "https://www.mnd.org.au", title: "Motor Neurone Disease Australia" },
+  { url: "https://www.stroke.org.au", title: "Stroke Foundation" },
+  { url: "https://www.beyondblue.org.au", title: "Beyond Blue (Mental Health)" },
+  { url: "https://www.headspace.org.au", title: "headspace (Youth Mental Health)" },
+  { url: "https://www.blackdoginstitute.org.au", title: "Black Dog Institute" },
+
+  // Professional Medical Associations
+  { url: "https://www.ama.com.au", title: "Australian Medical Association (AMA)" },
+  { url: "https://www.racgp.org.au", title: "Royal Australian College of General Practitioners (RACGP)" },
+  { url: "https://www.ranzcog.edu.au", title: "Royal Australian and New Zealand College of Obstetricians and Gynaecologists (RANZCOG)" },
+  { url: "https://www.ranzcp.org", title: "Royal Australian and New Zealand College of Psychiatrists (RANZCP)" },
+  { url: "https://www.apna.asn.au", title: "Australian Primary Health Care Nurses Association (APNA)" },
+  { url: "https://www.psa.org.au", title: "Pharmaceutical Society of Australia (PSA)" },
+
+  // Regulatory, Accreditation & Oversight
+  { url: "https://www.ahpra.gov.au", title: "Australian Health Practitioner Regulation Agency (Ahpra)" },
+
+  // Medical Journals & Research Databases (Australian)
+  { url: "https://www.mja.com.au", title: "Medical Journal of Australia (MJA)" },
+  { url: "https://www.anzjog.com", title: "Australian and New Zealand Journal of Obstetrics and Gynaecology (ANZJOG)" },
+  { url: "https://www.internalmedicinejournal.com", title: "Internal Medicine Journal" },
+
+  // Consumer Health & Education Portals
+  { url: "https://www.mydr.com.au", title: "myDr.com.au" },
+  { url: "https://www.raisingchildren.net.au", title: "Raising Children Network" },
+  { url: "https://www.pregnancybirthbaby.org.au", title: "Pregnancy, Birth and Baby" },
+
+  // Additional Specialised Resources
+  { url: "https://www.pbs.gov.au", title: "Pharmaceutical Benefits Scheme (PBS)" },
+  { url: "https://www.healthinfonet.ecu.edu.au", title: "Australian Indigenous HealthInfoNet" },
+
+    // Japan – Health & Medical (new)
+  // National Agencies & Research Institutes
+  { url: "https://www.niph.go.jp", title: "National Institute of Public Health (NIPH)" },
+  { url: "https://www.pmda.go.jp", title: "Pharmaceuticals and Medical Devices Agency (PMDA)" },
+  { url: "https://www.niid.go.jp", title: "National Institute of Infectious Diseases (NIID)" },
+  { url: "https://www.jstd.or.jp", title: "Japan Society of Transfusion Medicine and Cell Therapy" },
+
+  // Major Hospitals & Medical Centres
+  { url: "https://www.ncchd.go.jp", title: "National Center for Child Health and Development (NCCHD)" },
+  { url: "https://www.ncc.go.jp", title: "National Cancer Center Japan" },
+  { url: "https://www.ncvc.go.jp", title: "National Cerebral and Cardiovascular Center (NCVC)" },
+  { url: "https://www.nims.go.jp", title: "National Institute for Materials Science (medical applications)" },
+  { url: "https://www.tokyo-med.ac.jp", title: "Tokyo Medical University Hospital" },
+  { url: "https://www.med.juntendo.ac.jp", title: "Juntendo University Hospital" },
+  { url: "https://www.h.u-tokyo.ac.jp", title: "University of Tokyo Hospital" },
+  { url: "https://www.keio.ac.jp", title: "Keio University Hospital (Keio University)" },
+  { url: "https://www.osaka-u.ac.jp", title: "Osaka University Hospital (Osaka University)" },
+  { url: "https://www.kyoto-u.ac.jp", title: "Kyoto University Hospital (Kyoto University)" },
+  { url: "https://www.nagoya-u.ac.jp", title: "Nagoya University Hospital (Nagoya University)" },
+  { url: "https://www.tohoku.ac.jp", title: "Tohoku University Hospital (Tohoku University)" },
+  { url: "https://www.sapporo-med.ac.jp", title: "Sapporo Medical University Hospital" },
+  { url: "https://www.stlukes.or.jp", title: "St. Luke’s International Hospital" },
+  { url: "https://www.toranomon.gr.jp", title: "Toranomon Hospital" },
+  { url: "https://www.kameda.com", title: "Kameda Medical Center" },
+
+  // Research Institutes & Funding
+  { url: "https://www.riken.jp", title: "RIKEN (multi‑disciplinary research, including medical)" },
+  { url: "https://www.amed.go.jp", title: "Japan Agency for Medical Research and Development (AMED)" },
+  { url: "https://www.jst.go.jp", title: "Japan Science and Technology Agency (JST)" },
+  { url: "https://www.jsps.go.jp", title: "Japan Society for the Promotion of Science (JSPS)" },
+  { url: "https://www.ncgm.go.jp", title: "National Center for Global Health and Medicine (NCGM)" },
+
+  // Disease‑Specific Organizations
+  { url: "https://www.ganjoho.jp", title: "National Cancer Information Center (Ganjoho)" },
+  { url: "https://www.j-circ.or.jp", title: "Japanese Circulation Society" },
+  { url: "https://www.diabetes-japan.jp", title: "Japan Diabetes Society" },
+  { url: "https://www.alz.or.jp", title: "Japan Alzheimer’s Association" },
+  { url: "https://www.jhf.or.jp", title: "Japan Heart Foundation" },
+
+  // Professional Medical Associations
+  { url: "https://www.med.or.jp", title: "Japan Medical Association" },
+  { url: "https://www.jssr.or.jp", title: "Japan Surgical Society" },
+  { url: "https://www.jpeds.or.jp", title: "Japan Pediatric Society" },
+  { url: "https://www.jsog.or.jp", title: "Japan Society of Obstetrics and Gynecology" },
+  { url: "https://www.jns.or.jp", title: "Japanese Neurological Society" },
+  { url: "https://www.jgca.jp", title: "Japanese Gastric Cancer Association" },
+
+  // Regulatory & Quality
+  { url: "https://www.jcqhc.or.jp", title: "Japan Council for Quality Health Care (JCQHC)" },
+
+  // Medical Journals & Databases (Japan‑specific)
+  { url: "https://www.jstage.jst.go.jp", title: "J‑STAGE (Japan Science and Technology Information Aggregator)" },
+  { url: "https://www.jmedj.jp", title: "Japan Medical Journal" },
+
+  // Consumer Health & Information
+  { url: "https://www.e-healthnet.mhlw.go.jp", title: "e‑Health Net (MHLW public information)" },
+  { url: "https://www.kenkouippon.jp", title: "Health Promotion (Kenkou Ippon)" },
+
+    // Global Health – New Sources
+  { url: "https://www.who.int", title: "World Health Organization (WHO)" },
+  { url: "https://www.unaids.org", title: "UNAIDS (Joint United Nations Programme on HIV/AIDS)" },
+  { url: "https://www.unfpa.org", title: "United Nations Population Fund (UNFPA)" },
+  { url: "https://www.unwomen.org", title: "UN Women (Health & Gender)" },
+  { url: "https://www.iaea.org", title: "International Atomic Energy Agency (IAEA) – Medical Applications" },
+  { url: "https://ourworldindata.org/health", title: "Our World in Data – Health" },
+  { url: "https://www.gavi.org", title: "Gavi, the Vaccine Alliance" },
+  { url: "https://www.theglobalfund.org", title: "The Global Fund to Fight AIDS, Tuberculosis and Malaria" },
+  { url: "https://www.ghsi.org", title: "Global Health Security Initiative (GHSI)" },
+  { url: "https://www.gatesfoundation.org", title: "Bill & Melinda Gates Foundation" },
+  { url: "https://www.doctorswithoutborders.org", title: "Médecins Sans Frontières (Doctors Without Borders)" },
+  { url: "https://www.redcross.org", title: "International Red Cross" },
+  { url: "https://www.icrc.org", title: "International Committee of the Red Cross (ICRC)" },
+  { url: "https://www.oxfam.org", title: "Oxfam International (Health & Humanitarian)" },
+  { url: "https://www.care.org", title: "CARE International" },
+  { url: "https://www.worldvision.org", title: "World Vision (Health Initiatives)" },
+  { url: "https://www.iapb.org", title: "International Agency for the Prevention of Blindness (IAPB)" },
+  { url: "https://www.iccidd.org", title: "International Council for Control of Iodine Deficiency Disorders (ICCIDD)" },
+  { url: "https://www.ifrc.org", title: "International Federation of Red Cross and Red Crescent Societies (IFRC)" },
+  { url: "https://www.isglobal.org", title: "Barcelona Institute for Global Health (ISGlobal)" },
+  { url: "https://www.lshtm.ac.uk", title: "London School of Hygiene & Tropical Medicine (LSHTM)" },
+  { url: "https://www.ich.org", title: "International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use (ICH)" },
+  { url: "https://www.iso.org", title: "International Organization for Standardization (ISO) – Health Standards" },
+  { url: "https://www.fdiworlddental.org", title: "FDI World Dental Federation" },
+  { url: "https://www.wma.net", title: "World Medical Association (WMA)" },
+  { url: "https://www.healthdata.org", title: "Institute for Health Metrics and Evaluation (IHME)" },
+  { url: "https://www.malariaconsortium.org", title: "Malaria Consortium" },
+  { url: "https://www.tballiance.org", title: "TB Alliance" },
+  { url: "https://www.drugsformeglobalhealth.org", title: "Drugs for Neglected Diseases initiative (DNDi)" },
+  { url: "https://www.clintonhealthaccess.org", title: "Clinton Health Access Initiative (CHAI)" },
+  { url: "https://www.path.org", title: "PATH (Global Health Innovation)" },
+
+    // China – Health & Medical (new)
+  { url: "https://www.nhc.gov.cn", title: "National Health Commission" },
+  { url: "https://www.chinacdc.cn", title: "Chinese Center for Disease Control and Prevention (China CDC)" },
+  { url: "https://www.nmpa.gov.cn", title: "National Medical Products Administration (NMPA)" },
+  { url: "https://www.moh.gov.cn", title: "Ministry of Health (legacy)" },
+  { url: "https://www.pumch.cn", title: "Peking Union Medical College Hospital" },
+  { url: "https://www.bjmu.edu.cn", title: "Peking University Health Science Center" },
+  { url: "https://www.zju.edu.cn", title: "Zhejiang University (medical centers)" },
+  { url: "https://www.ruijin.com.cn", title: "Ruijin Hospital, Shanghai Jiao Tong University School of Medicine" },
+  { url: "https://www.fudan.edu.cn", title: "Fudan University Shanghai Medical College" },
+  { url: "https://www.sjtu.edu.cn", title: "Shanghai Jiao Tong University School of Medicine" },
+  { url: "https://www.xinhuahospital.com.cn", title: "Xinhua Hospital (Shanghai Jiao Tong University)" },
+  { url: "https://www.westchinahospital.cn", title: "West China Hospital, Sichuan University" },
+  { url: "https://www.tjmuch.com", title: "Tianjin Medical University General Hospital" },
+  { url: "https://www.csu.edu.cn", title: "Central South University Xiangya Hospital" },
+  { url: "https://www.syshospital.com", title: "Sun Yat-sen University Hospitals" },
+  { url: "https://www.jlu.edu.cn", title: "Jilin University (medical center)" },
+  { url: "https://www.ahmu.edu.cn", title: "Anhui Medical University" },
+  { url: "https://www.cas.cn", title: "Chinese Academy of Sciences (medical institutes)" },
+  { url: "https://www.cams.cn", title: "Chinese Academy of Medical Sciences (CAMS)" },
+  { url: "https://www.nsfc.gov.cn", title: "National Natural Science Foundation of China" },
+  { url: "https://www.most.gov.cn", title: "Ministry of Science and Technology" },
+  { url: "https://www.cnki.net", title: "China National Knowledge Infrastructure (CNKI)" },
+  { url: "https://www.cncbd.org.cn", title: "China National Center for Biotechnology Development" },
+  { url: "https://www.nationalcancercenter.org.cn", title: "National Cancer Center of China" },
+  { url: "https://www.ccdc.org.cn", title: "Chinese Center for Disease Control and Prevention (specialized)" },
+  { url: "https://www.cmda.net.cn", title: "Chinese Medical Doctor Association" },
+  { url: "https://www.cma.org.cn", title: "Chinese Medical Association" },
+  { url: "https://www.csbms.org.cn", title: "Chinese Society of Biomedical Engineering" },
+  { url: "https://www.cacms.org.cn", title: "China Association of Chinese Medicine (TCM)" },
+  { url: "https://www.cmj.org", title: "Chinese Medical Journal" },
+  { url: "https://www.satcm.gov.cn", title: "State Administration of Traditional Chinese Medicine" },
+  { url: "https://www.wfcms.org", title: "World Federation of Chinese Medicine Societies" },
+  { url: "https://www.tcmchina.org.cn", title: "Traditional Chinese Medicine (TCM China)" },
+  { url: "https://www.china.org.cn", title: "China.org.cn – Health Sections" },
+  { url: "https://www.english.nmpa.gov.cn", title: "NMPA English Portal" },
+
+    // South Korea – Health & Medical (new)
+  // National Agencies (new)
+  { url: "https://www.mfds.go.kr", title: "Ministry of Food and Drug Safety (MFDS)" },
+  { url: "https://www.nhis.or.kr", title: "National Health Insurance Service (NHIS)" },
+
+  // Major Hospitals & Medical Centres
+  { url: "https://www.samsunghospital.com", title: "Samsung Medical Center" },
+  { url: "https://www.severance.hs.or.kr", title: "Severance Hospital (Yonsei University)" },
+  { url: "https://www.seoulnationalunivhospital.org", title: "Seoul National University Hospital" },
+  { url: "https://www.amc.seoul.kr", title: "Asan Medical Center" },
+  { url: "https://www.snubh.org", title: "Seoul National University Bundang Hospital" },
+  { url: "https://www.catholic.ac.kr", title: "Catholic University of Korea Hospitals" },
+  { url: "https://www.kbsmc.or.kr", title: "Kangbuk Samsung Hospital" },
+  { url: "https://www.kuh.ac.kr", title: "Korea University Hospital" },
+  { url: "https://www.hanyang.ac.kr", title: "Hanyang University Hospital" },
+
+  // Research Institutes & Funding
+  { url: "https://www.kahp.or.kr", title: "Korea Academy of Health Policy" },
+  { url: "https://www.kiom.re.kr", title: "Korea Institute of Oriental Medicine (KIOM)" },
+  { url: "https://www.kribb.re.kr", title: "Korea Research Institute of Bioscience and Biotechnology (KRIBB)" },
+  { url: "https://www.kist.re.kr", title: "Korea Institute of Science and Technology (KIST)" },
+  { url: "https://www.nrf.re.kr", title: "National Research Foundation of Korea (NRF)" },
+
+  // Disease‑Specific & Professional Associations
+  { url: "https://www.kams.or.kr", title: "Korean Academy of Medical Sciences" },
+  { url: "https://www.kaoms.or.kr", title: "Korean Association of Oral and Maxillofacial Surgeons" },
+  { url: "https://www.koreanheart.or.kr", title: "Korean Heart Foundation" },
+  { url: "https://www.cancer.go.kr", title: "National Cancer Center Korea" },
+  { url: "https://www.diabetes.or.kr", title: "Korean Diabetes Association" },
+
+  // DPRK & Global Health Resources (new)
+  { url: "https://www.reliefweb.int", title: "ReliefWeb (humanitarian health reports)" },
+  { url: "https://www.dprkhealth.org", title: "DPRK Health (NGO / research)" },
+  { url: "https://www.kcna.kp", title: "Korean Central News Agency – Health (limited credibility)" },
+  { url: "https://www.fao.org", title: "Food and Agriculture Organization (FAO) – Nutrition & Health Reports" },
+
+    // France – Health & Medical (new)
+  // National Government & Agencies
+  { url: "https://www.sante.gouv.fr", title: "Ministry of Health and Prevention" },
+  { url: "https://www.has-sante.fr", title: "Haute Autorité de Santé (HAS)" },
+  { url: "https://ansm.sante.fr", title: "Agence nationale de sécurité du médicament et des produits de santé (ANSM)" },
+  { url: "https://www.santepubliquefrance.fr", title: "Santé publique France (Public Health Agency)" },
+  { url: "https://www.data.gouv.fr", title: "Open Health Data – data.gouv.fr" },
+
+  // Major Hospitals & University Medical Centres
+  { url: "https://www.aphp.fr", title: "Assistance Publique – Hôpitaux de Paris (AP-HP)" },
+  { url: "https://www.chu-toulouse.fr", title: "CHU de Toulouse" },
+  { url: "https://www.chu-lyon.fr", title: "Hospices Civils de Lyon" },
+  { url: "https://www.chu-marseille.fr", title: "Assistance Publique – Hôpitaux de Marseille" },
+  { url: "https://www.chu-bordeaux.fr", title: "CHU de Bordeaux" },
+  { url: "https://www.chu-nantes.fr", title: "CHU de Nantes" },
+  { url: "https://www.chu-rennes.fr", title: "CHU de Rennes" },
+  { url: "https://www.chu-strasbourg.fr", title: "CHU de Strasbourg" },
+  { url: "https://www.gustaveroussy.fr", title: "Gustave Roussy (cancer center)" },
+  { url: "https://www.institut-curie.org", title: "Institut Curie" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.inserm.fr", title: "Institut National de la Santé et de la Recherche Médicale (INSERM)" },
+  { url: "https://www.cnrs.fr", title: "Centre National de la Recherche Scientifique (CNRS) – Health" },
+  { url: "https://www.pasteur.fr", title: "Institut Pasteur" },
+  { url: "https://www.cea.fr", title: "Commissariat à l’énergie atomique et aux énergies alternatives (CEA) – Medical" },
+  { url: "https://www.inria.fr", title: "Institut national de recherche en sciences et technologies du numérique (INRIA) – Digital Health" },
+  { url: "https://www.fondation-arc.org", title: "Fondation ARC pour la recherche sur le cancer" },
+  { url: "https://www.frm.org", title: "Fondation pour la Recherche Médicale" },
+
+  // Disease-Specific Organizations
+  { url: "https://www.ligue-cancer.net", title: "Ligue contre le cancer" },
+  { url: "https://www.afm-telethon.fr", title: "AFM-Téléthon (muscular dystrophy)" },
+  { url: "https://www.francealzheimer.org", title: "France Alzheimer" },
+  { url: "https://www.sidaction.org", title: "Sidaction (HIV)" },
+  { url: "https://www.apf.asso.fr", title: "APF France handicap (disability & health)" },
+  { url: "https://www.coeur.org", title: "Fédération Française de Cardiologie" },
+
+  // Professional Medical Associations
+  { url: "https://www.conseil-national.medecin.fr", title: "Ordre National des Médecins" },
+  { url: "https://www.sfmg.org", title: "Société Française de Médecine Générale" },
+  { url: "https://www.snfmi.org", title: "Société Nationale Française de Médecine Interne" },
+  { url: "https://www.sfrnet.org", title: "Société Française de Radiologie" },
+  { url: "https://www.sfar.org", title: "Société Française d’Anesthésie et de Réanimation" },
+
+  // Regulatory & Quality Bodies (new) – already listed HAS & ANSM, adding just the variant
+  { url: "https://www.hauteautorite-sante.fr", title: "Haute Autorité de Santé (alternative domain)" },
+
+  // Medical Journals & Research (new French-specific)
+  { url: "https://www.presse.inserm.fr", title: "Inserm Press / Research Highlights" },
+  { url: "https://www.em-consulte.com", title: "EM Consulte (French medical journals)" },
+
+  // Consumer Health & Information Portals (new)
+  { url: "https://www.pharmacie.fr", title: "Ordre National des Pharmaciens – Pharmacie.fr" },
+
+  // Additional Specialized Resources
+  { url: "https://drees.solidarites-sante.gouv.fr", title: "Direction de la Recherche, des Études, de l’Évaluation et des Statistiques (DREES) – Health Statistics" },
+  { url: "https://www.ephmra.org", title: "European Pharmaceutical Market Research Association (EphMRA) – Health Data" },
+
+    // Italy – Health & Medical (new)
+  // National Government & Agencies
+  { url: "https://www.salute.gov.it", title: "Ministero della Salute (Ministry of Health)" },
+  { url: "https://www.iss.it", title: "Istituto Superiore di Sanità (ISS)" },
+  { url: "https://www.aifa.gov.it", title: "Agenzia Italiana del Farmaco (AIFA)" },
+  { url: "https://www.agenziasanita.toscana.it", title: "Agenzia Regionale di Sanità della Toscana" },
+  { url: "https://www.dati.gov.it", title: "Open Health Data – dati.gov.it" },
+
+  // Major Hospitals & Research Hospitals
+  { url: "https://www.ospedalebambinogesu.it", title: "Ospedale Pediatrico Bambino Gesù (Rome)" },
+  { url: "https://www.policlinico.unimi.it", title: "Policlinico di Milano" },
+  { url: "https://www.sanraffaele.org", title: "IRCCS Ospedale San Raffaele (Milan)" },
+  { url: "https://www.humanitas.it", title: "Humanitas Research Hospital" },
+  { url: "https://www.policlinicogemelli.it", title: "Policlinico Gemelli (Rome)" },
+  { url: "https://www.ao-san-camillo.it", title: "Azienda Ospedaliera San Camillo-Forlanini (Rome)" },
+  { url: "https://www.irccs.it", title: "IRCCS Research Hospitals Network" },
+  { url: "https://www.ospedale.niguarda.it", title: "Ospedale Niguarda Ca' Granda (Milan)" },
+  { url: "https://www.careggi.it", title: "Azienda Ospedaliero-Universitaria Careggi (Florence)" },
+  { url: "https://www.policlinico.sanmartino.it", title: "Policlinico San Martino (Genoa)" },
+  { url: "https://www.ao-pisa.it", title: "Azienda Ospedaliero-Universitaria Pisana" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.cnr.it", title: "Consiglio Nazionale delle Ricerche (CNR) – health sections" },
+  { url: "https://www.telethon.it", title: "Fondazione Telethon (genetic diseases)" },
+  { url: "https://www.airc.it", title: "Associazione Italiana per la Ricerca sul Cancro (AIRC)" },
+  { url: "https://www.gimbe.org", title: "GIMBE (Evidence-Based Medicine)" },
+  { url: "https://www.fondazioneveronesi.it", title: "Fondazione Veronesi (cancer & health research)" },
+
+  // Disease-Specific Organizations
+  { url: "https://www.alzheimer.it", title: "Federazione Alzheimer Italia" },
+  { url: "https://www.anlaids.it", title: "ANLAIDS – Lotta contro l'AIDS" },
+  { url: "https://www.cuore.it", title: "Fondazione Italiana per il Cuore (Italian Heart Foundation)" },
+
+  // Professional Medical Associations
+  { url: "https://www.fnomceo.it", title: "FNOMCeO (Federazione Nazionale degli Ordini dei Medici)" },
+  { url: "https://www.simg.it", title: "Società Italiana di Medicina Generale (SIMG)" },
+  { url: "https://www.sip.it", title: "Società Italiana di Pediatria (SIP)" },
+  { url: "https://www.siia.it", title: "Società Italiana di Medicina Interna (SIIA)" },
+  { url: "https://www.sirm.org", title: "Società Italiana di Radiologia Medica e Interventistica (SIRM)" },
+
+  // Regulatory & Quality Bodies
+  { url: "https://www.agenas.it", title: "Agenzia Nazionale per i Servizi Sanitari Regionali (AGENAS)" },
+
+  // Regional Health Systems (key examples)
+  { url: "https://www.regione.lombardia.it/sanita", title: "Regione Lombardia – Sanità" },
+  { url: "https://www.regione.toscana.it/salute", title: "Regione Toscana – Salute" },
+  { url: "https://www.regione.emilia-romagna.it/sanita", title: "Regione Emilia-Romagna – Sanità" },
+  { url: "https://www.regione.lazio.it/salute", title: "Regione Lazio – Salute" },
+  { url: "https://www.regione.veneto.it/sanita", title: "Regione Veneto – Sanità" },
+
+    // Mexico – Health & Medical (new)
+  // Federal Government & Agencies
+  { url: "https://www.salud.gob.mx", title: "Secretaría de Salud (Main Health Ministry)" },
+  { url: "https://www.gob.mx/salud", title: "Government of Mexico – Health Portal" },
+  { url: "https://www.cndh.org.mx", title: "Comisión Nacional de los Derechos Humanos (Health Focus)" },
+  { url: "https://www.insp.mx", title: "Instituto Nacional de Salud Pública (INSP)" },
+  { url: "https://www.cofepris.gob.mx", title: "COFEPRIS (Federal Commission for the Protection against Sanitary Risk)" },
+  { url: "https://www.imss.gob.mx", title: "Instituto Mexicano del Seguro Social (IMSS)" },
+  { url: "https://www.issste.gob.mx", title: "ISSSTE (Institute for Social Security and Services for State Workers)" },
+  { url: "https://www.ssa.gob.mx", title: "Secretaría de Salud (legacy domain)" },
+
+  // Major Hospitals & Medical Centres
+  { url: "https://www.incmnsz.mx", title: "Instituto Nacional de Ciencias Médicas y Nutrición Salvador Zubirán" },
+  { url: "https://www.cardiologia.org.mx", title: "Instituto Nacional de Cardiología Ignacio Chávez" },
+  { url: "https://www.inper.mx", title: "Instituto Nacional de Perinatología" },
+  { url: "https://www.pediatria.gob.mx", title: "Instituto Nacional de Pediatría" },
+  { url: "https://www.hospitalinfantil.org.mx", title: "Hospital Infantil de México Federico Gómez" },
+  { url: "https://www.anahuac.mx", title: "Universidad Anáhuac – Medical Centers" },
+  { url: "https://tecsalud.tec.mx", title: "TecSalud (Tecnológico de Monterrey Health System)" },
+  { url: "https://www.abcmedicalcenter.com", title: "ABC Medical Center" },
+  { url: "https://www.starmedicagroup.com", title: "Star Médica Group" },
+
+  // Research Institutes & Higher Education
+  { url: "https://www.cinvestav.mx", title: "CINVESTAV (Centro de Investigación y de Estudios Avanzados)" },
+  { url: "https://www.unam.mx", title: "Universidad Nacional Autónoma de México (UNAM) – Faculty of Medicine" },
+  { url: "https://www.ipn.mx", title: "Instituto Politécnico Nacional (IPN) – Health Programs" },
+  { url: "https://www.conahcyt.mx", title: "Conahcyt (National Council of Humanities, Science and Technology)" },
+
+  // Disease-Specific Programs & Foundations
+  { url: "https://www.fmdiabetes.org", title: "Fundación Mexicana para la Diabetes" },
+  //  (cardiovascular and cancer foundations: corazon.org.mx not available, cancer org not listed; skip generic)
+
+  // Professional Medical Associations
+  { url: "https://www.cmm.org.mx", title: "Colegio Médico de México" },
+  { url: "https://www.amfm.org.mx", title: "Asociación Mexicana de Facultades y Escuelas de Medicina" },
+  { url: "https://www.acmx.org.mx", title: "Academia Nacional de Medicina de México" },
+  { url: "https://www.federacionmedica.org.mx", title: "Federación Médica de la República Mexicana" },
+
+  // Medical Journals & Research
+  { url: "https://www.saludpublica.mx", title: "Revista de Salud Pública de México" },
+
+  // State Health Services (key examples)
+  { url: "https://www.salud.df.gob.mx", title: "Secretaría de Salud de la Ciudad de México (CDMX)" },
+  { url: "https://www.jalisco.gob.mx/salud", title: "Salud Jalisco" },
+  { url: "https://www.nuevoleon.gob.mx/salud", title: "Salud Nuevo León" },
+  { url: "https://www.yucatan.gob.mx/salud", title: "Salud Yucatán" },
+
+  // International / Pan-American
+  { url: "https://www.paho.org", title: "Pan American Health Organization (PAHO/WHO Regional Office)" },
+
+    // Spain – Health & Medical (new)
+  // National Government & Agencies
+  { url: "https://www.sanidad.gob.es", title: "Ministerio de Sanidad (Ministry of Health)" },
+  { url: "https://www.mscbs.gob.es", title: "Ministerio de Sanidad, Consumo y Bienestar Social (legacy)" },
+  { url: "https://www.aemps.gob.es", title: "Agencia Española de Medicamentos y Productos Sanitarios (AEMPS)" },
+  { url: "https://www.isciii.es", title: "Instituto de Salud Carlos III (ISCIII)" },
+
+  // Major Hospitals & Research Hospitals
+  { url: "https://www.hospitalclinic.org", title: "Hospital Clínic de Barcelona" },
+  { url: "https://www.parcdesalutmar.cat", title: "Parc de Salut Mar (Hospital del Mar)" },
+  { url: "https://www.vallhebron.com", title: "Hospital Universitari Vall d'Hebron" },
+  { url: "https://www.comunidad.madrid/hospital/gregoriomaranon", title: "Hospital General Universitario Gregorio Marañón" },
+  { url: "https://www.comunidad.madrid/hospital/12octubre", title: "Hospital Universitario 12 de Octubre" },
+  { url: "https://www.comunidad.madrid/hospital/ramonycajal", title: "Hospital Universitario Ramón y Cajal" },
+  { url: "https://www.comunidad.madrid/hospital/clinicosancarlos", title: "Hospital Clínico San Carlos" },
+  { url: "https://www.lafe.es", title: "Hospital Universitari i Politècnic La Fe" },
+  { url: "https://www.hospitaluvrocio.es", title: "Hospital Universitario Virgen del Rocío" },
+  { url: "https://www.hospitalcruces.com", title: "Hospital Universitario Cruces (Osakidetza)" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.csic.es", title: "Consejo Superior de Investigaciones Científicas (CSIC)" },
+  { url: "https://www.cnio.es", title: "Centro Nacional de Investigaciones Oncológicas (CNIO)" },
+  { url: "https://www.cnic.es", title: "Centro Nacional de Investigaciones Cardiovasculares (CNIC)" },
+  { url: "https://www.idibaps.org", title: "Institut d'Investigacions Biomèdiques August Pi i Sunyer (IDIBAPS)" },
+  { url: "https://www.vhio.net", title: "Vall d’Hebron Institute of Oncology (VHIO)" },
+  { url: "https://www.ciberisciii.es", title: "CIBER (Centro de Investigación Biomédica en Red)" },
+
+  // Disease-Specific Organizations
+  { url: "https://www.aecc.es", title: "Asociación Española Contra el Cáncer (AECC)" },
+  { url: "https://www.fundacioncontraelcancer.org", title: "Fundación Contra el Cáncer" },
+  { url: "https://www.secardiologia.es", title: "Sociedad Española de Cardiología (SEC)" },
+
+  // Professional Medical Associations
+  { url: "https://www.cgcom.es", title: "Consejo General de Colegios Oficiales de Médicos (CGCOM)" },
+  { url: "https://www.semfyc.es", title: "Sociedad Española de Medicina de Familia y Comunitaria (semFYC)" },
+  { url: "https://www.sego.es", title: "Sociedad Española de Ginecología y Obstetricia (SEGO)" },
+  { url: "https://www.aeped.es", title: "Asociación Española de Pediatría (AEP)" },
+  { url: "https://www.semicyuc.org", title: "Sociedad Española de Medicina Intensiva, Crítica y Unidades Coronarias (SEMICYUC)" },
+
+  // Medical Journals (Spanish-specific)
+  { url: "https://www.elsevier.es", title: "Elsevier España (Revistas Médicas)" },
+  { url: "https://www.revistaclinicaespanola.es", title: "Revista Clínica Española (RCE)" },
+  { url: "https://www.medclin.es", title: "Medicina Clínica (journal)" },
+
+  // Consumer Health & Information Portals
+  { url: "https://www.salud2030.es", title: "Estrategia de Salud 2030 (National Health Strategy)" },
+
+  // Regional Health Services (Key Autonomous Communities)
+  { url: "https://catsalut.gencat.cat", title: "CatSalut (Servei Català de la Salut)" },
+  { url: "https://www.comunidad.madrid/servicios/salud", title: "Servicio Madrileño de Salud (SERMAS)" },
+  { url: "https://www.juntadeandalucia.es/salud", title: "Consejería de Salud y Consumo (Andalucía)" },
+  { url: "https://www.osakidetza.euskadi.eus", title: "Osakidetza (Servicio Vasco de Salud)" },
+  { url: "https://www.saludcastillayleon.es", title: "Sacyl (Sanidad de Castilla y León)" },
+
+    // Switzerland – Health & Medical (new)
+  // Federal Agencies & National Bodies
+  { url: "https://www.bag.admin.ch", title: "Federal Office of Public Health (BAG / OFSP)" },
+  { url: "https://www.admin.ch", title: "Federal Administration – Health (admin.ch)" },
+  { url: "https://www.swissmedic.ch", title: "Swiss Agency for Therapeutic Products (Swissmedic)" },
+  { url: "https://www.bfs.admin.ch", title: "Federal Statistical Office – Health Data" },
+  { url: "https://www.samw.ch", title: "Swiss Academy of Medical Sciences (SAMW)" },
+  { url: "https://www.kvg.org", title: "Health Insurance Oversight (KVG)" },
+
+  // Major Hospitals & University Medical Centres
+  { url: "https://www.usz.ch", title: "University Hospital Zurich (USZ)" },
+  { url: "https://www.chuv.ch", title: "Lausanne University Hospital (CHUV)" },
+  { url: "https://www.usb.ch", title: "University Hospital Basel (USB)" },
+  { url: "https://www.insel.ch", title: "Inselspital Bern University Hospital" },
+  { url: "https://www.balgrist.ch", title: "Balgrist University Hospital (Orthopaedics)" },
+  { url: "https://www.kispi.uzh.ch", title: "University Children’s Hospital Zurich (Kinderspital)" },
+  { url: "https://www.hirslanden.ch", title: "Hirslanden Private Hospital Group" },
+  { url: "https://www.eoc.ch", title: "Ente Ospedaliero Cantonale (Ticino)" },
+
+  // Research Institutes & Universities (health sciences)
+  { url: "https://www.ethz.ch", title: "ETH Zurich (Health Sciences & Biomedical Engineering)" },
+  { url: "https://www.unige.ch", title: "University of Geneva" },
+  { url: "https://www.uzh.ch", title: "University of Zurich" },
+  { url: "https://www.unibas.ch", title: "University of Basel" },
+  { url: "https://www.snf.ch", title: "Swiss National Science Foundation (SNSF)" },
+  { url: "https://www.sbfi.admin.ch", title: "State Secretariat for Education, Research and Innovation (SERI)" },
+  // Pharma & global health (Swiss‑based)
+  { url: "https://www.roche.com", title: "Roche (Swiss global pharma HQ)" },
+  { url: "https://www.novartis.com", title: "Novartis (Swiss global pharma HQ)" },
+
+  // Disease‑Specific Organizations & Foundations
+  { url: "https://www.cancer.ch", title: "Swiss Cancer League (Krebsliga)" },
+  { url: "https://www.swissheart.ch", title: "Swiss Heart Foundation" },
+  { url: "https://www.diabetesgesellschaft.ch", title: "Swiss Diabetes Society" },
+  { url: "https://www.alz.ch", title: "Alzheimer Switzerland" },
+  { url: "https://www.lung.ch", title: "Swiss Lung League (Lungenliga)" },
+
+  // Professional Medical Associations
+  { url: "https://www.fmh.ch", title: "Swiss Medical Association (FMH)" },
+  { url: "https://www.ssphplus.ch", title: "Swiss School of Public Health (SSPH+)" },
+  { url: "https://www.sgim.ch", title: "Swiss Society of General Internal Medicine (SGIM)" },
+  { url: "https://www.sgaim.ch", title: "Swiss Society of General Internal Medicine (SGAIM)" },
+
+  // Quality & Accreditation
+  { url: "https://www.anq.ch", title: "National Association for Quality Development in Hospitals (ANQ)" },
+
+  // Medical Journals (Swiss‑focused)
+  { url: "https://www.smw.ch", title: "Swiss Medical Weekly (SMW)" },
+  { url: "https://www.ssmj.ch", title: "Swiss Medical Journal (SSMJ)" },
+
+  // Consumer & Health Insurance Information
+  { url: "https://www.gesundheit.ch", title: "Gesundheit.ch (Patient/health information)" },
+  { url: "https://www.comparis.ch", title: "Comparis.ch (Health insurance comparison & info)" },
+
+  // Cantonal Health Authorities (examples)
+  { url: "https://www.zh.ch", title: "Canton Zurich – Health Department" },
+  { url: "https://www.ge.ch", title: "Canton Geneva – Health Department" },
+
+  // European Context
+  { url: "https://www.ecdc.europa.eu", title: "European Centre for Disease Prevention and Control (ECDC)" },
+
+    // Russia – Health & Medical (new)
+  // National Government & Federal Agencies
+  { url: "https://www.minzdrav.gov.ru", title: "Ministry of Health of the Russian Federation" },
+  { url: "https://www.roszdravnadzor.gov.ru", title: "Federal Service for Surveillance in Healthcare (Roszdravnadzor)" },
+  { url: "https://www.rospotrebnadzor.ru", title: "Federal Service for Surveillance on Consumer Rights Protection and Human Wellbeing (Rospotrebnadzor)" },
+  { url: "https://www.fmbaros.ru", title: "Federal Medical-Biological Agency (FMBA)" },
+  { url: "https://www.rosminzdrav.ru", title: "Ministry of Health (legacy/redirect)" },
+  { url: "https://www.government.ru", title: "Government of Russia – Health Sections" },
+
+  // Major Hospitals & Medical Research Centres
+  { url: "https://www.nmicr.ru", title: "National Medical Research Centres (NMRC)" },
+  { url: "https://www.nmrcr.ru", title: "National Medical Research Center of Oncology (N.N. Blokhin)" },
+  { url: "https://www.bakulev.ru", title: "Bakulev Scientific Center for Cardiovascular Surgery" },
+  { url: "https://www.nczd.ru", title: "National Medical Research Center for Children's Health (Pediatrics)" },
+  { url: "https://www.almazovcentre.ru", title: "Almazov National Medical Research Centre" },
+  { url: "https://www.sechenov.ru", title: "I.M. Sechenov First Moscow State Medical University" },
+  { url: "https://www.msmu.ru", title: "Moscow State University of Medicine and Dentistry (MSUMD)" },
+
+  // Research Institutes
+  { url: "https://www.gamaleya.ru", title: "Gamaleya National Research Institute of Epidemiology and Microbiology" },
+  { url: "https://www.vector.ru", title: "State Research Center of Virology and Biotechnology VECTOR" },
+
+  // Professional Medical Associations
+  { url: "https://www.nasci.ru", title: "National Association of Specialists in Infection Control (NASCI)" },
+  { url: "https://www.rmass.ru", title: "Russian Medical Society (RMASS)" },
+
+  // Medical Journals & Research Databases (Russian-specific)
+  { url: "https://www.cyberleninka.ru", title: "CyberLeninka (Russian scientific library)" },
+  { url: "https://www.elibrary.ru", title: "eLibrary.ru (Russian scientific publications)" },
+
+  // Consumer & Public Information
+  { url: "https://www.gosuslugi.ru", title: "State Services – Health Section (Gosuslugi)" },
+  { url: "https://xn--80aesfpebagmfblc0a.xn--p1ai", title: "StopCoronavirus.rf (Official COVID‑19/Health Portal)" },
+
+  // Additional Specialized Resource
+  { url: "https://www.eurasiancommission.org", title: "Eurasian Economic Commission – Health Cooperation" },
+
+    // Brazil – Health & Medical (new)
+  // Federal Government & National Agencies
+  { url: "https://www.saude.gov.br", title: "Ministério da Saúde (Ministry of Health)" },
+  { url: "https://www.gov.br/saude", title: "Federal Government – Health (saúde.gov.br)" },
+  { url: "https://www.fiocruz.br", title: "Fundação Oswaldo Cruz (Fiocruz – public health research)" },
+  { url: "https://www.anvisa.gov.br", title: "Agência Nacional de Vigilância Sanitária (ANVISA)" },
+  { url: "https://www.cns.gov.br", title: "Conselho Nacional de Saúde (National Health Council)" },
+  { url: "https://www.datasus.gov.br", title: "DATASUS (Health Data and Informatics)" },
+  { url: "https://www.bvs.br", title: "Biblioteca Virtual em Saúde (BVS)" },
+
+  // Major Hospitals & Research Hospitals
+  { url: "https://www.hc.fm.usp.br", title: "Hospital das Clínicas da USP (São Paulo)" },
+  { url: "https://www.inca.gov.br", title: "Instituto Nacional de Câncer (INCA)" },
+  { url: "https://www.incor.usp.br", title: "Instituto do Coração (InCor – Heart Institute)" },
+  { url: "https://www.einstein.br", title: "Hospital Israelita Albert Einstein" },
+  { url: "https://www.sirio-libanes.org.br", title: "Hospital Sírio-Libanês" },
+  { url: "https://www.hcor.com.br", title: "Hospital do Coração (HCor)" },
+  { url: "https://www.unicamp.br", title: "Universidade Estadual de Campinas (UNICAMP – Hospital de Clínicas)" },
+  { url: "https://www.ufrj.br", title: "Universidade Federal do Rio de Janeiro (UFRJ – hospitals)" },
+  { url: "https://www.ufmg.br", title: "Universidade Federal de Minas Gerais (UFMG – Hospital das Clínicas)" },
+
+  // Research Institutes & Funding Bodies
+  { url: "https://www.cnpq.br", title: "Conselho Nacional de Desenvolvimento Científico e Tecnológico (CNPq)" },
+  { url: "https://www.fapesp.br", title: "Fundação de Amparo à Pesquisa do Estado de São Paulo (FAPESP)" },
+  { url: "https://www.capes.gov.br", title: "Coordenação de Aperfeiçoamento de Pessoal de Nível Superior (CAPES)" },
+  { url: "https://www.butantan.gov.br", title: "Instituto Butantan (vaccines & research)" },
+  { url: "https://www.inct.gov.br", title: "Institutos Nacionais de Ciência e Tecnologia (INCT)" },
+
+  // Disease-Specific Programs & Organizations
+  { url: "https://www.aids.gov.br", title: "Departamento de HIV/Aids, Tuberculose, Hepatites Virais e Infecções Sexualmente Transmissíveis" },
+  { url: "https://www.sociedadebrasileiradecardiologia.org.br", title: "Sociedade Brasileira de Cardiologia (SBC)" },
+
+  // Professional Medical Associations
+  { url: "https://www.amb.org.br", title: "Associação Médica Brasileira (AMB)" },
+  { url: "https://www.cfm.org.br", title: "Conselho Federal de Medicina (CFM)" },
+  { url: "https://www.sbim.org.br", title: "Sociedade Brasileira de Imunizações (SBIm)" },
+  { url: "https://www.sbpc.org.br", title: "Sociedade Brasileira para o Progresso da Ciência (SBPC)" },
+
+  // Regulatory Bodies
+  { url: "https://www.ans.gov.br", title: "Agência Nacional de Saúde Suplementar (ANS)" },
+
+  // Medical Journals & Databases
+  { url: "https://www.scielo.br", title: "Scientific Electronic Library Online (SciELO – Brazil)" },
+
+  // State Health Secretariats (key examples)
+  { url: "https://www.saude.sp.gov.br", title: "Secretaria de Estado da Saúde de São Paulo" },
+  { url: "https://www.saude.rs.gov.br", title: "Secretaria Estadual da Saúde do Rio Grande do Sul" },
+  { url: "https://www.saude.rj.gov.br", title: "Secretaria de Estado de Saúde do Rio de Janeiro" },
+  { url: "https://www.saude.mg.gov.br", title: "Secretaria de Estado de Saúde de Minas Gerais" },
+
+    // Entertainment, Streaming, Music & Media (new)
+  // Global Streaming Leaders
+  { url: "https://www.netflix.com", title: "Netflix" },
+  { url: "https://www.disneyplus.com", title: "Disney+" },
+  { url: "https://www.hulu.com", title: "Hulu" },
+  { url: "https://www.primevideo.com", title: "Amazon Prime Video" },
+  { url: "https://www.hbomax.com", title: "HBO Max" },
+  { url: "https://www.max.com", title: "Max (Warner Bros. Discovery)" },
+  { url: "https://www.apple.com/apple-tv-plus", title: "Apple TV+" },
+  { url: "https://www.paramountplus.com", title: "Paramount+" },
+  { url: "https://www.peacocktv.com", title: "Peacock" },
+  // Music Streaming (new beyond already‑listed Spotify, SoundCloud)
+  { url: "https://www.pandora.com", title: "Pandora" },
+  { url: "https://www.deezer.com", title: "Deezer" },
+  { url: "https://www.tidal.com", title: "Tidal" },
+  // Entertainment News & Trade Publications (new)
+  { url: "https://www.variety.com", title: "Variety" },
+  { url: "https://www.hollywoodreporter.com", title: "The Hollywood Reporter" },
+  { url: "https://www.billboard.com", title: "Billboard" },
+  { url: "https://www.rollingstone.com", title: "Rolling Stone" },
+  { url: "https://www.ew.com", title: "Entertainment Weekly (EW)" },
+  { url: "https://www.vulture.com", title: "Vulture (New York Magazine)" },
+  { url: "https://www.deadline.com", title: "Deadline" },
+  { url: "https://www.tmz.com", title: "TMZ" },
+  // United Kingdom / Europe – Broadcaster Streamers & Portals
+  { url: "https://www.bbc.co.uk/iplayer", title: "BBC iPlayer" },
+  { url: "https://www.itv.com", title: "ITV (ITVX)" },
+  { url: "https://www.channel4.com", title: "Channel 4 (All 4)" },
+  { url: "https://www.sky.com", title: "Sky" },
+  { url: "https://www.nowtv.com", title: "NOW (Sky)" },
+  { url: "https://www.my5.tv", title: "My5 (Channel 5)" },
+  { url: "https://www.france.tv", title: "France.tv" },
+  { url: "https://www.mycanal.fr", title: "Canal+ (myCANAL)" },
+  { url: "https://www.zdf.de", title: "ZDF Mediathek" },
+  { url: "https://www.ardmediathek.de", title: "ARD Mediathek" },
+  { url: "https://www.joyn.de", title: "Joyn (Germany)" },
+  { url: "https://www.rtve.es", title: "RTVE Play (Spain)" },
+  { url: "https://www.atresplayer.com", title: "Atresplayer (Spain)" },
+  { url: "https://www.movistarplus.es", title: "Movistar+ (Spain)" },
+  // India – Streaming & Music
+  { url: "https://www.hotstar.com", title: "Disney+ Hotstar" },
+  { url: "https://www.jiocinema.com", title: "JioCinema" },
+  { url: "https://www.sonyliv.com", title: "Sony LIV" },
+  { url: "https://www.zee5.com", title: "ZEE5" },
+  { url: "https://www.jiosaavn.com", title: "JioSaavn" },
+  { url: "https://www.gaana.com", title: "Gaana" },
+  { url: "https://www.erosnow.com", title: "Eros Now" },
+  { url: "https://www.mxplayer.com", title: "MX Player" },
+  // China – Streaming & Music Platforms
+  { url: "https://www.youku.com", title: "Youku (Alibaba)" },
+  { url: "https://www.iqiyi.com", title: "iQiyi" },
+  { url: "https://v.qq.com", title: "Tencent Video" },
+  { url: "https://www.mango.com", title: "Mango TV" },
+  { url: "https://www.pptv.com", title: "PPTV" },
+  { url: "https://music.163.com", title: "NetEase Cloud Music" },
+  { url: "https://y.qq.com", title: "QQ Music (Tencent)" },
+  // Brazil / Latin America
+  { url: "https://globoplay.globo.com", title: "Globoplay" },
+  // South Korea – Music & Streaming
+  { url: "https://www.melon.com", title: "Melon (Music)" },
+  { url: "https://www.genie.co.kr", title: "Genie Music" },
+  { url: "https://www.tving.com", title: "TVING" },
+  { url: "https://www.wavve.com", title: "Wavve" },
+  { url: "https://www.weverse.io", title: "Weverse (K‑pop community)" },
+  // Japan – Entertainment Platforms
+  { url: "https://www.nicovideo.jp", title: "Niconico Douga" },
+  { url: "https://www.dmm.com", title: "DMM" },
+  { url: "https://www.nhk.or.jp", title: "NHK (Japan Broadcasting)" },
+  // Russia – Entertainment
+  { url: "https://www.vk.com", title: "VK (Entertainment)" },
+  { url: "https://www.rutube.ru", title: "Rutube" },
+  { url: "https://www.kinopoisk.ru", title: "Kinopoisk (Yandex)" },
+  // Australia – Local Streaming
+  { url: "https://www.stan.com.au", title: "Stan" },
+  { url: "https://www.binge.com.au", title: "Binge" },
+  { url: "https://www.foxtel.com.au", title: "Foxtel" },
+  // Middle East – Streaming
+  { url: "https://www.shahid.net", title: "Shahid (MBC)" },
+  { url: "https://www.osn.com", title: "OSN" },
+  // Africa – Major Streaming Service
+  { url: "https://www.showmax.com", title: "Showmax (MultiChoice)" },
+  // Canada – Local Streaming
+  { url: "https://www.crave.ca", title: "Crave (Bell Media)" },
+  { url: "https://www.ctv.ca", title: "CTV" },
+  // Gaming-focused Platforms & Companies (new)
+  { url: "https://www.roblox.com", title: "Roblox (gaming platform)" },
+  { url: "https://www.steam.com", title: "Steam (Valve)" },
+  { url: "https://www.ea.com", title: "Electronic Arts (EA)" },
+  { url: "https://www.ubisoft.com", title: "Ubisoft" },
+  // Additional Music Services / Identification
+  { url: "https://www.shazam.com", title: "Shazam (Apple)" },
+
+    // Science & Research (new additions)
+  // Global Cross‑Cutting Platforms
+  { url: "https://www.biorxiv.org", title: "bioRxiv (Cold Spring Harbor Laboratory)" },
+  { url: "https://www.medrxiv.org", title: "medRxiv (Health Sciences Preprints)" },
+  { url: "https://www.plos.org", title: "PLOS (Public Library of Science)" },
+  { url: "https://www.science.org", title: "Science (AAAS)" },
+  { url: "https://www.orcid.org", title: "ORCID (Researcher Identifier)" },
+  { url: "https://www.dimensions.ai", title: "Dimensions (Research Analytics)" },
+  { url: "https://www.scopus.com", title: "Scopus (Elsevier Abstract & Citation Database)" },
+
+  // United States
+  { url: "https://www.nsf.gov", title: "National Science Foundation (NSF)" },
+  { url: "https://www.energy.gov", title: "U.S. Department of Energy (National Labs)" },
+  { url: "https://www.caltech.edu", title: "California Institute of Technology (Caltech)" },
+
+  // China
+  { url: "https://www.wanfangdata.com.cn", title: "Wanfang Data (Research Portal)" },
+  { url: "https://www.cas.cn", title: "Chinese Academy of Sciences (CAS)" },
+  { url: "https://www.tsinghua.edu.cn", title: "Tsinghua University" },
+  { url: "https://www.pku.edu.cn", title: "Peking University" },
+
+  // United Kingdom
+  { url: "https://www.cam.ac.uk", title: "University of Cambridge" },
+  { url: "https://www.ox.ac.uk", title: "University of Oxford (main site)" },
+  { url: "https://www.ucl.ac.uk", title: "University College London (UCL)" },
+  { url: "https://www.imperial.ac.uk", title: "Imperial College London" },
+
+  // Germany
+  { url: "https://www.degruyter.com", title: "De Gruyter (Academic Publisher)" },
+  { url: "https://www.uni-heidelberg.de", title: "Heidelberg University" },
+  { url: "https://www.tum.de", title: "Technical University of Munich (TUM)" },
+  { url: "https://www.lmu.de", title: "LMU Munich" },
+
+  // Japan (new university main domains)
+  { url: "https://www.u-tokyo.ac.jp", title: "University of Tokyo (main)" },
+
+  // France
+  { url: "https://www.universite-paris-saclay.fr", title: "Université Paris‑Saclay" },
+  { url: "https://www.sorbonne-universite.fr", title: "Sorbonne Université" },
+  { url: "https://www.psl.eu", title: "PSL (Paris Sciences et Lettres)" },
+  { url: "https://www.hal.science", title: "HAL Science (French Open Archive)" },
+
+  // South Korea
+  { url: "https://www.kisti.re.kr", title: "KISTI (Korea Institute of Science and Technology Information)" },
+  { url: "https://www.kaist.ac.kr", title: "KAIST" },
+  { url: "https://www.snu.ac.kr", title: "Seoul National University (SNU)" },
+  { url: "https://www.postech.ac.kr", title: "POSTECH" },
+  { url: "https://www.msit.go.kr", title: "Ministry of Science and ICT (Korea)" },
+
+  // Canada
+  { url: "https://www.nrc-cnrc.gc.ca", title: "National Research Council Canada (NRC)" },
+  { url: "https://www.utoronto.ca", title: "University of Toronto" },
+  { url: "https://www.ubc.ca", title: "University of British Columbia (UBC)" },
+  { url: "https://www.uwaterloo.ca", title: "University of Waterloo" },
+  { url: "https://www.science.gc.ca", title: "Government of Canada – Science Portal" },
+
+  // Switzerland
+  { url: "https://www.epfl.ch", title: "EPFL (École polytechnique fédérale de Lausanne)" },
+  { url: "https://www.swissuniversities.ch", title: "swissuniversities" },
+
+  // Australia
+  { url: "https://www.anu.edu.au", title: "Australian National University (ANU)" },
+  { url: "https://www.unimelb.edu.au", title: "University of Melbourne" },
+  { url: "https://www.unsw.edu.au", title: "UNSW Sydney" },
+  { url: "https://www.uq.edu.au", title: "University of Queensland" },
+  { url: "https://www.science.org.au", title: "Australian Academy of Science" },
+
+  // India
+  { url: "https://www.isro.gov.in", title: "Indian Space Research Organisation (ISRO)" },
+  { url: "https://www.iitb.ac.in", title: "IIT Bombay" },
+  { url: "https://www.tifr.res.in", title: "Tata Institute of Fundamental Research (TIFR)" },
+  { url: "https://www.shodhganga.inflibnet.ac.in", title: "Shodhganga (Indian Thesis Repository)" },
+  { url: "https://www.indiascienceandtechnology.gov.in", title: "India Science & Technology Portal" },
+
+  // Italy
+  { url: "https://www.miur.gov.it", title: "Ministry of University and Research (MIUR)" },
+  { url: "https://www.infn.it", title: "Istituto Nazionale di Fisica Nucleare (INFN)" },
+  { url: "https://www.sapienza.it", title: "Sapienza University of Rome" },
+  { url: "https://www.polimi.it", title: "Politecnico di Milano" },
+  { url: "https://www.unibo.it", title: "University of Bologna" },
+
+  // Netherlands
+  { url: "https://www.nwo.nl", title: "Dutch Research Council (NWO)" },
+  { url: "https://www.knaw.nl", title: "Royal Netherlands Academy of Arts and Sciences (KNAW)" },
+  { url: "https://www.uu.nl", title: "Utrecht University" },
+  { url: "https://www.uva.nl", title: "University of Amsterdam" },
+  { url: "https://www.tudelft.nl", title: "Delft University of Technology" },
+  { url: "https://www.universiteitleiden.nl", title: "Leiden University" },
+  { url: "https://www.elsevier.com", title: "Elsevier (Global Publisher, Dutch Roots)" },
+
+  // Sweden
+  { url: "https://www.vr.se", title: "Swedish Research Council" },
+  { url: "https://www.ki.se", title: "Karolinska Institutet" },
+  { url: "https://www.kth.se", title: "KTH Royal Institute of Technology" },
+  { url: "https://www.su.se", title: "Stockholm University" },
+  { url: "https://www.gu.se", title: "University of Gothenburg" },
+  { url: "https://www.lu.se", title: "Lund University" },
+  { url: "https://www.nobelprize.org", title: "Nobel Foundation" },
+
+  // Spain
+  { url: "https://www.ucm.es", title: "Universidad Complutense de Madrid" },
+  { url: "https://www.ub.edu", title: "Universitat de Barcelona" },
+  { url: "https://www.uam.es", title: "Universidad Autónoma de Madrid" },
+  { url: "https://www.upc.edu", title: "Universitat Politècnica de Catalunya" },
+
+    // Business, Company Registries & Stock Exchanges (new)
+  // United States
+  { url: "https://www.commerce.gov", title: "U.S. Department of Commerce" },
+  { url: "https://www.chamberofcommerce.com", title: "U.S. Chamber of Commerce (portal)" },
+
+  // Singapore
+  { url: "https://www.business.gov.sg", title: "Singapore Business Portal" },
+  { url: "https://www.sbfc.sg", title: "Singapore Business Federation" },
+
+  // United Kingdom
+  { url: "https://www.londonstockexchange.com", title: "London Stock Exchange (LSE)" },
+  { url: "https://www.britishchambers.org.uk", title: "British Chambers of Commerce" },
+
+  // Switzerland
+  { url: "https://www.handelsregister.ch", title: "Swiss Commercial Register (Handelsregister)" },
+  { url: "https://www.economiesuisse.ch", title: "economiesuisse (Swiss Business Federation)" },
+  { url: "https://www.zurich.com", title: "Zurich Insurance Group (financial hub resources)" },
+
+  // United Arab Emirates
+  { url: "https://www.dfm.ae", title: "Dubai Financial Market (DFM)" },
+  { url: "https://www.adx.ae", title: "Abu Dhabi Securities Exchange (ADX)" },
+  { url: "https://www.mof.gov.ae", title: "UAE Ministry of Finance" },
+  { url: "https://www.businesssetup.ae", title: "UAE Business Setup Portal" },
+
+  // Canada
+  { url: "https://www.tsx.com", title: "Toronto Stock Exchange (TSX)" },
+  { url: "https://www.sedarplus.ca", title: "SEDAR+ (Canadian corporate filings)" },
+  { url: "https://www.chamber.ca", title: "Canadian Chamber of Commerce" },
+
+  // Netherlands
+  { url: "https://www.kvk.nl", title: "Netherlands Chamber of Commerce (KVK)" },
+  { url: "https://www.euronext.com", title: "Euronext (pan‑European exchange)" },
+  { url: "https://www.afm.nl", title: "Netherlands Authority for the Financial Markets (AFM)" },
+
+  // Japan
+  { url: "https://www.jpx.co.jp", title: "Japan Exchange Group (JPX)" },
+  { url: "https://www.keidanren.or.jp", title: "Keidanren (Japan Business Federation)" },
+  { url: "https://www.toyokeizai.net", title: "Toyo Keizai Online (business news)" },
+  { url: "https://www.nikkei.com", title: "Nihon Keizai Shimbun (Nikkei)" },
+
+  // Saudi Arabia
+  { url: "https://www.cma.org.sa", title: "Capital Market Authority (CMA)" },
+  { url: "https://www.tadawul.com.sa", title: "Saudi Stock Exchange (Tadawul)" },
+  { url: "https://www.mci.gov.sa", title: "Ministry of Commerce (Saudi Arabia)" },
+  { url: "https://www.misa.gov.sa", title: "Ministry of Investment (MISA)" },
+  { url: "https://www.saudichamber.com.sa", title: "Council of Saudi Chambers" },
+
+  // Norway
+  { url: "https://www.brreg.no", title: "Brønnøysund Register Centre (company registry)" },
+  { url: "https://www.nfd.no", title: "Ministry of Trade, Industry and Fisheries (Norway)" },
+  { url: "https://www.innovasjonnorge.no", title: "Innovation Norway" },
+  { url: "https://www.nho.no", title: "Confederation of Norwegian Enterprise (NHO)" },
+
+  // New Zealand
+  { url: "https://www.companiesoffice.govt.nz", title: "New Zealand Companies Office" },
+  { url: "https://www.nzx.com", title: "New Zealand Exchange (NZX)" },
+  { url: "https://www.business.govt.nz", title: "New Zealand Business Portal" },
+  { url: "https://www.nzchamber.co.nz", title: "New Zealand Chambers of Commerce" },
+
+  // Sweden
+  { url: "https://www.bolagsverket.se", title: "Swedish Companies Registration Office (Bolagsverket)" },
+  { url: "https://www.svensktnaringsliv.se", title: "Confederation of Swedish Enterprise" },
+
+  // Luxembourg
+  { url: "https://www.guichet.public.lu", title: "Luxembourg Business Portal (Guichet)" },
+  { url: "https://www.luxse.lu", title: "Luxembourg Stock Exchange (LuxSE)" },
+  { url: "https://www.cssf.lu", title: "CSSF (Luxembourg financial regulator)" },
+  { url: "https://www.chamber.lu", title: "Luxembourg Chamber of Commerce" },
+
+  // Israel
+  { url: "https://www.tase.co.il", title: "Tel Aviv Stock Exchange (TASE)" },
+  { url: "https://www.iva.org.il", title: "Israel Venture Association (IVA)" },
+  { url: "https://www.boi.org.il", title: "Bank of Israel" },
+
+  // Cyprus
+  { url: "https://www.drcor.mcit.gov.cy", title: "Department of Registrar of Companies (Cyprus)" },
+  { url: "https://www.cysec.gov.cy", title: "CySEC (Cyprus Securities and Exchange Commission)" },
+  { url: "https://www.cypruschamber.eu", title: "Cyprus Chamber of Commerce and Industry" },
+  { url: "https://www.cse.com.cy", title: "Cyprus Stock Exchange (CSE)" },
+
+  // Australia (business‑specific additions, noting `asic.gov.au`, `asx.com.au` already present)
+  { url: "https://www.abr.business.gov.au", title: "Australian Business Register (ABN lookup)" },
+  { url: "https://www.business.gov.au", title: "Australian Business Portal" },
+  { url: "https://www.australianchamber.com.au", title: "Australian Chamber of Commerce and Industry" },
+
+  // Ireland
+  { url: "https://www.cro.ie", title: "Companies Registration Office (CRO)" },
+  { url: "https://www.enterprise-ireland.com", title: "Enterprise Ireland" },
+  { url: "https://www.euronext.com/en/markets/dublin", title: "Euronext Dublin (ISE)" },
+  { url: "https://www.revenue.ie", title: "Irish Revenue (Tax & Corporate)" },
+  { url: "https://www.ibec.ie", title: "IBEC (Irish Business and Employers Confederation)" },
+
+  // Estonia (business‑specific portals, `eesti.ee` already present, but adding specialised ones)
+  { url: "https://www.e-resident.gov.ee", title: "Estonian e‑Residency (global business)" },
+  { url: "https://www.eas.ee", title: "Enterprise Estonia" },
+
+  // Finland
+  { url: "https://www.prh.fi", title: "Finnish Patent and Registration Office (PRH)" },
+  { url: "https://www.tem.fi", title: "Ministry of Economic Affairs and Employment (Finland)" },
+  { url: "https://www.ek.fi", title: "Confederation of Finnish Industries (EK)" },
+
+  // Denmark (business registries, `virk.dk` already present)
+  { url: "https://www.di.dk", title: "Confederation of Danish Industry (DI)" },
+
+  // Global Business Intelligence & Data Tools (new)
+  { url: "https://www.crunchbase.com", title: "Crunchbase (company data)" },
+  { url: "https://www.pitchbook.com", title: "PitchBook (financial data & research)" },
+
+    // Travel & Hospitality (new)
+  // United States
+  { url: "https://www.travel.state.gov", title: "U.S. Travel.State.Gov (Visas & Travel Info)" },
+  { url: "https://www.hilton.com", title: "Hilton Hotels & Resorts" },
+  { url: "https://www.marriott.com", title: "Marriott International" },
+  { url: "https://www.hyatt.com", title: "Hyatt Hotels" },
+  { url: "https://www.delta.com", title: "Delta Air Lines" },
+  { url: "https://www.united.com", title: "United Airlines" },
+  { url: "https://www.americanairlines.com", title: "American Airlines" },
+  { url: "https://disneyworld.disney.go.com", title: "Walt Disney World Resort" },
+  { url: "https://www.universalorlando.com", title: "Universal Orlando Resort" },
+
+  // Spain
+  { url: "https://www.spain.info", title: "Official Spanish Tourism Board (TURESPAÑA)" },
+  { url: "https://www.renfe.com", title: "Renfe (Spanish Railways)" },
+  { url: "https://www.iberia.com", title: "Iberia Airlines" },
+  { url: "https://www.melia.com", title: "Meliá Hotels International" },
+  { url: "https://www.nh-hoteles.com", title: "NH Hotel Group" },
+  { url: "https://www.barcelo.com", title: "Barceló Hotel Group" },
+  { url: "https://www.visitbarcelona.com", title: "Visit Barcelona" },
+  { url: "https://www.paradores.es", title: "Paradores de Turismo (Historic Hotels)" },
+
+  // Japan
+  { url: "https://www.japan.travel", title: "Japan National Tourism Organization (JNTO)" },
+  { url: "https://www.jrpass.com", title: "Japan Rail Pass (official reseller)" },
+  { url: "https://www.jreast.co.jp", title: "JR East (Railways)" },
+  { url: "https://www.ana.co.jp", title: "All Nippon Airways (ANA)" },
+  { url: "https://www.jal.co.jp", title: "Japan Airlines (JAL)" },
+  { url: "https://www.rakutentravel.com", title: "Rakuten Travel" },
+  { url: "https://www.jalan.net", title: "Jalan (Japanese travel booking)" },
+  { url: "https://www.hoshinoya.com", title: "Hoshinoya Resorts (Luxury Ryokan)" },
+  { url: "https://www.tokyodisneyresort.jp", title: "Tokyo Disney Resort" },
+  { url: "https://www.usj.co.jp", title: "Universal Studios Japan" },
+
+  // France
+  { url: "https://www.france.fr", title: "France.fr (Official Tourism – Atout France)" },
+  { url: "https://www.airfrance.com", title: "Air France" },
+  { url: "https://www.accor.com", title: "Accor Group (Sofitel, Novotel, Ibis, etc.)" },
+  { url: "https://www.sncf.com", title: "SNCF (French Railways/TGV)" },
+  { url: "https://www.parisjetaime.com", title: "Paris je t'aime (Official Tourism)" },
+  { url: "https://www.cotedazur.fr", title: "Côte d’Azur Tourism" },
+  { url: "https://www.disneylandparis.com", title: "Disneyland Paris" },
+
+  // Australia
+  { url: "https://www.australia.com", title: "Tourism Australia" },
+  { url: "https://www.qantas.com", title: "Qantas Airways" },
+  { url: "https://www.virginaustralia.com.au", title: "Virgin Australia" },
+  { url: "https://www.greatbarrierreef.org", title: "Great Barrier Reef Info" },
+  { url: "https://www.visitnsw.com", title: "Visit NSW (New South Wales)" },
+  { url: "https://www.queensland.com", title: "Queensland Tourism" },
+  { url: "https://www.parksaustralia.gov.au", title: "Parks Australia" },
+
+  // Germany
+  { url: "https://www.germany.travel", title: "German National Tourist Board (DZT)" },
+  { url: "https://www.lufthansa.com", title: "Lufthansa" },
+  { url: "https://www.deutschebahn.com", title: "Deutsche Bahn (German Railways)" },
+  { url: "https://www.tui.com", title: "TUI Group (Travel & Hotels)" },
+  { url: "https://www.berlin.de", title: "Berlin Official Tourism" },
+  { url: "https://www.muenchen.de", title: "Munich Official Tourism" },
+
+  // United Kingdom
+  { url: "https://www.visitbritain.com", title: "VisitBritain (Official UK Tourism)" },
+  { url: "https://www.britishairways.com", title: "British Airways" },
+  { url: "https://www.nationaltrust.org.uk", title: "National Trust (Historic Sites)" },
+  { url: "https://www.visitlondon.com", title: "Visit London" },
+  { url: "https://www.easyjet.com", title: "easyJet" },
+  { url: "https://www.ryanair.com", title: "Ryanair" },
+  { url: "https://www.premierinn.com", title: "Premier Inn" },
+  { url: "https://www.travelodge.co.uk", title: "Travelodge UK" },
+
+  // China
+  { url: "https://www.ctrip.com", title: "Ctrip (Trip.com Group – Chinese OTA)" },
+  { url: "https://www.fliggy.com", title: "Fliggy (Alibaba Travel)" },
+  { url: "https://www.airchina.com", title: "Air China" },
+  { url: "https://www.ceair.com", title: "China Eastern Airlines" },
+  { url: "https://www.elong.com", title: "eLong (Chinese OTA)" },
+  { url: "https://www.ly.com", title: "LY.com (Chinese travel booking)" },
+
+  // Italy
+  { url: "https://www.italia.it", title: "Italia.it (Official Italian Tourism – ENIT)" },
+  { url: "https://www.ita-airways.com", title: "ITA Airways (Alitalia successor)" },
+  { url: "https://www.trenitalia.com", title: "Trenitalia (Italian Railways)" },
+  { url: "https://www.venicewelcome.com", title: "Venice Official Tourism" },
+  { url: "https://www.roma.it", title: "Rome Official Tourism" },
+
+  // Switzerland
+  { url: "https://www.myswitzerland.com", title: "Switzerland Tourism" },
+  { url: "https://www.swiss.com", title: "Swiss International Air Lines" },
+  { url: "https://www.sbb.ch", title: "Swiss Federal Railways (SBB)" },
+  { url: "https://www.jungfrau.ch", title: "Jungfrau Region Tourism" },
+  { url: "https://www.ritzcarlton.com", title: "The Ritz‑Carlton Hotel Company" },
+
+  // Singapore
+  { url: "https://www.visitsingapore.com", title: "Singapore Tourism Board" },
+  { url: "https://www.singaporeair.com", title: "Singapore Airlines" },
+  { url: "https://www.klook.com", title: "Klook (Experiences & Activities)" },
+  { url: "https://www.marinabaysands.com", title: "Marina Bay Sands" },
+  { url: "https://www.sentosa.com.sg", title: "Sentosa (Island Resort)" },
+  { url: "https://www.changiairport.com", title: "Changi Airport" },
+
+  // Portugal
+  { url: "https://www.visitportugal.com", title: "Turismo de Portugal" },
+  { url: "https://www.flytap.com", title: "TAP Air Portugal" },
+  { url: "https://www.visitlisboa.com", title: "Visit Lisboa" },
+  { url: "https://www.visitporto.travel", title: "Visit Porto" },
+  { url: "https://www.pousadas.pt", title: "Pousadas de Portugal (Historic Inns)" },
+
+  // United Arab Emirates
+  { url: "https://www.visitdubai.com", title: "Visit Dubai" },
+  { url: "https://www.visitabudhabi.ae", title: "Visit Abu Dhabi" },
+  { url: "https://www.emirates.com", title: "Emirates Airline" },
+  { url: "https://www.etihad.com", title: "Etihad Airways" },
+  { url: "https://www.atlantis.com", title: "Atlantis Resorts (The Palm / The Royal)" },
+  { url: "https://www.jumeirah.com", title: "Jumeirah Hotels & Resorts (Burj Al Arab)" },
+
+  // Austria
+  { url: "https://www.austria.info", title: "Austrian National Tourist Office" },
+  { url: "https://www.oebb.at", title: "ÖBB (Austrian Federal Railways)" },
+  { url: "https://www.austrian.com", title: "Austrian Airlines" },
+  { url: "https://www.salzburg.info", title: "Salzburg Official Tourism" },
+  { url: "https://www.vienna.info", title: "Vienna Official Tourism" },
+  { url: "https://www.tyrol.com", title: "Tyrol Regional Tourism" },
+
+  // South Korea
+  { url: "https://www.english.visitkorea.or.kr", title: "Korea Tourism Organization (Visit Korea)" },
+  { url: "https://www.koreanair.com", title: "Korean Air" },
+  { url: "https://www.flyasiana.com", title: "Asiana Airlines" },
+  { url: "https://www.seoul.go.kr", title: "Seoul Metropolitan Government (Tourism)" },
+
+  // Greece
+  { url: "https://www.visitgreece.gr", title: "Greek National Tourism Organisation" },
+  { url: "https://www.aegeanair.com", title: "Aegean Airlines" },
+
+  // Netherlands
+  { url: "https://www.holland.com", title: "Netherlands Board of Tourism (Holland.com)" },
+  { url: "https://www.klm.com", title: "KLM Royal Dutch Airlines" },
+  { url: "https://www.ns.nl", title: "Dutch Railways (NS)" },
+  { url: "https://www.iamsterdam.com", title: "I amsterdam (City Tourism)" },
+  { url: "https://www.rotterdam.info", title: "Rotterdam Tourism" },
+
+  // Canada
+  { url: "https://www.canada.travel", title: "Destination Canada (Official Tourism)" },
+  { url: "https://www.aircanada.com", title: "Air Canada" },
+  { url: "https://www.viarail.ca", title: "VIA Rail Canada" },
+  { url: "https://www.parks.canada.ca", title: "Parks Canada" },
+
+  // Thailand
+  { url: "https://www.tourismthailand.org", title: "Tourism Authority of Thailand" },
+  { url: "https://www.thaiairways.com", title: "Thai Airways" },
+  { url: "https://www.agoda.com", title: "Agoda (Online Travel Booking – Asia)" },
+
+  // Mexico
+  { url: "https://www.visitmexico.com", title: "Visit México (Official Tourism)" },
+  { url: "https://www.aeromexico.com", title: "Aeroméxico" },
+
+  // Global Search / Aggregators / Transport (new)
+  { url: "https://www.skyscanner.net", title: "Skyscanner (Flight Comparison)" },
+  { url: "https://www.uber.com", title: "Uber (Ride & Ground Transport)" },
+  { url: "https://www.lyft.com", title: "Lyft (Ride‑Sharing)" },
+
+    // Sports – Global Top Sites & Major Organizations
+  { url: "https://www.espn.com", title: "ESPN" },
+  { url: "https://www.bbc.com/sport", title: "BBC Sport" },
+  { url: "https://www.fifa.com", title: "FIFA" },
+  { url: "https://www.nba.com", title: "NBA" },
+  { url: "https://www.olympics.com", title: "IOC / Olympics" },
+  { url: "https://www.nfl.com", title: "NFL" },
+  { url: "https://www.uefa.com", title: "UEFA" },
+  { url: "https://www.cbssports.com", title: "CBS Sports" },
+  { url: "https://www.theathletic.com", title: "The Athletic" },
+  { url: "https://www.skysports.com", title: "Sky Sports" },
+  { url: "https://www.foxsports.com", title: "Fox Sports" },
+  { url: "https://sports.yahoo.com", title: "Yahoo Sports" },
+  { url: "https://www.bleacherreport.com", title: "Bleacher Report" },
+  { url: "https://www.goal.com", title: "GOAL" },
+  { url: "https://www.transfermarkt.com", title: "Transfermarkt" },
+  { url: "https://www.mlb.com", title: "MLB" },
+  { url: "https://www.nhl.com", title: "NHL" },
+  { url: "https://www.premierleague.com", title: "English Premier League" },
+  { url: "https://www.formula1.com", title: "Formula 1" },
+  { url: "https://www.espncricinfo.com", title: "ESPNcricinfo" },
+  { url: "https://www.cricket.com.au", title: "Cricket Australia" },
+
+  // Sports – United States (additional)
+  { url: "https://www.si.com", title: "Sports Illustrated" },
+  { url: "https://www.ncaa.com", title: "NCAA (college sports)" },
+
+  // Sports – Spain
+  { url: "https://www.marca.com", title: "Marca" },
+  { url: "https://www.as.com", title: "AS.com" },
+  { url: "https://www.mundodeportivo.com", title: "Mundo Deportivo" },
+  { url: "https://www.sport.es", title: "Sport (Spain)" },
+  { url: "https://www.laliga.com", title: "LaLiga" },
+  { url: "https://www.rfef.es", title: "Real Federación Española de Fútbol" },
+  { url: "https://www.acb.com", title: "ACB (Basketball)" },
+  { url: "https://www.lavanguardia.com/deportes", title: "La Vanguardia – Deportes" },
+
+  // Sports – Japan
+  { url: "https://www.jleague.jp", title: "J.League" },
+  { url: "https://www.nhk.or.jp/sports", title: "NHK Sports" },
+  { url: "https://www.nikkansports.com", title: "Nikkan Sports" },
+  { url: "https://www.npb.jp", title: "Nippon Professional Baseball (NPB)" },
+  { url: "https://www.jfa.jp", title: "Japan Football Association" },
+  { url: "https://sports.yahoo.co.jp", title: "Yahoo! Japan Sports" },
+
+  // Sports – France
+  { url: "https://www.lequipe.fr", title: "L'Équipe" },
+  { url: "https://www.lfp.fr", title: "LFP (Ligue 1)" },
+  { url: "https://www.fff.fr", title: "French Football Federation" },
+  { url: "https://www.eurosport.fr", title: "Eurosport France" },
+  { url: "https://www.rmcsport.bfmtv.com", title: "RMC Sport / BFMTV" },
+
+  // Sports – Australia
+  { url: "https://www.foxsports.com.au", title: "Fox Sports Australia" },
+  { url: "https://www.afl.com.au", title: "AFL (Australian Football League)" },
+  { url: "https://www.nrl.com", title: "NRL (Rugby League)" },
+  { url: "https://www.abc.net.au/sport", title: "ABC Sport" },
+  { url: "https://www.supercars.com", title: "Supercars" },
+  { url: "https://www.netball.com.au", title: "Netball Australia" },
+
+  // Sports – Germany
+  { url: "https://www.kicker.de", title: "kicker" },
+  { url: "https://www.sport1.de", title: "Sport1" },
+  { url: "https://www.bundesliga.com", title: "Bundesliga" },
+  { url: "https://www.dfb.de", title: "German Football Association" },
+  { url: "https://www.bild.de/sport", title: "Bild – Sport" },
+  { url: "https://www.spox.com", title: "Spox" },
+  { url: "https://www.ran.de", title: "ran.de (Sport)" },
+  { url: "https://www.eurosport.de", title: "Eurosport Germany" },
+  { url: "https://www.transfermarkt.de", title: "Transfermarkt (German edition)" },
+  { url: "https://www.sportbild.de", title: "Sport Bild" },
+
+  // Sports – United Kingdom (additional to global)
+  { url: "https://www.bbc.co.uk/sport", title: "BBC Sport (UK)" },
+  { url: "https://www.theguardian.com/sport", title: "The Guardian – Sport" },
+  { url: "https://www.telegraph.co.uk/sport", title: "The Telegraph – Sport" },
+  { url: "https://www.dailymail.co.uk/sport", title: "Daily Mail – Sport" },
+  { url: "https://www.independent.co.uk/sport", title: "The Independent – Sport" },
+  { url: "https://www.fourfourtwo.com", title: "FourFourTwo" },
+  { url: "https://www.eurosport.co.uk", title: "Eurosport UK" },
+
+  // Sports – China
+  { url: "https://sports.cctv.com", title: "CCTV Sports" },
+  { url: "https://sports.sina.com.cn", title: "Sina Sports" },
+  { url: "https://sports.qq.com", title: "Tencent Sports" },
+  { url: "https://www.hupu.com", title: "Hupu (basketball focus)" },
+  { url: "https://www.cfa.cn", title: "Chinese Football Association" },
+  { url: "https://www.nba.cn", title: "NBA China" },
+  { url: "https://sports.163.com", title: "NetEase Sports" },
+  { url: "https://sports.sohu.com", title: "Sohu Sports" },
+  { url: "https://sports.ifeng.com", title: "iFeng Sports" },
+
+  // Sports – Italy
+  { url: "https://www.gazzetta.it", title: "La Gazzetta dello Sport" },
+  { url: "https://www.corriere.it/sport", title: "Corriere dello Sport – Sport" },
+  { url: "https://www.tuttosport.com", title: "Tuttosport" },
+  { url: "https://www.legaseriea.it", title: "Serie A" },
+  { url: "https://www.figc.it", title: "FIGC (Italian Football Federation)" },
+  { url: "https://www.sky.it/sport", title: "Sky Sport Italy" },
+  { url: "https://www.repubblica.it/sport", title: "La Repubblica – Sport" },
+  { url: "https://www.sportmediaset.it", title: "Sport Mediaset" },
+  { url: "https://www.calciomercato.com", title: "Calciomercato" },
+  { url: "https://www.corrieredellosport.it", title: "Corriere dello Sport" },
+
+  // Sports – Switzerland
+  { url: "https://www.srf.ch/sport", title: "SRF Sport" },
+  { url: "https://www.fis-ski.com", title: "FIS (International Ski Federation)" },
+  { url: "https://www.sport.ch", title: "Sport.ch" },
+  { url: "https://www.bluewin.ch/sport", title: "Bluewin – Sport" },
+  { url: "https://www.20min.ch/sport", title: "20 Minuten – Sport" },
+  { url: "https://www.nzz.ch/sport", title: "NZZ – Sport" },
+  { url: "https://www.lematin.ch/sport", title: "Le Matin – Sport" },
+  { url: "https://www.swiss-ski.ch", title: "Swiss Ski" },
+
+  // Sports – Singapore
+  { url: "https://www.straitstimes.com/sport", title: "The Straits Times – Sport" },
+  { url: "https://www.channelnewsasia.com/sport", title: "CNA Sport" },
+  { url: "https://www.todayonline.com/sport", title: "TODAY – Sport" },
+  { url: "https://www.football.sg", title: "Football Association of Singapore" },
+  { url: "https://www.sfa.org.sg", title: "Sport Singapore" },
+  { url: "https://www.asiaone.com/sport", title: "AsiaOne – Sport" },
+
+  // Sports – Portugal
+  { url: "https://www.abola.pt", title: "A Bola" },
+  { url: "https://www.record.pt", title: "Record" },
+  { url: "https://www.ojogo.pt", title: "O Jogo" },
+  { url: "https://www.fpf.pt", title: "Portuguese Football Federation" },
+  { url: "https://www.slbenfica.pt", title: "SL Benfica" },
+  { url: "https://www.fcporto.pt", title: "FC Porto" },
+  { url: "https://www.sporting.pt", title: "Sporting CP" },
+  { url: "https://www.maisfutebol.iol.pt", title: "Maisfutebol" },
+  { url: "https://www.dn.pt/desporto", title: "Diário de Notícias – Desporto" },
+  { url: "https://www.rtp.pt/desporto", title: "RTP Desporto" },
+  { url: "https://www.zerozero.pt", title: "ZeroZero (stats)" },
+
+  // Sports – UAE
+  { url: "https://www.gulfnews.com/sport", title: "Gulf News – Sport" },
+  { url: "https://www.thenationalnews.com/sport", title: "The National – Sport" },
+  { url: "https://www.uaeproleague.ae", title: "UAE Pro League" },
+  { url: "https://www.dubaisports.ae", title: "Dubai Sports Council" },
+  { url: "https://www.khaleejtimes.com/sport", title: "Khaleej Times – Sport" },
+
+  // Sports – Austria
+  { url: "https://www.krone.at/sport", title: "Kronen Zeitung – Sport" },
+  { url: "https://www.sport.orf.at", title: "ORF Sport" },
+  { url: "https://www.kurier.at/sport", title: "Kurier – Sport" },
+  { url: "https://www.oefb.at", title: "ÖFB (Austrian Football Association)" },
+  { url: "https://www.redbull.com", title: "Red Bull Sports" },
+  { url: "https://www.diepresse.com/sport", title: "Die Presse – Sport" },
+  { url: "https://www.derstandard.at/sport", title: "Der Standard – Sport" },
+
+  // Sports – South Korea
+  { url: "https://sports.naver.com", title: "Naver Sports" },
+  { url: "https://sports.daum.net", title: "Daum Sports" },
+  { url: "https://www.kfa.or.kr", title: "Korea Football Association" },
+  { url: "https://www.kleague.com", title: "K League" },
+  { url: "https://www.kbs.co.kr/sports", title: "KBS Sports" },
+  { url: "https://www.sbs.co.kr/sports", title: "SBS Sports" },
+  { url: "https://www.mbc.co.kr/sports", title: "MBC Sports" },
+
+  // Sports – Greece
+  { url: "https://www.gazzetta.gr", title: "Gazzetta.gr" },
+  { url: "https://www.sport24.gr", title: "Sport24" },
+  { url: "https://www.sdna.gr", title: "SDNA" },
+  { url: "https://www.epo.gr", title: "Hellenic Football Federation" },
+  { url: "https://www.onsports.gr", title: "Onsports" },
+  { url: "https://www.protothema.gr/sports", title: "Proto Thema – Sports" },
+
+  // Sports – Netherlands
+  { url: "https://www.nos.nl/sport", title: "NOS Sport" },
+  { url: "https://www.telegraaf.nl/sport", title: "De Telegraaf – Sport" },
+  { url: "https://www.voetbalprimeur.nl", title: "Voetbalprimeur" },
+  { url: "https://www.knvb.nl", title: "KNVB (Dutch Football Federation)" },
+  { url: "https://www.eredivisie.nl", title: "Eredivisie" },
+  { url: "https://www.vi.nl", title: "Voetbal International" },
+  { url: "https://www.sport1.nl", title: "Sport1 NL" },
+
+  // Sports – Canada
+  { url: "https://www.tsn.ca", title: "TSN" },
+  { url: "https://www.sportsnet.ca", title: "Sportsnet" },
+  { url: "https://www.cbc.ca/sports", title: "CBC Sports" },
+  { url: "https://www.thehockeynews.com", title: "The Hockey News" },
+  { url: "https://www.basketball.ca", title: "Canada Basketball" },
+  { url: "https://www.canadasoccer.com", title: "Canada Soccer" },
+  { url: "https://www.olympic.ca", title: "Canadian Olympic Committee" },
+
+  // Sports – Thailand
+  { url: "https://www.siamsport.co.th", title: "Siam Sport" },
+  { url: "https://www.thairath.co.th/sport", title: "Thai Rath – Sport" },
+  { url: "https://www.pptvhd36.com/sport", title: "PPTV HD36 – Sport" },
+  { url: "https://www.fat.or.th", title: "Football Association of Thailand" },
+  { url: "https://www.thaileague.co.th", title: "Thai League" },
+  { url: "https://www.dailynews.co.th/sport", title: "Daily News – Sport" },
+  { url: "https://www.sanook.com/sport", title: "Sanook Sport" },
+
+  // Sports – Mexico
+  { url: "https://www.espn.com.mx", title: "ESPN Mexico" },
+  { url: "https://www.marca.com/mexico", title: "Marca México" },
+  { url: "https://www.record.com.mx", title: "Récord" },
+  { url: "https://www.foxsports.com.mx", title: "Fox Sports México" },
+  { url: "https://www.azteca7.com/deportes", title: "Azteca 7 – Deportes" },
+  { url: "https://www.femexfut.org.mx", title: "FMF (Mexican Football Federation)" },
+  { url: "https://www.ligamx.net", title: "Liga MX" },
+  { url: "https://www.milenio.com/deportes", title: "Milenio – Deportes" },
+
+    // Forums & Communities (new)
+  // Top Global & US
+  { url: "https://www.fandom.com", title: "Fandom (Wikia) – Wikis & Forums" },
+  { url: "https://www.gamefaqs.com", title: "GameFAQs – Gaming Community" },
+  { url: "https://www.physicsforums.com", title: "Physics Forums" },
+  { url: "https://www.medhelp.org", title: "MedHelp (Health Community)" },
+  { url: "https://www.city-data.com", title: "City-Data (US Local Discussions)" },
+  { url: "https://www.bodybuilding.com", title: "Bodybuilding.com Forums" },
+  { url: "https://www.chess.com", title: "Chess.com (Forums & Play)" },
+  { url: "https://www.lichess.org", title: "Lichess (Chess Forums)" },
+  { url: "https://www.straightdope.com", title: "The Straight Dope (Q&A)" },
+  { url: "https://www.fark.com", title: "Fark (News/Community)" },
+  { url: "https://www.dailykos.com", title: "Daily Kos (Political Community)" },
+  { url: "https://www.neogaf.com", title: "NeoGAF (Gaming Forums)" },
+
+  // United Kingdom
+  { url: "https://www.mumsnet.com", title: "Mumsnet (Parenting Community)" },
+  { url: "https://www.thestudentroom.co.uk", title: "The Student Room" },
+  { url: "https://www.pistonheads.com", title: "PistonHeads (Cars)" },
+  { url: "https://www.moneysavingexpert.com", title: "MoneySavingExpert (Finance Forums)" },
+  { url: "https://www.digitalspy.com", title: "Digital Spy (TV/Entertainment)" },
+  { url: "https://www.railforums.co.uk", title: "RailUK Forums" },
+  { url: "https://www.ukclimbing.com", title: "UKClimbing (Outdoor)" },
+  { url: "https://www.cyclinguk.org", title: "Cycling UK Forums" },
+
+  // China
+  { url: "https://tieba.baidu.com", title: "Baidu Tieba (Interest Groups)" },
+  { url: "https://www.douban.com/groups", title: "Douban Groups (Lifestyle/Culture)" },
+  { url: "https://bbs.csdn.net", title: "CSDN Forums (Tech/Developers)" },
+  { url: "https://www.chiphell.com", title: "Chiphell (Hardware/Tech)" },
+  { url: "https://www.xcar.com.cn", title: "XCar (Cars/Automotive)" },
+  { url: "https://www.tianya.cn", title: "Tianya (General Forum, historic)" },
+  { url: "https://www.mop.com", title: "Mop (Entertainment/Community)" },
+
+  // Germany
+  { url: "https://www.gutefrage.net", title: "Gutefrage (Q&A)" },
+  { url: "https://www.computerbase.de", title: "ComputerBase (Tech)" },
+  { url: "https://www.motor-talk.de", title: "Motor-Talk (Cars)" },
+  { url: "https://www.chefkoch.de", title: "Chefkoch (Cooking Community)" },
+  { url: "https://www.eltern.de", title: "Eltern (Parenting)" },
+  { url: "https://www.ubuntuusers.de", title: "Ubuntu Users (Linux Forum)" },
+
+  // Japan
+  { url: "https://www.2ch.net", title: "2channel (5ch – Anonymous Textboard)" },
+  { url: "https://www.5ch.net", title: "5channel (Former 2ch)" },
+  { url: "https://matome.naver.jp", title: "Naver Matome (Curated Discussions)" },
+  { url: "https://chiebukuro.yahoo.co.jp", title: "Yahoo! Chiebukuro (Q&A)" },
+  { url: "https://www.biglobe.ne.jp", title: "BIGLOBE (Forums/Community)" },
+  { url: "https://www.excite.co.jp", title: "Excite Japan (Community/News)" },
+
+  // France
+  { url: "https://www.jeuxvideo.com", title: "Jeuxvideo.com (Gaming Forums)" },
+  { url: "https://www.commentcamarche.net", title: "Commentçamarche (Tech Q&A)" },
+  { url: "https://www.doctissimo.fr", title: "Doctissimo (Health/Wellness)" },
+  { url: "https://www.aufeminin.com", title: "AuFeminin (Women/Lifestyle)" },
+  { url: "https://www.linternaute.com", title: "Linternaute (Forums/General)" },
+  { url: "https://www.zestedesavoir.com", title: "Zeste de Savoir (Knowledge Sharing)" },
+
+  // India
+  { url: "https://www.mouthshut.com", title: "MouthShut (Reviews/Opinions)" },
+  { url: "https://www.indiamike.com", title: "IndiaMike (Travel Community)" },
+  { url: "https://www.team-bhp.com", title: "Team-BHP (Indian Cars)" },
+  { url: "https://www.desidime.com", title: "DesiDime (Deals/Community)" },
+
+  // Australia
+  { url: "https://www.whirlpool.net.au", title: "Whirlpool (Tech/General)" },
+  { url: "https://www.productreview.com.au", title: "ProductReview.com.au (Reviews)" },
+  { url: "https://www.mumbrella.com.au", title: "Mumbrella (Media/Marketing Forums)" },
+  { url: "https://www.essentialbaby.com.au", title: "Essential Baby (Parenting)" },
+
+  // South Korea
+  { url: "https://www.dcinside.com", title: "DC Inside (Major Korean Community)" },
+  { url: "https://www.fmkorea.com", title: "FM Korea (Sports/Gaming)" },
+  { url: "https://www.ilbe.com", title: "Ilbe (Controversial Forum)" },
+  { url: "https://cafe.naver.com", title: "Naver Cafe (Huge Interest Groups)" },
+  { url: "https://www.ruliweb.com", title: "Ruliweb (Gaming/Community)" },
+  { url: "https://www.ppomppu.co.kr", title: "Ppomppu (Deals/Tech)" },
+  { url: "https://www.clien.net", title: "Clien (Tech/General)" },
+
+  // Italy
+  { url: "https://forum.alfemminile.com", title: "AlFemminile (Women/Lifestyle)" },
+  { url: "https://www.hwupgrade.it", title: "HWUpgrade (Tech)" },
+  { url: "https://www.pianetadonna.it", title: "PianetaDonna (Lifestyle)" },
+
+  // Netherlands
+  { url: "https://www.tweakers.net", title: "Tweakers (Tech/Reviews)" },
+  { url: "https://www.fok.nl", title: "FOK! (General Forum)" },
+  { url: "https://www.viva.nl", title: "Viva (Women/Lifestyle)" },
+  { url: "https://www.autoweb.nl", title: "AutoWeb (Cars)" },
+
+  // Singapore
+  { url: "https://www.hardwarezone.com.sg", title: "HardwareZone (Tech)" },
+  { url: "https://forums.singaporeexpats.com", title: "Singapore Expats Forum" },
+  { url: "https://www.kiasuparents.com", title: "Kiasu Parents (Education/Parenting)" },
+  { url: "https://www.sgforums.com", title: "SGForums (General)" },
+  { url: "https://www.lowyat.net", title: "Lowyat.NET (Tech, MY/SG)" },
+
+  // Canada
+  { url: "https://www.redflagdeals.com", title: "RedFlagDeals (Deals/Forums)" },
+  { url: "https://www.canadiancontent.net", title: "Canadian Content (General)" },
+  { url: "https://www.mapleleafweb.com", title: "Mapleleafweb (Politics)" },
+  { url: "https://www.canadaforums.ca", title: "Canada Forums" },
+
+  // Switzerland
+  { url: "https://www.englishforum.ch", title: "English Forum Switzerland" },
+  { url: "https://www.swissinfo.ch", title: "SWI swissinfo.ch (News/Community)" },
+  { url: "https://www.ricardo.ch", title: "Ricardo (Marketplace/Community)" },
+
+    // Non‑Profit & NGOs (new)
+  // Global
+  { url: "https://www.amnesty.org", title: "Amnesty International" },
+  { url: "https://www.greenpeace.org", title: "Greenpeace" },
+  { url: "https://www.wwf.org", title: "World Wildlife Fund (WWF)" },
+  { url: "https://www.wfp.org", title: "World Food Programme (WFP)" },
+  { url: "https://www.hrw.org", title: "Human Rights Watch" },
+  { url: "https://www.transparency.org", title: "Transparency International" },
+  { url: "https://www.habitat.org", title: "Habitat for Humanity" },
+  { url: "https://www.rsf.org", title: "Reporters Without Borders (RSF)" },
+  { url: "https://www.one.org", title: "ONE Campaign" },
+
+  // United States
+  { url: "https://www.nrdc.org", title: "Natural Resources Defense Council (NRDC)" },
+  { url: "https://www.feedingamerica.org", title: "Feeding America" },
+  { url: "https://www.charitynavigator.org", title: "Charity Navigator" },
+  { url: "https://www.givewell.org", title: "GiveWell" },
+  { url: "https://www.humanrightsfirst.org", title: "Human Rights First" },
+
+  // United Kingdom
+  { url: "https://www.oxfam.org.uk", title: "Oxfam GB" },
+  { url: "https://www.savethechildren.org.uk", title: "Save the Children UK" },
+  { url: "https://www.britishredcross.org.uk", title: "British Red Cross" },
+  { url: "https://www.amnesty.org.uk", title: "Amnesty International UK" },
+  { url: "https://www.greenpeace.org.uk", title: "Greenpeace UK" },
+  { url: "https://www.cafonline.org", title: "Charities Aid Foundation (CAF)" },
+  { url: "https://www.nspcc.org.uk", title: "NSPCC (Children's charity)" },
+  { url: "https://www.ageuk.org.uk", title: "Age UK" },
+  { url: "https://www.cancerresearchuk.org", title: "Cancer Research UK" },
+
+  // Switzerland (international HQs)
+  { url: "https://www.msf.org", title: "Médecins Sans Frontières (MSF) International" },
+  { url: "https://www.iom.int", title: "International Organization for Migration (IOM)" },
+  { url: "https://www.unhcr.org", title: "UNHCR (UN Refugee Agency)" },
+
+  // Germany
+  { url: "https://www.greenpeace.de", title: "Greenpeace Deutschland" },
+  { url: "https://www.amnesty.de", title: "Amnesty International Deutschland" },
+  { url: "https://www.brot-fuer-die-welt.de", title: "Brot für die Welt" },
+  { url: "https://www.caritas.de", title: "Caritas Deutschland" },
+  { url: "https://www.diakonie.de", title: "Diakonie Deutschland" },
+  { url: "https://www.terre-des-hommes.de", title: "Terre des Hommes Deutschland" },
+  { url: "https://www.nabu.de", title: "NABU (Nature and Biodiversity Conservation Union)" },
+  { url: "https://www.deutsches-rotes-kreuz.de", title: "Deutsches Rotes Kreuz" },
+
+  // France
+  { url: "https://www.medecins-sans-frontieres.fr", title: "Médecins Sans Frontières France" },
+  { url: "https://www.amnesty.fr", title: "Amnesty International France" },
+  { url: "https://www.greenpeace.fr", title: "Greenpeace France" },
+  { url: "https://www.secours-populaire.fr", title: "Secours Populaire Français" },
+  { url: "https://www.croix-rouge.fr", title: "Croix‑Rouge française" },
+  { url: "https://www.unicef.fr", title: "UNICEF France" },
+  { url: "https://www.fidh.org", title: "International Federation for Human Rights (FIDH)" },
+  { url: "https://www.oxfamfrance.org", title: "Oxfam France" },
+
+  // Japan
+  { url: "https://www.jrc.or.jp", title: "Japanese Red Cross Society" },
+  { url: "https://www.jica.go.jp", title: "Japan International Cooperation Agency (JICA)" },
+  { url: "https://www.savechildren.or.jp", title: "Save the Children Japan" },
+  { url: "https://www.greenpeace.jp", title: "Greenpeace Japan" },
+  { url: "https://www.amnesty.or.jp", title: "Amnesty International Japan" },
+  { url: "https://www.plan-international.jp", title: "Plan International Japan" },
+  { url: "https://www.habitat-japan.org", title: "Habitat for Humanity Japan" },
+
+  // China
+  { url: "https://www.redcross.org.cn", title: "Red Cross Society of China" },
+  { url: "https://www.chinafoundation.org", title: "China Foundation (various)" },
+  { url: "https://www.ccpit.org", title: "China Council for the Promotion of International Trade (CCPIT)" },
+  { url: "https://www.chinaaid.org", title: "China Aid (international cooperation)" },
+
+  // India
+  { url: "https://www.oxfamindia.org", title: "Oxfam India" },
+  { url: "https://www.goonj.org", title: "Goonj (disaster relief)" },
+  { url: "https://www.pratham.org", title: "Pratham (education)" },
+  { url: "https://www.akanksha.org", title: "Akanksha Foundation" },
+  { url: "https://www.smilefoundationindia.org", title: "Smile Foundation" },
+  { url: "https://www.cry.org", title: "CRY – Child Rights and You" },
+  { url: "https://www.amnesty.org.in", title: "Amnesty International India" },
+  { url: "https://www.greenpeace.org.in", title: "Greenpeace India" },
+
+  // Australia
+  { url: "https://www.redcross.org.au", title: "Australian Red Cross" },
+  { url: "https://www.oxfam.org.au", title: "Oxfam Australia" },
+  { url: "https://www.unicef.org.au", title: "UNICEF Australia" },
+  { url: "https://www.worldvision.com.au", title: "World Vision Australia" },
+  { url: "https://www.greenpeace.org.au", title: "Greenpeace Australia Pacific" },
+  { url: "https://www.amnesty.org.au", title: "Amnesty International Australia" },
+  { url: "https://www.savechildren.org.au", title: "Save the Children Australia" },
+  { url: "https://www.habitat.org.au", title: "Habitat for Humanity Australia" },
+
+  // Canada
+  { url: "https://www.redcross.ca", title: "Canadian Red Cross" },
+  { url: "https://www.oxfam.ca", title: "Oxfam Canada" },
+  { url: "https://www.unicef.ca", title: "UNICEF Canada" },
+  { url: "https://www.amnesty.ca", title: "Amnesty International Canada" },
+  { url: "https://www.doctorswithoutborders.ca", title: "Doctors Without Borders Canada" },
+  { url: "https://www.habitat.ca", title: "Habitat for Humanity Canada" },
+  { url: "https://www.engineerswithoutborders.ca", title: "Engineers Without Borders Canada" },
+
+  // Singapore
+  { url: "https://www.redcross.sg", title: "Singapore Red Cross" },
+  { url: "https://www.communitychest.org.sg", title: "Community Chest Singapore" },
+  { url: "https://www.ncss.org.sg", title: "National Council of Social Service (NCSS)" },
+  { url: "https://www.beyondsocialservices.org.sg", title: "Beyond Social Services" },
+  { url: "https://www.habitat.org.sg", title: "Habitat for Humanity Singapore" },
+
+  // Netherlands
+  { url: "https://www.oxfamnovib.nl", title: "Oxfam Novib" },
+  { url: "https://www.msf.nl", title: "Artsen zonder Grenzen (MSF Holland)" },
+  { url: "https://www.greenpeace.nl", title: "Greenpeace Nederland" },
+  { url: "https://www.cordaid.nl", title: "Cordaid" },
+  { url: "https://www.planinternational.nl", title: "Plan International Nederland" },
+  { url: "https://www.amnesty.nl", title: "Amnesty International Netherlands" },
+
+  // Italy
+  { url: "https://www.emergency.it", title: "Emergency (humanitarian health)" },
+  { url: "https://www.caritas.it", title: "Caritas Italiana" },
+  { url: "https://www.savechildren.it", title: "Save the Children Italia" },
+  { url: "https://www.oxfamitalia.org", title: "Oxfam Italia" },
+  { url: "https://www.mediciperidirittiumani.org", title: "Medici per i Diritti Umani" },
+  { url: "https://www.greenpeace.it", title: "Greenpeace Italia" },
+
+  // Spain
+  { url: "https://www.oxfamintermon.org", title: "Oxfam Intermón" },
+  { url: "https://www.cruzroja.es", title: "Cruz Roja Española" },
+  { url: "https://www.greenpeace.es", title: "Greenpeace España" },
+  { url: "https://www.unicef.es", title: "UNICEF España" },
+  { url: "https://www.msf.es", title: "Médicos Sin Fronteras España" },
+
+  // South Korea
+  { url: "https://www.redcross.or.kr", title: "Korean Red Cross" },
+  { url: "https://www.worldvision.or.kr", title: "World Vision Korea" },
+  { url: "https://www.goodneighbors.kr", title: "Good Neighbors Korea" },
+  { url: "https://www.greenpeace.or.kr", title: "Greenpeace Korea" },
+  { url: "https://www.habitat.or.kr", title: "Habitat for Humanity Korea" },
+
+  // Greece
+  { url: "https://www.redcross.gr", title: "Hellenic Red Cross" },
+  { url: "https://www.greenpeace.gr", title: "Greenpeace Greece" },
+
+  // Thailand, Mexico, UAE
+  { url: "https://www.thairedcross.org", title: "Thai Red Cross Society" },
+  { url: "https://www.cruzroja.org.mx", title: "Cruz Roja Mexicana" },
+  { url: "https://www.redcrescent.ae", title: "UAE Red Crescent Authority" },
+
+  // Transparency & Watchdogs (additional)
+  { url: "https://www.freedomhouse.org", title: "Freedom House" },
+
+    // Data & Statistics (new)
+  // United States
+  { url: "https://www.nist.gov", title: "National Institute of Standards and Technology (NIST)" },
+
+  // China
+  { url: "https://www.stats.gov.cn", title: "National Bureau of Statistics of China" },
+  { url: "https://www.ceicdata.com", title: "CEIC Data (China & global economic data)" },
+  { url: "https://www.chinadataonline.org", title: "China Data Online" },
+
+  // United Kingdom
+  { url: "https://www.data.gov.uk", title: "UK Open Data Portal" },
+  { url: "https://www.nomisweb.co.uk", title: "NOMIS (UK labour market statistics)" },
+  { url: "https://www.ukdataservice.ac.uk", title: "UK Data Service (academic datasets)" },
+
+  // Germany
+  { url: "https://www.destatis.de", title: "Destatis (Federal Statistical Office of Germany)" },
+  { url: "https://www.statistik-bund.de", title: "Statistik-Bund (German statistics portal)" },
+  { url: "https://www.zensus2022.de", title: "Zensus 2022 (German Census)" },
+
+  // Japan
+  { url: "https://www.e-stat.go.jp", title: "e-Stat (Japanese Government Statistics Portal)" },
+
+  // France
+  { url: "https://www.insee.fr", title: "INSEE (National Institute of Statistics and Economic Studies)" },
+
+  // Australia
+  { url: "https://www.data.gov.au", title: "Australian Open Data Portal" },
+
+  // Canada
+  { url: "https://open.canada.ca", title: "Open Government – Canada" },
+  { url: "https://www.bankofcanada.ca", title: "Bank of Canada (statistics & research)" },
+
+  // Switzerland
+  { url: "https://www.bfs.admin.ch", title: "Federal Statistical Office of Switzerland (BFS)" },
+
+  // Singapore
+  { url: "https://www.singstat.gov.sg", title: "Department of Statistics Singapore" },
+  { url: "https://data.gov.sg", title: "Singapore Open Data Portal" },
+
+  // India
+  { url: "https://www.mospi.gov.in", title: "Ministry of Statistics and Programme Implementation (MOSPI)" },
+  { url: "https://www.censusindia.gov.in", title: "Census of India" },
+  { url: "https://data.gov.in", title: "Open Government Data Platform India" },
+  { url: "https://www.rbi.org.in", title: "Reserve Bank of India (statistics & publications)" },
+
+  // Italy
+  { url: "https://www.istat.it", title: "Istat (Italian National Institute of Statistics)" },
+  { url: "https://www.bancaditalia.it", title: "Banca d'Italia (statistics & data)" },
+
+  // Netherlands
+  { url: "https://www.cbs.nl", title: "Statistics Netherlands (CBS)" },
+  { url: "https://www.data.overheid.nl", title: "Dutch Open Data Portal" },
+
+  // Sweden
+  { url: "https://www.scb.se", title: "Statistics Sweden (SCB)" },
+  { url: "https://www.statistikmyndigheten.se", title: "Swedish Statistics Agency" },
+  { url: "https://www.riksbank.se", title: "Sveriges Riksbank (Statistics & Research)" },
+
+  // Spain
+  { url: "https://www.ine.es", title: "INE (Instituto Nacional de Estadística – Spain)" },
+  { url: "https://datos.gob.es", title: "Datos.gob.es (Spanish Open Data)" },
+
+  // South Korea
+  { url: "https://www.data.go.kr", title: "Korea Open Data Portal" },
+
+  // Greece
+  { url: "https://www.statistics.gr", title: "Hellenic Statistical Authority (ELSTAT)" },
+
+  // Portugal
+  { url: "https://www.ine.pt", title: "Statistics Portugal (INE)" },
+
+  // Thailand
+  { url: "https://www.nso.go.th", title: "National Statistical Office of Thailand" },
+
+  // Mexico
+  { url: "https://www.inegi.org.mx", title: "INEGI (National Institute of Statistics and Geography – Mexico)" },
+
+  // United Arab Emirates
+  { url: "https://u.ae", title: "UAE Federal Statistics & Data Portal" },
+  { url: "https://statistics.fcsc.gov.ae", title: "FCSC (Federal Competitiveness and Statistics Centre – UAE)" },
+
+  // Global Aggregators (new main domains)
+  { url: "https://www.ourworldindata.org", title: "Our World in Data" },
+  { url: "https://www.oecd-ilibrary.org", title: "OECD iLibrary (data & publications)" },
+  { url: "https://undata.un.org", title: "UNdata (United Nations Statistics)" },
+  { url: "https://www.gapminder.org", title: "Gapminder (data visualizations)" },
+
+    // Blogs & Independent Publishing (new)
+  // Global Platforms & Tools
+  { url: "https://www.wordpress.com", title: "WordPress.com (Blogging & CMS)" },
+  { url: "https://www.wordpress.org", title: "WordPress.org (Self‑hosted CMS)" },
+  { url: "https://www.blogger.com", title: "Blogger (Google) – Free Blogging" },
+  { url: "https://www.ghost.org", title: "Ghost (Open‑Source Newsletter/Blog Platform)" },
+  { url: "https://www.beehiiv.com", title: "Beehiiv (Newsletter Platform)" },
+  { url: "https://www.buttondown.email", title: "Buttondown (Email‑first Newsletters)" },
+  { url: "https://www.hashnode.com", title: "Hashnode (Developer Blogs)" },
+  { url: "https://www.mirror.xyz", title: "Mirror (Web3 Publishing)" },
+  { url: "https://www.carrd.co", title: "Carrd (Simple Landing‑page Sites)" },
+  { url: "https://www.convertkit.com", title: "ConvertKit (Creator Newsletter Platform)" },
+  { url: "https://www.mailchimp.com", title: "Mailchimp (Email Marketing & Newsletters)" },
+
+  // United States – Notable Independent Blogs & Publications
+  { url: "https://www.theatlantic.com", title: "The Atlantic (Essays & Blog Network)" },
+  { url: "https://www.paulgraham.com", title: "Paul Graham (Essays)" },
+  { url: "https://www.stratechery.com", title: "Stratechery (Tech & Media Analysis)" },
+  { url: "https://www.theinformation.com", title: "The Information (Tech Journalism)" },
+  { url: "https://www.cooltools.org", title: "Cool Tools (Recommendation Blog)" },
+  { url: "https://www.kottke.org", title: "Kottke.org (Long‑running Personal Blog)" },
+
+  // United Kingdom
+  { url: "https://www.spectator.co.uk", title: "The Spectator (Opinion & Blogs)" },
+  { url: "https://www.newstatesman.com", title: "New Statesman (Politics & Culture)" },
+
+  // Germany
+  { url: "https://www.zeit.de", title: "Zeit Online (Blogs & Commentary)" },
+  { url: "https://www.t3n.de", title: "t3n (Tech & Digital Blog)" },
+  { url: "https://www.netzpolitik.org", title: "Netzpolitik.org (Digital Rights Blog)" },
+
+  // France
+  { url: "https://www.slate.fr", title: "Slate France (Blogs & Analysis)" },
+  { url: "https://www.over-blog.com", title: "OverBlog (French Blogging Platform)" },
+
+  // Japan – Major Blogging Platforms
+  { url: "https://www.note.com", title: "Note (Japanese Blogging/Newsletter Platform)" },
+  { url: "https://www.ameblo.jp", title: "Ameba Blog (Ameba)" },
+  { url: "https://www.hatenablog.com", title: "Hatena Blog" },
+  { url: "https://blog.livedoor.com", title: "Livedoor Blog" },
+  { url: "https://blogs.yahoo.co.jp", title: "Yahoo! Japan Blogs (legacy/platform)" },
+
+  // India
+  { url: "https://www.yourstory.com", title: "YourStory (Startup & Entrepreneurship Blog)" },
+  { url: "https://www.inc42.com", title: "Inc42 (Indian Startup Media)" },
+
+  // China – Blogger‑style Platforms
+  { url: "https://mp.weixin.qq.com", title: "WeChat Official Accounts (WeChat Public Blogging)" },
+  { url: "https://www.csdn.net", title: "CSDN (Tech Developer Blog Network)" },
+  { url: "https://www.cnblogs.com", title: "CnBlogs (Developer Blogs)" },
+  { url: "https://www.jianshu.com", title: "JianShu (Medium‑like Chinese Blogging)" },
+
+  // Australia
+  { url: "https://www.theconversation.com", title: "The Conversation (Academic/Expert Blogs)" },
+
+  // Canada
+  { url: "https://www.thelogic.co", title: "The Logic (Canadian Tech/Business Newsletter)" },
+  { url: "https://www.betakit.com", title: "Betakit (Canadian Startup News & Blogs)" },
+
+  // Singapore
+  { url: "https://www.mothership.sg", title: "Mothership (Blog‑style News, Singapore)" },
+  { url: "https://www.thesmartlocal.com", title: "TheSmartLocal (Singapore Lifestyle & Blog)" },
+  { url: "https://www.vulcanpost.com", title: "Vulcan Post (Singapore/SEA Tech Blog)" },
+
+  // South Korea – Blogging Platforms
+  { url: "https://post.naver.com", title: "Naver Post (Blog‑style Posts)" },
+  { url: "https://www.tistory.com", title: "Tistory (Korean Blogging Platform)" },
+  { url: "https://www.egloos.com", title: "Egloos (Korean Blog Platform)" },
+  { url: "https://www.brunch.co.kr", title: "Brunch (Medium‑like Korean Platform)" },
+
+  // Italy
+  { url: "https://www.ilpost.it", title: "Il Post (Italian News & Blog)" },
+
+  // Spain
+  { url: "https://www.elconfidencial.com", title: "El Confidencial (Spanish News & Blogs)" },
+
+  // Portugal
+  { url: "https://www.observador.pt", title: "Observador (Portuguese News & Blog)" },
+
+  // Sweden
+  { url: "https://www.dn.se", title: "Dagens Nyheter (Swedish News & Blogs)" },
+  { url: "https://www.aftonbladet.se", title: "Aftonbladet (Swedish Newspaper & Blog)" },
+
+  // Netherlands
+  { url: "https://www.volkskrant.nl", title: "de Volkskrant (Dutch News & Blogs)" },
+  { url: "https://www.nrc.nl", title: "NRC (Dutch News & Opinion)" },
+
+  // Switzerland
+  { url: "https://www.nzz.ch", title: "Neue Zürcher Zeitung (Swiss News & Blog)" },
+
+  // Greece
+  { url: "https://www.kathimerini.gr", title: "Kathimerini (Greek News & Blogs)" },
+
+    // Books & Novels (new)
+  { url: "https://www.archiveofourown.org", title: "Archive of Our Own (AO3)" },
+  { url: "https://www.amazon.com/kindleunlimited", title: "Kindle Unlimited (Amazon)" },
+  { url: "https://books.apple.com", title: "Apple Books" },
+  { url: "https://www.smashwords.com", title: "Smashwords (Indie eBooks)" },
+  { url: "https://www.manybooks.net", title: "ManyBooks (Free & Discounted eBooks)" },
+  { url: "https://www.feedbooks.com", title: "Feedbooks (Public Domain & Indie)" },
+  { url: "https://www.bookbub.com", title: "BookBub (Deals & Free eBooks)" },
+  { url: "https://www.libbyapp.com", title: "Libby / OverDrive (Library eBooks)" },
+  { url: "https://www.hoopladigital.com", title: "Hoopla Digital (Library Borrowing)" },
+  { url: "https://www.radishfiction.com", title: "Radish Fiction (Serialized Stories)" },
+  { url: "https://www.inkitt.com", title: "Inkitt (Discover New Authors)" },
+  { url: "https://www.tapas.io", title: "Tapas (Webcomics & Novels)" },
+  { url: "https://www.fictionpress.com", title: "FictionPress (Original Fiction)" },
+  { url: "https://www.quotev.com", title: "Quotev (Stories & Quizzes)" },
+  { url: "https://www.lulu.com", title: "Lulu (Self-Publishing & eBooks)" },
+  { url: "https://www.barnesandnoble.com", title: "Barnes & Noble (eBooks)" },
+  { url: "https://www.kobo.com", title: "Kobo (Rakuten eBooks)" },
+  { url: "https://www.scribd.com", title: "Scribd (Subscription Books & Docs)" },
+  { url: "https://www.audible.com", title: "Audible (Audiobooks)" },
+  { url: "https://www.royalroad.com", title: "Royal Road (Web Serials)" },
+  { url: "https://www.scribblehub.com", title: "Scribble Hub (Web Novels)" },
+  { url: "https://www.webnovel.com", title: "Webnovel (Chinese Web Novels)" },
+  { url: "https://www.novelupdates.com", title: "NovelUpdates (Translated Novel Aggregator)" },
+  { url: "https://www.wuxiaworld.com", title: "WuxiaWorld (Cultivation Novels)" },
+  { url: "https://www.gravitytales.com", title: "Gravity Tales (Translated Novels)" },
+  { url: "https://www.openlibrary.org", title: "Open Library (Digital Borrowing)" },
+  { url: "https://www.bookrix.com", title: "BookRix (Indie Publishing)" },
+  { url: "https://www.dreame.com", title: "Dreame (Romance Web Novels)" },
+  { url: "https://www.moboreader.com", title: "MoboReader (Free & Paid Novels)" },
+  { url: "https://www.goodnovel.com", title: "GoodNovel (Web Novels)" },
+  { url: "https://www.novelfull.com", title: "NovelFull (Aggregator)" },
+  { url: "https://www.novelhall.com", title: "NovelHall (Translated Novels)" },
+  { url: "https://www.librivox.org", title: "LibriVox (Free Public Domain Audiobooks)" },
+  { url: "https://www.ranobelib.com", title: "Ranobelib (Russian/JP Light Novels)" },
+  { url: "https://www.brandonsanderson.com", title: "Brandon Sanderson (Author Site)" },
+  { url: "https://www.neilgaiman.com", title: "Neil Gaiman (Author Site)" },
+  { url: "https://www.gutenberg.net.au", title: "Project Gutenberg Australia" },
+
+    // Legal & Government Portals (new)
+  // Global / International
+  { url: "https://www.worldlii.org", title: "World Legal Information Institute (WorldLII)" },
+  { url: "https://www.law.cornell.edu", title: "Cornell Legal Information Institute (LII)" },
+  { url: "https://www.nyulawglobal.org/globalex", title: "GlobaLex (NYU) – Legal Research Guides" },
+  { url: "https://guides.loc.gov/nations-world", title: "Library of Congress – Guide to Law Online" },
+  { url: "https://eur-lex.europa.eu", title: "EUR-Lex (EU Law)" },
+  { url: "https://www.constituteproject.org", title: "Constitute Project (World Constitutions)" },
+  { url: "https://www.falm.info", title: "Free Access to Law Movement (FALM)" },
+  { url: "https://www.justia.com", title: "Justia (US Law & Cases)" },
+  { url: "https://www.findlaw.com", title: "FindLaw (Legal Information)" },
+  { url: "https://www.courtlistener.com", title: "CourtListener (Free Legal Research)" },
+  { url: "https://www.lexology.com", title: "Lexology (Legal Analysis & Updates)" },
+  { url: "https://www.govinfo.gov", title: "GovInfo (US Government Publishing Office)" },
+  { url: "https://www.courts.gov", title: "U.S. Courts (federal judiciary)" },
+  { url: "https://www.case.law", title: "Caselaw Access Project" },
+  { url: "https://www.oyez.org", title: "Oyez (Supreme Court audio & info)" },
+
+  // Europe (specific new)
+  { url: "https://curia.europa.eu", title: "CURIA (Court of Justice of the EU)" },
+  { url: "https://www.gesetze-im-internet.de", title: "Gesetze im Internet (German Federal Law)" },
+  { url: "https://www.bundesgerichtshof.de", title: "BGH (German Federal Court of Justice)" },
+  { url: "https://www.legifrance.gouv.fr", title: "Légifrance (French Official Legislation)" },
+  { url: "https://www.courdecassation.fr", title: "Cour de Cassation (France)" },
+  { url: "https://www.normattiva.it", title: "Normattiva (Italian Official Legislation)" },
+  { url: "https://www.cortecostituzionale.it", title: "Corte Costituzionale (Italy)" },
+  { url: "https://www.boe.es", title: "BOE (Spanish Official Gazette)" },
+  { url: "https://www.poderjudicial.es", title: "Poder Judicial (Spain)" },
+
+  // Asia & Oceania (new)
+  { url: "https://www.indiankanoon.org", title: "Indian Kanoon (Case Law)" },
+  { url: "https://www.sci.gov.in", title: "Supreme Court of India" },
+  { url: "https://www.indiacode.nic.in", title: "India Code (Legislation)" },
+  { url: "https://www.npc.gov.cn", title: "National People's Congress (China – Legislation)" },
+  { url: "https://www.court.gov.cn", title: "Supreme People's Court of China" },
+  { url: "https://www.pkulaw.com", title: "PKULaw (China Commercial Legal Database)" },
+  { url: "https://www.courts.go.jp", title: "Courts in Japan" },
+  { url: "https://www.hourei.ndl.go.jp", title: "National Diet Library – Japanese Laws" },
+
+  // Americas (new)
+  { url: "https://www.stf.jus.br", title: "STF (Brazilian Supreme Court)" },
+  { url: "https://www.planalto.gov.br", title: "Planalto (Brazilian Presidency/Laws)" },
+  { url: "https://www.scjn.gob.mx", title: "SCJN (Mexican Supreme Court)" },
+  { url: "https://www.diputados.gob.mx", title: "Cámara de Diputados (Mexico – Legislation)" },
+  { url: "https://www.csjn.gov.ar", title: "CSJN (Argentine Supreme Court)" },
+  { url: "https://www.infoleg.gob.ar", title: "InfoLeg (Argentina – Official Legislation)" },
+
+  // Africa & Middle East (new)
+  { url: "https://www.saflii.org", title: "SAFLII (Southern Africa Legal Information Institute)" },
+  { url: "https://www.concourt.org.za", title: "Constitutional Court of South Africa" },
+  { url: "https://www.kenyalaw.org", title: "Kenya Law (Legal Resources)" },
+  { url: "https://www.judiciary.go.ke", title: "Judiciary of Kenya" },
+  { url: "https://www.lawsofnigeria.placng.org", title: "Laws of Nigeria (PLAC)" },
+  { url: "https://www.supremecourt.gov.ng", title: "Supreme Court of Nigeria" },
+
+    // Climate & Environment (new)
+  // Global Scientific & Policy Bodies
+  { url: "https://www.ipcc.ch", title: "IPCC (Intergovernmental Panel on Climate Change)" },
+  { url: "https://www.unep.org", title: "UN Environment Programme (UNEP)" },
+  { url: "https://www.wmo.int", title: "World Meteorological Organization (WMO)" },
+  { url: "https://www.iucn.org", title: "IUCN (International Union for Conservation of Nature)" },
+  { url: "https://www.unfccc.int", title: "UNFCCC (Climate Change Secretariat)" },
+  { url: "https://www.copernicus.eu", title: "Copernicus Climate Change Service (EU)" },
+
+  // Global Research & Data Portals (new)
+  { url: "https://www.climate.gov", title: "NOAA Climate.gov" },
+  { url: "https://www.globalchange.gov", title: "U.S. Global Change Research Program" },
+  { url: "https://www.carbonbrief.org", title: "Carbon Brief (Climate Science Communication)" },
+  { url: "https://www.skepticalscience.com", title: "Skeptical Science" },
+  { url: "https://www.realclimate.org", title: "RealClimate (Climate Scientist Blog)" },
+
+  // Major Government Environment Ministries (new)
+  { url: "https://www.eea.europa.eu", title: "European Environment Agency (EEA)" },
+  { url: "https://www.metoffice.gov.uk", title: "Met Office (UK Weather & Climate)" },
+  { url: "https://www.bmuv.de", title: "BMUV (German Environment Ministry)" },
+  { url: "https://www.mee.gov.cn", title: "Ministry of Ecology and Environment (China)" },
+  { url: "https://www.moef.gov.in", title: "MoEFCC (India Environment Ministry)" },
+  { url: "https://www.environment.gov.za", title: "Department of Environment (South Africa)" },
+
+  // Prominent NGOs & Non‑Profits (new)
+  { url: "https://www.nature.org", title: "The Nature Conservancy" },
+  { url: "https://www.wri.org", title: "World Resources Institute (WRI)" },
+  { url: "https://www.edf.org", title: "Environmental Defense Fund (EDF)" },
+  { url: "https://www.earthjustice.org", title: "Earthjustice (Environmental Law)" },
+  { url: "https://www.sierraclub.org", title: "Sierra Club" },
+  { url: "https://www.oceana.org", title: "Oceana (Ocean Conservation)" },
+  { url: "https://www.rare.org", title: "Rare (Behavioral Conservation)" },
+  { url: "https://www.catf.us", title: "Clean Air Task Force (CATF)" },
+  { url: "https://www.climaterealityproject.org", title: "The Climate Reality Project" },
+  { url: "https://www.arborday.org", title: "Arbor Day Foundation" },
+  { url: "https://www.biologicaldiversity.org", title: "Center for Biological Diversity" },
+  { url: "https://www.foei.org", title: "Friends of the Earth International (FOEI)" },
+  { url: "https://www.wcs.org", title: "Wildlife Conservation Society (WCS)" },
+  { url: "https://www.conservation.org", title: "Conservation International" },
+  { url: "https://www.rainforestcoalition.org", title: "Rainforest Coalition" },
+  { url: "https://www.350.org", title: "350.org (Climate Advocacy)" },
+  { url: "https://www.climatenetwork.org", title: "Climate Action Network (CAN)" },
+  { url: "https://www.earth.org", title: "Earth.org (Environmental News)" },
+  { url: "https://www.cdp.net", title: "CDP (Carbon Disclosure Project)" },
+  { url: "https://www.c40.org", title: "C40 Cities Climate Leadership" },
+  { url: "https://www.adaptation-fund.org", title: "Adaptation Fund" },
+
+  // Sustainability, Ecology & Specialized (new)
+  { url: "https://www.iisd.org", title: "International Institute for Sustainable Development (IISD)" },
+  { url: "https://www.sei.org", title: "Stockholm Environment Institute (SEI)" },
+  { url: "https://www.undp.org", title: "UNDP (Environment & Climate)" },
+  { url: "https://www.ipbes.net", title: "IPBES (Biodiversity Science-Policy Platform)" },
+  { url: "https://www.gbif.org", title: "Global Biodiversity Information Facility (GBIF)" },
+  { url: "https://www.ebird.org", title: "eBird (Citizen Science Birds)" },
+  { url: "https://www.inaturalist.org", title: "iNaturalist (Citizen Science Biodiversity)" },
+  { url: "https://www.globalforestwatch.org", title: "Global Forest Watch" },
+
+  // Regional & Country Highlights (new)
+  { url: "https://www.ademe.fr", title: "ADEME (French Environment & Energy Agency)" },
+  { url: "https://www.gov.br/mma", title: "Ministério do Meio Ambiente (Brazil Environment Ministry)" },
+  { url: "https://www.givinggreen.earth", title: "Giving Green (Climate Charity Evaluator)" },
+  { url: "https://www.ecohubmap.com", title: "EcoHubMap (Environmental Directory)" },
+
+    // Agriculture & Food (new)
+  // Global Organizations & CGIAR Centers
+  { url: "https://www.ifpri.org", title: "International Food Policy Research Institute (IFPRI)" },
+  { url: "https://www.cgiar.org", title: "CGIAR (Global Agricultural Research Partnership)" },
+  { url: "https://www.ifad.org", title: "International Fund for Agricultural Development (IFAD)" },
+  { url: "https://www.codexalimentarius.org", title: "Codex Alimentarius (FAO/WHO Food Standards)" },
+  { url: "https://www.globalagriculture.org", title: "Global Agriculture (Policy Analysis)" },
+  { url: "https://www.iica.int", title: "Inter‑American Institute for Cooperation on Agriculture (IICA)" },
+  { url: "https://www.bioversityinternational.org", title: "Bioversity International (CGIAR)" },
+  { url: "https://www.irri.org", title: "International Rice Research Institute (IRRI)" },
+  { url: "https://www.cimmyt.org", title: "CIMMYT (Maize and Wheat Improvement Center)" },
+  { url: "https://www.icrisat.org", title: "ICRISAT (Semi‑Arid Tropics)" },
+  { url: "https://www.alliancebioversityciat.org", title: "Alliance of Bioversity International and CIAT" },
+  { url: "https://www.ilri.org", title: "International Livestock Research Institute (ILRI)" },
+  { url: "https://www.worldfishcenter.org", title: "WorldFish (Aquatic Food Systems)" },
+  { url: "https://www.cipotato.org", title: "International Potato Center (CIP)" },
+  { url: "https://www.iita.org", title: "International Institute of Tropical Agriculture (IITA)" },
+
+  // Government Ministries & Agencies
+  { url: "https://www.bmel.de", title: "BMEL (German Federal Ministry of Food and Agriculture)" },
+  { url: "https://www.agriculture.gouv.fr", title: "Ministère de l'Agriculture et de la Souveraineté alimentaire (France)" },
+  { url: "https://www.politicheagricole.it", title: "Ministero dell'Agricoltura, della Sovranità alimentare e delle Foreste (Italy)" },
+  { url: "https://www.moa.gov.cn", title: "Ministry of Agriculture and Rural Affairs (China)" },
+  { url: "https://www.agricoop.nic.in", title: "Department of Agriculture & Farmers Welfare (India)" },
+  { url: "https://www.dac.gov.in", title: "Department of Agriculture, Cooperation & Farmers Welfare (India)" },
+  { url: "https://www.icar.org.in", title: "Indian Council of Agricultural Research (ICAR)" },
+  { url: "https://www.maf.govt.nz", title: "Ministry for Primary Industries (New Zealand)" },
+  { url: "https://www.agriculture.canada.ca", title: "Agriculture and Agri‑Food Canada" },
+  { url: "https://www.agricultura.gov.br", title: "Ministério da Agricultura e Pecuária (Brazil)" },
+  { url: "https://www.embrapa.br", title: "EMBRAPA (Brazilian Agricultural Research Corporation)" },
+  { url: "https://www.gob.mx/agricultura", title: "Secretaría de Agricultura y Desarrollo Rural (Mexico)" },
+  { url: "https://www.kilimo.go.ke", title: "Ministry of Agriculture and Livestock Development (Kenya)" },
+  { url: "https://www.au.int", title: "African Union (Agriculture and Food Security Programs)" },
+
+  // Research Institutes & Universities
+  { url: "https://www.wageningenur.nl", title: "Wageningen University & Research (Netherlands)" },
+  { url: "https://www.rothamsted.ac.uk", title: "Rothamsted Research (UK – Agricultural Science)" },
+  { url: "https://www.jircas.go.jp", title: "Japan International Research Center for Agricultural Sciences (JIRCAS)" },
+  { url: "https://www.ucdavis.edu", title: "University of California, Davis (Agriculture & Food Programs)" },
+  { url: "https://www.iastate.edu", title: "Iowa State University (Agriculture & Life Sciences)" },
+  { url: "https://www.cirad.fr", title: "CIRAD (French Agricultural Research for Development)" },
+  { url: "https://www.inrae.fr", title: "INRAE (French National Research Institute for Agriculture, Food and Environment)" },
+
+  // Data & Statistics Portals
+  { url: "https://www.globalhungerindex.org", title: "Global Hunger Index" },
+  { url: "https://www.harvestchoice.org", title: "HarvestChoice (Agricultural Data & Tools)" },
+  { url: "https://www.earthstat.org", title: "EarthStat (Crop Production and Land Use Data)" },
+  { url: "https://www.ippc.int", title: "International Plant Protection Convention (IPPC)" },
+  { url: "https://www.woah.org", title: "World Organisation for Animal Health (WOAH, formerly OIE)" },
+
+  // NGOs, Advocacy & Sustainability
+  { url: "https://www.actionagainsthunger.org", title: "Action Against Hunger (ACF)" },
+  { url: "https://www.heifer.org", title: "Heifer International (Livestock & Development)" },
+  { url: "https://www.slowfood.com", title: "Slow Food (Food Culture & Biodiversity)" },
+  { url: "https://www.slowfoodfoundation.com", title: "Slow Food Foundation" },
+  { url: "https://www.viacampesina.org", title: "La Vía Campesina (Peasant Rights & Food Sovereignty)" },
+  { url: "https://www.ifoam.bio", title: "IFOAM – Organics International" },
+  { url: "https://www.rodaleinstitute.org", title: "Rodale Institute (Regenerative Organic Agriculture)" },
+  { url: "https://www.soilhealthinstitute.org", title: "Soil Health Institute" },
+  { url: "https://www.rainforest-alliance.org", title: "Rainforest Alliance (Sustainable Agriculture)" },
+  { url: "https://www.rspo.org", title: "Roundtable on Sustainable Palm Oil (RSPO)" },
+  { url: "https://www.fairtrade.net", title: "Fairtrade International" },
+  { url: "https://www.seedsavers.org", title: "Seed Savers Exchange (Heirloom Varieties)" },
+  { url: "https://www.globalnutritionreport.org", title: "Global Nutrition Report" },
+  { url: "https://www.nutrition.org", title: "American Society for Nutrition (Global Nutrition Science)" },
+  { url: "https://www.scalingupnutrition.org", title: "Scaling Up Nutrition (SUN) Movement" },
+
+  // Trade & Related
+  { url: "https://www.wto.org", title: "World Trade Organization (WTO – Agriculture)" },
+
+    // Transportation & Automotive (new)
+  // Global Organizations & Associations
+  { url: "https://www.icao.int", title: "International Civil Aviation Organization (ICAO)" },
+  { url: "https://www.iata.org", title: "International Air Transport Association (IATA)" },
+  { url: "https://www.unece.org", title: "UNECE – Transport Division (Vehicle Regulations)" },
+  { url: "https://www.imo.org", title: "International Maritime Organization (IMO)" },
+  { url: "https://www.irf.global", title: "International Road Federation (IRF)" },
+  { url: "https://www.uitp.org", title: "International Association of Public Transport (UITP)" },
+  { url: "https://www.oica.net", title: "International Organization of Motor Vehicle Manufacturers (OICA)" },
+  { url: "https://www.acea.auto", title: "European Automobile Manufacturers' Association (ACEA)" },
+  { url: "https://www.weforum.org", title: "World Economic Forum – Mobility & Future of Transportation" },
+
+  // Government Regulatory Agencies (new)
+  { url: "https://www.nhtsa.gov", title: "NHTSA (National Highway Traffic Safety Administration – US)" },
+  { url: "https://www.easa.europa.eu", title: "European Union Aviation Safety Agency (EASA)" },
+  { url: "https://transport.ec.europa.eu", title: "EU Mobility & Transport (European Commission)" },
+  { url: "https://www.tc.gc.ca", title: "Transport Canada" },
+
+  // Major Automotive Manufacturers
+  { url: "https://www.tesla.com", title: "Tesla" },
+  { url: "https://www.toyota.com", title: "Toyota" },
+  { url: "https://www.toyota-global.com", title: "Toyota Global" },
+  { url: "https://www.ford.com", title: "Ford" },
+  { url: "https://www.gm.com", title: "General Motors" },
+  { url: "https://www.volkswagen.com", title: "Volkswagen" },
+  { url: "https://www.bmw.com", title: "BMW" },
+  { url: "https://www.mercedes-benz.com", title: "Mercedes‑Benz" },
+  { url: "https://www.honda.com", title: "Honda" },
+  { url: "https://www.hyundai.com", title: "Hyundai" },
+  { url: "https://www.kia.com", title: "Kia" },
+  { url: "https://www.byd.com", title: "BYD (Build Your Dreams)" },
+  { url: "https://www.rivian.com", title: "Rivian" },
+  { url: "https://www.lucidmotors.com", title: "Lucid Motors" },
+  { url: "https://www.nissan-global.com", title: "Nissan Global" },
+  { url: "https://www.mazda.com", title: "Mazda" },
+  { url: "https://www.subaru.com", title: "Subaru" },
+  { url: "https://www.stellantis.com", title: "Stellantis (Peugeot, Fiat, etc.)" },
+  { url: "https://www.renault.com", title: "Renault" },
+  { url: "https://www.ferrari.com", title: "Ferrari" },
+  { url: "https://www.porsche.com", title: "Porsche" },
+  { url: "https://www.tata.com/motors", title: "Tata Motors" },
+  { url: "https://www.mahindra.com", title: "Mahindra & Mahindra" },
+  { url: "https://www.marutisuzuki.com", title: "Maruti Suzuki" },
+
+  // Aviation & Aerospace (new)
+  { url: "https://www.airbus.com", title: "Airbus" },
+  { url: "https://www.boeing.com", title: "Boeing" },
+  { url: "https://www.embraer.com", title: "Embraer" },
+  { url: "https://www.bombardier.com", title: "Bombardier" },
+  { url: "https://www.safran-group.com", title: "Safran (Aerospace Engines & Equipment)" },
+  { url: "https://www.rolls-royce.com", title: "Rolls‑Royce (Aerospace)" },
+
+  // Logistics, Shipping & Freight
+  { url: "https://www.ups.com", title: "UPS" },
+  { url: "https://www.fedex.com", title: "FedEx" },
+  { url: "https://www.dhl.com", title: "DHL" },
+  { url: "https://www.maersk.com", title: "Maersk (Shipping & Logistics)" },
+  { url: "https://www.cma-cgm.com", title: "CMA CGM (Container Shipping)" },
+  { url: "https://www.msc.com", title: "Mediterranean Shipping Company (MSC)" },
+  { url: "https://www.xpo.com", title: "XPO Logistics" },
+  { url: "https://www.jbhunt.com", title: "J.B. Hunt (Trucking & Logistics)" },
+  { url: "https://www.unionpacific.com", title: "Union Pacific Railroad" },
+  { url: "https://www.db.de", title: "Deutsche Bahn (German Railways)" },
+  { url: "https://www.fiata.com", title: "FIATA (International Freight Forwarders)" },
+
+  // Infrastructure, Charging & Research
+  { url: "https://www.chargepoint.com", title: "ChargePoint (EV Charging Network)" },
+  { url: "https://www.electrifyamerica.com", title: "Electrify America (EV Charging)" },
+  { url: "https://www.itf-oecd.org", title: "International Transport Forum (ITF – OECD)" },
+  { url: "https://www.nrel.gov", title: "National Renewable Energy Laboratory (NREL – Transportation)" },
+
+  // Commercial Vehicles, Motorcycles, Tires & Auto Parts
+  { url: "https://www.daimlertruck.com", title: "Daimler Truck" },
+  { url: "https://www.volvo.com", title: "Volvo Group (Trucks & Buses)" },
+  { url: "https://www.caterpillar.com", title: "Caterpillar (Heavy Equipment)" },
+  { url: "https://www.harley-davidson.com", title: "Harley‑Davidson (Motorcycles)" },
+  { url: "https://www.michelin.com", title: "Michelin (Tires)" },
+  { url: "https://www.bridgestone.com", title: "Bridgestone (Tires)" },
+  { url: "https://www.goodyear.com", title: "Goodyear (Tires)" },
+  { url: "https://www.bosch.com", title: "Bosch (Auto Parts & Technology)" },
+  { url: "https://www.continental.com", title: "Continental (Auto Parts & Tires)" },
+  { url: "https://www.denso.com", title: "Denso (Automotive Components)" },
+  { url: "https://www.nio.com", title: "NIO (Electric Vehicles)" },
+  { url: "https://www.xpeng.com", title: "XPeng (Smart EVs)" },
+  { url: "https://www.polestar.com", title: "Polestar (Electric Performance Cars)" },
   // add more as needed
 ];

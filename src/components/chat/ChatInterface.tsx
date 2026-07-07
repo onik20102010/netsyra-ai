@@ -21,6 +21,7 @@ import MermaidDiagram from "./MermaidDiagram";
 import WeatherWidget from "./WeatherWidget";
 import ClockWidget from "./ClockWidget";
 import CalendarWidget from "./CalendarWidget";
+import SourcesPanel from "./SourcesPanel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -472,6 +473,10 @@ export default function ChatInterface({
     setStreamingMessageId(assistantId);
     setInput("");
 
+    // ── Timeout for fetch (45 seconds) ──
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -483,7 +488,9 @@ export default function ChatInterface({
           newConversation: !conversationId,
           diveDeep,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         if (res.status === 429) {
@@ -568,6 +575,7 @@ export default function ChatInterface({
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
     } finally {
+      clearTimeout(timeoutId);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       setIsLoading(false);
       setIsThinking(false);
@@ -759,7 +767,7 @@ export default function ChatInterface({
                                   View from there
                                 </a>
                               )}
-                              {sources.length > 0 && <SourcesDropdown sources={sources} />}
+                              {sources.length > 0 && <SourcesPanel sources={sources} />}
                             </>
                           );
                         })()
