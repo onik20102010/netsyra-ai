@@ -16,17 +16,45 @@ export interface UseRuntimeReturn {
   error: string | null;
   events: RuntimeEventMessage[];
   connected: boolean;
+  agentConnected: boolean;
+  token: string | null;
+  setToken: (token: string | null) => void;
   refresh: () => Promise<void>;
   sendAction: (action: string, payload?: unknown) => Promise<void>;
 }
 
-const AGENT_WS = process.env.NEXT_PUBLIC_AGENT_WS ?? "ws://localhost:3001";
+const TOKEN_KEY = "netsyra-agent-token";
+
+function getAgentWs(): string {
+  if (process.env.NEXT_PUBLIC_AGENT_WS) return process.env.NEXT_PUBLIC_AGENT_WS;
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return "wss://localhost:3001";
+  }
+  return "ws://localhost:3001";
+}
+
+function buildAgentUrl(base: string, token: string | null): string {
+  if (!token) return base;
+  const separator = base.includes("?") ? "&" : "?";
+  return `${base}${separator}token=${encodeURIComponent(token)}`;
+}
 
 export function useRuntime(): UseRuntimeReturn {
   const [status, setStatus] = useState<RuntimeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<RuntimeEventMessage[]>([]);
   const [connected, setConnected] = useState(false);
+  const [agentConnected, setAgentConnected] = useState(false);
+  const [token, setTokenState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(TOKEN_KEY) || null;
+  });
+  const setToken = useCallback((value: string | null) => {
+    setTokenState(value);
+    if (typeof window === "undefined") return;
+    if (value) localStorage.setItem(TOKEN_KEY, value);
+    else localStorage.removeItem(TOKEN_KEY);
+  }, []);
 
   const wsRef = useRef<WebSocket | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -120,12 +148,13 @@ export function useRuntime(): UseRuntimeReturn {
       return;
     }
 
-    const ws = new WebSocket(AGENT_WS);
+    const ws = new WebSocket(buildAgentUrl(getAgentWs(), token));
     wsRef.current = ws;
 
     ws.onopen = () => {
       hasOpenedRef.current = true;
       setConnected(true);
+      setAgentConnected(true);
       setError(null);
       void refresh();
     };
@@ -183,6 +212,7 @@ export function useRuntime(): UseRuntimeReturn {
 
     ws.onerror = () => {
       setConnected(false);
+      setAgentConnected(false);
       if (!hasOpenedRef.current && !fallbackStartedRef.current) {
         startFallback();
       }
@@ -190,6 +220,7 @@ export function useRuntime(): UseRuntimeReturn {
 
     ws.onclose = () => {
       setConnected(false);
+      setAgentConnected(false);
       wsRef.current = null;
       if (!hasOpenedRef.current && !fallbackStartedRef.current) {
         startFallback();
@@ -201,10 +232,12 @@ export function useRuntime(): UseRuntimeReturn {
       eventSourceRef.current?.close();
       wsRef.current = null;
       eventSourceRef.current = null;
+      hasOpenedRef.current = false;
+      fallbackStartedRef.current = false;
     };
-  }, [refresh, startFallback, appendEvent]);
+  }, [refresh, startFallback, appendEvent, token]);
 
-  return { status, error, events, connected, refresh, sendAction };
+  return { status, error, events, connected, agentConnected, token, setToken, refresh, sendAction };
 }
 
 export function useSubsystems(status: RuntimeStatus | null): SubsystemStatus[] {

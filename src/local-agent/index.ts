@@ -17,6 +17,11 @@
  */
 
 import { spawn, type ChildProcess } from "child_process";
+import { readFileSync } from "fs";
+import https from "https";
+import type { IncomingMessage } from "http";
+import path from "path";
+import { randomUUID } from "crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupRuntime } from "@/ide/runtime";
 import { WorkspaceEngine } from "@/ide/workspace";
@@ -28,6 +33,10 @@ const PORT = Number(process.env.AGENT_PORT || process.env.PORT || 3001);
 const ALLOWED_ORIGINS = new Set(
   (process.env.AGENT_ALLOWED_ORIGINS || "https://www.netsyraai.com,http://localhost:3000,http://localhost:3001").split(",")
 );
+const TLS_CERT = process.env.AGENT_TLS_CERT;
+const TLS_KEY = process.env.AGENT_TLS_KEY;
+const AGENT_TOKEN = randomUUID().slice(0, 8);
+const LOCAL_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]);
 
 interface AgentMessage {
   id?: string;
@@ -56,14 +65,36 @@ async function main() {
   const runtime = await setupRuntime();
   const workspace = getWorkspace(runtime);
 
-  const wss = new WebSocketServer({
-    port: PORT,
-    verifyClient: (info: { origin: string }) => {
+  const wsOptions = {
+    verifyClient: (info: { origin: string; secure: boolean; req: IncomingMessage }) => {
       const origin = info.origin;
-      if (!origin) return true;
-      return ALLOWED_ORIGINS.has(origin) || ALLOWED_ORIGINS.has("*");
+      if (origin && !ALLOWED_ORIGINS.has(origin) && !ALLOWED_ORIGINS.has("*")) {
+        return false;
+      }
+      // Only allow insecure ws:// from local dev origins; all remote origins must use wss.
+      if (!info.secure && origin && !LOCAL_ORIGINS.has(origin)) {
+        return false;
+      }
+      const reqUrl = new URL(info.req.url ?? "", "http://localhost");
+      const token = reqUrl.searchParams.get("token");
+      return token === AGENT_TOKEN;
     },
-  });
+  };
+
+  let projectRoot: string | null = null;
+
+  let server: https.Server | undefined;
+  let wss: WebSocketServer;
+  if (TLS_CERT && TLS_KEY) {
+    server = https.createServer({
+      cert: readFileSync(TLS_CERT),
+      key: readFileSync(TLS_KEY),
+    });
+    wss = new WebSocketServer({ server, ...wsOptions });
+    server.listen(PORT);
+  } else {
+    wss = new WebSocketServer({ port: PORT, ...wsOptions });
+  }
 
   const clients = new Set<WebSocket>();
   const runningCommands = new Map<string, ChildProcess>();
@@ -98,7 +129,7 @@ async function main() {
         return;
       }
 
-      const { id = crypto.randomUUID(), action, payload = {} } = msg;
+      const { id = randomUUID(), action, payload = {} } = msg;
       const p = payload as Record<string, unknown>;
 
       try {
@@ -128,8 +159,9 @@ async function main() {
 
           case "open-project": {
             if (!workspace) throw new Error("Workspace engine not available");
-            const path = typeof p.path === "string" ? p.path : "";
-            const project = await workspace.openProject(path);
+            const openPath = typeof p.path === "string" ? p.path : "";
+            const project = await workspace.openProject(openPath);
+            projectRoot = project.root;
             send(ws, { id, type: "result", result: project });
             break;
           }
@@ -137,6 +169,7 @@ async function main() {
           case "close-project": {
             if (!workspace) throw new Error("Workspace engine not available");
             await workspace.closeProject();
+            projectRoot = null;
             send(ws, { id, type: "result", result: { closed: true } });
             break;
           }
@@ -290,17 +323,28 @@ async function main() {
           case "run-command": {
             const command = typeof p.command === "string" ? p.command : "";
             const args = Array.isArray(p.args) ? p.args.map(String) : [];
-            const cwd = typeof p.cwd === "string" ? p.cwd : process.cwd();
             if (!command) {
               send(ws, { id, type: "error", error: "Missing command" });
+              break;
+            }
+            if (!projectRoot) {
+              send(ws, { id, type: "error", error: "No project open; open a workspace before running commands" });
+              break;
+            }
+
+            const rawCwd = typeof p.cwd === "string" && p.cwd ? p.cwd : projectRoot;
+            const resolvedCwd = path.resolve(projectRoot, rawCwd);
+            const withinRoot = resolvedCwd === projectRoot || resolvedCwd.startsWith(`${projectRoot}${path.sep}`);
+            if (!withinRoot) {
+              send(ws, { id, type: "error", error: "Working directory is outside the selected project" });
               break;
             }
 
             const cmdId = id;
             const proc =
               args.length > 0
-                ? spawn(command, args, { cwd, shell: false, env: process.env })
-                : spawn(command, { cwd, shell: true, env: process.env });
+                ? spawn(command, args, { cwd: resolvedCwd, shell: false, env: process.env })
+                : spawn(command, { cwd: resolvedCwd, shell: true, env: process.env });
 
             runningCommands.set(cmdId, proc);
 
@@ -358,7 +402,9 @@ async function main() {
     });
   });
 
-  console.log(`Netsyra Agent listening on ws://localhost:${PORT}`);
+  const scheme = server ? "wss" : "ws";
+  console.log(`Netsyra Agent listening on ${scheme}://localhost:${PORT}`);
+  console.log(`Agent token: ${AGENT_TOKEN}`);
   console.log(`Run with: npm run agent`);
 }
 

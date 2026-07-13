@@ -14,15 +14,17 @@ import { SidebarContent } from "./SidebarContent";
 import { BottomPanel, type BottomTab } from "./BottomPanel";
 import { EditorArea } from "./EditorArea";
 import { CommandPalette } from "./CommandPalette";
+import { AgentAccessTip } from "./AgentAccessTip";
 import { openWorkspace, restoreWorkspace, buildWorkspace, readFileText, writeFileText, applyFileChange } from "@/lib/workspace";
 
 export function IdeShell() {
-  const { status, error, events, connected, sendAction } = useRuntime();
+  const { status, error, events, connected, agentConnected, token, setToken, sendAction } = useRuntime();
   const [activeView, setActiveView] = useState<View>("explorer");
   const [activeBottom, setActiveBottom] = useState<BottomTab>("terminal");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showBottom, setShowBottom] = useState(true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [showAccessTip, setShowAccessTip] = useState(true);
   const [workspace, setWorkspace] = useState<FileItem | null>(null);
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
@@ -269,6 +271,15 @@ export function IdeShell() {
           {error}
         </div>
       )}
+
+      <AgentAccessTip
+        open={showAccessTip}
+        onClose={() => setShowAccessTip(false)}
+        token={token}
+        setToken={setToken}
+        agentConnected={agentConnected}
+        onOpenFolder={openFolder}
+      />
     </div>
   );
 }

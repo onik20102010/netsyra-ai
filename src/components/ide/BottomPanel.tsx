@@ -21,6 +21,7 @@ interface Terminal {
   history: string[];
   input: string;
   cmdId?: string;
+  pendingCommand?: string;
   isRunning: boolean;
 }
 
@@ -48,17 +49,25 @@ function TerminalView({
   onInputChange,
   onRun,
   onStop,
+  onConfirm,
+  onCancel,
+  autoApproveSafe,
+  onToggleAutoApprove,
 }: {
   terminal: Terminal;
   onInputChange: (value: string) => void;
   onRun: () => void;
   onStop: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  autoApproveSafe: boolean;
+  onToggleAutoApprove: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [terminal.history]);
+  }, [terminal.history, terminal.pendingCommand]);
 
   return (
     <div className="flex flex-col h-full p-2 overflow-hidden">
@@ -68,16 +77,35 @@ function TerminalView({
             {line}
           </div>
         ))}
+        {terminal.pendingCommand && (
+          <div className="flex items-center gap-2 py-1 px-2 my-1 bg-ide-warning/10 border border-ide-warning/20 rounded text-ide-foreground text-ide-sm">
+            <span className="flex-1 font-mono">{`$ ${terminal.pendingCommand}`}</span>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="px-2 py-0.5 bg-ide-success text-ide-success-foreground rounded text-ide-xs hover:bg-ide-success/80"
+            >
+              Run
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2 py-0.5 bg-ide-surface text-ide-foreground rounded text-ide-xs border border-ide-border hover:bg-ide-bg"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
       <form
-        onSubmit={(e) => { e.preventDefault(); onRun(); }}
+        onSubmit={(e) => { e.preventDefault(); terminal.pendingCommand ? onConfirm() : onRun(); }}
         className="flex items-center gap-2 mt-1 pt-1 border-t border-ide-border"
       >
         <span className="text-ide-foreground-dim">$</span>
         <input
           value={terminal.input}
           onChange={(e) => onInputChange(e.target.value)}
-          disabled={terminal.isRunning}
+          disabled={terminal.isRunning || !!terminal.pendingCommand}
           className="flex-1 bg-transparent text-ide-foreground text-ide-sm focus:outline-none disabled:opacity-50"
           placeholder="Type a command..."
         />
@@ -90,10 +118,23 @@ function TerminalView({
             Stop
           </button>
         )}
+        {!terminal.isRunning && !terminal.pendingCommand && (
+          <label className="flex items-center gap-1.5 text-ide-foreground-dim text-ide-xs cursor-pointer select-none" title="Auto-approve safe commands (dir, ls, git status, etc.)">
+            <input
+              type="checkbox"
+              checked={autoApproveSafe}
+              onChange={onToggleAutoApprove}
+              className="accent-ide-primary"
+            />
+            Auto-approve safe
+          </label>
+        )}
       </form>
     </div>
   );
 }
+
+const SAFE_COMMANDS = ["dir", "ls", "pwd", "echo", "cat", "type", "git status", "git log", "git branch", "git diff"];
 
 function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; sendAction?: (action: string, payload?: unknown) => Promise<void> }) {
   const [terminals, setTerminals] = useState<Terminal[]>(initialTerminals);
@@ -101,6 +142,7 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
   const [nextId, setNextId] = useState(2);
   const [split, setSplit] = useState(false);
   const [secondaryId, setSecondaryId] = useState<string | null>(null);
+  const [autoApproveSafe, setAutoApproveSafe] = useState(false);
   const processedKeys = useRef<Set<string>>(new Set());
 
   const active = terminals.find((t) => t.id === activeId) ?? terminals[0];
@@ -145,16 +187,39 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
       return;
     }
 
-    const parts = cmd.split(/\s+/);
-    const command = parts[0];
-    const args = parts.slice(1);
+    if (autoApproveSafe && isSafeCommand(cmd)) {
+      executeCommand(id, cmd);
+    } else {
+      setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, input: "", pendingCommand: cmd } : t)));
+    }
+  };
+
+  const executeCommand = (id: string, cmd: string) => {
     const cmdId = crypto.randomUUID();
-
     setTerminals((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, history: [...t.history, `$ ${cmd}`], input: "", cmdId, isRunning: true } : t))
+      prev.map((t) => (t.id === id ? { ...t, history: [...t.history, `$ ${cmd}`], input: "", pendingCommand: undefined, cmdId, isRunning: true } : t))
     );
+    void sendAction?.("run-command", { command: cmd, cwd: ".", id: cmdId });
+  };
 
-    void sendAction("run-command", { command, args, cwd: ".", id: cmdId });
+  const confirmRun = (id: string) => {
+    const terminal = terminals.find((t) => t.id === id);
+    if (!terminal?.pendingCommand) return;
+    executeCommand(id, terminal.pendingCommand);
+  };
+
+  const cancelRun = (id: string) => {
+    setTerminals((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        return { ...t, input: t.pendingCommand ? t.pendingCommand : t.input, pendingCommand: undefined };
+      })
+    );
+  };
+
+  const isSafeCommand = (cmd: string): boolean => {
+    const trimmed = cmd.trim().toLowerCase();
+    return SAFE_COMMANDS.some((prefix) => trimmed === prefix || trimmed.startsWith(`${prefix} `));
   };
 
   const stop = (id: string) => {
@@ -206,6 +271,10 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
       onInputChange={(value) => updateInput(active.id, value)}
       onRun={() => run(active.id)}
       onStop={() => stop(active.id)}
+      onConfirm={() => confirmRun(active.id)}
+      onCancel={() => cancelRun(active.id)}
+      autoApproveSafe={autoApproveSafe}
+      onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
     />
   );
 
@@ -267,6 +336,10 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
                 onInputChange={(value) => updateInput(secondary.id, value)}
                 onRun={() => run(secondary.id)}
                 onStop={() => stop(secondary.id)}
+                onConfirm={() => confirmRun(secondary.id)}
+                onCancel={() => cancelRun(secondary.id)}
+                autoApproveSafe={autoApproveSafe}
+                onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
               />
             }
           />
