@@ -58,40 +58,10 @@ export default function NetsyraHomepage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-purple-500/30 selection:text-purple-200">
+    <section className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-purple-500/30 selection:text-purple-200" aria-label="Hero">
       
-      {/* 1. Header & Navigation (Google Compliance Structured) */}
-      <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              NetsyraAI
-            </span>
-          </div>
-          
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-400">
-            <a href="#models" className="hover:text-white transition-colors">Supported Matrices</a>
-            <a href="#orchestrator" className="hover:text-white transition-colors">The Router</a>
-            <a href="#architecture" className="hover:text-white transition-colors">Enterprise Security</a>
-          </nav>
-
-          <div>
-            {/* Standard Compliant Google OAuth Entrance Target */}
-            <button className="flex items-center space-x-2 bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-950 shadow-md">
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.227C18.216 1.414 15.48 0 12.24 0 5.48 0 0 5.48 0 12.24s5.48 12.24 12.24 12.24c7.05 0 11.732-4.957 11.732-11.93 0-.803-.086-1.414-.188-1.765H12.24z"/>
-              </svg>
-              <span>Sign in with Google</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* 2. Hero Orchestration Section */}
-      <main className="max-w-7xl mx-auto px-6 pt-16 pb-24">
+      {/* Hero Orchestration Section */}
+      <div className="max-w-7xl mx-auto px-6 pt-16 pb-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center space-x-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full text-xs font-medium text-purple-400 mb-6">
             <Activity className="w-3 h-3" />
@@ -236,24 +206,8 @@ export default function NetsyraHomepage() {
             </p>
           </div>
         </section>
-      </main>
+      </div>
 
-      {/* 5. Google Compliance Required Public Footer */}
-      <footer id="architecture" className="border-t border-slate-900 bg-slate-950 text-slate-500 text-xs py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 text-center sm:text-left">
-            <p className="font-medium text-slate-400">NetsyraAI Orchestration Platform</p>
-            <p>© 2026 Netsyra Inc. All rights reserved. Cloud application infrastructure.</p>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-slate-400">
-            {/* These items must map to active public routes for Google OAuth Brand validation */}
-            <a href="/privacy-policy" className="hover:text-white transition-colors underline decoration-slate-800 underline-offset-4">Privacy Policy</a>
-            <a href="/terms-of-service" className="hover:text-white transition-colors underline decoration-slate-800 underline-offset-4">Terms of Service</a>
-            <a href="mailto:support@netsyra.ai" className="hover:text-white transition-colors underline decoration-slate-800 underline-offset-4">Support Hub</a>
-          </div>
-        </div>
-      </footer>
-
-    </div>
+    </section>
   );
 }

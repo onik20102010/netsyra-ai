@@ -45,16 +45,13 @@ setInterval(() => {
 }, 60_000);
 
 // ── API Key Rotation (Groq only) ───────────────────
-const GROQ_KEYS: string[] = [
-  process.env.GROQ_API_KEY || "",
-  process.env.GROQ_API_KEY_2 || "",
-  process.env.GROQ_API_KEY_3 || "",
-].filter(Boolean);
+// IDE requests should use Groq API key 2 only.
+const GROQ_KEYS: string[] = [process.env.GROQ_API_KEY_2 || ""].filter(Boolean);
 
 let keyIndex = 0;
 
 export function getNextGroqKey(): string {
-  if (GROQ_KEYS.length === 0) throw new Error("No Groq API keys configured");
+  if (GROQ_KEYS.length === 0) throw new Error("No Groq API key 2 configured");
   const key = GROQ_KEYS[keyIndex % GROQ_KEYS.length];
   keyIndex++;
   return key;

@@ -5,9 +5,9 @@ import { aaiRuntime } from "@/lib/aai";
 import { tiers } from "@/lib/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
 import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/services/real-time";
-import { performDeepSearch } from "@/lib/services/live-data";
+import { performDeepSearch, performMultiDeepSearch } from "@/lib/services/live-data";
 import FirecrawlApp from "@mendable/firecrawl-js";
-import { cleanSearchQuery } from "@/lib/services/query-cleaner";
+import { cleanSearchQueries } from "@/lib/services/query-cleaner";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -215,10 +215,10 @@ export async function POST(req: NextRequest) {
     const WEB_SEARCH_TIERS = ["live"];
     const canWebSearch = WEB_SEARCH_TIERS.includes(modelTier);
 
-    // Clean the query for curated matching + web search
-    const cleanedQuery = canWebSearch ? await cleanSearchQuery(userMessage) : userMessage;
-    if (canWebSearch) {
-      console.log(`🧹 Cleaned query: "${userMessage}" → "${cleanedQuery}"`);
+    // Clean the query using multi‑query extraction
+    const queries = canWebSearch ? await cleanSearchQueries(userMessage) : [userMessage];
+    if (canWebSearch && queries.length > 0) {
+      console.log(`🧹 Cleaned queries: "${userMessage}" → [${queries.join(", ")}]`);
     }
 
     // N Live always searches the web when Dive Deep is on (except for very short messages)
@@ -303,9 +303,14 @@ export async function POST(req: NextRequest) {
         } else if (isDateQuery) {
           liveData = await getCurrentCalendarCard();
         } else {
-          // Universal web search for everything else
-          const cleanQ = cleanedQuery;
-          liveData = await performDeepSearch(cleanQ);
+          // Universal web search – multi‑query or single
+          if (queries.length > 1) {
+            console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
+            liveData = await performMultiDeepSearch(queries);
+          } else {
+            const cleanQ = queries[0] || userMessage;
+            liveData = await performDeepSearch(cleanQ);
+          }
           if (!liveData) {
             liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
           }
@@ -444,9 +449,14 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       } else if (isDateQuery) {
         liveData = await getCurrentCalendarCard();
       } else {
-        // Universal web search for everything else
-        const cleanQ = cleanedQuery;
-        liveData = await performDeepSearch(cleanQ);
+        // Universal web search – multi‑query or single
+        if (queries.length > 1) {
+          console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
+          liveData = await performMultiDeepSearch(queries);
+        } else {
+          const cleanQ = queries[0] || userMessage;
+          liveData = await performDeepSearch(cleanQ);
+        }
         if (!liveData) {
           liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
         }
@@ -458,23 +468,22 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       }
     }
 
-    // ── Live tier: stream Tavily answer directly, bypass the LLM ──
+    // ── Live tier: stream Tavily answer, then append sources ──
     if (liveData && modelTier === "live") {
-      // Keep the system prompt extremely short for live tier
-      apiMessages[0].content = `${tier.systemPrompt}\n\nThe web search results will be shown directly. Do NOT answer – the system will handle the reply.`;
-
-      // Extract Tavily answer and sources from liveData
+      // Extract answer and sources
       const answerMatch = liveData.match(/--- WEB SEARCH ---\n([\s\S]*?)(?:\n\n## Sources|$)/);
-      const sourcesMatch = liveData.match(/## Sources\n([\s\S]*)/);
+      const answerText = answerMatch?.[1]?.trim() || liveData.slice(0, 500);
 
-      const answerText = answerMatch?.[1]?.trim() || liveData;
-      const sourcesText = sourcesMatch?.[1]?.trim() || "";
+      // Parse sources from liveData
+      const sourceRegex = /- \[([^\]]+)\]\(([^)]+)\)/g;
+      const sources: { title: string; url: string }[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = sourceRegex.exec(liveData)) !== null) {
+        sources.push({ title: m[1], url: m[2] });
+      }
 
-      // Format the final message with markdown
-      const finalMessage = `${answerText}\n\n${sourcesText ? `**Sources:**\n${sourcesText}` : ""}`;
-
-      // Stream it back word by word
-      const words = finalMessage.split(/\s+/);
+      // Stream the answer first
+      const words = answerText.split(/\s+/);
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
@@ -483,13 +492,21 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
             await new Promise(r => setTimeout(r, 10));
           }
+
+          // After the answer, send the sources as a single, complete chunk
+          if (sources.length > 0) {
+            const sourcesBlock = `\n\n## Sources\n` + sources.map((s) => `- [${s.title}](${s.url})`).join("\n");
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: sourcesBlock } }] })}\n\n`));
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         },
       });
 
-      // Save the answer to the database
-      await saveMessage(supabase, user.id, convId, "assistant", finalMessage);
+      // Save the full message (answer + sources) to DB
+      const fullMessage = answerText + (sources.length > 0 ? `\n\n## Sources\n` + sources.map((s) => `- [${s.title}](${s.url})`).join("\n") : "");
+      await saveMessage(supabase, user.id, convId, "assistant", fullMessage);
 
       const headers: Record<string, string> = {
         "Content-Type": "text/event-stream",
@@ -537,7 +554,11 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     let lastError: string | null = null;
 
     for (const modelConfig of tier.models) {
-      const apiKey = process.env[modelConfig.apiKeyEnv];
+      let apiKey = process.env[modelConfig.apiKeyEnv];
+      // Use fallback key if primary is missing or we're on the fallback model
+      if (!apiKey || modelConfig.modelKey === "live_fallback" || modelConfig.modelKey === "aai_fallback") {
+        apiKey = process.env.GROQ_API_KEY_4 || process.env[modelConfig.apiKeyEnv];
+      }
       if (!apiKey) {
         lastError = `Missing API key for ${modelConfig.modelKey}`;
         continue;

@@ -19,7 +19,7 @@ export default function FooterSection() {
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center p-1 ring-1 ring-purple-500/20">
-                <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
+                <img src="/logo.png" alt="Netsyra AI logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-lg font-bold text-white">Netsyra AI</span>
             </div>

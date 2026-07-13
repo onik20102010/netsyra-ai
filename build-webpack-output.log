@@ -1,0 +1,45 @@
+﻿node.exe : ΓÜá Invalid next.config.ts options detected: 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá Invalid nex...ions detected: :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ΓÜá     Expected object, received boolean at "turbopack"
+ΓÜá See more info here: https://nextjs.org/docs/messages/invalid-next-config
+Γû▓ Next.js 16.2.6 (webpack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+
+<--- Last few GCs --->
+
+[10284:00000207C9963000]    33787 ms: Scavenge (interleaved) 389.9 (756.4) -> 389.8 (756.4) MB, pooled: 111 MB, 34.79 / 0.00 ms  (average mu = 0.976, current mu = 0.971) allocation failure; 
+[10284:00000207C9963000]    34324 ms: Scavenge (interleaved) 455.4 (757.0) -> 432.2 (757.0) MB, pooled: 111 MB, 31.61 / 0.00 ms  (average mu = 0.976, current mu = 0.971) allocation failure; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+ 1: 00007FF7096397FF 
+ 2: 00007FF70A27DA77 
+ 3: 00007FF709BF8A46 
+ 4: 00007FF709A96660 
+ 5: 00007FF709A29711 
+ 6: 00007FF709A91EA6 
+ 7: 00007FF709A9C794 
+ 8: 00007FF709A335A2 
+ 9: 00007FF709A3349B 
+10: 00007FF709A54727 
+11: 00007FF709A840A3 
+12: 00007FF709A59BBB 
+13: 00007FF709AD1D26 
+14: 00007FF709AD0A40 
+15: 00007FF709ACE83A 
+16: 00007FF70A1F16FF 
+17: 00007FF709AD031B 
+18: 00007FF70AA4FDDF 
+19: 00007FF7095893EE 
+20: 00007FF70A2D2DE6 
+21: 00007FF70B514173 
+22: 00007FFC54027374 
+23: 00007FFC54B9CC91 

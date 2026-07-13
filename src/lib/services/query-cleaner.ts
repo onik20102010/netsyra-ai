@@ -6,6 +6,19 @@ const CLEANER_MODEL = {
   model: "groq/compound-mini",
 };
 
+export async function cleanSearchQueries(rawMessage: string): Promise<string[]> {
+  // If the message contains "and" or "also", split into separate queries
+  const parts = rawMessage.split(/\band\b|\balso\b/i).filter(p => p.trim().length > 3);
+  if (parts.length > 1) {
+    // Clean each part individually
+    const cleaned = await Promise.all(parts.map(p => cleanSearchQuery(p.trim())));
+    return cleaned.filter(q => q.length > 0);
+  }
+  // Fallback to single query
+  const single = await cleanSearchQuery(rawMessage);
+  return single ? [single] : [];
+}
+
 export async function cleanSearchQuery(rawMessage: string): Promise<string> {
   // Hard safety: extract the most important entity
   const short = rawMessage

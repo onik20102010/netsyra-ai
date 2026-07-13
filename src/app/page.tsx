@@ -5,10 +5,18 @@ import FeaturesSection from "@/components/sections/FeaturesSection";
 import CTASection from "@/components/sections/CTASection";
 import CodeShowcaseSection from "@/components/sections/CodeShowcaseSection";
 import FooterSection from "@/components/sections/FooterSection";
+import JsonLd from "@/components/JsonLd";
+import { webPageJsonLd } from "@/lib/structured-data";
+
+const title = "Netsyra AI – Advanced Multi-Model AI Assistant";
+const description =
+  "Netsyra AI is an intelligent AI orchestration layer that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.";
 
 export default function Home() {
   return (
-    <main className="relative overflow-hidden bg-[#050505]">
+    <>
+      <JsonLd data={webPageJsonLd({ path: "/", title, description })} />
+      <main className="relative overflow-hidden bg-[#050505]">
       {/* Global background */}
       <div className="fixed inset-0 pointer-events-none -z-10">
         <div className="absolute inset-0 bg-[#050505]" />
@@ -51,5 +59,6 @@ export default function Home() {
       <CTASection />
       <FooterSection />
     </main>
+    </>
   );
 }

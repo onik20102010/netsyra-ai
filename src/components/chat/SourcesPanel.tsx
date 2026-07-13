@@ -40,9 +40,9 @@ export default function SourcesPanel({ sources }: { sources: Source[] }) {
       {/* Trigger pill */}
       <button
         onClick={() => setOpen(!open)}
-        className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1a1a1a] border border-zinc-700 text-sm text-zinc-300 hover:text-white hover:border-zinc-500 transition"
+        className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 text-sm text-gray-600 hover:text-gray-900 hover:border-gray-300 shadow-sm transition"
       >
-        <Globe size={14} className="text-cyan-400" />
+        <Globe size={14} className="text-cyan-500" />
         <span>{sources.length} source{sources.length > 1 ? "s" : ""}</span>
       </button>
 

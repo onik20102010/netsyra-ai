@@ -24,7 +24,7 @@ export default function TopNav() {
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-black flex items-center justify-center p-1">
               <img
                 src="/logo.png"
-                alt="Netsyra"
+                alt="Netsyra AI logo"
                 className="w-full h-full object-contain"
               />
             </div>

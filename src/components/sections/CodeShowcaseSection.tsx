@@ -202,12 +202,12 @@ export default function ModelsShowcase() {
           transition={{ duration: 0.7 }}
           className="text-center mb-16"
         >
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
+          <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
             Models built for{" "}
             <span className="bg-gradient-to-r from-orange-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
               performance
             </span>
-          </h1>
+          </h2>
           <p className="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
             From the creators of Netsyra – each model is known for it's best tone.
             <br />

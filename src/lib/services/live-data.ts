@@ -62,6 +62,21 @@ async function wikipediaExtract(query: string): Promise<string> {
   }
 }
 
+export async function performMultiDeepSearch(queries: string[]): Promise<string> {
+  const results = await Promise.all(queries.map(q => performDeepSearch(q)));
+  // Combine results, removing empty ones
+  const validResults = results.filter(r => r.trim().length > 0);
+  if (validResults.length === 0) return "";
+  
+  // If only one query had results, return it directly
+  if (validResults.length === 1) return validResults[0];
+  
+  // Otherwise, combine with headers for each topic
+  return validResults
+    .map((r, i) => `### Topic ${i + 1}: ${queries[i]}\n${r}`)
+    .join("\n\n");
+}
+
 export async function performDeepSearch(query: string): Promise<string> {
   // 1. Tavily with built‑in answer
   const tavilyResult = await tavilySearchWithAnswer(query);

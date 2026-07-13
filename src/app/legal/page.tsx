@@ -288,27 +288,20 @@ export default function LegalNoticePage() {
       <header className="fixed top-0 left-0 right-0 z-20 px-6 md:px-10 py-4 bg-black/60 backdrop-blur-md border-b border-white/5 flex items-center justify-center">
         <div className="flex items-center gap-6 flex-wrap justify-center">
           <Link
-            href="https://www.netsyraai.com/chat"
+            href="https://netsyraai.com/chat"
             target="_blank"
             className="text-sm text-gray-400 hover:text-white transition"
           >
             Chat
           </Link>
           <Link
-            href="https://www.netsyraai.com/ide"
-            target="_blank"
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            IDE
-          </Link>
-          <Link
-            href="https://www.netsyraai.com/cv-builder/index.html"
+            href="https://netsyraai.com/cv-builder/index.html"
             target="_blank"
             className="text-sm text-gray-400 hover:text-white transition"
           >
             CV Builder
           </Link>
-          <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white transition">
+          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">
             Legal
           </Link>
           <Link href="/goal" className="text-sm text-gray-400 hover:text-white transition">
@@ -408,7 +401,7 @@ export default function LegalNoticePage() {
           {/* ── Back to Home ── */}
           <motion.div variants={item} className="text-center">
             <Link
-              href="/dashboard"
+              href="/"
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition text-sm"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

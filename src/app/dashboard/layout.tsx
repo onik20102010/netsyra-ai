@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="text-[10px] uppercase tracking-wider text-gray-500 px-3 pb-2">Dashboards</div>
 
           <Link
-            href="https://www.netsyraai.com/chat"
+            href="https://netsyraai.com/chat"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
           >
@@ -47,15 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             Netsyra Chat
           </Link>
           <Link
-            href="https://www.netsyraai.com/ide"
-            target="_blank"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-            IDE Netsyra
-          </Link>
-          <Link
-            href="https://www.netsyraai.com/cv-builder/index.html"
+            href="https://netsyraai.com/cv-builder/index.html"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
           >
@@ -74,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Legal / policy links – using your live URLs */}
           <Link
-            href="https://www.netsyraai.com/terms"
+            href="https://netsyraai.com/terms"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
           >
@@ -82,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             Terms of Service
           </Link>
           <Link
-            href="https://www.netsyraai.com/legal"
+            href="https://netsyraai.com/legal"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
           >
@@ -90,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             Legal Notice
           </Link>
           <Link
-            href="https://www.netsyraai.com/privacy"
+            href="https://netsyraai.com/privacy"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition"
           >

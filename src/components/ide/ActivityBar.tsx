@@ -1,46 +1,51 @@
 "use client";
-import { Files, Search, MessageSquare, FolderOpen } from "lucide-react";
+
+import React from "react";
+import { FolderTree, Search, GitBranch, Puzzle, Sparkles, Activity, Bell, Settings } from "lucide-react";
+
+export type View = "explorer" | "search" | "source-control" | "extensions" | "chat" | "runtime";
 
 interface ActivityBarProps {
-  activeView: string;
-  onViewChange: (view: string) => void;
-  onOpenProject?: () => void;
+  active: View;
+  onSelect: (v: View) => void;
 }
 
-const activities = [
-  { id: "explorer", icon: Files, label: "Explorer" },
-  { id: "search", icon: Search, label: "Search" },
-  { id: "chat", icon: MessageSquare, label: "AI Chat" },
+const activityItems: { id: View; icon: React.ReactNode; label: string }[] = [
+  { id: "explorer", icon: <FolderTree size={18} />, label: "Explorer" },
+  { id: "search", icon: <Search size={18} />, label: "Search" },
+  { id: "source-control", icon: <GitBranch size={18} />, label: "Source Control" },
+  { id: "extensions", icon: <Puzzle size={18} />, label: "Extensions" },
+  { id: "chat", icon: <Sparkles size={18} />, label: "AI Chat" },
+  { id: "runtime", icon: <Activity size={18} />, label: "Runtime" },
 ];
 
-export default function ActivityBar({ activeView, onViewChange, onOpenProject }: ActivityBarProps) {
+export function ActivityBar({ active, onSelect }: ActivityBarProps) {
   return (
-    <div className="flex flex-col items-center w-12 h-full bg-[#333333] border-r border-[#252526] py-2 space-y-4">
-      {/* Open Project Button */}
-      <button
-        onClick={onOpenProject}
-        className="p-2 rounded-md transition-colors text-gray-400 hover:text-white hover:bg-[#2a2d2e]"
-        title="Open Project"
-      >
-        <FolderOpen size={24} />
-      </button>
-
-      <div className="w-8 h-px bg-[#252526]" />
-
-      {activities.map(({ id, icon: Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => onViewChange(id)}
-          className={`p-2 rounded-md transition-colors ${
-            activeView === id
-              ? "text-white bg-[#37373d]"
-              : "text-gray-400 hover:text-white hover:bg-[#2a2d2e]"
-          }`}
-          title={label}
-        >
-          <Icon size={24} />
+    <div className="w-12 flex flex-col items-center py-2 bg-ide-surface border-r border-ide-border z-ide-sidebar">
+      <div className="flex flex-col gap-1 flex-1">
+        {activityItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.id)}
+            title={item.label}
+            className={`w-9 h-9 flex items-center justify-center rounded transition-all duration-ide-fast ${
+              active === item.id
+                ? "text-ide-foreground bg-ide-surface-active"
+                : "text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover"
+            }`}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-1 mt-auto">
+        <button className="w-9 h-9 flex items-center justify-center rounded text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover transition-colors">
+          <Bell size={18} />
         </button>
-      ))}
+        <button className="w-9 h-9 flex items-center justify-center rounded text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover transition-colors">
+          <Settings size={18} />
+        </button>
+      </div>
     </div>
   );
 }

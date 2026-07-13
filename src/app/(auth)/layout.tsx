@@ -1,4 +1,7 @@
 import AuthBackground from "@/components/auth/AuthBackground";
+import { noindexMetadata } from "@/lib/seo";
+
+export const metadata = noindexMetadata("Account");
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
