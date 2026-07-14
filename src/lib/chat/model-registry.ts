@@ -1,5 +1,5 @@
 import { structureLight } from "@/lib/structure-light";
-import { AAI_SYSTEM_PROMPT } from "@/lib/aai/prompt";
+import { AAI_SYSTEM_PROMPT } from "@/lib/chat/aai/prompt";
 
 export type ProviderType = "openai" | "gemini";
 

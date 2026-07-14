@@ -7,10 +7,11 @@ import { type RuntimeStatus } from "@/ide/types";
 interface StatusBarProps {
   status: RuntimeStatus | null;
   connected: boolean;
+  agentConnected: boolean;
   onToast: (message: string) => void;
 }
 
-export function StatusBar({ status, connected, onToast }: StatusBarProps) {
+export function StatusBar({ status, connected, agentConnected, onToast }: StatusBarProps) {
   const state = status?.state ?? "idle";
   const eventCount = status?.metrics?.eventCount ?? 0;
   const uptimeMs = status?.uptimeMs ?? 0;
@@ -27,8 +28,8 @@ export function StatusBar({ status, connected, onToast }: StatusBarProps) {
           <span>main*</span>
         </div>
         <div className="flex items-center gap-1.5">
-          {connected ? <Wifi size={12} className="text-ide-success" /> : <WifiOff size={12} className="text-ide-error" />}
-          <span>{connected ? "Connected" : "Disconnected"}</span>
+          {agentConnected ? <Wifi size={12} className="text-ide-success" /> : <WifiOff size={12} className="text-ide-error" />}
+          <span>{agentConnected ? "Agent connected" : "Agent disconnected"}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Activity size={12} />

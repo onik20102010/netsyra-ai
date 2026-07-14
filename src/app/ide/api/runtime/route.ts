@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setupRuntime } from "@/ide/runtime";
+import { requireAuth } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error as NextResponse;
+
   const runtime = await setupRuntime();
   return NextResponse.json(runtime.getStatus());
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error as NextResponse;
+
   const runtime = await setupRuntime();
 
   try {

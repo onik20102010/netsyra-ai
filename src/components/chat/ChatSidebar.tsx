@@ -14,7 +14,7 @@ import {
   Link,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, createChatClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 interface ChatSidebarProps {
@@ -59,6 +59,7 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
+  const chatSupabase = createChatClient();
 
   // Automatically enable Dive Deep when model becomes live, disable otherwise
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function ChatSidebar({
   useEffect(() => {
     if (!user) return;
     const fetchConversations = async () => {
-      const { data } = await supabase
+      const { data } = await chatSupabase
         .from("conversations")
         .select("id, title, pinned, archived")
         .eq("user_id", user.id)
@@ -134,7 +135,7 @@ export default function ChatSidebar({
 
   // Toggle pin
   const togglePin = async (id: string, current: boolean) => {
-    await supabase.from("conversations").update({ pinned: !current }).eq("id", id);
+    await chatSupabase.from("conversations").update({ pinned: !current }).eq("id", id);
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, pinned: !current } : c))
     );
@@ -143,7 +144,7 @@ export default function ChatSidebar({
 
   // Archive conversation
   const archiveConv = async (id: string) => {
-    await supabase.from("conversations").update({ archived: true }).eq("id", id);
+    await chatSupabase.from("conversations").update({ archived: true }).eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
     toast.success("Archived");
   };

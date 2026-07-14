@@ -14,7 +14,7 @@ import { SidebarContent } from "./SidebarContent";
 import { BottomPanel, type BottomTab } from "./BottomPanel";
 import { EditorArea } from "./EditorArea";
 import { CommandPalette } from "./CommandPalette";
-import { AgentAccessTip } from "./AgentAccessTip";
+import { IdeTerminalSetup } from "./IdeTerminalSetup";
 import { openWorkspace, restoreWorkspace, buildWorkspace, readFileText, writeFileText, applyFileChange } from "@/lib/workspace";
 
 export function IdeShell() {
@@ -24,7 +24,6 @@ export function IdeShell() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showBottom, setShowBottom] = useState(true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [showAccessTip, setShowAccessTip] = useState(true);
   const [workspace, setWorkspace] = useState<FileItem | null>(null);
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
@@ -254,7 +253,7 @@ export function IdeShell() {
         />
       </div>
 
-      <StatusBar status={status} connected={connected} onToast={notify} />
+      <StatusBar status={status} connected={connected} agentConnected={agentConnected} onToast={notify} />
 
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} onSelect={handleCommand} />
 
@@ -272,14 +271,7 @@ export function IdeShell() {
         </div>
       )}
 
-      <AgentAccessTip
-        open={showAccessTip}
-        onClose={() => setShowAccessTip(false)}
-        token={token}
-        setToken={setToken}
-        agentConnected={agentConnected}
-        onOpenFolder={openFolder}
-      />
+      <IdeTerminalSetup setToken={setToken} />
     </div>
   );
 }

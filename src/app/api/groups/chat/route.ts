@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../../lib/supabase/server";
-import { tiers } from "../../../../lib/model-registry";
+import { createChatServerClient } from "../../../../lib/supabase/server";
+import { tiers } from "@/lib/chat/model-registry";
+import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
+
+const MAX_MESSAGE_LENGTH = 4000;
 
 export async function POST(req: NextRequest) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { groupId, message, modelTier = "fast" } = await req.json();
   if (!groupId || !message) return NextResponse.json({ error: "Group ID and message are required" }, { status: 400 });
+  if (typeof message !== "string" || message.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+  }
+  const tierKey = typeof modelTier === "string" && modelTier in MODEL_LIMITS ? modelTier : "fast";
 
   // Verify membership via security‑definer function
   const { data: isMember } = await supabase.rpc("is_member_of_group", { p_group_id: groupId });
   if (!isMember) {
     return NextResponse.json({ error: "You are not a member of this group" }, { status: 403 });
+  }
+
+  const usageCheck = await checkAndUpdateUsage(supabase, user.id, tierKey);
+  if (!usageCheck.allowed) {
+    return NextResponse.json({ error: "Daily group chat limit reached" }, { status: 429 });
   }
 
   // Find or create the group conversation
@@ -36,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Call AI
-  const tier = tiers[modelTier as keyof typeof tiers] || tiers.fast;
+  const tier = tiers[tierKey as keyof typeof tiers] || tiers.fast;
   const modelConfig = tier.models[0];
   const apiKey = process.env[modelConfig.apiKeyEnv];
   if (!apiKey) return NextResponse.json({ error: "Model unavailable" }, { status: 500 });

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
+import { createChatClient } from "@/lib/supabase/client";
 import { MessageSquare, Trash2, Edit3, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export default function HistoryPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [clientReady, setClientReady] = useState(false);
-  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
+  const [supabase, setSupabase] = useState<ReturnType<typeof createChatClient> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
 
@@ -28,7 +28,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     try {
-      const client = createClient();
+      const client = createChatClient();
       setSupabase(client);
       setClientReady(true);
     } catch (err) {

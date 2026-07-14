@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "../../../hooks/useAuth";
-import { createClient } from "../../../lib/supabase/client";
+import { createChatClient } from "../../../lib/supabase/client";
 
 export default function JoinGroupPage() {
   const { user, loading } = useAuth();
@@ -11,7 +11,7 @@ export default function JoinGroupPage() {
   const code = params.code as string;
   const [groupName, setGroupName] = useState("");
   const [error, setError] = useState("");
-  const supabase = createClient();
+  const supabase = createChatClient();
 
   useEffect(() => {
     if (!code) return;

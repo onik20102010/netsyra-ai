@@ -17,11 +17,11 @@
  */
 
 import { spawn, type ChildProcess } from "child_process";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import https from "https";
 import type { IncomingMessage } from "http";
 import path from "path";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupRuntime } from "@/ide/runtime";
 import { WorkspaceEngine } from "@/ide/workspace";
@@ -30,12 +30,13 @@ import type { RuntimeEvent } from "@/ide/types";
 import type { SearchQuery } from "@/ide/workspace/types";
 
 const PORT = Number(process.env.AGENT_PORT || process.env.PORT || 3001);
+const HOST = process.env.AGENT_HOST || "127.0.0.1";
 const ALLOWED_ORIGINS = new Set(
   (process.env.AGENT_ALLOWED_ORIGINS || "https://www.netsyraai.com,http://localhost:3000,http://localhost:3001").split(",")
 );
 const TLS_CERT = process.env.AGENT_TLS_CERT;
 const TLS_KEY = process.env.AGENT_TLS_KEY;
-const AGENT_TOKEN = randomUUID().slice(0, 8);
+const AGENT_TOKEN = process.env.AGENT_TOKEN || randomBytes(32).toString("hex");
 const LOCAL_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]);
 
 interface AgentMessage {
@@ -71,8 +72,8 @@ async function main() {
       if (origin && !ALLOWED_ORIGINS.has(origin) && !ALLOWED_ORIGINS.has("*")) {
         return false;
       }
-      // Only allow insecure ws:// from local dev origins; all remote origins must use wss.
-      if (!info.secure && origin && !LOCAL_ORIGINS.has(origin)) {
+      // Only allow insecure ws:// from local dev origins or explicitly allowed origins.
+      if (!info.secure && origin && !LOCAL_ORIGINS.has(origin) && !ALLOWED_ORIGINS.has(origin)) {
         return false;
       }
       const reqUrl = new URL(info.req.url ?? "", "http://localhost");
@@ -81,19 +82,38 @@ async function main() {
     },
   };
 
-  let projectRoot: string | null = null;
+  let projectRoot: string = process.cwd();
 
   let server: https.Server | undefined;
   let wss: WebSocketServer;
   if (TLS_CERT && TLS_KEY) {
+    if (!existsSync(TLS_CERT) || !existsSync(TLS_KEY)) {
+      console.error("[netsyra-agent] fatal: TLS certificate files not found.");
+      console.error("AGENT_TLS_CERT:", TLS_CERT);
+      console.error("AGENT_TLS_KEY:", TLS_KEY);
+      console.error("Generate them with: mkcert -install && mkcert 127.0.0.1");
+      process.exit(1);
+    }
     server = https.createServer({
       cert: readFileSync(TLS_CERT),
       key: readFileSync(TLS_KEY),
     });
     wss = new WebSocketServer({ server, ...wsOptions });
-    server.listen(PORT);
+    server.on("error", (err) => {
+      console.error(`[netsyra-agent] server error: ${err.message}`);
+      if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+        console.error(`Port ${PORT} is already in use. Run with a different AGENT_PORT or kill the process using port ${PORT}.`);
+      }
+    });
+    server.listen(PORT, HOST);
   } else {
-    wss = new WebSocketServer({ port: PORT, ...wsOptions });
+    wss = new WebSocketServer({ port: PORT, host: HOST, ...wsOptions });
+    wss.on("error", (err) => {
+      console.error(`[netsyra-agent] server error: ${err.message}`);
+      if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+        console.error(`Port ${PORT} is already in use. Run with a different AGENT_PORT or kill the process using port ${PORT}.`);
+      }
+    });
   }
 
   const clients = new Set<WebSocket>();
@@ -169,7 +189,7 @@ async function main() {
           case "close-project": {
             if (!workspace) throw new Error("Workspace engine not available");
             await workspace.closeProject();
-            projectRoot = null;
+            projectRoot = process.cwd();
             send(ws, { id, type: "result", result: { closed: true } });
             break;
           }
@@ -341,10 +361,19 @@ async function main() {
             }
 
             const cmdId = id;
-            const proc =
-              args.length > 0
-                ? spawn(command, args, { cwd: resolvedCwd, shell: false, env: process.env })
-                : spawn(command, { cwd: resolvedCwd, shell: true, env: process.env });
+            const shells = ["cmd", "powershell", "pwsh"];
+            const shell = typeof p.shell === "string" && shells.includes(p.shell) ? p.shell : "cmd";
+            if (command.length > 4096) {
+              send(ws, { id, type: "error", error: "Command too long" });
+              break;
+            }
+            let proc: ReturnType<typeof spawn>;
+
+            if (shell === "powershell" || shell === "pwsh") {
+              proc = spawn(shell, ["-NoProfile", "-Command", command], { cwd: resolvedCwd, env: process.env });
+            } else {
+              proc = spawn(command, { cwd: resolvedCwd, shell: true, env: process.env });
+            }
 
             runningCommands.set(cmdId, proc);
 
@@ -403,7 +432,7 @@ async function main() {
   });
 
   const scheme = server ? "wss" : "ws";
-  console.log(`Netsyra Agent listening on ${scheme}://localhost:${PORT}`);
+  console.log(`Netsyra Agent listening on ${scheme}://${HOST}:${PORT}`);
   console.log(`Agent token: ${AGENT_TOKEN}`);
   console.log(`Run with: npm run agent`);
 }

@@ -3,8 +3,9 @@ import { createDefaultSubsystems } from "./subsystems";
 import type { RuntimeKernel } from "./kernel";
 
 let booted = false;
+let setupPromise: Promise<RuntimeKernel> | null = null;
 
-export async function setupRuntime(): Promise<RuntimeKernel> {
+async function doSetupRuntime(): Promise<RuntimeKernel> {
   const runtime = getRuntime();
 
   if (booted && runtime.state === "ready") {
@@ -15,4 +16,13 @@ export async function setupRuntime(): Promise<RuntimeKernel> {
   await runtime.boot();
   booted = true;
   return runtime;
+}
+
+export async function setupRuntime(): Promise<RuntimeKernel> {
+  if (!setupPromise) {
+    setupPromise = doSetupRuntime().finally(() => {
+      setupPromise = null;
+    });
+  }
+  return setupPromise;
 }

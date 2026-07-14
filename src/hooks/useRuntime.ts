@@ -28,9 +28,9 @@ const TOKEN_KEY = "netsyra-agent-token";
 function getAgentWs(): string {
   if (process.env.NEXT_PUBLIC_AGENT_WS) return process.env.NEXT_PUBLIC_AGENT_WS;
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    return "wss://localhost:3001";
+    return "wss://127.0.0.1:3001";
   }
-  return "ws://localhost:3001";
+  return "ws://127.0.0.1:3001";
 }
 
 function buildAgentUrl(base: string, token: string | null): string {
@@ -99,6 +99,8 @@ export function useRuntime(): UseRuntimeReturn {
     try {
       if (hasOpenedRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
         await sendMessage(action, payload);
+      } else if (action === "run-command" || action === "stop-command") {
+        throw new Error("Local agent not connected. Run the agent command shown in the IDE setup.");
       } else {
         const res = await fetch("/ide/api/runtime", {
           method: "POST",
@@ -110,9 +112,22 @@ export function useRuntime(): UseRuntimeReturn {
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      if (action === "run-command") {
+        const cmdId = (payload as { id?: string } | undefined)?.id ?? "unknown";
+        appendEvent({
+          type: "terminal",
+          payload: {
+            id: cmdId,
+            output: `\nError: ${message}`,
+            done: true,
+          },
+          timestamp: Date.now(),
+        });
+      }
+      setError(message);
     }
-  }, [sendMessage]);
+  }, [sendMessage, appendEvent]);
 
   const startFallback = useCallback(() => {
     if (fallbackStartedRef.current) return;

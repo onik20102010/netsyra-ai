@@ -31,13 +31,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect routes
-  if (
-    !user &&
-    (request.nextUrl.pathname.startsWith("/dashboard") ||
-      request.nextUrl.pathname.startsWith("/chat") ||
-      request.nextUrl.pathname.startsWith("/history"))
-  ) {
+  // Protected routes that require authentication
+  const protectedRoutes = ["/dashboard", "/chat", "/history", "/ide", "/profile", "/usage", "/cv-builder"];
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(`${route}/`)
+  );
+
+  if (!user && isProtectedRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("redirectTo", request.nextUrl.pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Admin-only routes
+  const adminEmail = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
+  if (request.nextUrl.pathname.startsWith("/admin") && (!user || user.email !== adminEmail)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { setupRuntime } from "@/ide/runtime";
 import { WorkspaceEngine } from "@/ide/workspace";
 import type { SearchQuery } from "@/ide/workspace/types";
+import { requireAuth } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,12 @@ function getWorkspace(runtime: Awaited<ReturnType<typeof setupRuntime>>): Worksp
 }
 
 export async function GET(): Promise<NextResponse> {
+  if (process.env.DISABLE_SERVER_IDE === "true") {
+    return NextResponse.json({ error: "Server IDE workspace is disabled" }, { status: 501 });
+  }
+  const auth = await requireAuth();
+  if (auth.error) return auth.error as NextResponse;
+
   try {
     const runtime = await setupRuntime();
     const workspace = getWorkspace(runtime);
@@ -32,6 +39,12 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (process.env.DISABLE_SERVER_IDE === "true") {
+    return NextResponse.json({ error: "Server IDE workspace is disabled" }, { status: 501 });
+  }
+  const auth = await requireAuth();
+  if (auth.error) return auth.error as NextResponse;
+
   const runtime = await setupRuntime();
   const workspace = getWorkspace(runtime);
 

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ChatSidebar from "@/components/chat/ChatSidebar";
-import { createClient } from "@/lib/supabase/client";
+import { createChatClient } from "@/lib/supabase/client";
 
 export default function ChatThreadPage() {
   const params = useParams();
@@ -14,7 +14,7 @@ export default function ChatThreadPage() {
   const [diveDeep, setDiveDeep] = useState(false);
   const [selectedModel, setSelectedModel] = useState("fast");   // ✅ added
   const [isValid, setIsValid] = useState<boolean | null>(null);
-  const supabase = createClient();
+  const supabase = createChatClient();
 
   useEffect(() => {
     const check = async () => {

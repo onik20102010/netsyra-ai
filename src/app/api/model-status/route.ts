@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { modelLimits, checkModelLimit } from "@/lib/model-limits";
+import { createChatServerClient } from "@/lib/supabase/server";
+import { modelLimits, checkModelLimit } from "@/lib/chat/model-limits";
 
 export async function GET(req: NextRequest) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { createChatClient } from "@/lib/supabase/client";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -36,7 +36,7 @@ export default function ProfileModal({
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "usage">("profile");
   const [usage, setUsage] = useState<UsageStats | null>(null);
-  const supabase = createClient();
+  const supabase = createChatClient();
 
   useEffect(() => {
     setMounted(true);

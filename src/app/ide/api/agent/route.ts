@@ -129,7 +129,7 @@ class RateLimiter {
 const rateLimiter = new RateLimiter();
 
 async function authGuard(req: NextRequest): Promise<{ userId: string | null; response: Response | null }> {
-  if (process.env.REQUIRE_AUTH !== "true") {
+  if (process.env.REQUIRE_AUTH === "false") {
     return { userId: null, response: null };
   }
   try {

@@ -15,11 +15,14 @@ interface BottomPanelProps {
   sendAction?: (action: string, payload?: unknown) => Promise<void>;
 }
 
+type TerminalShell = "cmd" | "powershell" | "pwsh";
+
 interface Terminal {
   id: string;
   name: string;
   history: string[];
   input: string;
+  shell: TerminalShell;
   cmdId?: string;
   pendingCommand?: string;
   isRunning: boolean;
@@ -28,9 +31,10 @@ interface Terminal {
 const initialTerminals: Terminal[] = [
   {
     id: "1",
-    name: "bash",
+    name: "cmd",
     history: ["$ netsyra runtime --start", "Runtime kernel booted successfully.", "$"],
     input: "",
+    shell: "cmd",
     isRunning: false,
   },
 ];
@@ -53,6 +57,8 @@ function TerminalView({
   onCancel,
   autoApproveSafe,
   onToggleAutoApprove,
+  shell,
+  onShellChange,
 }: {
   terminal: Terminal;
   onInputChange: (value: string) => void;
@@ -62,6 +68,8 @@ function TerminalView({
   onCancel: () => void;
   autoApproveSafe: boolean;
   onToggleAutoApprove: () => void;
+  shell: TerminalShell;
+  onShellChange: (shell: TerminalShell) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +109,17 @@ function TerminalView({
         onSubmit={(e) => { e.preventDefault(); terminal.pendingCommand ? onConfirm() : onRun(); }}
         className="flex items-center gap-2 mt-1 pt-1 border-t border-ide-border"
       >
+        <select
+          value={shell}
+          onChange={(e) => onShellChange(e.target.value as TerminalShell)}
+          disabled={terminal.isRunning || !!terminal.pendingCommand}
+          className="bg-ide-surface border border-ide-border rounded px-1.5 py-0.5 text-ide-xs text-ide-foreground focus:outline-none focus:border-ide-primary disabled:opacity-50"
+          title="Choose shell"
+        >
+          <option value="cmd">CMD</option>
+          <option value="powershell">PowerShell</option>
+          <option value="pwsh">PowerShell Core</option>
+        </select>
         <span className="text-ide-foreground-dim">$</span>
         <input
           value={terminal.input}
@@ -119,7 +138,7 @@ function TerminalView({
           </button>
         )}
         {!terminal.isRunning && !terminal.pendingCommand && (
-          <label className="flex items-center gap-1.5 text-ide-foreground-dim text-ide-xs cursor-pointer select-none" title="Auto-approve safe commands (dir, ls, git status, etc.)">
+          <label className="flex items-center gap-1.5 text-ide-foreground-dim text-ide-xs cursor-pointer select-none shrink-0" title="Auto-approve safe commands (dir, ls, git status, etc.)">
             <input
               type="checkbox"
               checked={autoApproveSafe}
@@ -195,11 +214,13 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
   };
 
   const executeCommand = (id: string, cmd: string) => {
+    const terminal = terminals.find((t) => t.id === id);
+    if (!terminal) return;
     const cmdId = crypto.randomUUID();
     setTerminals((prev) =>
       prev.map((t) => (t.id === id ? { ...t, history: [...t.history, `$ ${cmd}`], input: "", pendingCommand: undefined, cmdId, isRunning: true } : t))
     );
-    void sendAction?.("run-command", { command: cmd, cwd: ".", id: cmdId });
+    void sendAction?.("run-command", { command: cmd, cwd: ".", shell: terminal.shell, id: cmdId });
   };
 
   const confirmRun = (id: string) => {
@@ -231,7 +252,7 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
 
   const addTerminal = () => {
     const id = String(nextId);
-    setTerminals((prev) => [...prev, { id, name: `bash ${prev.length + 1}`, history: ["$"], input: "", isRunning: false }]);
+    setTerminals((prev) => [...prev, { id, name: `cmd ${prev.length + 1}`, history: ["$"], input: "", shell: "cmd", isRunning: false }]);
     setActiveId(id);
     setNextId((n) => n + 1);
   };
@@ -265,6 +286,10 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
     setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, input: value } : t)));
   };
 
+  const updateShell = (id: string, shell: TerminalShell) => {
+    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, shell, name: shell } : t)));
+  };
+
   const activeView = (
     <TerminalView
       terminal={active}
@@ -275,6 +300,8 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
       onCancel={() => cancelRun(active.id)}
       autoApproveSafe={autoApproveSafe}
       onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
+      shell={active.shell}
+      onShellChange={(shell) => updateShell(active.id, shell)}
     />
   );
 
@@ -340,6 +367,8 @@ function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; 
                 onCancel={() => cancelRun(secondary.id)}
                 autoApproveSafe={autoApproveSafe}
                 onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
+                shell={secondary.shell}
+                onShellChange={(shell) => updateShell(secondary.id, shell)}
               />
             }
           />

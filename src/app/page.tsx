@@ -1,4 +1,5 @@
 import TopNav from "@/components/layout/TopNav";
+import { NCodeHomeModal } from "@/components/user/NCodeHomeModal";
 import HeroSection from "@/components/sections/HeroSection";
 import LiveRoutingSection from "@/components/sections/LiveRoutingSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
@@ -52,6 +53,7 @@ export default function Home() {
       </div>
 
       <TopNav />
+      <NCodeHomeModal />
       <HeroSection />
       <LiveRoutingSection />
       <FeaturesSection />

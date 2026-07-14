@@ -1,10 +1,14 @@
 import { setupRuntime } from "@/ide/runtime";
 import { StreamingEngine } from "@/ide/subsystems";
+import { requireAuth } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const runtime = await setupRuntime();
   const streaming = runtime.getSubsystem("streaming-engine") as StreamingEngine | undefined;
 

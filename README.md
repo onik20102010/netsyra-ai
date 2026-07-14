@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Netsyra IDE
 
-## Getting Started
+Netsyra IDE is a Next.js web application paired with a local Node.js agent. The browser gives you the UI; the agent runs on your computer and unlocks the workspace, terminal, AI search, and git features.
 
-First, run the development server:
+## Project stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: Next.js 16 with App Router
+- **UI**: React 19, Tailwind CSS v4, Radix UI, Framer Motion
+- **Auth & DB**: Supabase (Auth + PostgreSQL)
+- **Local agent**: Node.js + `ws` + `tsx`
+- **AI**: OpenRouter, Gemini, Groq, DeepSeek, Cerebras, Manus
+- **Tools**: Firecrawl, Tavily, Sentry
+
+## Local setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy the environment template and fill it in:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Start the Next.js dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. In a separate terminal, start the local agent:
+
+   ```powershell
+   cd d:\netsyra
+   npm run agent
+   ```
+
+   The agent prints a token. Paste it into the IDE when prompted.
+
+5. Open [http://localhost:3000](http://localhost:3000) and log in.
+
+## TLS certificates for remote use
+
+If you use the IDE from a remote `https` origin, the local agent must use `wss://`. Install `mkcert` and generate a certificate:
+
+```powershell
+winget install mkcert
+mkcert -install
+mkcert localhost
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then run the agent with:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+$env:AGENT_TLS_CERT="localhost.pem"
+$env:AGENT_TLS_KEY="localhost-key.pem"
+npm run agent
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+- `npm run dev` — start the Next.js dev server
+- `npm run build` — build the app for production
+- `npm run start` — start the production server
+- `npm run agent` — start the local agent
+- `npm run lint` — run ESLint
 
-To learn more about Next.js, take a look at the following resources:
+## Security
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See [SECURITY.md](SECURITY.md) for:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Required environment variables
+- Supabase Row Level Security policies
+- Local agent hardening
+- Web application security headers
 
-## Deploy on Vercel
+## Important deployment notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Keep `.env.local` out of version control. It is already ignored by `.gitignore`.
+- Rotate any API keys that have been shared or exposed.
+- Set `ADMIN_EMAIL` to the admin user's email.
+- Enable RLS on all Supabase tables and use the policies in `SECURITY.md` as a starting point.
+- The local agent should only be exposed to the public internet if you fully understand the security implications.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

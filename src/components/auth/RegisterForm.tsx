@@ -24,10 +24,13 @@ export default function RegisterForm() {
       return;
     }
     setLoading(true);
-    const { error } = await signUpWithEmail(email, password, name);
+    const { data, error } = await signUpWithEmail(email, password, name);
     setLoading(false);
     if (error) {
       toast.error(error.message);
+    } else if (data?.session) {
+      toast.success("Account created!");
+      router.push("/");
     } else {
       toast.success("Account created! Check your email to confirm.");
       setTimeout(() => router.push("/login"), 2000);

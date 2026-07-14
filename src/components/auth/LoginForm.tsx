@@ -18,14 +18,28 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
     const { error } = await signInWithEmail(email, password);
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message);
-    } else {
-      toast.success("Logged in successfully!");
-      router.push("/chat");
-      router.refresh();
+      return;
     }
+
+    toast.success("Logged in successfully!");
+
+    try {
+      const res = await fetch("/api/user/terminal-status");
+      const data = (await res.json()) as { n_code?: string | null };
+      if (!data.n_code) {
+        router.push("/");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      router.push("/");
+    }
+
+    router.refresh();
+    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {

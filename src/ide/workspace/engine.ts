@@ -588,12 +588,12 @@ export class WorkspaceEngine extends BaseSubsystem {
       if (!path.isAbsolute(inputPath)) {
         throw new Error("No workspace open and path is relative");
       }
-      return inputPath;
+      return path.resolve(inputPath);
     }
 
-    const root = this.project.root;
+    const root = path.resolve(this.project.root);
     const resolved = path.resolve(root, inputPath);
-    if (!resolved.startsWith(root)) {
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
       throw new Error("Path traversal detected");
     }
     return resolved;

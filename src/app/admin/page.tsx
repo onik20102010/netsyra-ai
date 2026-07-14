@@ -2,11 +2,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, createChatClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { BarChart3, MessageSquare, Users } from "lucide-react";
 
-const ADMIN_EMAIL = "onik20102010@gmail.com";   // your email
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "onik20102010@gmail.com";
 
 type UserRow = {
   id: string;
@@ -25,6 +25,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [fetching, setFetching] = useState(true);
   const supabase = createClient();
+  const chatSupabase = createChatClient();
 
   // Groq usage warning state
   const [groqUsage, setGroqUsage] = useState<{ percentUsed: number; isWarning: boolean; isCritical: boolean } | null>(null);
@@ -62,7 +63,7 @@ export default function AdminPage() {
       const { data: profiles } = await supabase.from("profiles").select("*");
 
       // Get all model usage
-      const { data: modelUsage } = await supabase.from("user_model_usage").select("*");
+      const { data: modelUsage } = await chatSupabase.from("user_model_usage").select("*");
 
       // Get today's date
       const today = new Date().toISOString().split("T")[0];
@@ -75,22 +76,22 @@ export default function AdminPage() {
           const tokensUsed = usageRows.reduce((sum: number, m: any) => sum + (m.tokens_used || 0), 0);
 
           // Count messages today and total
-          const { count: totalMsgs } = await supabase
+          const { count: totalMsgs } = await chatSupabase
             .from("messages")
             .select("*", { count: "exact", head: true })
             .eq("conversation_id", "any"); // Not perfect, but we can't easily filter by user. We'll skip per-user total for now.
 
           // Actually, we need per-user message counts. We can query messages joined with conversations.
-          const { count: userTotal } = await supabase
+          const { count: userTotal } = await chatSupabase
             .from("messages")
             .select("*", { count: "exact", head: true })
-            .in("conversation_id", (await supabase.from("conversations").select("id").eq("user_id", u.id)).data?.map((c: any) => c.id) || []);
+            .in("conversation_id", (await chatSupabase.from("conversations").select("id").eq("user_id", u.id)).data?.map((c: any) => c.id) || []);
 
-          const { count: userToday } = await supabase
+          const { count: userToday } = await chatSupabase
             .from("messages")
             .select("*", { count: "exact", head: true })
             .gte("created_at", today)
-            .in("conversation_id", (await supabase.from("conversations").select("id").eq("user_id", u.id)).data?.map((c: any) => c.id) || []);
+            .in("conversation_id", (await chatSupabase.from("conversations").select("id").eq("user_id", u.id)).data?.map((c: any) => c.id) || []);
 
           return {
             id: u.id,
@@ -110,7 +111,7 @@ export default function AdminPage() {
     };
 
     fetchData();
-  }, [user, supabase]);
+  }, [user, supabase, chatSupabase]);
 
   if (loading || !user || user.email !== ADMIN_EMAIL) return null;
 

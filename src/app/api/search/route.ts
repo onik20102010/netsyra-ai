@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+const MAX_QUERY_LENGTH = 500;
 
 async function tavilySearch(query: string, maxResults = 5) {
   const apiKey = process.env.TAVILY_API_KEY;
@@ -42,9 +45,18 @@ async function googleSearch(query: string, maxResults = 5) {
 }
 
 export async function GET(req: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const query = req.nextUrl.searchParams.get("query");
-  if (!query) {
+  if (!query || query.trim().length === 0) {
     return NextResponse.json({ error: "Missing query" }, { status: 400 });
+  }
+  if (query.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json({ error: "Query too long" }, { status: 400 });
   }
 
   try {

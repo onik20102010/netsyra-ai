@@ -1,13 +1,15 @@
 ﻿// src/app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { aaiRuntime } from "@/lib/aai";
-import { tiers } from "@/lib/model-registry";
+import { createChatServerClient } from "@/lib/supabase/server";
+import { aaiRuntime } from "@/lib/chat/aai";
+import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/services/real-time";
-import { performDeepSearch, performMultiDeepSearch } from "@/lib/services/live-data";
+import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
+import { performDeepSearch, performMultiDeepSearch } from "@/lib/chat/services/live-data";
 import FirecrawlApp from "@mendable/firecrawl-js";
-import { cleanSearchQueries } from "@/lib/services/query-cleaner";
+import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
+import { safeFetch } from "@/lib/safe-fetch";
+import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -25,56 +27,6 @@ async function saveMessage(supabase: any, userId: string, conversationId: string
     role,
     content,
   });
-}
-
-// ── Per‑tier message limits ──────────────────
-const MODEL_LIMITS: Record<string, number> = {
-  fast: 10,
-  plus: 10,
-  pro: 10,
-  code: 10,
-  live: 10,
-  aai: 10,
-  web_search: 10, // 10 web searches per user per day
-};
-
-async function checkAndUpdateUsage(
-  supabase: any,
-  userId: string,
-  modelTier: string
-): Promise<{ allowed: boolean; remaining: number; resetAt: string }> {
-  const { data: usage } = await supabase
-    .from("chat_usage")
-    .select("messages_used, reset_at")
-    .eq("user_id", userId)
-    .eq("model_tier", modelTier)
-    .single();
-
-  const now = new Date();
-  const limit = MODEL_LIMITS[modelTier] || 10;
-
-  if (!usage || new Date(usage.reset_at) < now) {
-    const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    await supabase
-      .from("chat_usage")
-      .upsert(
-        { user_id: userId, model_tier: modelTier, messages_used: 1, reset_at: resetAt },
-        { onConflict: "user_id, model_tier" }
-      );
-    return { allowed: true, remaining: limit - 1, resetAt };
-  }
-
-  if (usage.messages_used >= limit) {
-    return { allowed: false, remaining: 0, resetAt: usage.reset_at };
-  }
-
-  await supabase
-    .from("chat_usage")
-    .update({ messages_used: usage.messages_used + 1 })
-    .eq("user_id", userId)
-    .eq("model_tier", modelTier);
-
-  return { allowed: true, remaining: limit - (usage.messages_used + 1), resetAt: usage.reset_at };
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -100,14 +52,7 @@ async function scrapePage(url: string): Promise<string> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.5",
-      },
-    });
+    const res = await safeFetch(url, 5, controller.signal);
     clearTimeout(timeout);
     if (!res.ok) return "";
     const html = await res.text();
@@ -122,7 +67,7 @@ async function scrapePage(url: string): Promise<string> {
   } catch {
     // 3. Final fallback: Groq‑based scraper
     console.log("⚡ Direct fetch failed, trying Groq scraper...");
-    const { groqScrape } = await import("@/lib/services/groq-scraper");
+    const { groqScrape } = await import("@/lib/chat/services/groq-scraper");
     return await groqScrape(url);
   }
 }
@@ -178,7 +123,7 @@ This engine activates automatically for any request that involves:
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createChatServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -1,9 +1,26 @@
-import { NextRequest } from "next/server";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/services/real-time";
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
+
+const VALID_TYPES = new Set(["weather", "time", "calendar", "date"]);
+const MAX_QUERY_LENGTH = 100;
 
 export async function GET(req: NextRequest) {
-  const type = req.nextUrl.searchParams.get("type"); // "weather", "time", "calendar"
-  const query = req.nextUrl.searchParams.get("query") || "";
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const type = req.nextUrl.searchParams.get("type");
+  const query = (req.nextUrl.searchParams.get("query") || "").trim();
+
+  if (!type || !VALID_TYPES.has(type)) {
+    return NextResponse.json({ error: "Invalid widget type" }, { status: 400 });
+  }
+  if (query.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json({ error: "Query too long" }, { status: 400 });
+  }
 
   let result = "";
   if (type === "weather") {
@@ -18,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!result) {
-    return new Response("Could not fetch data", { status: 500 });
+    return NextResponse.json({ error: "Could not fetch data" }, { status: 500 });
   }
 
   return new Response(result, { headers: { "Content-Type": "text/plain" } });

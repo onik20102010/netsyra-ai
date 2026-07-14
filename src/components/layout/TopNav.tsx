@@ -5,10 +5,28 @@ import { Button } from "@/components/ui/button";
 import { LogOut, User, Sparkles, Code } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { NCodeModal } from "@/components/user/NCodeModal";
 
 export default function TopNav() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+  const [nCodeModalOpen, setNCodeModalOpen] = useState(false);
+  const [nCode, setNCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!nCodeModalOpen || !user) return;
+    const loadNCode = async () => {
+      try {
+        const res = await fetch("/api/user/n-code");
+        const data = (await res.json()) as { n_code?: string; error?: string };
+        if (data.n_code) setNCode(data.n_code);
+      } catch (err) {
+        console.error("Failed to load N code", err);
+      }
+    };
+    void loadNCode();
+  }, [nCodeModalOpen, user]);
 
   return (
     <motion.nav
@@ -82,14 +100,18 @@ export default function TopNav() {
               <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
             ) : user ? (
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={() => setNCodeModalOpen(true)}
+                  className="hidden sm:flex items-center gap-2 group"
+                  title="Show my N code"
+                >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
                     {user.email?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <span className="text-sm text-white/70 max-w-[100px] truncate">
+                  <span className="text-sm text-white/70 max-w-[100px] truncate group-hover:text-white transition-colors">
                     {user.email}
                   </span>
-                </div>
+                </button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -112,6 +134,13 @@ export default function TopNav() {
           </div>
         </div>
       </div>
+
+      <NCodeModal
+        open={nCodeModalOpen}
+        onClose={() => setNCodeModalOpen(false)}
+        nCode={nCode}
+        showDone={false}
+      />
     </motion.nav>
   );
 }
