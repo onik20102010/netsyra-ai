@@ -350,6 +350,24 @@ export default function ChatInterface({
               key={i}
               remarkPlugins={[remarkGfm]}
               components={{
+                h1({ children }: any) {
+                  return <h1 className="text-2xl font-bold mt-6 mb-3 text-zinc-900">{children}</h1>;
+                },
+                h2({ children }: any) {
+                  return <h2 className="text-xl font-bold mt-5 mb-2 text-zinc-900">{children}</h2>;
+                },
+                h3({ children }: any) {
+                  return <h3 className="text-lg font-semibold mt-4 mb-2 text-zinc-900">{children}</h3>;
+                },
+                h4({ children }: any) {
+                  return <h4 className="text-base font-semibold mt-3 mb-1 text-zinc-800">{children}</h4>;
+                },
+                h5({ children }: any) {
+                  return <h5 className="text-sm font-semibold mt-3 mb-1 text-zinc-800">{children}</h5>;
+                },
+                h6({ children }: any) {
+                  return <h6 className="text-sm font-medium mt-2 mb-1 text-zinc-700">{children}</h6>;
+                },
                 a({ href, children, ...props }: any) {
                   return (
                     <a
@@ -438,6 +456,51 @@ export default function ChatInterface({
                 },
                 hr({ node, ...props }: any) {
                   return <hr className="my-8 border-t border-gray-300" {...props} />;
+                },
+                ul({ node, children, ...props }: any) {
+                  const depth = (node as any)?.depth ?? 0;
+                  return (
+                    <ul
+                      className={cn(
+                        "my-2 space-y-1 pl-1",
+                        depth === 0 ? "list-none pl-0" : "list-none pl-4"
+                      )}
+                      {...props}
+                    >
+                      {children}
+                    </ul>
+                  );
+                },
+                ol({ node, children, ...props }: any) {
+                  return (
+                    <ol
+                      className="my-2 space-y-1 pl-1 list-decimal list-outside ml-5"
+                      {...props}
+                    >
+                      {children}
+                    </ol>
+                  );
+                },
+                li({ node, children, ...props }: any) {
+                  const depth = (node as any)?.depth ?? 0;
+                  const parent = (node as any)?.parent;
+                  const isOrdered = parent?.type === "list" && parent?.ordered;
+                  const bulletChar = depth === 0 ? "•" : "◦";
+
+                  if (isOrdered) {
+                    return (
+                      <li className="text-sm leading-relaxed text-zinc-800" {...props}>
+                        {children}
+                      </li>
+                    );
+                  }
+
+                  return (
+                    <li className="flex gap-2 text-sm leading-relaxed text-zinc-800" {...props}>
+                      <span className="flex-shrink-0 select-none">{bulletChar}</span>
+                      <span className="flex-1">{children}</span>
+                    </li>
+                  );
                 },
               }}
             >

@@ -1,176 +1,148 @@
-/**
- * Shared runtime types for Netsyra IDE.
- */
+// ═══════════════════════════════════════════════════════════════
+// Netsyra IDE — Core Type Definitions
+// ═══════════════════════════════════════════════════════════════
 
-export type RuntimeState =
-  | "booting"
-  | "initializing"
-  | "ready"
-  | "busy"
-  | "paused"
-  | "recovering"
-  | "restarting"
-  | "stopping"
-  | "stopped"
-  | "error";
+// ── File System ─────────────────────────────────────────────────
 
-export type SubsystemLifecycle =
-  | "uninitialized"
-  | "initialized"
-  | "starting"
-  | "running"
-  | "paused"
-  | "stopping"
-  | "restarting"
-  | "recovering"
-  | "stopped"
-  | "error";
-
-export type EventCategory =
-  | "runtime"
-  | "workspace"
-  | "explorer"
-  | "editor"
-  | "memory"
-  | "knowledge"
-  | "planner"
-  | "task"
-  | "execution"
-  | "streaming"
-  | "verification"
-  | "router"
-  | "tool"
-  | "diagnostics"
-  | "telemetry"
-  | "plugin"
-  | "session"
-  | "user"
-  | "ui"
-  | "config";
-
-export type EventPriority = "critical" | "high" | "normal" | "low" | "background";
-
-export type EventLifecycle =
-  | "created"
-  | "queued"
-  | "validated"
-  | "dispatched"
-  | "processing"
-  | "completed"
-  | "cancelled"
-  | "failed"
-  | "retried"
-  | "archived";
-
-export type EventStatus = "pending" | "success" | "failure";
-
-export interface RuntimeEvent {
-  id: string;
-  type: string;
-  category: EventCategory;
-  priority: EventPriority;
-  source: string;
-  target?: string;
-  payload: unknown;
-  timestamp: number;
-  correlationId?: string;
-  sessionId?: string;
-  workspaceId?: string;
-  metadata?: Record<string, unknown>;
-  version: number;
-  status: EventStatus;
-  lifecycle: EventLifecycle;
-  traceId?: string;
-  duration?: number;
-  retryCount: number;
-  securityContext?: Record<string, unknown>;
-  batchable?: boolean;
-  batchKey?: string;
-}
-
-export interface SubsystemConfig {
-  [key: string]: unknown;
-}
-
-export interface RuntimeConfig {
-  environment: "development" | "production" | "test";
-  debug: boolean;
-  maxRetries: number;
-  retryDelayMs: number;
-  healthCheckIntervalMs: number;
-  maxConcurrentTasks: number;
-  modelProvider?: string;
-  freeTierProvider: string;
-  paidTierProvider: string;
-  sessionTtlMs: number;
-  memoryLimitMb: number;
-  [key: string]: unknown;
-}
-
-export interface RuntimeMetrics {
-  bootTimeMs: number;
-  lastStartTime: number;
-  lastShutdownTime: number;
-  restartCount: number;
-  errorCount: number;
-  eventCount: number;
-  subsystemHealth: Record<string, boolean>;
-  [key: string]: unknown;
-}
-
-export interface RuntimeStatus {
-  state: RuntimeState;
-  lifecycle: SubsystemLifecycle;
-  startedAt: number;
-  uptimeMs: number;
-  subsystems: SubsystemStatus[];
-  metrics: RuntimeMetrics;
-  session: SessionSnapshot | null;
-}
-
-export interface SubsystemStatus {
+export interface FileItem {
   id: string;
   name: string;
-  version: string;
-  lifecycle: SubsystemLifecycle;
-  healthy: boolean;
-  dependencies: string[];
-  capabilities: string[];
-  lastError: string | null;
+  path: string;
+  type: "file" | "folder";
+  handle?: FileSystemHandle;
+  children?: FileItem[];
 }
 
-export interface SessionSnapshot {
+export interface OpenFile {
   id: string;
-  workspace: string | null;
-  user: string | null;
-  project: string | null;
-  runtimeId: string;
-  openFiles: string[];
-  currentTask: string | null;
-  currentModel: string | null;
-  state: string;
+  name: string;
+  path: string;
+  language: string;
+  content: string;
+  originalContent: string;
+  unsaved: boolean;
+  pinned: boolean;
+  preview: boolean;
+  handle?: FileSystemFileHandle;
+  viewState?: unknown;
 }
 
-export interface HealthReport {
-  healthy: boolean;
-  timestamp: number;
-  details: Record<string, unknown>;
-  errors: string[];
+// ── Editor ──────────────────────────────────────────────────────
+
+export type EditorTheme = "netsyra-dark" | "netsyra-light";
+
+export interface EditorConfig {
+  fontSize: number;
+  fontFamily: string;
+  lineHeight: number;
+  tabSize: number;
+  wordWrap: "on" | "off";
+  minimap: boolean;
+  lineNumbers: boolean;
+  glyphMargin: boolean;
+  folding: boolean;
 }
 
-export interface DiagnosticsSnapshot {
-  runtimeState: RuntimeState;
-  subsystems: SubsystemStatus[];
-  logs: RuntimeLog[];
-  health: Record<string, HealthReport>;
-  timestamp: number;
+export const defaultEditorConfig: EditorConfig = {
+  fontSize: 14,
+  fontFamily: "Consolas, 'Courier New', monospace",
+  lineHeight: 19,
+  tabSize: 2,
+  wordWrap: "off",
+  minimap: true,
+  lineNumbers: true,
+  glyphMargin: true,
+  folding: true,
+};
+
+// ── Layout ──────────────────────────────────────────────────────
+
+export type ActivityView =
+  | "explorer"
+  | "search"
+  | "source-control"
+  | "run-debug"
+  | "extensions";
+
+export type BottomTab = "terminal" | "output" | "problems" | "debug";
+
+export interface LayoutState {
+  activeView: ActivityView;
+  activeBottomTab: BottomTab;
+  sidebarVisible: boolean;
+  bottomPanelVisible: boolean;
+  sidebarWidth: number;
+  bottomPanelHeight: number;
 }
 
-export interface RuntimeLog {
-  id: string;
-  level: "debug" | "info" | "warn" | "error";
+export const defaultLayoutState: LayoutState = {
+  activeView: "explorer",
+  activeBottomTab: "terminal",
+  sidebarVisible: true,
+  bottomPanelVisible: true,
+  sidebarWidth: 240,
+  bottomPanelHeight: 200,
+};
+
+// ── Workspace ───────────────────────────────────────────────────
+
+export interface WorkspaceState {
+  root: FileItem | null;
+  openFiles: OpenFile[];
+  activeFileId: string | null;
+}
+
+// ── Diagnostics ─────────────────────────────────────────────────
+
+export type DiagnosticSeverity = "error" | "warning" | "info" | "hint";
+
+export interface Diagnostic {
+  file: string;
+  line: number;
+  column: number;
+  endLine?: number;
+  endColumn?: number;
   message: string;
-  source: string;
-  timestamp: number;
-  metadata?: Record<string, unknown>;
+  severity: DiagnosticSeverity;
+  source?: string;
 }
+
+// ── Commands ────────────────────────────────────────────────────
+
+export interface Command {
+  id: string;
+  title: string;
+  category?: string;
+  keybinding?: string;
+  handler: () => void;
+}
+
+// ── Theme Colors (VS Code Dark+ exact values) ───────────────────
+
+export const IDE_COLORS = {
+  // Backgrounds
+  editorBg: "#1e1e1e",
+  sidebarBg: "#252526",
+  activityBarBg: "#333333",
+  statusBarBg: "#007acc",
+  titleBarBg: "#323233",
+  tabActiveBg: "#1e1e1e",
+  tabInactiveBg: "#2d2d2d",
+  bottomPanelBg: "#1e1e1e",
+  // Foregrounds
+  editorFg: "#d4d4d4",
+  foreground: "#cccccc",
+  foregroundMuted: "#969696",
+  foregroundDim: "#858585",
+  // Borders
+  border: "#3c3c3c",
+  borderSubtle: "#2b2b2b",
+  // Accent
+  accent: "#007acc",
+  accentDim: "#005a9e",
+  // Status
+  error: "#f48771",
+  warning: "#cca700",
+  success: "#89d185",
+  info: "#75beff",
+} as const;

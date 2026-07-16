@@ -25,19 +25,7 @@ export default function LoginForm() {
     }
 
     toast.success("Logged in successfully!");
-
-    try {
-      const res = await fetch("/api/user/terminal-status");
-      const data = (await res.json()) as { n_code?: string | null };
-      if (!data.n_code) {
-        router.push("/");
-      } else {
-        router.push("/dashboard");
-      }
-    } catch {
-      router.push("/");
-    }
-
+    router.push("/dashboard");
     router.refresh();
     setLoading(false);
   };

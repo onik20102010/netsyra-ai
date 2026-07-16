@@ -1,176 +1,98 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Editor, type Monaco } from "@monaco-editor/react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, FileCode, Loader2, ChevronRight } from "lucide-react";
-import { type OpenFile, getFileIcon } from "./file-utils";
-import { type RuntimeEventMessage } from "@/hooks/useRuntime";
+import React, { useRef, useCallback } from "react";
+import { Editor, type Monaco, loader } from "@monaco-editor/react";
+import { ChevronRight } from "lucide-react";
+import { TabBar } from "./TabBar";
+import { NETSYRA_THEME, defineNetsyraTheme, buildEditorOptions, defaultEditorConfig, useIdeStore } from "@/ide";
 
-interface EditorAreaProps {
-  openFiles: OpenFile[];
-  activeFile: string | null;
-  onFileSelect: (id: string) => void;
-  onFileClose: (id: string) => void;
-  onFileChange: (id: string, value: string) => void;
-  onSave?: () => void;
-  events: RuntimeEventMessage[];
-}
+loader.config({
+  paths: {
+    vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs",
+  },
+});
 
 function Breadcrumbs({ path }: { path: string }) {
-  const parts = path.split("/").filter(Boolean);
-  if (parts.length === 0) return <span className="text-ide-foreground-dim">root</span>;
+  const parts = path.split("/");
   return (
-    <div className="flex items-center gap-1 text-ide-xs text-ide-foreground-dim">
+    <div className="h-[22px] px-3 flex items-center gap-0.5 bg-[#1e1e1e] border-b border-[#2d2d2d] overflow-hidden shrink-0">
       {parts.map((part, i) => (
         <React.Fragment key={i}>
-          <span className="hover:text-ide-foreground cursor-pointer transition-colors">{part}</span>
-          {i < parts.length - 1 && <ChevronRight size={10} />}
+          <span className="text-[12px] text-[#cccccc] truncate px-1 hover:bg-white/10 rounded cursor-pointer">
+            {part}
+          </span>
+          {i < parts.length - 1 && <ChevronRight size={12} className="text-[#858585] shrink-0" />}
         </React.Fragment>
       ))}
     </div>
   );
 }
 
-export function EditorArea({ openFiles, activeFile, onFileSelect, onFileClose, onFileChange, onSave, events }: EditorAreaProps) {
-  const active = openFiles.find((f) => f.id === activeFile);
-  const [editor, setEditor] = useState<ReturnType<Monaco["editor"]["create"]> | null>(null);
-  const [monaco, setMonaco] = useState<Monaco | null>(null);
+function EmptyEditor() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-[#1e1e1e]">
+      <div className="text-center space-y-2 text-[#858585]">
+        <div className="text-[14px]">Netsyra IDE</div>
+        <div className="text-[12px]">Open a file from the Explorer to start editing</div>
+      </div>
+    </div>
+  );
+}
 
-  const activePath = active?.path ?? "";
-  const diagnostics = events.filter((e) => {
-    const p = e.payload as { file?: string; diagnostics?: { line: number; message: string; severity?: string }[] } | undefined;
-    return p?.diagnostics && p.file === activePath;
-  });
+export function EditorArea() {
+  const editorRef = useRef<Parameters<NonNullable<Parameters<typeof Editor>[0]["onMount"]>>[0] | null>(null);
+  const openFiles = useIdeStore((s) => s.openFiles);
+  const activeFileId = useIdeStore((s) => s.activeFileId);
+  const setFileContent = useIdeStore((s) => s.setFileContent);
+  const saveFile = useIdeStore((s) => s.saveFile);
+  const setCursor = useIdeStore((s) => s.setCursor);
 
-  useEffect(() => {
-    if (!editor || !monaco || !active) return;
-    const model = editor.getModel();
-    if (!model) return;
-    const markers: Parameters<typeof monaco.editor.setModelMarkers>[2] = [];
-    diagnostics.forEach((evt) => {
-      const p = evt.payload as { diagnostics?: { line: number; message: string; severity?: string }[] };
-      p.diagnostics?.forEach((d) => {
-        const severityMap: Record<string, typeof monaco.MarkerSeverity.Error> = {
-          error: monaco.MarkerSeverity.Error,
-          warning: monaco.MarkerSeverity.Warning,
-          info: monaco.MarkerSeverity.Info,
-          hint: monaco.MarkerSeverity.Hint,
-        };
-        markers.push({
-          severity: severityMap[d.severity ?? "error"] ?? monaco.MarkerSeverity.Error,
-          startLineNumber: d.line,
-          startColumn: 1,
-          endLineNumber: d.line,
-          endColumn: model.getLineLength(d.line) + 1,
-          message: d.message,
-          resource: model.uri,
-        });
+  const activeFile = openFiles.find((f) => f.id === activeFileId) ?? null;
+
+  const handleMount = useCallback(
+    (ed: Parameters<NonNullable<Parameters<typeof Editor>[0]["onMount"]>>[0], monaco: Monaco) => {
+      editorRef.current = ed;
+      defineNetsyraTheme(monaco);
+      monaco.editor.setTheme(NETSYRA_THEME);
+      ed.onDidChangeCursorPosition(() => {
+        const pos = ed.getPosition();
+        if (pos) setCursor({ lineNumber: pos.lineNumber, column: pos.column });
       });
-    });
-    monaco.editor.setModelMarkers(model, "netsyra-runtime", markers);
-  }, [editor, monaco, active, diagnostics]);
+      ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        const id = useIdeStore.getState().activeFileId;
+        if (id) saveFile(id);
+      });
+      ed.focus();
+    },
+    [setCursor, saveFile]
+  );
 
   return (
-    <div className="flex flex-col h-full bg-ide-bg">
-      <div className="flex items-center h-9 bg-ide-surface border-b border-ide-border overflow-x-auto ide-scroll">
-        {openFiles.length === 0 && (
-          <div className="px-3 text-ide-sm text-ide-foreground-dim">No files open</div>
-        )}
-        {openFiles.map((file) => (
-          <button
-            key={file.id}
-            onClick={() => onFileSelect(file.id)}
-            className={`group flex items-center gap-2 px-3 h-full min-w-[120px] max-w-[200px] border-r border-ide-border text-ide-sm transition-colors ${
-              activeFile === file.id
-                ? "bg-ide-bg text-ide-foreground border-t-2 border-t-ide-primary"
-                : "bg-ide-surface text-ide-foreground-muted hover:bg-ide-bg"
-            }`}
-          >
-            {getFileIcon(file.name, "file")}
-            <span className="flex-1 truncate">{file.name}</span>
-            {file.unsaved && <span className="w-1.5 h-1.5 rounded-full bg-ide-foreground" />}
-            <X
-              size={12}
-              onClick={(e) => { e.stopPropagation(); onFileClose(file.id); }}
-              className="opacity-0 group-hover:opacity-100 hover:text-ide-error text-ide-foreground-dim transition-opacity"
+    <div className="flex flex-col h-full bg-[#1e1e1e]">
+      <TabBar />
+      {activeFile ? (
+        <>
+          <Breadcrumbs path={activeFile.path} />
+          <div className="flex-1 overflow-hidden min-h-0">
+            <Editor
+              height="100%"
+              path={activeFile.path}
+              language={activeFile.language}
+              value={activeFile.content}
+              theme={NETSYRA_THEME}
+              beforeMount={(monaco) => defineNetsyraTheme(monaco)}
+              onMount={handleMount}
+              onChange={(value) => {
+                const id = useIdeStore.getState().activeFileId;
+                if (id) setFileContent(id, value ?? "");
+              }}
+              options={buildEditorOptions(defaultEditorConfig)}
             />
-          </button>
-        ))}
-      </div>
-
-      {active && (
-        <div className="h-7 px-3 flex items-center gap-2 bg-ide-bg border-b border-ide-border">
-          <Breadcrumbs path={active.path} />
-        </div>
+          </div>
+        </>
+      ) : (
+        <EmptyEditor />
       )}
-
-      <div className="flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {active ? (
-            <motion.div
-              key={active.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="h-full"
-            >
-              <Editor
-                height="100%"
-                language={active.language}
-                value={active.content}
-                theme="vs-dark"
-                onChange={(value) => value !== undefined && onFileChange(active.id, value)}
-                onMount={(ed, m) => { ed.focus(); setEditor(ed); setMonaco(m); if (onSave) ed.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.KeyS, () => onSave()); }}
-                options={{
-                  minimap: { enabled: true, scale: 1, showSlider: "mouseover" },
-                  stickyScroll: { enabled: true },
-                  bracketPairColorization: { enabled: true },
-                  folding: true,
-                  formatOnPaste: true,
-                  formatOnType: true,
-                  autoIndent: "advanced",
-                  smoothScrolling: true,
-                  cursorSmoothCaretAnimation: "on",
-                  fontSize: 13,
-                  fontFamily: "var(--font-jetbrains), monospace",
-                  scrollBeyondLastLine: false,
-                  renderLineHighlight: "all",
-                  lineNumbers: "on",
-                  glyphMargin: true,
-                  contextmenu: true,
-                  quickSuggestions: true,
-                  wordBasedSuggestions: "currentDocument",
-                  automaticLayout: true,
-                  codeLens: true,
-                  inlayHints: { enabled: "on" },
-                  hover: { enabled: true, delay: 300 },
-                }}
-                loading={
-                  <div className="h-full flex items-center justify-center text-ide-foreground-dim text-ide-sm">
-                    <Loader2 size={16} className="animate-spin mr-2" /> Loading editor...
-                  </div>
-                }
-              />
-            </motion.div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-ide-foreground-dim gap-4">
-              <FileCode size={48} className="opacity-20" />
-              <div className="text-center">
-                <p className="text-ide-lg font-medium text-ide-foreground">Netsyra IDE</p>
-                <p className="text-ide-sm mt-1">Open a file from the Explorer to start editing</p>
-              </div>
-              <div className="flex items-center gap-2 text-ide-xs text-ide-foreground-dim">
-                <span className="px-1.5 py-0.5 rounded bg-ide-surface border border-ide-border">⌘P</span>
-                <span>Quick Open</span>
-                <span className="px-1.5 py-0.5 rounded bg-ide-surface border border-ide-border">⌘K</span>
-                <span>Command Palette</span>
-              </div>
-            </div>
-          )}
-        </AnimatePresence>
-      </div>
     </div>
   );
 }

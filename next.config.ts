@@ -4,11 +4,12 @@ const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
   "default-src 'self'",
-  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'" : "script-src 'self'",
+  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net blob:" : "script-src 'self' https://cdn.jsdelivr.net blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
-  "font-src 'self'",
-  "connect-src 'self' ws://127.0.0.1:3001 wss://127.0.0.1:3001 https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
+  "font-src 'self' data: https://cdn.jsdelivr.net",
+  "connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
+  "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "./ide-theme.css";
 
 /* ── Tailwind v4 theme (colours, fonts, animations) ── */
 @theme inline {
@@ -58,7 +57,7 @@
     font-weight: 400;               /* normal */
     line-height: 1.75;              /* exactly as requested */
     letter-spacing: -0.011em;
-    color: #0d0d0d; 
+    color: #0d0d0d;
   }
 
   h1 {

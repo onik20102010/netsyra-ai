@@ -1,64 +1,64 @@
 "use client";
 
 import React from "react";
-import { GitBranch, Bell, Cpu, Wifi, WifiOff, Clock, Activity, Database, Zap, AlertCircle } from "lucide-react";
-import { type RuntimeStatus } from "@/ide/types";
+import { GitBranch, Bell, Wifi, Activity, Cpu, Database, Zap, Circle } from "lucide-react";
+import { useIdeStore } from "@/ide";
 
-interface StatusBarProps {
-  status: RuntimeStatus | null;
-  connected: boolean;
-  agentConnected: boolean;
-  onToast: (message: string) => void;
-}
-
-export function StatusBar({ status, connected, agentConnected, onToast }: StatusBarProps) {
-  const state = status?.state ?? "idle";
-  const eventCount = status?.metrics?.eventCount ?? 0;
-  const uptimeMs = status?.uptimeMs ?? 0;
-  const subsystemHealth = status?.metrics?.subsystemHealth ?? {};
-  const healthy = Object.values(subsystemHealth).filter(Boolean).length;
-  const total = Object.keys(subsystemHealth).length;
-  const memory = "14.2 MB";
+export function StatusBar() {
+  const cursor = useIdeStore((s) => s.cursor);
+  const openFiles = useIdeStore((s) => s.openFiles);
+  const activeFileId = useIdeStore((s) => s.activeFileId);
+  const activeFile = openFiles.find((f) => f.id === activeFileId);
+  const unsavedCount = openFiles.filter((f) => f.unsaved).length;
 
   return (
-    <div className="h-7 flex items-center justify-between px-2 bg-ide-primary text-ide-primary-foreground text-ide-xs select-none">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+    <div className="h-[22px] flex items-center justify-between bg-[#007acc] text-white text-[11px] select-none shrink-0">
+      {/* Left */}
+      <div className="flex items-center h-full">
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
           <GitBranch size={12} />
-          <span>main*</span>
+          <span>main</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {agentConnected ? <Wifi size={12} className="text-ide-success" /> : <WifiOff size={12} className="text-ide-error" />}
-          <span>{agentConnected ? "Agent connected" : "Agent disconnected"}</span>
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+          <Wifi size={12} />
+          <span>Connected</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
           <Activity size={12} />
-          <span className="capitalize">{state}</span>
+          <span>idle</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5">
+        <div className="hidden md:flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
           <Cpu size={12} />
-          <span>{healthy}/{total} subsystems</span>
+          <span>0/0 subsystems</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5">
-          <Database size={12} />
-          <span>{memory}</span>
-        </div>
+        {unsavedCount > 0 && (
+          <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+            <Circle size={8} fill="currentColor" />
+            <span>{unsavedCount} unsaved</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="hidden md:flex items-center gap-1.5">
+      {/* Right */}
+      <div className="flex items-center h-full">
+        <div className="hidden md:flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
           <Zap size={12} />
-          <span>{eventCount} events</span>
+          <span>0 events</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5">
-          <Clock size={12} />
-          <span>{uptimeMs}ms</span>
+        <div className="hidden md:flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+          <Database size={12} />
+          <span>0 MB</span>
         </div>
-        <button
-          onClick={() => onToast("Notifications panel opened")}
-          className="flex items-center gap-1 hover:bg-ide-primary-dim px-1.5 rounded transition-colors"
-          title="Notifications"
-        >
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+          <span>Ln {cursor.lineNumber}, Col {cursor.column}</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+          <span>UTF-8</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 h-full hover:bg-white/15 cursor-pointer transition-colors">
+          <span>{activeFile?.language ? activeFile.language.charAt(0).toUpperCase() + activeFile.language.slice(1) : "Plain Text"}</span>
+        </div>
+        <button className="flex items-center px-2 h-full hover:bg-white/15 transition-colors" title="Notifications">
           <Bell size={12} />
         </button>
       </div>

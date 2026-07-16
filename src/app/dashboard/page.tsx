@@ -149,21 +149,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (authLoading || !user) return;
-    const checkNCode = async () => {
-      try {
-        const res = await fetch("/api/user/terminal-status");
-        const data = (await res.json()) as { n_code?: string | null };
-        if (!data.n_code) {
-          router.push("/");
-        }
-      } catch (err) {
-        console.error("Failed to check N code", err);
-      }
-    };
-    void checkNCode();
-  }, [user, authLoading, router]);
+  // No terminal-status checks required.
 
   // 3D tilt effect on cards (simple mouse tracking)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);

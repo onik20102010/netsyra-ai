@@ -1,6 +1,3 @@
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { setupRuntime } = await import("@/ide/runtime");
-    await setupRuntime();
-  }
+  // IDE runtime removed — placeholder for future initialization
 }

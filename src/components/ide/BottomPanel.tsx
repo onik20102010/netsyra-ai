@@ -1,494 +1,71 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Terminal as TerminalIcon, List, AlertCircle, Zap, ChevronRight, X, Plus, Search, PanelRight } from "lucide-react";
-import { type RuntimeEventMessage } from "@/hooks/useRuntime";
-import { ResizableSplit } from "./ResizableSplit";
+import React from "react";
+import { Terminal as TerminalIcon, List, AlertCircle, Zap, X, Plus } from "lucide-react";
+import { useIdeStore } from "@/ide";
+import type { BottomTab } from "@/ide";
 
-export type BottomTab = "terminal" | "output" | "problems" | "debug";
-
-interface BottomPanelProps {
-  active: BottomTab;
-  onSelect: (t: BottomTab) => void;
-  events: RuntimeEventMessage[];
-  sendAction?: (action: string, payload?: unknown) => Promise<void>;
-}
-
-type TerminalShell = "cmd" | "powershell" | "pwsh";
-
-interface Terminal {
-  id: string;
-  name: string;
-  history: string[];
-  input: string;
-  shell: TerminalShell;
-  cmdId?: string;
-  pendingCommand?: string;
-  isRunning: boolean;
-}
-
-const initialTerminals: Terminal[] = [
-  {
-    id: "1",
-    name: "cmd",
-    history: ["$ netsyra runtime --start", "Runtime kernel booted successfully.", "$"],
-    input: "",
-    shell: "cmd",
-    isRunning: false,
-  },
-];
-
-const terminalResponses: Record<string, string> = {
-  help: "Available commands: boot, restart, shutdown, status, clear, help",
-  boot: "Booting runtime kernel... done",
-  restart: "Restarting runtime kernel... done",
-  shutdown: "Shutting down runtime kernel... done",
-  status: "Runtime is healthy. 8 subsystems online.",
-  clear: "__clear__",
-};
-
-function TerminalView({
-  terminal,
-  onInputChange,
-  onRun,
-  onStop,
-  onConfirm,
-  onCancel,
-  autoApproveSafe,
-  onToggleAutoApprove,
-  shell,
-  onShellChange,
-}: {
-  terminal: Terminal;
-  onInputChange: (value: string) => void;
-  onRun: () => void;
-  onStop: () => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-  autoApproveSafe: boolean;
-  onToggleAutoApprove: () => void;
-  shell: TerminalShell;
-  onShellChange: (shell: TerminalShell) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [terminal.history, terminal.pendingCommand]);
-
-  return (
-    <div className="flex flex-col h-full p-2 overflow-hidden">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto ide-scroll space-y-0.5">
-        {terminal.history.map((line, i) => (
-          <div key={i} className={`${line.startsWith("$") ? "text-ide-foreground-dim" : line.startsWith("Runtime") ? "text-ide-success" : "text-ide-foreground"} whitespace-pre-wrap`}>
-            {line}
-          </div>
-        ))}
-        {terminal.pendingCommand && (
-          <div className="flex items-center gap-2 py-1 px-2 my-1 bg-ide-warning/10 border border-ide-warning/20 rounded text-ide-foreground text-ide-sm">
-            <span className="flex-1 font-mono">{`$ ${terminal.pendingCommand}`}</span>
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="px-2 py-0.5 bg-ide-success text-ide-success-foreground rounded text-ide-xs hover:bg-ide-success/80"
-            >
-              Run
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-2 py-0.5 bg-ide-surface text-ide-foreground rounded text-ide-xs border border-ide-border hover:bg-ide-bg"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-      <form
-        onSubmit={(e) => { e.preventDefault(); terminal.pendingCommand ? onConfirm() : onRun(); }}
-        className="flex items-center gap-2 mt-1 pt-1 border-t border-ide-border"
-      >
-        <select
-          value={shell}
-          onChange={(e) => onShellChange(e.target.value as TerminalShell)}
-          disabled={terminal.isRunning || !!terminal.pendingCommand}
-          className="bg-ide-surface border border-ide-border rounded px-1.5 py-0.5 text-ide-xs text-ide-foreground focus:outline-none focus:border-ide-primary disabled:opacity-50"
-          title="Choose shell"
-        >
-          <option value="cmd">CMD</option>
-          <option value="powershell">PowerShell</option>
-          <option value="pwsh">PowerShell Core</option>
-        </select>
-        <span className="text-ide-foreground-dim">$</span>
-        <input
-          value={terminal.input}
-          onChange={(e) => onInputChange(e.target.value)}
-          disabled={terminal.isRunning || !!terminal.pendingCommand}
-          className="flex-1 bg-transparent text-ide-foreground text-ide-sm focus:outline-none disabled:opacity-50"
-          placeholder="Type a command..."
-        />
-        {terminal.isRunning && (
-          <button
-            type="button"
-            onClick={onStop}
-            className="px-2 py-0.5 bg-ide-error text-ide-error-foreground rounded text-ide-xs hover:bg-ide-error/80"
-          >
-            Stop
-          </button>
-        )}
-        {!terminal.isRunning && !terminal.pendingCommand && (
-          <label className="flex items-center gap-1.5 text-ide-foreground-dim text-ide-xs cursor-pointer select-none shrink-0" title="Auto-approve safe commands (dir, ls, git status, etc.)">
-            <input
-              type="checkbox"
-              checked={autoApproveSafe}
-              onChange={onToggleAutoApprove}
-              className="accent-ide-primary"
-            />
-            Auto-approve safe
-          </label>
-        )}
-      </form>
-    </div>
-  );
-}
-
-const SAFE_COMMANDS = ["dir", "ls", "pwd", "echo", "cat", "type", "git status", "git log", "git branch", "git diff"];
-
-function TerminalPanel({ events, sendAction }: { events: RuntimeEventMessage[]; sendAction?: (action: string, payload?: unknown) => Promise<void> }) {
-  const [terminals, setTerminals] = useState<Terminal[]>(initialTerminals);
-  const [activeId, setActiveId] = useState("1");
-  const [nextId, setNextId] = useState(2);
-  const [split, setSplit] = useState(false);
-  const [secondaryId, setSecondaryId] = useState<string | null>(null);
-  const [autoApproveSafe, setAutoApproveSafe] = useState(false);
-  const processedKeys = useRef<Set<string>>(new Set());
-
-  const active = terminals.find((t) => t.id === activeId) ?? terminals[0];
-  const secondary = terminals.find((t) => t.id === secondaryId) ?? active;
-
-  useEffect(() => {
-    for (const evt of events) {
-      const key = `${evt.type}-${evt.timestamp}-${JSON.stringify(evt.payload)}`;
-      if (processedKeys.current.has(key)) continue;
-      processedKeys.current.add(key);
-
-      if (evt.type !== "terminal") continue;
-      const p = (evt.payload ?? {}) as { id?: string; output?: string; done?: boolean };
-      if (!p.id || p.output === undefined) continue;
-
-      setTerminals((prev) =>
-        prev.map((t) => {
-          if (t.cmdId !== p.id) return t;
-          const newHistory = [...t.history, p.output ?? ""];
-          const next: Terminal = { ...t, history: newHistory };
-          if (p.done) {
-            next.isRunning = false;
-            next.cmdId = undefined;
-            next.history = [...newHistory, "$"];
-          }
-          return next;
-        })
-      );
-    }
-  }, [events]);
-
-  const run = (id: string) => {
-    const terminal = terminals.find((t) => t.id === id);
-    if (!terminal || terminal.isRunning) return;
-    const cmd = terminal.input.trim();
-    if (!cmd) return;
-
-    if (!sendAction) {
-      setTerminals((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, history: [...t.history, `$ ${cmd}`, "Runtime not connected", "$"], input: "", isRunning: false } : t))
-      );
-      return;
-    }
-
-    if (autoApproveSafe && isSafeCommand(cmd)) {
-      executeCommand(id, cmd);
-    } else {
-      setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, input: "", pendingCommand: cmd } : t)));
-    }
-  };
-
-  const executeCommand = (id: string, cmd: string) => {
-    const terminal = terminals.find((t) => t.id === id);
-    if (!terminal) return;
-    const cmdId = crypto.randomUUID();
-    setTerminals((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, history: [...t.history, `$ ${cmd}`], input: "", pendingCommand: undefined, cmdId, isRunning: true } : t))
-    );
-    void sendAction?.("run-command", { command: cmd, cwd: ".", shell: terminal.shell, id: cmdId });
-  };
-
-  const confirmRun = (id: string) => {
-    const terminal = terminals.find((t) => t.id === id);
-    if (!terminal?.pendingCommand) return;
-    executeCommand(id, terminal.pendingCommand);
-  };
-
-  const cancelRun = (id: string) => {
-    setTerminals((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        return { ...t, input: t.pendingCommand ? t.pendingCommand : t.input, pendingCommand: undefined };
-      })
-    );
-  };
-
-  const isSafeCommand = (cmd: string): boolean => {
-    const trimmed = cmd.trim().toLowerCase();
-    return SAFE_COMMANDS.some((prefix) => trimmed === prefix || trimmed.startsWith(`${prefix} `));
-  };
-
-  const stop = (id: string) => {
-    const terminal = terminals.find((t) => t.id === id);
-    if (!terminal?.cmdId || !sendAction) return;
-    void sendAction("stop-command", { id: terminal.cmdId });
-    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, isRunning: false, cmdId: undefined } : t)));
-  };
-
-  const addTerminal = () => {
-    const id = String(nextId);
-    setTerminals((prev) => [...prev, { id, name: `cmd ${prev.length + 1}`, history: ["$"], input: "", shell: "cmd", isRunning: false }]);
-    setActiveId(id);
-    setNextId((n) => n + 1);
-  };
-
-  const closeTerminal = (id: string) => {
-    if (terminals.length <= 1) return;
-    setTerminals((prev) => {
-      const next = prev.filter((t) => t.id !== id);
-      const newActive = next[next.length - 1];
-      if (activeId === id) {
-        setActiveId(newActive.id);
-      }
-      if (secondaryId === id) {
-        setSecondaryId(null);
-      }
-      return next;
-    });
-  };
-
-  const toggleSplit = () => {
-    setSplit((s) => {
-      const next = !s;
-      if (next && !secondaryId) {
-        setSecondaryId(activeId);
-      }
-      return next;
-    });
-  };
-
-  const updateInput = (id: string, value: string) => {
-    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, input: value } : t)));
-  };
-
-  const updateShell = (id: string, shell: TerminalShell) => {
-    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, shell, name: shell } : t)));
-  };
-
-  const activeView = (
-    <TerminalView
-      terminal={active}
-      onInputChange={(value) => updateInput(active.id, value)}
-      onRun={() => run(active.id)}
-      onStop={() => stop(active.id)}
-      onConfirm={() => confirmRun(active.id)}
-      onCancel={() => cancelRun(active.id)}
-      autoApproveSafe={autoApproveSafe}
-      onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
-      shell={active.shell}
-      onShellChange={(shell) => updateShell(active.id, shell)}
-    />
-  );
-
-  return (
-    <div className="flex flex-col h-full bg-ide-bg font-mono text-ide-sm">
-      <div className="flex items-center h-8 bg-ide-surface border-b border-ide-border overflow-x-auto ide-scroll">
-        {terminals.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveId(t.id)}
-            className={`group flex items-center gap-1.5 px-3 h-full border-r border-ide-border text-ide-xs transition-colors ${
-              activeId === t.id
-                ? "bg-ide-bg text-ide-foreground border-t-2 border-t-ide-primary"
-                : "text-ide-foreground-muted hover:bg-ide-bg hover:text-ide-foreground"
-            }`}
-          >
-            <TerminalIcon size={12} />
-            <span className="flex-1 truncate">{t.name}</span>
-            {terminals.length > 1 && (
-              <X
-                size={10}
-                onClick={(e) => { e.stopPropagation(); closeTerminal(t.id); }}
-                className="opacity-0 group-hover:opacity-100 hover:text-ide-error text-ide-foreground-dim transition-opacity"
-              />
-            )}
-          </button>
-        ))}
-        <button
-          onClick={addTerminal}
-          className="flex items-center justify-center h-8 w-8 text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-bg transition-colors"
-          title="New terminal"
-        >
-          <Plus size={12} />
-        </button>
-        <button
-          onClick={toggleSplit}
-          className={`flex items-center justify-center h-8 w-8 transition-colors ${
-            split ? "text-ide-primary bg-ide-primary/10" : "text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-bg"
-          }`}
-          title="Split terminal"
-        >
-          <PanelRight size={12} />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-hidden">
-        {split ? (
-          <ResizableSplit
-            direction="horizontal"
-            defaultSplit={50}
-            minFirst={20}
-            minSecond={20}
-            firstPanelName="Primary"
-            secondPanelName="Secondary"
-            first={activeView}
-            second={
-              <TerminalView
-                terminal={secondary}
-                onInputChange={(value) => updateInput(secondary.id, value)}
-                onRun={() => run(secondary.id)}
-                onStop={() => stop(secondary.id)}
-                onConfirm={() => confirmRun(secondary.id)}
-                onCancel={() => cancelRun(secondary.id)}
-                autoApproveSafe={autoApproveSafe}
-                onToggleAutoApprove={() => setAutoApproveSafe((v) => !v)}
-                shell={secondary.shell}
-                onShellChange={(shell) => updateShell(secondary.id, shell)}
-              />
-            }
-          />
-        ) : (
-          activeView
-        )}
-      </div>
-    </div>
-  );
-}
-
-function OutputPanel({ events }: { events: RuntimeEventMessage[] }) {
-  const [filter, setFilter] = useState("");
-  const filtered = events.filter((evt) => evt.type.toLowerCase().includes(filter.toLowerCase()) || JSON.stringify(evt.payload).toLowerCase().includes(filter.toLowerCase()));
-
-  return (
-    <div className="flex flex-col h-full bg-ide-bg p-2 text-ide-foreground overflow-hidden">
-      <div className="flex items-center gap-2 mb-2">
-        <Search size={12} className="text-ide-foreground-dim" />
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter output..."
-          className="flex-1 bg-ide-surface border border-ide-border rounded px-2 py-0.5 text-ide-xs text-ide-foreground placeholder:text-ide-foreground-dim focus:outline-none focus:border-ide-primary"
-        />
-      </div>
-      <div className="flex-1 overflow-y-auto ide-scroll font-mono text-ide-xs space-y-1">
-        {filtered.length === 0 && <span className="text-ide-foreground-dim">No output.</span>}
-        {filtered.slice(0, 100).map((evt, i) => (
-          <div key={i} className="flex items-start gap-2 py-1 border-b border-ide-border-subtle/50">
-            <span className="text-ide-foreground-dim shrink-0">[{new Date(evt.timestamp ?? Date.now()).toLocaleTimeString()}]</span>
-            <span className="text-ide-accent shrink-0">{evt.type}</span>
-            <span className="text-ide-foreground truncate">{JSON.stringify(evt.payload)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ProblemsPanel({ events }: { events: RuntimeEventMessage[] }) {
-  const errors = events.filter((e) => (e.payload as { level?: string })?.level === "error" || e.type.toLowerCase().includes("error"));
-  return (
-    <div className="flex flex-col h-full bg-ide-bg p-2 text-ide-sm text-ide-foreground-dim overflow-y-auto ide-scroll">
-      {errors.length === 0 ? (
-        <div className="flex items-center gap-2 text-ide-success">
-          <AlertCircle size={14} /> No problems detected.
-        </div>
-      ) : (
-        errors.slice(0, 50).map((e, i) => (
-          <div key={i} className="flex items-center gap-2 py-1 text-ide-error border-b border-ide-border-subtle/50">
-            <AlertCircle size={14} />
-            <span className="truncate">{e.type}: {JSON.stringify(e.payload)}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-}
-
-function DebugPanel({ events }: { events: RuntimeEventMessage[] }) {
-  return (
-    <div className="flex flex-col h-full bg-ide-bg p-2 text-ide-sm text-ide-foreground-dim overflow-y-auto ide-scroll">
-      <div className="flex items-center gap-2 text-ide-foreground mb-2">
-        <Zap size={14} /> Debug console is ready. {events.length} events received.
-      </div>
-      <div className="font-mono text-ide-xs space-y-1">
-        {events.slice(0, 30).map((evt, i) => (
-          <div key={i} className="flex items-center gap-2 text-ide-foreground-dim">
-            <ChevronRight size={10} />
-            <span>{evt.type}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const bottomTabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
+const tabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
   { id: "terminal", label: "Terminal", icon: <TerminalIcon size={12} /> },
   { id: "output", label: "Output", icon: <List size={12} /> },
   { id: "problems", label: "Problems", icon: <AlertCircle size={12} /> },
   { id: "debug", label: "Debug Console", icon: <Zap size={12} /> },
 ];
 
-export function BottomPanel({ active, onSelect, events, sendAction }: BottomPanelProps) {
+export function BottomPanel() {
+  const activeTab = useIdeStore((s) => s.bottomTab);
+  const setBottomTab = useIdeStore((s) => s.setBottomTab);
+  const toggleBottom = useIdeStore((s) => s.toggleBottom);
   return (
-    <div className="flex flex-col h-full bg-ide-bg border-t border-ide-border">
-      <div className="flex items-center h-8 bg-ide-surface border-b border-ide-border">
-        {bottomTabs.map((tab) => (
+    <div className="flex flex-col h-full bg-[#1e1e1e] border-t border-[#3c3c3c]">
+      {/* Tab bar */}
+      <div className="flex items-center h-[35px] bg-[#252526] border-b border-[#3c3c3c] shrink-0">
+        {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => onSelect(tab.id)}
-            className={`flex items-center gap-1.5 px-3 h-full text-ide-xs transition-colors border-r border-ide-border ${
-              active === tab.id
-                ? "bg-ide-bg text-ide-foreground border-t-2 border-t-ide-primary"
-                : "text-ide-foreground-muted hover:text-ide-foreground hover:bg-ide-bg"
+            onClick={() => setBottomTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 h-full text-[11px] uppercase tracking-wide font-semibold border-r border-[#3c3c3c] transition-colors ${
+              activeTab === tab.id
+                ? "bg-[#1e1e1e] text-[#cccccc] border-t-2 border-t-[#007acc]"
+                : "text-[#858585] hover:text-[#cccccc] hover:bg-[#1e1e1e]"
             }`}
+            style={{ marginTop: activeTab === tab.id ? "-1px" : 0 }}
           >
             {tab.icon}
             {tab.label}
           </button>
         ))}
+        <div className="flex-1" />
+        <div className="flex items-center gap-1 px-2">
+          <button className="p-1 text-[#858585] hover:text-[#cccccc]" title="New Terminal">
+            <Plus size={14} />
+          </button>
+          <button onClick={toggleBottom} className="p-1 text-[#858585] hover:text-[#cccccc]" title="Close Panel">
+            <X size={14} />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, y: 2 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -2 }}
-            transition={{ duration: 0.12 }}
-            className="h-full"
-          >
-            {active === "terminal" && <TerminalPanel events={events} sendAction={sendAction} />}
-            {active === "output" && <OutputPanel events={events} />}
-            {active === "problems" && <ProblemsPanel events={events} />}
-            {active === "debug" && <DebugPanel events={events} />}
-          </motion.div>
-        </AnimatePresence>
+
+      {/* Content */}
+      <div className="flex-1 overflow-hidden p-2">
+        {activeTab === "terminal" && (
+          <div className="font-mono text-[13px] text-[#cccccc] space-y-0.5">
+            <div className="text-[#858585]">$ netsyra --version</div>
+            <div className="text-[#89d185]">Netsyra IDE v0.1.0</div>
+            <div className="text-[#858585]">$ <span className="inline-block w-2 h-3.5 bg-[#cccccc] animate-pulse" /></div>
+          </div>
+        )}
+        {activeTab === "output" && (
+          <div className="text-[13px] text-[#858585]">No output yet.</div>
+        )}
+        {activeTab === "problems" && (
+          <div className="flex items-center gap-2 text-[13px] text-[#89d185]">
+            <AlertCircle size={14} /> No problems detected.
+          </div>
+        )}
+        {activeTab === "debug" && (
+          <div className="text-[13px] text-[#858585]">Debug console ready.</div>
+        )}
       </div>
     </div>
   );

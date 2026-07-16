@@ -1,49 +1,57 @@
 "use client";
 
 import React from "react";
-import { FolderTree, Search, GitBranch, Puzzle, Sparkles, Activity, Bell, Settings } from "lucide-react";
+import {
+  FolderTree,
+  Search,
+  GitBranch,
+  Bug,
+  Puzzle,
+  Settings,
+  User,
+} from "lucide-react";
+import { useIdeStore } from "@/ide";
+import type { ActivityView } from "@/ide";
 
-export type View = "explorer" | "search" | "source-control" | "extensions" | "chat" | "runtime";
-
-interface ActivityBarProps {
-  active: View;
-  onSelect: (v: View) => void;
-}
-
-const activityItems: { id: View; icon: React.ReactNode; label: string }[] = [
-  { id: "explorer", icon: <FolderTree size={18} />, label: "Explorer" },
-  { id: "search", icon: <Search size={18} />, label: "Search" },
-  { id: "source-control", icon: <GitBranch size={18} />, label: "Source Control" },
-  { id: "extensions", icon: <Puzzle size={18} />, label: "Extensions" },
-  { id: "chat", icon: <Sparkles size={18} />, label: "AI Chat" },
-  { id: "runtime", icon: <Activity size={18} />, label: "Runtime" },
+const items: { id: ActivityView; icon: React.ReactNode; label: string }[] = [
+  { id: "explorer", icon: <FolderTree size={24} strokeWidth={1.3} />, label: "Explorer" },
+  { id: "search", icon: <Search size={24} strokeWidth={1.3} />, label: "Search" },
+  { id: "source-control", icon: <GitBranch size={24} strokeWidth={1.3} />, label: "Source Control" },
+  { id: "run-debug", icon: <Bug size={24} strokeWidth={1.3} />, label: "Run and Debug" },
+  { id: "extensions", icon: <Puzzle size={24} strokeWidth={1.3} />, label: "Extensions" },
 ];
 
-export function ActivityBar({ active, onSelect }: ActivityBarProps) {
+export function ActivityBar() {
+  const active = useIdeStore((s) => s.activeView);
+  const setActiveView = useIdeStore((s) => s.setActiveView);
+
   return (
-    <div className="w-12 flex flex-col items-center py-2 bg-ide-surface border-r border-ide-border z-ide-sidebar">
-      <div className="flex flex-col gap-1 flex-1">
-        {activityItems.map((item) => (
+    <div className="w-[48px] flex flex-col items-center bg-[#333333] shrink-0">
+      <div className="flex flex-col flex-1 w-full">
+        {items.map((item) => (
           <button
             key={item.id}
-            onClick={() => onSelect(item.id)}
+            onClick={() => setActiveView(item.id)}
             title={item.label}
-            className={`w-9 h-9 flex items-center justify-center rounded transition-all duration-ide-fast ${
+            className={`relative w-full h-[48px] flex items-center justify-center transition-colors ${
               active === item.id
-                ? "text-ide-foreground bg-ide-surface-active"
-                : "text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover"
+                ? "text-white"
+                : "text-[#858585] hover:text-[#cccccc]"
             }`}
           >
+            {active === item.id && (
+              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
+            )}
             {item.icon}
           </button>
         ))}
       </div>
-      <div className="flex flex-col gap-1 mt-auto">
-        <button className="w-9 h-9 flex items-center justify-center rounded text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover transition-colors">
-          <Bell size={18} />
+      <div className="flex flex-col w-full">
+        <button className="w-full h-[48px] flex items-center justify-center text-[#858585] hover:text-[#cccccc] transition-colors">
+          <User size={24} strokeWidth={1.3} />
         </button>
-        <button className="w-9 h-9 flex items-center justify-center rounded text-ide-foreground-dim hover:text-ide-foreground hover:bg-ide-surface-hover transition-colors">
-          <Settings size={18} />
+        <button className="w-full h-[48px] flex items-center justify-center text-[#858585] hover:text-[#cccccc] transition-colors">
+          <Settings size={24} strokeWidth={1.3} />
         </button>
       </div>
     </div>
