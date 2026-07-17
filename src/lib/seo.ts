@@ -8,10 +8,15 @@ export const defaultDescription =
   "Netsyra AI is an intelligent AI orchestration layer that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.";
 
 export const keywords = [
+  "NetsyraAI",
+  "Netsyra AI",
+  "netsyraai",
+  "netsyra ai",
+  "netsyraai.com",
+  "NetsyraAI.com",
   "AI assistant",
   "AI orchestration",
   "multi-model AI",
-  "Netsyra AI",
   "LLM routing",
   "AI chatbot",
   "real-time web search",

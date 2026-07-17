@@ -1,22 +1,21 @@
-// ═══════════════════════════════════════════════════════════════
-// Netsyra IDE — Editor Configuration
-// Monaco options matching VS Code defaults
-// ═══════════════════════════════════════════════════════════════
+// d:\netsyra\src\ide\editor-config.ts
 
 import type { editor } from "monaco-editor";
 import type { EditorConfig } from "./types";
+import { NETSYRA_THEME } from "./theme";
 
 export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEditorConstructionOptions {
   return {
-    // Typography
+    // Typography & Layout
     fontSize: config.fontSize,
     fontFamily: config.fontFamily,
     lineHeight: config.lineHeight,
     letterSpacing: 0,
     fontLigatures: true,
+    automaticLayout: true, // CRITICAL FIX: Prevents overlapping/cut-off text in flex layouts
 
     // Gutter
-    lineNumbers: config.lineNumbers ? "on" : "off",
+    lineNumbers: "on",
     lineNumbersMinChars: 3,
     glyphMargin: config.glyphMargin,
     lineDecorationsWidth: 0,
@@ -98,8 +97,7 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
     parameterHints: { enabled: true },
     hover: { enabled: true, delay: 300 },
 
-    // Layout
-    automaticLayout: true,
+    // Padding
     padding: { top: 8, bottom: 8 },
 
     // Overview ruler
@@ -110,11 +108,13 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
     inlayHints: { enabled: "off" },
     codeLens: false,
     occurrencesHighlight: "off",
+
+    // Theme (Passed to editor instance)
+    theme: NETSYRA_THEME,
   };
 }
 
-// ── Keybindings (VS Code defaults) ──────────────────────────────
-
+// Keybindings (VS Code defaults)
 export const EDITOR_KEYBINDINGS = {
   save: "ctrlcmd+s",
   find: "ctrlcmd+f",

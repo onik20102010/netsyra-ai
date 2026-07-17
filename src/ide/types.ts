@@ -1,148 +1,70 @@
-// ═══════════════════════════════════════════════════════════════
-// Netsyra IDE — Core Type Definitions
-// ═══════════════════════════════════════════════════════════════
+// d:\netsyra\src\ide\types.ts
 
-// ── File System ─────────────────────────────────────────────────
-
-export interface FileItem {
+/**
+ * Represents a single file or directory in the workspace.
+ */
+export type FileItem = {
   id: string;
   name: string;
   path: string;
-  type: "file" | "folder";
-  handle?: FileSystemHandle;
-  children?: FileItem[];
-}
+  isDirectory: boolean;
+  children?: FileItem[]; // Present if isDirectory is true
+  content?: string; // Present if isDirectory is false
+  language?: string; // Present if isDirectory is false
+  lastModified?: number;
+};
 
-export interface OpenFile {
-  id: string;
-  name: string;
+/**
+ * Represents an actively opened file in the editor tabs.
+ */
+export type OpenFile = {
+  id: string; // Correlates to the FileItem id
   path: string;
-  language: string;
   content: string;
-  originalContent: string;
-  unsaved: boolean;
-  pinned: boolean;
-  preview: boolean;
-  handle?: FileSystemFileHandle;
-  viewState?: unknown;
-}
+  language: string;
+  isDirty: boolean; // Tracks if the file has unsaved changes
+  cursorPosition?: {
+    lineNumber: number;
+    column: number;
+  };
+};
 
-// ── Editor ──────────────────────────────────────────────────────
-
-export type EditorTheme = "netsyra-dark" | "netsyra-light";
-
-export interface EditorConfig {
+/**
+ * Configuration options passed to the Monaco Editor.
+ * Defaults mirror typical VS Code settings.
+ */
+export type EditorConfig = {
   fontSize: number;
   fontFamily: string;
   lineHeight: number;
   tabSize: number;
-  wordWrap: "on" | "off";
+  wordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded';
   minimap: boolean;
   lineNumbers: boolean;
-  glyphMargin: boolean;
   folding: boolean;
-}
-
-export const defaultEditorConfig: EditorConfig = {
-  fontSize: 14,
-  fontFamily: "Consolas, 'Courier New', monospace",
-  lineHeight: 19,
-  tabSize: 2,
-  wordWrap: "off",
-  minimap: true,
-  lineNumbers: true,
-  glyphMargin: true,
-  folding: true,
+  glyphMargin: boolean;
 };
 
-// ── Layout ──────────────────────────────────────────────────────
-
-export type ActivityView =
-  | "explorer"
-  | "search"
-  | "source-control"
-  | "run-debug"
-  | "extensions";
-
-export type BottomTab = "terminal" | "output" | "problems" | "debug";
-
-export interface LayoutState {
-  activeView: ActivityView;
-  activeBottomTab: BottomTab;
-  sidebarVisible: boolean;
-  bottomPanelVisible: boolean;
-  sidebarWidth: number;
-  bottomPanelHeight: number;
-}
-
-export const defaultLayoutState: LayoutState = {
-  activeView: "explorer",
-  activeBottomTab: "terminal",
-  sidebarVisible: true,
-  bottomPanelVisible: true,
-  sidebarWidth: 240,
-  bottomPanelHeight: 200,
+/**
+ * Represents the active project workspace.
+ */
+export type Workspace = {
+  name: string;
+  rootPath: string; // Virtual path namespace for the web
+  files: FileItem[]; // The root file tree
 };
 
-// ── Workspace ───────────────────────────────────────────────────
+/**
+ * Available views for the left sidebar.
+ */
+export type SidebarView = 'explorer' | 'search' | 'extensions' | 'settings' | 'ai-chat';
 
-export interface WorkspaceState {
-  root: FileItem | null;
-  openFiles: OpenFile[];
-  activeFileId: string | null;
-}
+/**
+ * Available views for the bottom panel.
+ */
+export type BottomPanelView = 'terminal' | 'output' | 'problems' | 'debug';
 
-// ── Diagnostics ─────────────────────────────────────────────────
-
-export type DiagnosticSeverity = "error" | "warning" | "info" | "hint";
-
-export interface Diagnostic {
-  file: string;
-  line: number;
-  column: number;
-  endLine?: number;
-  endColumn?: number;
-  message: string;
-  severity: DiagnosticSeverity;
-  source?: string;
-}
-
-// ── Commands ────────────────────────────────────────────────────
-
-export interface Command {
-  id: string;
-  title: string;
-  category?: string;
-  keybinding?: string;
-  handler: () => void;
-}
-
-// ── Theme Colors (VS Code Dark+ exact values) ───────────────────
-
-export const IDE_COLORS = {
-  // Backgrounds
-  editorBg: "#1e1e1e",
-  sidebarBg: "#252526",
-  activityBarBg: "#333333",
-  statusBarBg: "#007acc",
-  titleBarBg: "#323233",
-  tabActiveBg: "#1e1e1e",
-  tabInactiveBg: "#2d2d2d",
-  bottomPanelBg: "#1e1e1e",
-  // Foregrounds
-  editorFg: "#d4d4d4",
-  foreground: "#cccccc",
-  foregroundMuted: "#969696",
-  foregroundDim: "#858585",
-  // Borders
-  border: "#3c3c3c",
-  borderSubtle: "#2b2b2b",
-  // Accent
-  accent: "#007acc",
-  accentDim: "#005a9e",
-  // Status
-  error: "#f48771",
-  warning: "#cca700",
-  success: "#89d185",
-  info: "#75beff",
-} as const;
+/**
+ * Available views for the right panel (AI chat).
+ */
+export type RightPanelView = 'ai-chat' | null;

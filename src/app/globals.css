@@ -46,6 +46,22 @@
 
 /* ── Global typography (your spec) ── */
 @layer base {
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   html {
     font-size: 16px;                /* base size */
     -webkit-font-smoothing: antialiased;
@@ -55,8 +71,7 @@
   body {
     font-size: 1rem;                /* 16px */
     font-weight: 400;               /* normal */
-    line-height: 1.75;              /* exactly as requested */
-    letter-spacing: -0.011em;
+    line-height: 1.6;               /* standard line-height (was 1.75, broke Monaco) */
     color: #0d0d0d;
   }
 

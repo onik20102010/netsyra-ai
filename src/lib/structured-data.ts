@@ -5,6 +5,7 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Netsyra AI",
+    alternateName: ["NetsyraAI", "netsyraai", "netsyra ai", "netsyraai.com"],
     url: siteUrl,
     logo: `${siteUrl}/logo.png`,
     sameAs: [
@@ -24,6 +25,7 @@ export function websiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Netsyra AI",
+    alternateName: ["NetsyraAI", "netsyraai", "netsyra ai", "netsyraai.com"],
     url: siteUrl,
     potentialAction: {
       "@type": "SearchAction",
@@ -61,6 +63,7 @@ export function softwareApplicationJsonLd() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Netsyra AI",
+    alternateName: ["NetsyraAI", "netsyraai", "netsyra ai", "netsyraai.com"],
     applicationCategory: "AIApplication",
     operatingSystem: "Any",
     offers: {

@@ -1,149 +1,233 @@
+// d:\netsyra\src\components\ide\Explorer.tsx
 "use client";
 
-import React, { useState } from "react";
-import {
-  ChevronRight,
-  ChevronDown,
-  FolderTree,
-  Folder,
-  FileCode,
-  FileText,
-  FileJson,
-  File as FileIcon,
-  RefreshCw,
-  FolderOpen,
-  X,
+import React, { useState, useCallback } from "react";
+import { useIdeStore, FileItem, openWorkspaceFromDisk, closeWorkspaceFromDisk, getFileIconDetails } from "@/ide";
+import { 
+  Folder, FolderOpen, File, FileCode, FileJson, FileText, Image, 
+  ChevronRight, ChevronDown, Plus, FolderPlus, Trash2, Pencil, 
+  FolderOpen as FolderOpenIcon, X
 } from "lucide-react";
-import { useIdeStore, getFileIcon } from "@/ide";
-import type { FileItem } from "@/ide";
-
-// ── Icon helper ─────────────────────────────────────────────────
-
-function Icon({ item, size = 14 }: { item: FileItem; size?: number }) {
-  const iconName = getFileIcon(item.name, item.type);
-  switch (iconName) {
-    case "folder": return <Folder size={size} className="text-[#c09553]" />;
-    case "folder-open": return <FolderOpen size={size} className="text-[#c09553]" />;
-    case "file-code": return <FileCode size={size} className="text-[#519aba]" />;
-    case "file-json": return <FileJson size={size} className="text-[#cbcb41]" />;
-    case "file-text": return <FileText size={size} className="text-[#6d8086]" />;
-    default: return <FileIcon size={size} className="text-[#6d8086]" />;
-  }
-}
-
-// ── Tree Node ───────────────────────────────────────────────────
-
-function TreeNode({ item, level, activePath, onOpen }: { item: FileItem; level: number; activePath: string | null; onOpen: (item: FileItem) => void }) {
-  const [expanded, setExpanded] = useState(level < 1);
-
-  if (item.type === "folder") {
-    return (
-      <div>
-        <div
-          className="flex items-center gap-1 h-[22px] cursor-pointer hover:bg-[#2a2d2e] text-[#cccccc] text-[13px]"
-          style={{ paddingLeft: `${level * 8 + 8}px` }}
-          onClick={() => setExpanded(!expanded)}
-        >
-          <span className="w-4 flex items-center justify-center shrink-0">
-            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          </span>
-          <Icon item={{ ...item, type: "folder" }} />
-          <span className="truncate">{item.name}</span>
-        </div>
-        {expanded && item.children?.map((child) => (
-          <TreeNode key={child.id} item={child} level={level + 1} activePath={activePath} onOpen={onOpen} />
-        ))}
-      </div>
-    );
-  }
-
-  const isActive = activePath === item.path;
-
-  return (
-    <div
-      className={`flex items-center gap-1 h-[22px] cursor-pointer text-[13px] ${
-        isActive ? "bg-[#37373d] text-white" : "hover:bg-[#2a2d2e] text-[#cccccc]"
-      }`}
-      style={{ paddingLeft: `${level * 8 + 8 + 16}px` }}
-      onClick={() => onOpen(item)}
-    >
-      <Icon item={item} />
-      <span className="truncate">{item.name}</span>
-    </div>
-  );
-}
-
-// ── Explorer ────────────────────────────────────────────────────
 
 export function Explorer() {
-  const tree = useIdeStore((s) => s.tree);
-  const openFile = useIdeStore((s) => s.openFile);
+  const workspace = useIdeStore((s) => s.workspace);
   const activeFileId = useIdeStore((s) => s.activeFileId);
-  const openFiles = useIdeStore((s) => s.openFiles);
-  const workspaceName = useIdeStore((s) => s.workspaceName);
-  const loading = useIdeStore((s) => s.loading);
-  const openFolder = useIdeStore((s) => s.openFolder);
-  const refreshTree = useIdeStore((s) => s.refreshTree);
-  const closeWorkspace = useIdeStore((s) => s.closeWorkspace);
-  const activePath = openFiles.find((f) => f.id === activeFileId)?.path ?? null;
+  const openFile = useIdeStore((s) => s.openFile);
+  const createFile = useIdeStore((s) => s.createFile);
+  const isLoading = useIdeStore((s) => s.isLoading);
 
-  const hasWorkspace = tree.length > 0;
+  // Local UI state for expanded folders
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [isCreating, setIsCreating] = useState<{ parentPath: string; isDir: boolean } | null>(null);
+  const [newName, setNewName] = useState("");
 
+  // Toggle folder expansion
+  const toggleFolder = (path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  // Handle creating a file/folder
+  const handleCreate = (parentPath: string) => {
+    if (newName.trim()) {
+      createFile(parentPath, newName.trim(), isCreating?.isDir || false);
+      setNewName("");
+      setIsCreating(null);
+    }
+  };
+
+  // Handle right-click context menu for creating inside folders
+  const handleContextMenu = (e: React.MouseEvent, item: FileItem) => {
+    e.preventDefault();
+    if (item.isDirectory) {
+      setIsCreating({ parentPath: item.path, isDir: false });
+      setNewName("");
+      // Expand the folder to show the input
+      setExpandedFolders(prev => new Set([...prev, item.path]));
+    }
+  };
+
+  // Recursive Tree Renderer
+  const renderTree = (items: FileItem[], level = 0) => {
+    return items.map((item) => {
+      const isExpanded = expandedFolders.has(item.path);
+      const isActive = activeFileId === item.id;
+
+      if (item.isDirectory) {
+        return (
+          <div key={item.id}>
+            <div
+              className={`flex items-center h-[28px] px-2 cursor-pointer hover:bg-[#2a2d2e] group ${
+                isExpanded ? "bg-[#2a2d2e]" : ""
+              }`}
+              style={{ paddingLeft: `${level * 12 + 8}px` }}
+              onClick={() => toggleFolder(item.path)}
+              onContextMenu={(e) => handleContextMenu(e, item)}
+            >
+              <span className="mr-1 text-[#858585]">
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+              <span className="text-[#cccccc] mr-1">
+                {isExpanded ? <FolderOpen size={16} className="text-[#90a4ae]" /> : <Folder size={16} className="text-[#90a4ae]" />}
+              </span>
+              <span className="text-[13px] truncate text-[#cccccc] flex-1">{item.name}</span>
+              
+              {/* Hover action buttons */}
+              <div className="hidden group-hover:flex items-center gap-0.5 ml-2">
+                <button
+                  className="p-0.5 rounded hover:bg-[#3c3c3c] text-[#858585] hover:text-white transition-colors"
+                  title="New File"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCreating({ parentPath: item.path, isDir: false });
+                    setNewName("");
+                    setExpandedFolders(prev => new Set([...prev, item.path]));
+                  }}
+                >
+                  <Plus size={12} />
+                </button>
+                <button
+                  className="p-0.5 rounded hover:bg-[#3c3c3c] text-[#858585] hover:text-white transition-colors"
+                  title="New Folder"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCreating({ parentPath: item.path, isDir: true });
+                    setNewName("");
+                    setExpandedFolders(prev => new Set([...prev, item.path]));
+                  }}
+                >
+                  <FolderPlus size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Recursively render children if expanded */}
+            {isExpanded && item.children && (
+              <div>
+                {/* Input for new file/folder inside this directory */}
+                {isCreating?.parentPath === item.path && (
+                  <div
+                    className="flex items-center h-[28px] px-2 bg-[#2a2d2e]"
+                    style={{ paddingLeft: `${(level + 1) * 12 + 24}px` }}
+                  >
+                    <input
+                      type="text"
+                      autoFocus
+                      className="flex-1 bg-[#3c3c3c] text-[#cccccc] text-[13px] px-1 border border-[#007acc] outline-none rounded-sm"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCreate(item.path);
+                        if (e.key === "Escape") setIsCreating(null);
+                      }}
+                      onBlur={() => setIsCreating(null)}
+                      placeholder={isCreating?.isDir ? "folder name" : "file name"}
+                    />
+                  </div>
+                )}
+                {renderTree(item.children, level + 1)}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // It's a file
+      const { iconName, color } = getFileIconDetails(item.path, false);
+      // Map Lucide icon name to actual component
+      const IconComponent = 
+        iconName === "FileCode" ? FileCode :
+        iconName === "FileJson" ? FileJson :
+        iconName === "FileText" ? FileText :
+        iconName === "Image" ? Image :
+        File;
+
+      return (
+        <div
+          key={item.id}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+              type: 'file',
+              path: item.path,
+              name: item.name,
+              id: item.id
+            }));
+          }}
+          className={`flex items-center h-[28px] px-2 cursor-pointer hover:bg-[#2a2d2e] ${isActive ? "bg-[#04395e] text-white" : ""}`}
+          style={{ paddingLeft: `${level * 12 + 20}px` }}
+          onClick={() => openFile(item.id)}
+        >
+          <span className="mr-1">
+            <IconComponent size={16} color={color} />
+          </span>
+          <span className={`text-[13px] truncate ${isActive ? "text-white" : "text-[#cccccc]"}`}>
+            {item.name}
+          </span>
+        </div>
+      );
+    });
+  };
+
+  // --- Explorer Header Actions ---
   return (
-    <div className="flex flex-col h-full bg-[#252526]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 h-[35px] shrink-0">
-        <span className="text-[11px] font-semibold text-[#cccccc] uppercase tracking-wide">Explorer</span>
-        {hasWorkspace && (
-          <div className="flex items-center gap-1 text-[#858585]">
-            <button onClick={() => openFolder()} className="p-1 hover:text-[#cccccc] hover:bg-[#2a2d2e] rounded" title="Open Folder">
-              <FolderOpen size={14} />
+    <div className="flex flex-col h-full text-[#cccccc]">
+      <div className="flex items-center justify-between px-2 py-1 border-b border-[#3e3e3e] min-h-[28px]">
+        {workspace ? (
+          <div className="flex items-center gap-1">
+            {/* Create File */}
+            <button
+              className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-white transition-colors"
+              title="New File"
+              onClick={() => setIsCreating({ parentPath: workspace.rootPath, isDir: false })}
+            >
+              <Plus size={16} />
             </button>
-            <button onClick={() => refreshTree()} className="p-1 hover:text-[#cccccc] hover:bg-[#2a2d2e] rounded" title="Refresh">
-              <RefreshCw size={14} />
+            {/* Create Folder */}
+            <button
+              className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-white transition-colors"
+              title="New Folder"
+              onClick={() => setIsCreating({ parentPath: workspace.rootPath, isDir: true })}
+            >
+              <FolderPlus size={16} />
             </button>
-            <button onClick={() => closeWorkspace()} className="p-1 hover:text-[#cccccc] hover:bg-[#2a2d2e] rounded" title="Close Workspace">
-              <X size={14} />
+            {/* Close Project */}
+            <button
+              className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-red-400 transition-colors ml-1"
+              title="Close Project"
+              onClick={closeWorkspaceFromDisk}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <div className="w-full">
+            <button
+              onClick={openWorkspaceFromDisk}
+              disabled={isLoading}
+              className="w-full py-1 px-2 text-[12px] bg-[#2a2d2e] hover:bg-[#3c3c3c] border border-[#3e3e3e] rounded text-[#cccccc] transition-colors flex items-center justify-center gap-2"
+            >
+              {isLoading ? "Loading..." : <><FolderOpenIcon size={14} /> Open Project</>}
             </button>
           </div>
         )}
       </div>
 
-      {!hasWorkspace ? (
-        /* Empty state — Open Folder button */
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-3">
-          {loading ? (
-            <div className="text-[13px] text-[#858585]">Loading...</div>
-          ) : (
-            <>
-              <FolderTree size={32} className="text-[#858585]" />
-              <div className="text-[13px] text-[#858585] text-center">
-                You have not yet opened a folder.
-              </div>
-              <button
-                onClick={() => openFolder()}
-                className="px-3 py-1.5 text-[13px] text-[#cccccc] bg-[#0e639c] hover:bg-[#1177bb] rounded transition-colors"
-              >
-                Open Folder
-              </button>
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Workspace name */}
-          <div className="px-3 py-1 text-[11px] font-bold text-[#cccccc] uppercase tracking-wide flex items-center justify-between group">
-            <span className="truncate">{workspaceName}</span>
+      {/* Tree Content */}
+      <div className="flex-1 overflow-auto min-h-0 bg-[#252526] pt-1">
+        {workspace ? (
+          renderTree(workspace.files)
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-[#858585] text-[13px] px-4 text-center select-none">
+            <p className="mb-2">No workspace opened</p>
+            <p className="text-[12px]">Click "Open Project" above to start.</p>
           </div>
-
-          {/* Tree */}
-          <div className="flex-1 overflow-y-auto">
-            {tree.map((item) => (
-              <TreeNode key={item.id} item={item} level={0} activePath={activePath} onOpen={openFile} />
-            ))}
-          </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }

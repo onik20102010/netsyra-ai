@@ -119,6 +119,20 @@ This engine activates automatically for any request that involves:
 - project roadmaps
 - habit‑building schedules
 - any query where the user expects a structured, long‑form guide.
+
+FORMATTING RULES FOR RICH CONTENT:
+- Use bullet points (•) for feature lists and option summaries within each day/step.
+- Use numbered lists for sequential actions within each step.
+- Use bold for key terms, deliverables, and milestone names.
+- Use blockquotes (>) for key takeaways or important tips per section.
+- Use horizontal rules (---) to separate major phases (Foundation, Intermediate, Advanced).
+- Use headings (##) for phase titles, (###) for day/step titles.
+- Use tables for comparing options, resources, or schedules within a phase.
+- Use italic for new terminology or foreign words introduced in the guide.
+- Use emojis (📋, ⚠️, ✅, 💡, 📅, 🚀) as visual anchors — max 1 per paragraph, 3–8 total.
+- Keep paragraphs short (2–4 sentences). Prefer bullets over prose.
+- End each phase with a brief summary or checklist.
+- Match response length to the scope: short tasks (≤5 steps) stay concise, long plans (>20 days) split into phases.
 `;
 
 export async function POST(req: NextRequest) {

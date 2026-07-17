@@ -10,7 +10,7 @@ export const metadata = createMetadata({
   title,
   description,
   path: "/cv-builder",
-  keywords: ["CV builder", "resume builder", "AI resume builder", "free CV maker"],
+  keywords: ["NetsyraAI CV builder", "Netsyra AI resume builder", "netsyraai", "CV builder", "resume builder", "AI resume builder", "free CV maker"],
 });
 
 export default function CVBuilderLayout({ children }: { children: React.ReactNode }) {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import TopNav from "@/components/layout/TopNav";
 import HeroSection from "@/components/sections/HeroSection";
 import LiveRoutingSection from "@/components/sections/LiveRoutingSection";
@@ -7,10 +8,25 @@ import CodeShowcaseSection from "@/components/sections/CodeShowcaseSection";
 import FooterSection from "@/components/sections/FooterSection";
 import JsonLd from "@/components/JsonLd";
 import { webPageJsonLd } from "@/lib/structured-data";
+import { createMetadata } from "@/lib/seo";
 
 const title = "Netsyra AI – Advanced Multi-Model AI Assistant";
 const description =
-  "Netsyra AI is an intelligent AI orchestration layer that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.";
+  "Netsyra AI (NetsyraAI) is an intelligent AI orchestration platform at netsyraai.com that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.";
+
+export const metadata: Metadata = createMetadata({
+  title: "Netsyra AI – Advanced Multi-Model AI Assistant",
+  description,
+  path: "/",
+  keywords: [
+    "NetsyraAI",
+    "Netsyra AI",
+    "netsyraai",
+    "netsyra ai",
+    "netsyraai.com",
+    "NetsyraAI.com",
+  ],
+});
 
 export default function Home() {
   return (

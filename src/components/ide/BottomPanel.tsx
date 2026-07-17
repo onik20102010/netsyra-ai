@@ -1,71 +1,117 @@
+// d:\netsyra\src\components\ide\BottomPanel.tsx
 "use client";
 
 import React from "react";
-import { Terminal as TerminalIcon, List, AlertCircle, Zap, X, Plus } from "lucide-react";
-import { useIdeStore } from "@/ide";
-import type { BottomTab } from "@/ide";
-
-const tabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
-  { id: "terminal", label: "Terminal", icon: <TerminalIcon size={12} /> },
-  { id: "output", label: "Output", icon: <List size={12} /> },
-  { id: "problems", label: "Problems", icon: <AlertCircle size={12} /> },
-  { id: "debug", label: "Debug Console", icon: <Zap size={12} /> },
-];
+import { useIdeStore, BottomPanelView } from "@/ide";
+import { Terminal, FileOutput, AlertCircle, Bug, X } from "lucide-react";
 
 export function BottomPanel() {
-  const activeTab = useIdeStore((s) => s.bottomTab);
-  const setBottomTab = useIdeStore((s) => s.setBottomTab);
-  const toggleBottom = useIdeStore((s) => s.toggleBottom);
+  const bottomPanelView = useIdeStore((s) => s.bottomPanelView);
+  const toggleBottomPanel = useIdeStore((s) => s.toggleBottomPanel);
+
+  // Available tabs
+  const tabs: { id: BottomPanelView; label: string; icon: React.ReactNode }[] = [
+    { id: "terminal", label: "Terminal", icon: <Terminal size={14} /> },
+    { id: "output", label: "Output", icon: <FileOutput size={14} /> },
+    { id: "problems", label: "Problems", icon: <AlertCircle size={14} /> },
+    { id: "debug", label: "Debug", icon: <Bug size={14} /> },
+  ];
+
+  // --- Render Active Panel Content ---
+  const renderContent = () => {
+    switch (bottomPanelView) {
+      case "terminal":
+        return (
+          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
+            <div className="flex gap-2 items-center text-[#89e051] mb-1">
+              <span>➜</span>
+              <span className="text-[#569cd6]">~/workspace</span>
+              <span className="text-white">$</span>
+              <span className="text-[#ce9178]">_</span>
+            </div>
+            <div className="text-[#cccccc]">Netsyra Web IDE Terminal (Mock)</div>
+            <div className="text-[#858585] text-[12px] mt-1">
+              Type `npm start` or `python app.py` to simulate a command...
+            </div>
+            <div className="mt-4 flex gap-2 items-center text-[#89e051]">
+              <span>➜</span>
+              <span className="text-[#569cd6]">~/workspace</span>
+              <span className="text-white">$</span>
+              <span className="animate-pulse text-white">|</span>
+            </div>
+          </div>
+        );
+      case "output":
+        return (
+          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
+            <div className="text-[#858585]">[12:00:00] ⏺️ Output panel ready.</div>
+            <div className="text-[#858585]">[12:00:01] 📁 Workspace loaded successfully.</div>
+            <div className="text-[#569cd6]">[12:00:02] ℹ️  Build process started...</div>
+            <div className="text-[#89e051]">[12:00:03] ✅ Build completed in 1.2s.</div>
+          </div>
+        );
+      case "problems":
+        return (
+          <div className="font-mono text-[13px] p-3 overflow-auto h-full bg-[#1e1e1e]">
+            <div className="text-[#ce9178] flex gap-2 items-center mb-1">
+              <AlertCircle size={14} /> <span>Error: 'module' is not defined at line 12:8</span>
+            </div>
+            <div className="text-[#f9e06a] flex gap-2 items-center">
+              <AlertCircle size={14} /> <span>Warning: 'useState' is deprecated in this version.</span>
+            </div>
+          </div>
+        );
+      case "debug":
+        return (
+          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
+            <div className="text-[#569cd6]">🔍 Debug console ready.</div>
+            <div className="text-[#858585]">Breakpoint at main.ts:15.</div>
+            <div className="text-[#858585]">Variables: {`{ count: 0, status: "idle" }`}</div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] border-t border-[#3c3c3c]">
-      {/* Tab bar */}
-      <div className="flex items-center h-[35px] bg-[#252526] border-b border-[#3c3c3c] shrink-0">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setBottomTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 h-full text-[11px] uppercase tracking-wide font-semibold border-r border-[#3c3c3c] transition-colors ${
-              activeTab === tab.id
-                ? "bg-[#1e1e1e] text-[#cccccc] border-t-2 border-t-[#007acc]"
-                : "text-[#858585] hover:text-[#cccccc] hover:bg-[#1e1e1e]"
-            }`}
-            style={{ marginTop: activeTab === tab.id ? "-1px" : 0 }}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <div className="flex items-center gap-1 px-2">
-          <button className="p-1 text-[#858585] hover:text-[#cccccc]" title="New Terminal">
-            <Plus size={14} />
-          </button>
-          <button onClick={toggleBottom} className="p-1 text-[#858585] hover:text-[#cccccc]" title="Close Panel">
-            <X size={14} />
-          </button>
+    <div className="flex flex-col h-full bg-[#1e1e1e] text-[#cccccc] select-none">
+      {/* Panel Header / Tabs */}
+      <div className="flex items-center h-[30px] bg-[#252526] border-b border-[#2d2d2d] shrink-0 px-2">
+        {/* Tab Buttons */}
+        <div className="flex-1 flex items-center gap-1">
+          {tabs.map((tab) => {
+            const isActive = bottomPanelView === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => useIdeStore.getState().setBottomPanelView(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-1 text-[12px] rounded transition-colors ${
+                  isActive
+                    ? "bg-[#37373d] text-white"
+                    : "text-[#858585] hover:bg-[#2a2d2e] hover:text-[#cccccc]"
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Panel Close Button */}
+        <button
+          onClick={toggleBottomPanel}
+          className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-white transition-colors ml-2"
+          title="Close Panel"
+        >
+          <X size={16} />
+        </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden p-2">
-        {activeTab === "terminal" && (
-          <div className="font-mono text-[13px] text-[#cccccc] space-y-0.5">
-            <div className="text-[#858585]">$ netsyra --version</div>
-            <div className="text-[#89d185]">Netsyra IDE v0.1.0</div>
-            <div className="text-[#858585]">$ <span className="inline-block w-2 h-3.5 bg-[#cccccc] animate-pulse" /></div>
-          </div>
-        )}
-        {activeTab === "output" && (
-          <div className="text-[13px] text-[#858585]">No output yet.</div>
-        )}
-        {activeTab === "problems" && (
-          <div className="flex items-center gap-2 text-[13px] text-[#89d185]">
-            <AlertCircle size={14} /> No problems detected.
-          </div>
-        )}
-        {activeTab === "debug" && (
-          <div className="text-[13px] text-[#858585]">Debug console ready.</div>
-        )}
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {renderContent()}
       </div>
     </div>
   );

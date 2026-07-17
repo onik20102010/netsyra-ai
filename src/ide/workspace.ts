@@ -1,180 +1,231 @@
-// ═══════════════════════════════════════════════════════════════
-// Netsyra IDE — Workspace Library
-// File System Access API helpers for local folder operations
-// ═══════════════════════════════════════════════════════════════
+// d:\netsyra\src\ide\workspace.ts
 
-import type { FileItem } from "@/ide/types";
+import { FileItem } from './types';
+import { useIdeStore } from './store';
+import { getLanguageFromPath } from './file-utils';
 
-// ── Open folder picker ──────────────────────────────────────────
+// Caching file handles so we can write back to the user's hard drive when they hit "Save"
+const fileHandleCache = new Map<string, FileSystemFileHandle>();
+let rootDirectoryHandle: FileSystemDirectoryHandle | null = null;
 
-export async function pickDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (typeof window === "undefined" || !("showDirectoryPicker" in window)) {
-    return null;
+// Utility to generate IDs (matching the logic inside store.ts)
+const generateId = () => Math.random().toString(36).substring(2, 15);
+
+/**
+ * Recursively reads a FileSystemDirectoryHandle and converts it to our FileItem structure.
+ */
+async function readDirectory(
+  dirHandle: FileSystemDirectoryHandle,
+  currentPath: string
+): Promise<FileItem[]> {
+  const items: FileItem[] = [];
+
+  // Iterate over entries in the directory
+  for await (const entry of dirHandle.values()) {
+    const fullPath = `${currentPath}/${entry.name}`;
+
+    if (entry.kind === 'directory') {
+      // It's a folder, recursively read it
+      const children = await readDirectory(entry as FileSystemDirectoryHandle, fullPath);
+      items.push({
+        id: generateId(),
+        name: entry.name,
+        path: fullPath,
+        isDirectory: true,
+        children: children,
+      });
+    } else {
+      // It's a file
+      const fileHandle = entry as FileSystemFileHandle;
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+
+      // Cache the file handle so we can save later
+      fileHandleCache.set(fullPath, fileHandle);
+
+      items.push({
+        id: generateId(),
+        name: entry.name,
+        path: fullPath,
+        isDirectory: false,
+        content: content,
+        language: getLanguageFromPath(entry.name),
+        lastModified: file.lastModified,
+      });
+    }
   }
+
+  return items;
+}
+
+/**
+ * Prompts the user to select a folder and loads it into the IDE.
+ */
+export async function openWorkspaceFromDisk(): Promise<void> {
+  // Check if the browser supports the File System Access API
+  if (!('showDirectoryPicker' in window)) {
+    alert(
+      'Your browser does not support the File System Access API. ' +
+      'Please use a Chromium-based browser (like Chrome or Edge) over HTTPS or localhost.'
+    );
+    return;
+  }
+
   try {
-    const handle = await (window as unknown as {
-      showDirectoryPicker: (opts?: { mode?: string }) => Promise<FileSystemDirectoryHandle>;
-    }).showDirectoryPicker({ mode: "readwrite" });
-    return handle;
-  } catch {
-    return null;
+    // 1. Request folder access
+    const dirHandle = await (window as any).showDirectoryPicker();
+    rootDirectoryHandle = dirHandle;
+    
+    // 2. Clear previous cache
+    fileHandleCache.clear();
+
+    // 3. Set loading state in your store
+    useIdeStore.getState().setLoading(true);
+
+    // 4. Read the entire directory recursively
+    const files = await readDirectory(dirHandle, '');
+
+    // 5. Update the global store with the new workspace
+    useIdeStore.getState().openWorkspace(dirHandle.name, files);
+    
+    // 6. Turn off loading state
+    useIdeStore.getState().setLoading(false);
+  } catch (error) {
+    useIdeStore.getState().setLoading(false);
+    // User probably clicked "Cancel" on the folder picker, or it failed for another reason.
+    // We silently ignore to avoid annoying console errors for a canceled action.
+    if (error instanceof Error && error.name !== 'AbortError') {
+      console.error('Failed to open workspace:', error);
+    }
   }
 }
 
-// ── Build file tree from directory handle ───────────────────────
-
-const IGNORED_DIRS = new Set(["node_modules", ".next", ".git", "dist", "out", ".cache"]);
-const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db"]);
-const MAX_DEPTH = 10;
-
-export async function buildTree(
-  handle: FileSystemDirectoryHandle,
-  path = "",
-  depth = 0
-): Promise<FileItem> {
-  const id = path || handle.name;
-  const item: FileItem = {
-    id,
-    name: handle.name,
-    path: path || handle.name,
-    type: "folder",
-    handle,
-    children: [],
-  };
-
-  if (depth >= MAX_DEPTH) return item;
-
-  try {
-    const entries = [];
-    for await (const entry of handle.entries()) {
-      const [name, childHandle] = entry;
-      if (childHandle.kind === "directory" && IGNORED_DIRS.has(name)) continue;
-      if (childHandle.kind === "file" && IGNORED_FILES.has(name)) continue;
-      entries.push(entry);
-    }
-
-    entries.sort((a, b) => {
-      const [aName, aHandle] = a;
-      const [bName, bHandle] = b;
-      if (aHandle.kind !== bHandle.kind) {
-        return aHandle.kind === "directory" ? -1 : 1;
-      }
-      return aName.localeCompare(bName);
-    });
-
-    for (const [name, childHandle] of entries) {
-      const childPath = path ? `${path}/${name}` : name;
-      if (childHandle.kind === "directory") {
-        const child = await buildTree(
-          childHandle as FileSystemDirectoryHandle,
-          childPath,
-          depth + 1
-        );
-        item.children!.push(child);
-      } else {
-        item.children!.push({
-          id: childPath,
-          name,
-          path: childPath,
-          type: "file",
-          handle: childHandle,
-        });
-      }
-    }
-  } catch {
-    // Permission denied or read error — return empty children
+/**
+ * Writes the given content to the actual file on the user's disk.
+ */
+export async function saveFileToDisk(filePath: string, content: string): Promise<void> {
+  const fileHandle = fileHandleCache.get(filePath);
+  if (!fileHandle) {
+    console.warn(`No cached file handle found for ${filePath}. Cannot save.`);
+    return;
   }
 
-  return item;
+  try {
+    // Acquire a writable stream
+    const writable = await fileHandle.createWritable();
+    // Write the content
+    await writable.write(content);
+    // Close the stream
+    await writable.close();
+    
+    // Optional: Update the last modified timestamp in the virtual tree if needed
+    console.log(`Saved file: ${filePath}`);
+  } catch (error) {
+    console.error(`Failed to save file ${filePath}:`, error);
+    throw error;
+  }
 }
 
-// ── Read file content ───────────────────────────────────────────
-
-export async function readFileContent(
-  handle: FileSystemFileHandle
-): Promise<string> {
+/**
+ * Retrieves the raw content of a file handle (useful for re-reading if we want to refresh).
+ */
+export async function getFileContentFromDisk(filePath: string): Promise<string | null> {
+  const fileHandle = fileHandleCache.get(filePath);
+  if (!fileHandle) return null;
   try {
-    const file = await handle.getFile();
+    const file = await fileHandle.getFile();
     return await file.text();
   } catch {
-    return "";
-  }
-}
-
-// ── Write file content ──────────────────────────────────────────
-
-export async function writeFileContent(
-  handle: FileSystemFileHandle,
-  content: string
-): Promise<void> {
-  try {
-    const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
-  } catch {
-    // Permission denied or write error
-  }
-}
-
-// ─<arg_value>Persist directory handle to IndexedDB ───────────────────────
-
-import { get, set, del } from "idb-keyval";
-
-const WORKSPACE_KEY = "netsyra-workspace-dir";
-
-export async function saveWorkspaceHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  await set(WORKSPACE_KEY, handle);
-}
-
-export async function restoreWorkspaceHandle(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const handle = await get(WORKSPACE_KEY);
-    if (!handle) return null;
-    // Verify permission
-    const opts: FileSystemHandlePermissionDescriptor = { mode: "readwrite" };
-    if ("queryPermission" in handle) {
-      const perm = await (handle as unknown as {
-        queryPermission: (opts: FileSystemHandlePermissionDescriptor) => Promise<string>;
-      }).queryPermission(opts);
-      if (perm !== "granted") return null;
-    }
-    return handle as FileSystemDirectoryHandle;
-  } catch {
     return null;
   }
 }
 
-export async function clearWorkspaceHandle(): Promise<void> {
-  await del(WORKSPACE_KEY);
-}
-
-// ── Verify handle permission ────────────────────────────────────
-
-export async function verifyPermission(
-  handle: FileSystemHandle,
-  readWrite = true
-): Promise<boolean> {
-  const opts: FileSystemHandlePermissionDescriptor = readWrite
-    ? { mode: "readwrite" }
-    : { mode: "read" };
-
-  if ("queryPermission" in handle) {
-    const queryFn = (handle as unknown as {
-      queryPermission: (opts: FileSystemHandlePermissionDescriptor) => Promise<string>;
-    }).queryPermission;
-    if ((await queryFn(opts)) === "granted") return true;
+/**
+ * Creates a new file on disk using the File System Access API.
+ */
+export async function createFileOnDisk(parentPath: string, fileName: string, content: string = ''): Promise<void> {
+  if (!rootDirectoryHandle) {
+    console.warn('No workspace opened. Cannot create file on disk.');
+    return;
   }
 
-  if ("requestPermission" in handle) {
-    const requestFn = (handle as unknown as {
-      requestPermission: (opts: FileSystemHandlePermissionDescriptor) => Promise<string>;
-    }).requestPermission;
-    if ((await requestFn(opts)) === "granted") return true;
-  }
+  try {
+    // Navigate to the parent directory
+    const dirHandle = await getDirectoryHandleFromPath(parentPath);
+    
+    // Create the file
+    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+    
+    // Write content if provided
+    if (content) {
+      const writable = await fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    }
 
-  return false;
+    // Cache the file handle for future saves
+    const fullPath = `${parentPath}/${fileName}`.replace('//', '/');
+    fileHandleCache.set(fullPath, fileHandle);
+    
+    console.log(`Created file on disk: ${fullPath}`);
+  } catch (error) {
+    console.error(`Failed to create file ${fileName}:`, error);
+    throw error;
+  }
 }
 
-type FileSystemHandlePermissionDescriptor = {
-  mode?: "read" | "readwrite";
-};
+/**
+ * Creates a new directory on disk using the File System Access API.
+ */
+export async function createDirectoryOnDisk(parentPath: string, dirName: string): Promise<void> {
+  if (!rootDirectoryHandle) {
+    console.warn('No workspace opened. Cannot create directory on disk.');
+    return;
+  }
+
+  try {
+    // Navigate to the parent directory
+    const dirHandle = await getDirectoryHandleFromPath(parentPath);
+    
+    // Create the directory
+    await dirHandle.getDirectoryHandle(dirName, { create: true });
+    
+    console.log(`Created directory on disk: ${parentPath}/${dirName}`);
+  } catch (error) {
+    console.error(`Failed to create directory ${dirName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Helper to get a directory handle from a path string.
+ */
+async function getDirectoryHandleFromPath(path: string): Promise<FileSystemDirectoryHandle> {
+  if (!rootDirectoryHandle) {
+    throw new Error('No workspace opened');
+  }
+
+  // If path is empty or '/', return root
+  if (!path || path === '/' || path === '') {
+    return rootDirectoryHandle;
+  }
+
+  // Split path and navigate
+  const parts = path.split('/').filter(p => p);
+  let currentHandle = rootDirectoryHandle;
+
+  for (const part of parts) {
+    currentHandle = await currentHandle.getDirectoryHandle(part);
+  }
+
+  return currentHandle;
+}
+
+/**
+ * Closes the current workspace and revokes all file system permissions (clears cache).
+ */
+export function closeWorkspaceFromDisk(): void {
+  fileHandleCache.clear();
+  rootDirectoryHandle = null;
+  useIdeStore.getState().closeWorkspace();
+}

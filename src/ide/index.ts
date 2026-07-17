@@ -1,43 +1,21 @@
-// ═══════════════════════════════════════════════════════════════
-// Netsyra IDE — Barrel Exports
-// ═══════════════════════════════════════════════════════════════
+// d:\netsyra\src\ide\index.ts
 
-// Types
-export type {
-  FileItem,
-  OpenFile,
-  EditorTheme,
-  EditorConfig,
-  ActivityView,
-  BottomTab,
-  LayoutState,
-  WorkspaceState,
-  DiagnosticSeverity,
-  Diagnostic,
-  Command,
-} from "./types";
+// --- Types ---
+export * from './types';
 
-export { defaultEditorConfig, defaultLayoutState, IDE_COLORS } from "./types";
+// --- State Management ---
+export * from './store';
 
-// Theme
-export { NETSYRA_THEME, defineNetsyraTheme } from "./theme";
+// --- Theme & Editor Configuration ---
+export * from './theme';
+export * from './editor-config';
 
-// File utilities
-export {
-  getLanguage,
-  getFileIcon,
-  getFileName,
-  getDirName,
-  getExtension,
-  normalizePath,
-  joinPath,
-} from "./file-utils";
+// --- File Utilities ---
+export * from './file-utils';
 
-export type { FileIconName } from "./file-utils";
+// --- Workspace / File System Access API ---
+export * from './workspace';
 
-// Editor config
-export { buildEditorOptions, EDITOR_KEYBINDINGS } from "./editor-config";
-
-// Store
-export { useIdeStore } from "./store";
-export type { CursorPosition } from "./store";
+// --- AI Agent & API ---
+export * from './agent';
+export * from './grok-api';

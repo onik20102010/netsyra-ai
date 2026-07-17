@@ -10,7 +10,7 @@ export const metadata = createMetadata({
   title,
   description,
   path: "/goal",
-  keywords: ["Netsyra AI mission", "AI orchestration", "multi-provider routing", "cost-efficient AI"],
+  keywords: ["NetsyraAI mission", "Netsyra AI mission", "netsyraai", "AI orchestration", "multi-provider routing", "cost-efficient AI"],
 });
 
 export default function GoalLayout({ children }: { children: React.ReactNode }) {

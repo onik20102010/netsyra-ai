@@ -10,7 +10,7 @@ export const metadata = createMetadata({
   title,
   description,
   path: "/about",
-  keywords: ["about Netsyra AI", "AI orchestration platform", "privacy-first AI"],
+  keywords: ["about NetsyraAI", "about Netsyra AI", "NetsyraAI", "netsyraai", "AI orchestration platform", "privacy-first AI"],
 });
 
 export default function AboutLayout({ children }: { children: React.ReactNode }) {
