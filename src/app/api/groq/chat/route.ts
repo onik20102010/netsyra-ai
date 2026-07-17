@@ -1,7 +1,7 @@
-// d:\netsyra\src\app\api\groq\chat\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const TIMEOUT_MS = 30000; // 30 seconds
 
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
@@ -19,32 +19,28 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { messages, apiKey } = body;
 
-    // Use provided API key or fall back to environment variable (GROQ_API_KEY_2 takes priority)
-    const groqApiKey = apiKey || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
+    // Environment variables are secure on the server
+    const groqApiKey = apiKey || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY;
 
     if (!groqApiKey) {
       return NextResponse.json(
-        { error: 'API key is required. Please set GROQ_API_KEY or NEXT_PUBLIC_GROQ_API_KEY in your environment.' },
+        { error: 'API key is missing. Set GROQ_API_KEY_2 or GROQ_API_KEY in .env.local' },
         { status: 400 }
       );
     }
 
-    // Try each model in order until one succeeds
+    // STRICT SANITIZATION: Strip EVERY field except 'role' and 'content'
+    const sanitizedMessages = messages.map((msg: any) => ({
+      role: msg.role || 'user',
+      content: msg.content || ''
+    }));
+
+    // Try each model
     for (const model of GROQ_MODELS) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
       try {
-        console.log(`Trying model: ${model}`);
-        
-        // Sanitize messages - remove timestamp and attachedFiles properties
-        const sanitizedMessages = messages.map((msg: any) => {
-  // Explicitly strip timestamp and attachedFiles even if they are undefined
-  const { timestamp, attachedFiles, ...rest } = msg;
-  return rest;
-});
-        
-        // Create timeout controller
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
-        
         const response = await fetch(GROQ_API_URL, {
           method: 'POST',
           headers: {
@@ -59,34 +55,36 @@ export async function POST(request: NextRequest) {
           }),
           signal: controller.signal,
         });
-        
         clearTimeout(timeout);
 
         if (!response.ok) {
-          const error = await response.text();
-          console.warn(`Model ${model} failed: ${response.status} - ${error}`);
+          const errorText = await response.text();
+          console.warn(`Model ${model} failed: ${response.status} - ${errorText}`);
           continue; // Try next model
         }
 
         const data = await response.json();
         const content = data.choices[0]?.message?.content;
-        
         if (content) {
-          console.log(`Successfully used model: ${model}`);
           return NextResponse.json({ content });
         }
-      } catch (error) {
-        console.warn(`Error with model ${model}:`, error);
-        continue; // Try next model
+      } catch (err: any) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') {
+          console.warn(`Model ${model} timed out after ${TIMEOUT_MS}ms`);
+        } else {
+          console.warn(`Model ${model} threw error:`, err.message);
+        }
+        continue;
       }
     }
 
     return NextResponse.json(
-      { error: 'All Groq models failed. Please check your API key and try again.' },
+      { error: 'All AI models failed. Please try again later.' },
       { status: 500 }
     );
   } catch (error) {
-    console.error('Error in Groq API route:', error);
+    console.error('Groq route error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

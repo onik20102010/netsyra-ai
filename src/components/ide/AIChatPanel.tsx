@@ -4,8 +4,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useIdeStore } from "@/ide";
 import { Send, X, Bot, Loader2, FileText, Folder } from "lucide-react";
-import { getSystemPrompt } from "@/ide/grok-api";
+import { callGroqAPI, getSystemPrompt } from "@/ide/grok-api";
 import { getActiveFileContext, getWorkspaceStructure } from "@/ide/agent";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -99,28 +101,15 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
         userMessage
       ];
 
-      // Call Groq API via Next.js API route
-      const response = await fetch('/api/groq/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY_2 || process.env.NEXT_PUBLIC_GROQ_API_KEY || ''
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get response from AI');
-      }
-
-      const data = await response.json();
+      // Call Groq API via secure backend route
+      const response = await callGroqAPI(
+        apiMessages,
+        process.env.NEXT_PUBLIC_GROQ_API_KEY_2 || process.env.NEXT_PUBLIC_GROQ_API_KEY || ''
+      );
       
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.content,
+        content: response,
         timestamp: Date.now()
       };
 
@@ -179,16 +168,16 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#252526] text-[#cccccc]">
+    <div className="flex flex-col h-full bg-zinc-950 text-zinc-300">
       {/* Header */}
-      <div className="flex items-center justify-between h-[35px] px-3 border-b border-[#3e3e3e] shrink-0">
+      <div className="flex items-center justify-between h-[35px] px-3 border-b border-zinc-800 shrink-0">
         <div className="flex items-center gap-2">
-          <Bot size={16} className="text-[#007acc]" />
-          <span className="text-[12px] font-bold uppercase tracking-wider">IDE Chat</span>
+          <Bot size={16} className="text-zinc-400" />
+          <span className="text-[12px] font-bold uppercase tracking-wider text-zinc-400">IDE Chat</span>
         </div>
         <button
           onClick={toggleRightPanel}
-          className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
           title="Close Panel"
         >
           <X size={16} />
@@ -196,8 +185,8 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
       </div>
 
       {/* Context Info */}
-      <div className="px-3 py-2 border-b border-[#3e3e3e] bg-[#1e1e1e] shrink-0">
-        <div className="text-[11px] text-[#858585]">
+      <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0">
+        <div className="text-[11px] text-zinc-500">
           {workspace ? (
             <div className="flex items-center gap-2">
               <Folder size={12} />
@@ -208,7 +197,7 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
           )}
         </div>
         {activeFile && (
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-[#858585]">
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500">
             <FileText size={12} />
             <span className="truncate">{activeFile.path}</span>
           </div>
@@ -216,27 +205,32 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto p-3 space-y-4 min-h-0">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {message.role === 'assistant' && (
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#007acc] flex items-center justify-center">
-                <Bot size={16} className="text-white" />
-              </div>
-            )}
-            <div className="max-w-[80%]">
+      <div className="flex-1 overflow-y-auto scroll-smooth">
+        <div className="max-w-2xl mx-auto w-full px-4 md:px-6 py-6 space-y-6">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               {message.role === 'assistant' ? (
-                // Bot messages as plain text (no bubble)
-                <div className="text-[#cccccc] text-[13px] whitespace-pre-wrap leading-relaxed">
-                  {message.content}
+                <div className="text-[15px] leading-7 text-zinc-300 max-w-full break-words">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      pre: ({node, ...props}) => (
+                        <div className="bg-zinc-800/80 p-4 rounded-2xl border border-zinc-700/50 my-4 overflow-x-auto" {...props as any} />
+                      ),
+                      code: ({node, ...props}) => (
+                        <code className="text-sm text-zinc-200 font-mono" {...props as any} />
+                      )
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
               ) : (
-                // User messages in bubble
-                <div className="bg-[#007acc] text-white rounded-lg px-3 py-2">
-                  <p className="text-[13px] whitespace-pre-wrap">{message.content}</p>
+                <div className="bg-blue-600 max-w-[90%] lg:max-w-[70%] p-3.5 rounded-2xl rounded-tr-sm text-white self-end break-words">
+                  <p className="whitespace-pre-wrap text-[15px] leading-7">{message.content}</p>
                   {message.attachedFiles && message.attachedFiles.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-white/20">
                       <p className="text-[11px] text-white/70 mb-1">Attached files:</p>
@@ -251,73 +245,76 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
                 </div>
               )}
             </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex gap-3 justify-start">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#007acc] flex items-center justify-center">
-              <Bot size={16} className="text-white" />
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-2 text-zinc-500 text-[13px]">
+                <Bot size={16} className="text-zinc-400" />
+                <span>Thinking...</span>
+              </div>
             </div>
-            <div className="text-[#858585] text-[13px]">Thinking...</div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div 
-        className={`p-3 border-t border-[#3e3e3e] shrink-0 ${isDragging ? 'bg-[#2a2d2e]' : ''}`}
+      <div
+        className={`bg-zinc-900 border-t border-zinc-800 p-4 flex flex-col gap-2 sticky bottom-0 shrink-0 transition-all duration-200 ease-in-out ${isDragging ? 'bg-zinc-800' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Dragged Files */}
-        {draggedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {draggedFiles.map((file, index) => (
-              <div key={index} className="flex items-center gap-1 bg-[#3c3c3c] px-2 py-1 rounded border border-[#2d2d2d]">
-                <FileText size={14} className="text-[#007acc]" />
-                <span className="text-[12px] truncate max-w-[150px]">{file.name}</span>
-                <button
-                  onClick={() => removeDraggedFile(index)}
-                  className="text-[#858585] hover:text-white transition-colors"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="max-w-2xl mx-auto w-full flex flex-col gap-2">
+          {/* File Previews */}
+          {draggedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto pb-1">
+              {draggedFiles.map((file, index) => (
+                <div key={index} className="bg-zinc-800/60 text-zinc-300 text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-2">
+                  <FileText size={12} className="text-zinc-400" />
+                  <span className="truncate max-w-[150px]">{file.name}</span>
+                  <X size={12} className="cursor-pointer hover:text-white transition-colors" onClick={() => removeDraggedFile(index)} />
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Drag Overlay */}
-        {isDragging && (
-          <div className="absolute inset-0 bg-[#007acc]/20 border-2 border-dashed border-[#007acc] rounded flex items-center justify-center pointer-events-none">
-            <span className="text-[#007acc] font-medium">Drop files here</span>
-          </div>
-        )}
+          {/* Drag Overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 bg-zinc-700/20 border-2 border-dashed border-zinc-600 rounded flex items-center justify-center pointer-events-none">
+              <span className="text-zinc-400 font-medium">Drop files here</span>
+            </div>
+          )}
 
-        <div className="flex gap-2">
-          <input
-            id="chat-input"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={draggedFiles.length > 0 ? "Ask about these files..." : "Ask me anything about your code..."}
-            disabled={isLoading}
-            className="flex-1 bg-[#3c3c3c] text-[#cccccc] text-[13px] px-3 py-2 rounded border border-[#2d2d2d] focus:border-[#007acc] focus:outline-none disabled:opacity-50"
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="px-3 py-2 bg-[#007acc] hover:bg-[#005a9e] text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Send size={16} />
-            )}
-          </button>
+          {/* Input Field + Send Button */}
+          <div className="flex items-end gap-2">
+            <textarea
+              id="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onInput={(e) => {
+                const target = e.currentTarget;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+              }}
+              placeholder={draggedFiles.length > 0 ? "Ask about these files..." : "Ask me anything about your code..."}
+              disabled={isLoading}
+              rows={1}
+              className="flex-1 w-full bg-transparent resize-none outline-none text-zinc-200 placeholder-zinc-500 text-[15px] min-h-[40px] max-h-[120px] overflow-hidden whitespace-pre-wrap break-words disabled:opacity-50"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0"
+            >
+              {isLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
