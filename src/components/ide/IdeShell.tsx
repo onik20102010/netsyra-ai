@@ -28,14 +28,13 @@ export function IdeShell() {
 
         {/* File Explorer / Search Sidebar (Conditionally Rendered) */}
         {isSidebarOpen && (
-          <div className="flex-shrink-0 w-[280px] md:w-[280px] w-full md:w-auto h-full bg-zinc-900 border-r border-[#2d2d2d] overflow-hidden absolute md:relative z-10 md:z-0">
+          <div className="flex-shrink-0 w-[280px] h-full bg-zinc-900 border-r border-[#2d2d2d] overflow-hidden">
             <Sidebar />
           </div>
         )}
 
         {/* Center & Bottom Section */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 bg-zinc-950">
-          
           {/* Editor (Monaco) Area */}
           <div className="flex-1 min-h-0 overflow-hidden flex">
             <div className="flex-1 min-h-0">
@@ -44,7 +43,7 @@ export function IdeShell() {
 
             {/* Right AI Chat Panel (Conditionally Rendered) */}
             {isRightPanelOpen && (
-              <div className="flex-shrink-0 w-[400px] md:w-[400px] w-full md:w-auto h-full bg-zinc-900 border-l border-[#2d2d2d] overflow-hidden absolute md:relative z-20 md:z-0 right-0">
+              <div className="flex-shrink-0 w-[400px] h-full bg-zinc-900 border-l border-[#2d2d2d] overflow-hidden">
                 <AIChatPanel />
               </div>
             )}
@@ -52,7 +51,7 @@ export function IdeShell() {
 
           {/* Bottom Terminal/Output Panel (Conditionally Rendered) */}
           {isBottomPanelOpen && (
-            <div className="flex-shrink-0 h-[200px] md:h-[200px] h-[150px] bg-zinc-950 border-t border-[#2d2d2d] overflow-hidden">
+            <div className="flex-shrink-0 h-[200px] bg-zinc-950 border-t border-[#2d2d2d] overflow-hidden">
               <BottomPanel />
             </div>
           )}

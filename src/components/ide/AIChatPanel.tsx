@@ -102,10 +102,7 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
       ];
 
       // Call Groq API via secure backend route
-      const response = await callGroqAPI(
-        apiMessages,
-        process.env.NEXT_PUBLIC_GROQ_API_KEY_2 || process.env.NEXT_PUBLIC_GROQ_API_KEY || ''
-      );
+      const response = await callGroqAPI(apiMessages);
       
       const assistantMessage: Message = {
         role: 'assistant',

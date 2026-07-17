@@ -148,7 +148,7 @@ function ChatContent() {
           onAddConversationReady={(addFn) => {
             addConversationRef.current = addFn;
           }}
-          selectedModel={selectedModel}   // NEW: pass model to sidebar (future use)
+          selectedModel={selectedModel}
         />
       </div>
 
@@ -177,9 +177,9 @@ function ChatContent() {
             setConversationId={setConversationId}
             diveDeep={diveDeep}
             onConversationCreated={handleConversationCreated}
-            initialModel={selectedModel}           // keep for backward compat, but will be overridden
-            selectedModel={selectedModel}          // NEW controlled prop
-            setSelectedModel={setSelectedModel}    // NEW setter for ChatInterface to use
+            initialModel={selectedModel}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
           />
         </div>
       </div>

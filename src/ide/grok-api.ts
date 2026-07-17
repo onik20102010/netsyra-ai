@@ -16,7 +16,6 @@ interface ChatResponse {
  */
 export async function callGroqAPI(
   messages: GroqMessage[],
-  apiKey: string,
   signal?: AbortSignal
 ): Promise<string> {
   const controller = new AbortController();
@@ -26,7 +25,7 @@ export async function callGroqAPI(
     const response = await fetch('/api/groq/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, apiKey }),
+      body: JSON.stringify({ messages }),
       signal: signal || controller.signal,
     });
     clearTimeout(timeout);

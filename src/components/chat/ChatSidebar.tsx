@@ -27,9 +27,8 @@ interface ChatSidebarProps {
   diveDeep: boolean;
   setDiveDeep: (val: boolean) => void;
   refreshKey?: number;
-  // New: parent provides a callback to get the addConversation function
   onAddConversationReady?: (addFn: (conv: Conversation) => void) => void;
-  selectedModel?: string; // NEW
+  selectedModel?: string;
 }
 
 type Conversation = {
@@ -50,7 +49,7 @@ export default function ChatSidebar({
   setDiveDeep,
   refreshKey = 0,
   onAddConversationReady,
-  selectedModel, // NEW
+  selectedModel,
 }: ChatSidebarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -61,7 +60,6 @@ export default function ChatSidebar({
   const supabase = createClient();
   const chatSupabase = createChatClient();
 
-  // Automatically enable Dive Deep when model becomes live, disable otherwise
   useEffect(() => {
     if (selectedModel === "live") {
       setDiveDeep(true);
@@ -70,22 +68,19 @@ export default function ChatSidebar({
     }
   }, [selectedModel, setDiveDeep]);
 
-  // Function to instantly add a conversation (with duplicate check)
   const handleAddConversation = useCallback((conv: Conversation) => {
     setConversations((prev) => {
-      if (prev.some((c) => c.id === conv.id)) return prev; // already exists
+      if (prev.some((c) => c.id === conv.id)) return prev;
       return [conv, ...prev];
     });
   }, []);
 
-  // Pass the function up to the parent
   useEffect(() => {
     if (onAddConversationReady) {
       onAddConversationReady(handleAddConversation);
     }
   }, [onAddConversationReady, handleAddConversation]);
 
-  // Fetch conversations
   useEffect(() => {
     if (!user) return;
     const fetchConversations = async () => {
@@ -102,7 +97,6 @@ export default function ChatSidebar({
     fetchConversations();
   }, [user, supabase, refreshKey]);
 
-  // Load profile – only display name now
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -133,7 +127,6 @@ export default function ChatSidebar({
     return () => { cancelled = true; };
   }, [user, supabase]);
 
-  // Toggle pin
   const togglePin = async (id: string, current: boolean) => {
     await chatSupabase.from("conversations").update({ pinned: !current }).eq("id", id);
     setConversations((prev) =>
@@ -142,14 +135,12 @@ export default function ChatSidebar({
     toast.success(current ? "Unpinned" : "Pinned");
   };
 
-  // Archive conversation
   const archiveConv = async (id: string) => {
     await chatSupabase.from("conversations").update({ archived: true }).eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
     toast.success("Archived");
   };
 
-  // Copy shareable link
   const copyLink = (id: string) => {
     const link = `${window.location.origin}/chat?conversation=${id}`;
     navigator.clipboard.writeText(link);
@@ -216,7 +207,7 @@ export default function ChatSidebar({
               <History className="h-5 w-5 text-indigo-600" /> History
             </button>
 
-            {/* Updated Dive Deep button */}
+            {/* Dive Deep button */}
             <button
               onClick={() => {
                 if (selectedModel !== "live") {

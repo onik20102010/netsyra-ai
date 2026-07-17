@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const TIMEOUT_MS = 30000; // 30 seconds
+const MAX_MESSAGES = 50;
+const MAX_CONTENT_LENGTH = 8000;
 
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
@@ -14,26 +16,52 @@ const GROQ_MODELS = [
   'openai/gpt-oss-20b',
 ];
 
+const VALID_ROLES = new Set(['system', 'user', 'assistant']);
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, apiKey } = body;
+    const { messages } = body;
 
-    // Environment variables are secure on the server
-    const groqApiKey = apiKey || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY;
+    // SECURITY: Only use server-side env variables, never accept client keys
+    const groqApiKey = process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY;
 
     if (!groqApiKey) {
       return NextResponse.json(
-        { error: 'API key is missing. Set GROQ_API_KEY_2 or GROQ_API_KEY in .env.local' },
+        { error: 'Server API key not configured.' },
+        { status: 500 }
+      );
+    }
+
+    // INPUT VALIDATION
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: 'Messages array is required and must not be empty.' },
         { status: 400 }
       );
     }
 
-    // STRICT SANITIZATION: Strip EVERY field except 'role' and 'content'
-    const sanitizedMessages = messages.map((msg: any) => ({
-      role: msg.role || 'user',
-      content: msg.content || ''
-    }));
+    if (messages.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { error: `Too many messages. Maximum allowed is ${MAX_MESSAGES}.` },
+        { status: 413 }
+      );
+    }
+
+    // STRICT SANITIZATION: Strip everything except role and content, validate both
+    const sanitizedMessages = messages.map((msg: any) => {
+      const role = typeof msg.role === 'string' && VALID_ROLES.has(msg.role) ? msg.role : 'user';
+      const content = typeof msg.content === 'string' ? msg.content.slice(0, MAX_CONTENT_LENGTH) : '';
+      return { role, content };
+    });
+
+    // Ensure at least one user message exists
+    if (!sanitizedMessages.some(m => m.role === 'user')) {
+      return NextResponse.json(
+        { error: 'At least one user message is required.' },
+        { status: 400 }
+      );
+    }
 
     // Try each model
     for (const model of GROQ_MODELS) {
@@ -66,7 +94,10 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
         const content = data.choices[0]?.message?.content;
         if (content) {
-          return NextResponse.json({ content });
+          return NextResponse.json(
+            { content },
+            { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
+          );
         }
       } catch (err: any) {
         clearTimeout(timeout);
