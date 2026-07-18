@@ -97,6 +97,47 @@ export async function performDeepSearch(query: string): Promise<string> {
   return "";
 }
 
+// New function for N Live direct streaming (no LLM)
+export async function performNLiveSearch(query: string): Promise<{
+  answer: string;
+  sources: { title: string; url: string }[];
+  useLLM: boolean; // If true, pass to LLM (Wikipedia fallback)
+  platform: string; // "tavily" or "wikipedia" or "none"
+}> {
+  // 1. Tavily with built‑in answer
+  const tavilyResult = await tavilySearchWithAnswer(query);
+  if (tavilyResult.answer) {
+    console.log(`🔍 N Live Search: Used Tavily for query "${query}"`);
+    return {
+      answer: tavilyResult.answer,
+      sources: tavilyResult.sources.map((s) => ({ title: s.title, url: s.url })),
+      useLLM: false, // Stream directly, no LLM needed
+      platform: "tavily",
+    };
+  }
+
+  // 2. Wikipedia fallback (needs LLM to format)
+  const wikiExtract = await wikipediaExtract(query);
+  if (wikiExtract) {
+    console.log(`🔍 N Live Search: Used Wikipedia for query "${query}"`);
+    return {
+      answer: wikiExtract,
+      sources: [{ title: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodeURIComponent(query)}` }],
+      useLLM: true, // Pass to LLM for formatting
+      platform: "wikipedia",
+    };
+  }
+
+  // 3. No results
+  console.log(`🔍 N Live Search: No results found for query "${query}"`);
+  return {
+    answer: "",
+    sources: [],
+    useLLM: false,
+    platform: "none",
+  };
+}
+
 // Minimal stub exports for backward compatibility
 export async function extractAnswer() { return ""; }
 export async function scrapePage() { return ""; }

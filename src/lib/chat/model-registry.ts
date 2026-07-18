@@ -1,4 +1,4 @@
-import { structureLight } from "@/lib/structure-light";
+import { structureMinimal } from "@/lib/structure-light";
 import { AAI_SYSTEM_PROMPT } from "@/lib/chat/aai/prompt";
 
 export type ProviderType = "openai" | "gemini";
@@ -897,13 +897,13 @@ const aaiModels: ModelConfig[] = [
 export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", TierConfig> = {
   fast: {
     models: fastModels,
-    systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureLight}`,
+    systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureMinimal}`,
     temperature: 0.3,
     maxTokens: 200,
   },
   plus: {
     models: plusModels,
-    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. ${structureLight}`,
+    systemPrompt: `${identity} You are currently running as N PLUS. Be clear but concise. ${structureMinimal}`,
     temperature: 0.5,
     maxTokens: 600,
   },

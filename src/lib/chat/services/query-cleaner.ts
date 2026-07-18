@@ -43,17 +43,24 @@ export async function cleanSearchQuery(rawMessage: string): Promise<string> {
         messages: [
           {
             role: "system",
-            content: "Extract a single short search term (max 3 words) from the user's message. Return ONLY the term, nothing else. Example: 'Yahoo', 'Elon Musk', 'weather London'.",
+            content: "You are a search query extractor. Extract ONLY the main search terms (2-5 words max) from the user's message. Do NOT answer the question. Do NOT provide explanations. Return ONLY the search terms. Examples: 'Yahoo' → 'Yahoo', 'who is elon musk' → 'Elon Musk', 'weather in london' → 'weather London'.",
           },
           { role: "user", content: rawMessage.slice(0, 200) },
         ],
         temperature: 0,
-        max_tokens: 15,
+        max_tokens: 10,
       }),
     });
     if (!res.ok) return short;
     const data = await res.json();
-    const term = data.choices?.[0]?.message?.content?.trim();
+    let term = data.choices?.[0]?.message?.content?.trim() || "";
+    
+    // Validate: if result is too long or contains newlines/paragraphs, use fallback
+    if (term.length > 50 || term.includes('\n') || term.includes('•') || term.includes('-')) {
+      console.warn(`Query cleaner returned invalid result, using fallback: ${term.slice(0, 50)}...`);
+      return short;
+    }
+    
     return term || short;
   } catch {
     return short;

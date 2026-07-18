@@ -37,6 +37,18 @@ type Message = {
   thinking?: string;
   wikiLink?: string | null;
   confidence?: number;
+  sources?: { title: string; url: string }[];
+  modelUsed?: string;
+};
+
+// Friendly display names for the model tiers (used to show what Auto picked).
+const MODEL_LABELS: Record<string, string> = {
+  fast: "N Fast",
+  plus: "N Plus",
+  pro: "N Pro",
+  code: "N Code",
+  live: "N Live",
+  aai: "N AAI",
 };
 
 interface ChatInterfaceProps {
@@ -562,12 +574,26 @@ export default function ChatInterface({
         setTimeout(() => setSearching(false), 2000);
       }
 
+      // Extract sources from header
+      const sourcesHeader = res.headers.get("x-sources");
+      let sources: { title: string; url: string }[] = [];
+      if (sourcesHeader) {
+        try {
+          sources = JSON.parse(decodeURIComponent(sourcesHeader));
+        } catch (e) {
+          console.error("Failed to parse sources header:", e);
+        }
+      }
+
       if (!conversationId && res.headers.get("x-conversation-id")) {
         const newConvId = res.headers.get("x-conversation-id")!;
         isSelfCreatedConv.current = true;
         setConversationId(newConvId);
         onConversationCreated?.(newConvId, userContent);
       }
+
+      // Which model the router actually used (relevant when selector is "Auto").
+      const modelUsed = res.headers.get("x-model-used") || undefined;
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
@@ -621,6 +647,8 @@ export default function ChatInterface({
         id: assistantId,
         role: "assistant",
         content: fullContent,
+        sources: sources.length > 0 ? sources : undefined,
+        modelUsed,
       };
       setMessages(prev => [...prev, assistantMessage]);
       refetchUsage();
@@ -651,7 +679,7 @@ export default function ChatInterface({
     setMessages(prev => [...prev, userMessage]);
     setInput("");
 
-    const contextMessages = [...messages, userMessage].slice(-30);
+    const contextMessages = [...messages, userMessage].slice(-6);
     await sendMessage(userMessage.content, contextMessages);
   };
 
@@ -665,7 +693,7 @@ export default function ChatInterface({
     const truncated = messages.slice(0, idx);
     setMessages(truncated);
 
-    const contextMessages = [...truncated.slice(-30)];
+    const contextMessages = [...truncated.slice(-6)];
     await sendMessage(userMsg.content, contextMessages);
   };
 
@@ -696,7 +724,7 @@ export default function ChatInterface({
     setMessages(truncated);
     cancelEditing();
 
-    const contextMessages = truncated.slice(-30);
+    const contextMessages = truncated.slice(-6);
     await sendMessage(newContent, contextMessages);
   };
 
@@ -797,32 +825,26 @@ export default function ChatInterface({
                       ) : isUser ? (
                         <p>{msg.content}</p>
                       ) : (
-                        (() => {
-                          const { cleanContent, sources } = extractSources(msg.content);
-                          return (
-                            <>
-                              <MarkdownRenderer content={cleanContent} />
-                              {msg.confidence !== undefined && msg.confidence < 0.6 && (
-                                <span className="inline-block text-xs text-amber-500 ml-2">
-                                  ⚠️ Low confidence
-                                </span>
-                              )}
-                              {msg.thinking && <ThinkingBlock text={msg.thinking} />}
-                              {msg.wikiLink && (
-                                <a
-                                  href={msg.wikiLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                  View from there
-                                </a>
-                              )}
-                              {sources.length > 0 && <SourcesPanel sources={sources} />}
-                            </>
-                          );
-                        })()
+                        <>
+                          <MarkdownRenderer content={msg.content} />
+                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
+                            <span className="inline-block text-xs text-amber-500 ml-2">
+                              ⚠️ Low confidence
+                            </span>
+                          )}
+                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
+                          {msg.wikiLink && (
+                            <a
+                              href={msg.wikiLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View from there
+                            </a>
+                          )}
+                        </>
                       )}
                       {!isEditing && (
                         <div
@@ -859,6 +881,12 @@ export default function ChatInterface({
                               <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                               </button>
+                              {msg.sources && msg.sources.length > 0 && <SourcesPanel sources={msg.sources} />}
+                              {msg.modelUsed && MODEL_LABELS[msg.modelUsed] && (
+                                <span className="ml-1 text-[10px] text-gray-400 select-none" title="Model used for this response">
+                                  {MODEL_LABELS[msg.modelUsed]}
+                                </span>
+                              )}
                             </>
                           )}
                         </div>

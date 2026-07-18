@@ -59,14 +59,6 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
 
-  useEffect(() => {
-    if (selectedModel === "live") {
-      setDiveDeep(true);
-    } else {
-      setDiveDeep(false);
-    }
-  }, [selectedModel, setDiveDeep]);
-
   const handleAddConversation = useCallback((conv: Conversation) => {
     setConversations((prev) => {
       if (prev.some((c) => c.id === conv.id)) return prev;
@@ -210,31 +202,22 @@ export default function ChatSidebar({
               <History className="h-5 w-5 text-indigo-600" /> History
             </button>
 
-            {/* Dive Deep button */}
+            {/* N Live toggle button */}
             <button
-              onClick={() => {
-                if (selectedModel !== "live") {
-                  toast.info("Dive Deep is only available with N Live. Switch to N Live to enable web searching.", {
-                    description: "N Live has real‑time web access.",
-                    duration: 5000,
-                  });
-                  return;
-                }
-                setDiveDeep(!diveDeep);
-              }}
+              onClick={() => setDiveDeep(!diveDeep)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                diveDeep && selectedModel === "live"
+                diveDeep
                   ? "bg-cyan-100 text-cyan-700 font-medium"
                   : "text-gray-600 hover:bg-gray-200/50"
               }`}
-              title={selectedModel !== "live" ? "Only available in N Live" : undefined}
+              title="Enable real-time web search for any model"
             >
-              <BrainCircuit className={`h-5 w-5 ${diveDeep && selectedModel === "live" ? "text-cyan-600" : "text-gray-400"}`} />
-              Dive Deep
+              <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-cyan-600" : "text-gray-400"}`} />
+              N Live
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                diveDeep && selectedModel === "live" ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
+                diveDeep ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
               }`}>
-                {selectedModel === "live" ? (diveDeep ? "ON" : "OFF") : "🔒"}
+                {diveDeep ? "ON" : "OFF"}
               </span>
             </button>
 

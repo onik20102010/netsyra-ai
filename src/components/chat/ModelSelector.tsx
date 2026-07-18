@@ -12,6 +12,15 @@ const PlusIcon = () => (
   </svg>
 );
 
+/** Compass / auto-pilot – for Auto routing */
+const AutoIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="8" cy="8" r="6.5" />
+    <polygon points="8,4 9.5,8 8,12 6.5,8" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 /** Lightning bolt – for N Fast */
 const FastIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -89,13 +98,13 @@ const ChevronLeftIcon = () => (
 
 // ── Model definitions ──────────────────────────────
 const basicModels = [
+  { id: "auto", name: "Auto", icon: AutoIcon, desc: "Picks the best model" },
   { id: "fast", name: "N Fast", icon: FastIcon, desc: "Instant" },
   { id: "plus", name: "N Plus", icon: PlusModelIcon, desc: "Balanced" },
   { id: "pro", name: "N Pro", icon: ProIcon, desc: "Deep reasoning" },
 ];
 
 const advancedModels = [
-  { id: "live", name: "N Live", icon: LiveIcon, desc: "Real‑time" },
   { id: "code", name: "N Code", icon: CodeIcon, desc: "Expert coding" },
   { id: "aai", name: "N AAI", icon: AaiIcon, desc: "Autonomous AI" },
 ];

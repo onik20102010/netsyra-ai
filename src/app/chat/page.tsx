@@ -17,7 +17,7 @@ function ChatContent() {
   const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const initialId = searchParams.get("conversation");
-  const initialModel = searchParams.get("model") || "fast";  // default to "fast" if not provided
+  const initialModel = searchParams.get("model") || "auto";  // default to "auto" (router picks best model)
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);

@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/chat/aai";
 import { tiers } from "@/lib/chat/model-registry";
-import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
+import { classifyIntent } from "@/lib/intent-classifier";
 import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
-import { performDeepSearch, performMultiDeepSearch } from "@/lib/chat/services/live-data";
+import { performDeepSearch, performMultiDeepSearch, performNLiveSearch } from "@/lib/chat/services/live-data";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
 import { safeFetch } from "@/lib/safe-fetch";
 import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
+import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
+import { routeModel } from "@/lib/chat/router";
+import { compressHistory } from "@/lib/chat/context-compression";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -35,6 +38,14 @@ async function saveMessage(supabase: any, userId: string, conversationId: string
     console.error("Failed to save message:", error);
     throw new Error(`Failed to save message: ${error.message}`);
   }
+}
+
+async function getUserTotalMessageCount(supabase: any, userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  return error ? 0 : (count || 0);
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -151,10 +162,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Detect user timezone from request headers
+    const userTimezone = req.headers.get('x-user-timezone') || 
+                        req.headers.get('timezone') || 
+                        Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     const body = await req.json();
     const {
       messages,
-      modelTier = "fast",
+      modelTier: requestedTier = "fast",
       conversationId,
       newConversation,
       diveDeep,
@@ -178,19 +194,87 @@ export async function POST(req: NextRequest) {
     const userMessage = lastMessage.content;
     const convId = conversationId || crypto.randomUUID();
 
-    // Tier restriction for web search – only N Live can search the web
-    const WEB_SEARCH_TIERS = ["live"];
-    const canWebSearch = WEB_SEARCH_TIERS.includes(modelTier);
+    // ── Auto-router: resolve "auto" to a concrete tier (manual tiers pass through) ──
+    let modelTier: string = requestedTier;
+    if (requestedTier === "auto") {
+      const routed = routeModel(userMessage, { historyLength: messages.length });
+      modelTier = routed.tier;
+      console.log(`🧭 Auto-router: "${userMessage.slice(0, 60)}" → N ${modelTier} (${routed.reason})`);
+    }
 
-    // Clean the query using multi‑query extraction
-    const queries = canWebSearch ? await cleanSearchQueries(userMessage) : [userMessage];
-    if (canWebSearch && queries.length > 0) {
+    // N Live activation conditions
+    const isGreeting = /^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you|bye|goodbye)[\s!.]*$/i.test(userMessage.trim());
+    const shouldUseNLive = diveDeep && !isGreeting;
+
+    // Detect if query needs web search (latest/current information)
+    function needsWebSearch(query: string): boolean {
+      const lowerQuery = query.toLowerCase();
+      
+      // Keywords indicating need for current information
+      const timeSensitiveKeywords = [
+        'latest', 'new', 'recent', 'current', 'today', 'now', 'yesterday', 'tomorrow',
+        'price', 'cost', 'stock', 'market', 'rate', 'value', 'expensive', 'cheap', 'discount', 'sale', 'deal',
+        'news', 'update', 'breaking', 'headline', 'trending', 'viral', 'announcement',
+        'weather', 'forecast', 'temperature', 'rain', 'snow', 'wind', 'humidity',
+        'time', 'date', 'what time', 'what date', 'when', 'schedule', 'calendar',
+        'what happened', 'recently', 'this year', 'this month', 'this week', 'this day',
+        'review', 'rating', 'best', 'top', 'vs', 'versus', 'compare', 'comparison',
+        'upcoming', 'scheduled', 'release', 'launch', 'event', 'concert', 'movie',
+        'status', 'is open', 'is closed', 'available', 'in stock', 'out of stock',
+        'live', 'streaming', 'broadcast', 'on air', 'right now',
+        'score', 'result', 'winner', 'final', 'match', 'game', 'tournament',
+        'election', 'vote', 'poll', 'campaign', 'candidate',
+        'crypto', 'bitcoin', 'ethereum', 'nft', 'blockchain', 'trading',
+        'technology', 'tech', 'startup', 'funding', 'ipo', 'acquisition',
+        'sports', 'nba', 'nfl', 'mlb', 'soccer', 'football', 'cricket',
+        'celebrity', 'actor', 'singer', 'artist', 'influencer',
+        'product', 'buy', 'purchase', 'order', 'delivery', 'shipping',
+        'website', 'online', 'app', 'software', 'update', 'version',
+        'scam', 'legit', 'safe', 'trust', 'verified', 'authentic',
+        'location', 'near me', 'around me', 'closest', 'nearest',
+        'flight', 'airport', 'delay', 'cancel', 'booking',
+        'hotel', 'restaurant', 'reservation', 'booked',
+        'traffic', 'accident', 'road', 'highway', 'route',
+        'covid', 'pandemic', 'health', 'symptoms', 'treatment',
+        'policy', 'law', 'regulation', 'rule', 'government',
+        'trend', 'popular', 'famous', 'viral', 'hot',
+      ];
+      
+      // Check for time-sensitive keywords
+      if (timeSensitiveKeywords.some(keyword => lowerQuery.includes(keyword))) {
+        return true;
+      }
+      
+      // Check for specific patterns
+      const patterns = [
+        /\d{4}/, // Years (2024, 2025, etc.)
+        /\$\d+/, // Prices
+        /how many/i,
+        /how much/i,
+        /where to buy/i,
+        /is it safe/i,
+        /is it legit/i,
+        /scam/i,
+        /easygetstore/i, // Specific example from user
+      ];
+      
+      if (patterns.some(pattern => pattern.test(query))) {
+        return true;
+      }
+      
+      return false;
+    }
+
+    // Query needs current information (decoupled from N Live — both paths may search)
+    const needsSearch = needsWebSearch(userMessage);
+    
+    // Clean the query using multi‑query extraction for N Live
+    const queries = needsSearch ? await cleanSearchQueries(userMessage) : [userMessage];
+    if (needsSearch && queries.length > 0) {
       console.log(`🧹 Cleaned queries: "${userMessage}" → [${queries.join(", ")}]`);
     }
 
-    // N Live always searches the web when Dive Deep is on (except for very short messages)
-    const isGreeting = /^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you)[\s!.]*$/i.test(userMessage.trim());
-    const shouldSearch = canWebSearch && diveDeep && !isGreeting;
+    const shouldSearch = needsSearch;
 
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
@@ -213,6 +297,9 @@ export async function POST(req: NextRequest) {
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
+    // ── Fetch user memory summary ──
+    const memorySummary = await getUserMemorySummary(user.id);
+
     // ── Fetch user profile (used by both branches) ──
     const { data: profile } = await supabase
       .from("profiles")
@@ -229,6 +316,11 @@ export async function POST(req: NextRequest) {
       if (parts.length > 0) {
         profileNote = parts.join("\n");
       }
+    }
+
+    // Add memory summary to profile note if available
+    if (memorySummary) {
+      profileNote += `\n\n--- USER MEMORY SUMMARY ---\n${memorySummary}`;
     }
 
     // Flag for response header
@@ -253,22 +345,37 @@ export async function POST(req: NextRequest) {
         timestamp: Date.now(),
       }));
 
+      // Only N Pro can generate widgets
+      const canUseWidgets = false; // AAI doesn't support widgets
+
       let liveData = "";
       if (shouldSearch) {
         searchAttempted = true;
 
-        // Widget queries – use exact whole-question patterns to avoid false positives
+        // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
         const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
         const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
         const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
 
-        if (isWeatherQuery) {
-          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
-        } else if (isTimeQuery) {
-          liveData = await getCurrentTimeCard();
-        } else if (isDateQuery) {
-          liveData = await getCurrentCalendarCard();
+        const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+
+        if (isWidgetQuery && canUseWidgets) {
+          if (isWeatherQuery) {
+            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+            liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+          } else if (isTimeQuery) {
+            liveData = await getCurrentTimeCard(undefined, userTimezone);
+          } else if (isDateQuery) {
+            liveData = await getCurrentCalendarCard(undefined, userTimezone);
+          }
+        } else if (isWidgetQuery && !canUseWidgets) {
+          // For non-Pro tiers, perform web search instead of widget generation
+          const cleanQ = userMessage.trim();
+          liveData = await performDeepSearch(cleanQ);
+          if (!liveData) {
+            liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
+          }
+          console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
         } else {
           // Universal web search – multi‑query or single
           if (queries.length > 1) {
@@ -285,10 +392,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const widgetInstruction = `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
+      const widgetInstruction = canUseWidgets ? `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
 Weather marker: <!--WIDGET:WEATHER:{"city":"...","temp":34,"condition":"scattered clouds","humidity":36,"windSpeed":3.1,"icon":"cloud"}-->
 Time marker:   <!--WIDGET:CLOCK:{"hours":14,"minutes":6,"seconds":0,"timezone":"Asia/Karachi","label":"Lahore, PK"}-->
-Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"Asia/Karachi","label":"Today"}-->]\n\n`;
+Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"Asia/Karachi","label":"Today"}-->]\n\n` : "";
 
       let extendedMessage = "";
       if (profileNote) {
@@ -324,6 +431,10 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       }
       await saveMessage(supabase, user.id, convId, "assistant", replyText);
 
+      // Trigger memory summary generation (async, non-blocking)
+      const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+      generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
+
       const encoder = new TextEncoder();
       const words = replyText.split(" ");
       const stream = new ReadableStream({
@@ -343,6 +454,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "x-conversation-id": convId,
+        "x-model-used": modelTier,
       };
       if (searchAttempted) {
         headers["x-search-performed"] = "true";
@@ -373,11 +485,21 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       if (prefs.conciseness < 0) toneInjection += `- Be thorough and detailed, even if responses become longer.\n`;
     }
 
+    // ── Context compression: summarize older turns, keep recent verbatim ──
+    const { recent: recentMessages, summary: rollingSummary } = await compressHistory(
+      messages.map((m: any) => ({ role: m.role, content: m.content }))
+    );
+
     // Build messages array with system prompt
     const apiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: tier.systemPrompt },
-      ...messages.map((m: any) => ({ role: m.role, content: m.content })),
+      ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
     ];
+
+    // ── Inject rolling summary of earlier turns (context compression) ──
+    if (rollingSummary) {
+      apiMessages[0].content += `\n\n--- EARLIER CONVERSATION SUMMARY ---\n${rollingSummary}\n(The messages below are the most recent turns; use the summary above for earlier context.)`;
+    }
 
     // ── Inject user profile ──────────────────────
     if (profileNote) {
@@ -390,8 +512,21 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
     // ── Inject intent label ──
     apiMessages[0].content += `\n\nIntent: ${intent}`;
 
-    // ── Dynamic Rich Content Engine ──
-    apiMessages[0].content += DYNAMIC_RICH_CONTENT_ENGINE;
+    // ── Dynamic Rich Content Engine (conditional — saves ~600 tokens on simple queries) ──
+    const richContentIntents = new Set([
+      "planning",
+      "step_by_step_guide",
+      "how_to_tutorial",
+      "learning_path",
+      "project_management",
+      "deep_explanation",
+      "system_design",
+      "architecture_design",
+    ]);
+    const needsRichContent = modelTier === "pro" || richContentIntents.has(intent);
+    if (needsRichContent) {
+      apiMessages[0].content += DYNAMIC_RICH_CONTENT_ENGINE;
+    }
 
     // ── Inject bot persona notes ──
     if (personaNoteText) {
@@ -400,90 +535,186 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
     // ── AI‑routed live‑data injection ──
     let liveData = "";
-    if (shouldSearch) {
+    let searchSources: { title: string; url: string }[] = [];
+    let searchPlatform = "";
+    // Only N Pro can generate widgets
+    const canUseWidgets = modelTier === "pro";
+    
+    // Non-N-Live search path: inject results into LLM prompt (N Live has its own pipeline below)
+    if (shouldSearch && !shouldUseNLive) {
       searchAttempted = true;
 
-      // Widget queries – use exact whole-question patterns to avoid false positives
+      // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
       const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
       const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
       const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
 
-      if (isWeatherQuery) {
-        const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-        liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
-      } else if (isTimeQuery) {
-        liveData = await getCurrentTimeCard();
-      } else if (isDateQuery) {
-        liveData = await getCurrentCalendarCard();
+      const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+
+      if (isWidgetQuery && canUseWidgets) {
+        if (isWeatherQuery) {
+          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+          liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+        } else if (isTimeQuery) {
+          liveData = await getCurrentTimeCard(undefined, userTimezone);
+        } else if (isDateQuery) {
+          liveData = await getCurrentCalendarCard(undefined, userTimezone);
+        }
+      } else if (isWidgetQuery && !canUseWidgets) {
+        // For non-Pro tiers, perform web search instead of widget generation
+        const cleanQ = userMessage.trim();
+        const searchResult = await performNLiveSearch(cleanQ);
+        if (searchResult.answer) {
+          liveData = searchResult.answer;
+          searchSources = searchResult.sources;
+          searchPlatform = searchResult.platform;
+        }
+        if (!liveData) {
+          liveData = `No reliable information found. Please try again later.`;
+        }
+        console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
       } else {
         // Universal web search – multi‑query or single
         if (queries.length > 1) {
           console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
-          liveData = await performMultiDeepSearch(queries);
+          const results = await Promise.all(queries.map(q => performNLiveSearch(q)));
+          const validResults = results.filter(r => r.answer);
+          if (validResults.length > 0) {
+            liveData = validResults.map((r, i) => r.answer).join("\n\n");
+            searchSources = validResults.flatMap(r => r.sources);
+            searchPlatform = validResults[0].platform;
+          }
         } else {
           const cleanQ = queries[0] || userMessage;
-          liveData = await performDeepSearch(cleanQ);
+          const searchResult = await performNLiveSearch(cleanQ);
+          if (searchResult.answer) {
+            liveData = searchResult.answer;
+            searchSources = searchResult.sources;
+            searchPlatform = searchResult.platform;
+          }
         }
         if (!liveData) {
-          liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
+          liveData = `No reliable information found. Please try again later.`;
         }
-        console.log(`✅ Search results obtained (${liveData.length} chars)`);
+        console.log(`✅ Search results obtained (${liveData.length} chars) from ${searchPlatform}`);
       }
 
       if (liveData) {
-        apiMessages[0].content += `\n\n--- REAL-TIME SEARCH (use this data) ---\n${liveData}\n\nIMPORTANT: After your answer, add a "## Sources" section with one bullet point per source.`;
+        // For regular models, format search results as italic block and instruct LLM to expand
+        const italicSearch = `*${liveData}*`;
+        apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS (italic block below) ---\n${italicSearch}\n\nIMPORTANT: You have been provided with web search results above in an italic block. Your job is to:\n1. Acknowledge the search results\n2. Explain and expand on the information\n3. Add your own insights and context\n4. Cover related aspects the user might find useful\n5. Make it comprehensive and helpful\nDo NOT repeat the search results verbatim. Instead, build upon them.`;
       }
     }
 
-    // ── Live tier: stream Tavily answer, then append sources ──
-    if (liveData && modelTier === "live") {
-      // Extract answer and sources
-      const answerMatch = liveData.match(/--- WEB SEARCH ---\n([\s\S]*?)(?:\n\n## Sources|$)/);
-      const answerText = answerMatch?.[1]?.trim() || liveData.slice(0, 500);
+    // ── N Live Pipeline: Direct streaming without LLM ──
+    let wikiSources: { title: string; url: string }[] = [];
+    if (shouldSearch && shouldUseNLive) {
+      searchAttempted = true;
 
-      // Parse sources from liveData
-      const sourceRegex = /- \[([^\]]+)\]\(([^)]+)\)/g;
-      const sources: { title: string; url: string }[] = [];
-      let m: RegExpExecArray | null;
-      while ((m = sourceRegex.exec(liveData)) !== null) {
-        sources.push({ title: m[1], url: m[2] });
+      // Check for widget queries (N Pro only)
+      const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+      const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
+      const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+      const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+      const canUseWidgets = modelTier === "pro";
+
+      let widgetData = "";
+      let searchQuery = queries[0] || userMessage;
+
+      // Handle mixed queries: extract non-widget part for search
+      if (isWidgetQuery && canUseWidgets) {
+        // Extract the non-widget part of the query
+        if (isWeatherQuery) {
+          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+          widgetData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+          // Remove weather part from query for web search
+          searchQuery = userMessage.replace(/weather|temperature|rain|forecast|in\s+[A-Za-z\s]+/gi, "").trim();
+        } else if (isTimeQuery) {
+          widgetData = await getCurrentTimeCard(undefined, userTimezone);
+          searchQuery = userMessage.replace(/what( i|')?s the \)?time|clock/gi, "").trim();
+        } else if (isDateQuery) {
+          widgetData = await getCurrentCalendarCard(undefined, userTimezone);
+          searchQuery = userMessage.replace(/what( i|')?s (the )?date|today'?s date|what day/gi, "").trim();
+        }
       }
 
-      // Stream the answer first
-      const words = answerText.split(/\s+/);
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          for (const word of words) {
-            const chunk = { choices: [{ delta: { content: word + " " } }] };
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-            await new Promise(r => setTimeout(r, 10));
-          }
+      // Perform N Live search
+      const cleanQ = searchQuery.length > 3 ? searchQuery : queries[0] || userMessage;
+      const searchResult = await performNLiveSearch(cleanQ);
 
-          // After the answer, send the sources as a single, complete chunk
-          if (sources.length > 0) {
-            const sourcesBlock = `\n\n## Sources\n` + sources.map((s) => `- [${s.title}](${s.url})`).join("\n");
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: sourcesBlock } }] })}\n\n`));
-          }
+      if (searchResult.answer && !searchResult.useLLM) {
+        // Tavily succeeded - stream directly in italic (sources passed via header)
+        const italicAnswer = `*${searchResult.answer}*`;
+        const fullResponse = widgetData ? `${widgetData}\n\n${italicAnswer}` : italicAnswer;
 
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-        },
-      });
+        // Stream the response
+        const words = fullResponse.split(/\s+/);
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await new Promise(r => setTimeout(r, 10));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
 
-      // Save the full message (answer + sources) to DB
-      const fullMessage = answerText + (sources.length > 0 ? `\n\n## Sources\n` + sources.map((s) => `- [${s.title}](${s.url})`).join("\n") : "");
-      await saveMessage(supabase, user.id, convId, "assistant", fullMessage);
+        await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
 
-      const headers: Record<string, string> = {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "x-conversation-id": convId,
-        "x-search-performed": "true",
-      };
+        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+        generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
 
-      return new Response(stream, { headers });
+        const headers: Record<string, string> = {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "x-conversation-id": convId,
+          "x-search-performed": "true",
+          "x-sources": encodeURIComponent(JSON.stringify(searchResult.sources)),
+        };
+
+        return new Response(stream, { headers });
+      } else if (searchResult.answer && searchResult.useLLM) {
+        // Wikipedia fallback - pass to LLM for formatting (sources passed via header)
+        liveData = searchResult.answer;
+        // Store sources to pass via header later
+        wikiSources = searchResult.sources;
+        // Continue to normal LLM flow below
+      } else {
+        // No results - show error message
+        const errorMessage = "I couldn't find information on that topic. Please try again later or rephrase your question.";
+        const stream = new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder();
+            const words = errorMessage.split(/\s+/);
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await new Promise(r => setTimeout(r, 10));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
+
+        await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
+
+        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+        generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
+
+        const headers: Record<string, string> = {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "x-conversation-id": convId,
+          "x-search-performed": "true",
+        };
+
+        return new Response(stream, { headers });
+      }
     }
 
     // ── Soft token target + upgrade hint (skip for live tier) ──
@@ -531,7 +762,9 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         continue;
       }
 
-      const hardCap = Math.max(tier.maxTokens * 2, 800);
+      // Modest headroom above the target so replies finish cleanly without
+      // allowing a full 2× budget overrun.
+      const hardCap = Math.max(Math.ceil(tier.maxTokens * 1.3), 512);
 
       // Token budget log only for non‑live tiers
       if (modelTier !== "live") {
@@ -540,9 +773,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
 
       try {
-        // ── Gemini branch ────────────────────────
+        // ── Gemini branch (true SSE streaming) ────
         if (modelConfig.provider === "gemini") {
-          const geminiUrl = `${modelConfig.endpoint}?key=${apiKey}`;
+          const streamEndpoint = modelConfig.endpoint.replace(":generateContent", ":streamGenerateContent");
+          const geminiUrl = `${streamEndpoint}?alt=sse&key=${apiKey}`;
           const systemMessages = apiMessages.filter(m => m.role === "system");
           const otherMessages = apiMessages.filter(m => m.role !== "system");
 
@@ -568,33 +802,67 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             body: JSON.stringify(geminiBody),
           });
 
-          if (!aiRes.ok) {
-            const errorText = await aiRes.text();
+          if (!aiRes.ok || !aiRes.body) {
+            const errorText = aiRes.body ? await aiRes.text() : `HTTP ${aiRes.status}`;
             console.warn(`Gemini model ${modelConfig.modelName} failed:`, errorText);
             lastError = errorText;
             continue;
           }
 
-          const data = await aiRes.json();
-          let replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          if (!replyText.trim()) {
-            const fallbackMsg = "I searched the web but couldn't retrieve the full information. Please try again.";
-            replyText = fallbackMsg;
-          }
-
-          await saveMessage(supabase, user.id, convId, "assistant", replyText);
-
           const encoder = new TextEncoder();
-          const words = replyText.split(" ");
+          const decoder = new TextDecoder();
+          let fullContent = "";
+
           const stream = new ReadableStream({
             async start(controller) {
-              for (const word of words) {
-                const chunk = { choices: [{ delta: { content: word + " " } }] };
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-                await new Promise(r => setTimeout(r, 10));
+              try {
+                const reader = aiRes.body!.getReader();
+                let buffer = "";
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+
+                  buffer += decoder.decode(value, { stream: true });
+                  const lines = buffer.split("\n");
+                  buffer = lines.pop() || "";
+
+                  for (const line of lines) {
+                    if (!line.startsWith("data: ")) continue;
+                    const data = line.slice(6).trim();
+                    if (!data || data === "[DONE]") continue;
+
+                    try {
+                      const parsed = JSON.parse(data);
+                      const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+                      if (text) {
+                        fullContent += text;
+                        // Re-emit in OpenAI delta format the frontend expects.
+                        const chunk = { choices: [{ delta: { content: text } }] };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+                      }
+                    } catch {
+                      // skip invalid JSON
+                    }
+                  }
+                }
+
+                // Hard fallback – never send empty response
+                if (!fullContent.trim()) {
+                  fullContent = "I searched the web but couldn't retrieve the full information. Please try again.";
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fullContent } }] })}\n\n`));
+                }
+
+                saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);
+                getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
+                  generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
+                }).catch(console.error);
+
+                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                controller.close();
+              } catch (error) {
+                console.error("Gemini stream error:", error);
+                controller.error(error);
               }
-              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-              controller.close();
             },
           });
 
@@ -603,9 +871,14 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             "Cache-Control": "no-cache",
             Connection: "keep-alive",
             "x-conversation-id": convId,
+            "x-model-used": modelTier,
           };
           if (searchAttempted) {
             headers["x-search-performed"] = "true";
+          }
+          const geminiSources = searchSources.length > 0 ? searchSources : wikiSources;
+          if (geminiSources.length > 0) {
+            headers["x-sources"] = encodeURIComponent(JSON.stringify(geminiSources));
           }
 
           return new Response(stream, { headers });
@@ -683,6 +956,11 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
               saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);
 
+              // Trigger memory summary generation (async, non-blocking)
+              getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
+                generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
+              }).catch(console.error);
+
               controller.enqueue(encoder.encode("data: [DONE]\n\n"));
               controller.close();
             } catch (error) {
@@ -697,9 +975,15 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "x-conversation-id": convId,
+          "x-model-used": modelTier,
         };
         if (searchAttempted) {
           headers["x-search-performed"] = "true";
+        }
+        // Add sources header if available from search (regular or Wikipedia fallback)
+        const openaiSources = searchSources.length > 0 ? searchSources : wikiSources;
+        if (openaiSources.length > 0) {
+          headers["x-sources"] = encodeURIComponent(JSON.stringify(openaiSources));
         }
 
         return new Response(stream, { headers });

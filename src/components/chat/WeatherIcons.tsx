@@ -114,13 +114,31 @@ const iconComponents: Record<string, React.FC> = {
   haze: FogIcon,
   night: NightIcon,
   "clear night": NightIcon,
+  "partly_cloudy_day": CloudSunIcon,
+  "partly_cloudy_night": CloudSunIcon,
+  "rain_light": RainIcon,
+  "rain_heavy": RainIcon,
+  drizzle: RainIcon,
+  sleet: SnowIcon,
+  hail: SnowIcon,
+  wind: CloudIcon,
+  tornado: StormIcon,
+  hurricane: StormIcon,
 };
 
-export function getWeatherIcon(condition: string): React.FC {
-  const lower = condition.toLowerCase().trim();
-  // Find the best match
-  for (const [key, comp] of Object.entries(iconComponents)) {
-    if (lower.includes(key)) return comp;
+export function getWeatherIcon(icon?: string, condition?: string): React.FC {
+  // First try to use the mapped icon code
+  if (icon && iconComponents[icon]) {
+    return iconComponents[icon];
   }
+  
+  // Fallback to condition string matching
+  if (condition) {
+    const lower = condition.toLowerCase().trim();
+    for (const [key, comp] of Object.entries(iconComponents)) {
+      if (lower.includes(key)) return comp;
+    }
+  }
+  
   return SunIcon; // default
 }

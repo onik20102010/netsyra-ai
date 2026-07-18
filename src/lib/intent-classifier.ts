@@ -231,19 +231,60 @@ const INSTRUCTIONS: Record<Intent, string> = {
 } as const;
 
 // ── AI classifier configuration ─────────────────────────────────────────
+// Tiny, fast model – only used when keyword matching is inconclusive.
 const CLASSIFIER_MODEL = {
   endpoint: "https://api.groq.com/openai/v1/chat/completions",
-  apiKeyEnv: "GROQ_API_KEY_3",   // ← changed to use your third Groq key
-  model: "llama-3.3-70b-versatile",
+  apiKeyEnv: "GROQ_API_KEY_3",   // ← third Groq key
+  model: "llama-3.1-8b-instant",
 };
 
 // ── Cache to avoid re-classifying identical messages ────────────────────
 const cache = new Map<string, Intent>();
 
+// ── Keyword-first classifier (0 tokens, 0 latency) ──────────────────────
+// Maps high-frequency intents to trigger keywords. Ordered by specificity:
+// earlier entries win when multiple match.
+const KEYWORD_RULES: Array<{ intent: Intent; keywords: string[] }> = [
+  { intent: "debugging_error", keywords: ["error", "bug", "not working", "doesn't work", "traceback", "exception", "stack trace", "fix this", "why is my"] },
+  { intent: "code_generation", keywords: ["write code", "write a function", "code for", "implement", "create a component", "build a", "script to", "function that", "class that", "```"] },
+  { intent: "code_review", keywords: ["review my code", "refactor", "improve this code", "optimize this", "code review"] },
+  { intent: "translation", keywords: ["translate", "translation", "in spanish", "in french", "in german", "to english", "meaning in"] },
+  { intent: "summarization", keywords: ["summarize", "summary of", "tl;dr", "tldr", "in short", "brief overview"] },
+  { intent: "math_calculation", keywords: ["calculate", "solve", "equation", "derivative", "integral", "what is the sum", "multiply", "percentage of"] },
+  { intent: "step_by_step_guide", keywords: ["step by step", "step-by-step", "how do i", "how to", "guide to", "walk me through", "tutorial"] },
+  { intent: "comparison", keywords: [" vs ", "versus", "difference between", "compare", "better than", "pros and cons"] },
+  { intent: "definitions", keywords: ["what is a", "what is an", "define", "definition of", "what does", "meaning of"] },
+  { intent: "planning", keywords: ["plan for", "roadmap", "schedule", "learning path", "study plan", "30 day", "weekly plan"] },
+  { intent: "creative_writing", keywords: ["write a story", "write a poem", "poem about", "story about", "song", "lyrics", "essay about"] },
+  { intent: "business_email", keywords: ["write an email", "email to", "draft an email", "reply to this email"] },
+  { intent: "resume_review", keywords: ["resume", "cv ", "cover letter"] },
+  { intent: "personal_advice", keywords: ["should i", "advice on", "help me decide", "what would you do"] },
+  { intent: "recipe_cooking", keywords: ["recipe", "how to cook", "how to make", "ingredients for"] },
+  { intent: "joke_humor", keywords: ["tell me a joke", "make me laugh", "funny"] },
+];
+
+function keywordIntent(message: string): Intent | null {
+  const lower = message.toLowerCase();
+  for (const rule of KEYWORD_RULES) {
+    if (rule.keywords.some((k) => lower.includes(k))) return rule.intent;
+  }
+  // Very short / casual messages don't need a model call.
+  if (lower.trim().length <= 12) return "general_inquiry";
+  return null;
+}
+
 // ── Main export: classifies user message into one of 100+ intents ───────
 export async function classifyIntent(message: string): Promise<Intent> {
   if (cache.has(message)) return cache.get(message)!;
 
+  // 1. Keyword-first pass — resolves the majority of messages with no LLM call.
+  const kw = keywordIntent(message);
+  if (kw) {
+    cache.set(message, kw);
+    return kw;
+  }
+
+  // 2. Fallback: tiny model only when keywords are inconclusive.
   const apiKey = process.env[CLASSIFIER_MODEL.apiKeyEnv];
   if (!apiKey) {
     console.warn("Intent classifier missing API key, falling back to 'general_inquiry'");

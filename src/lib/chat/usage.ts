@@ -4,12 +4,12 @@
 // function or RPC call that increments atomically.
 
 export const MODEL_LIMITS: Record<string, number> = {
-  fast: 10,
+  fast: 20,
   plus: 10,
-  pro: 10,
-  code: 10,
-  live: 10,
-  aai: 10,
+  pro: 5,
+  code: 3,
+  live: 3,
+  aai: 4,
   group: 10,
   web_search: 10,
 };

@@ -12,7 +12,7 @@ export default function ChatThreadPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("fast");   // ✅ added
+  const [selectedModel, setSelectedModel] = useState("auto");   // ✅ default to auto-router
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const supabase = createChatClient();
 
