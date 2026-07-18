@@ -1,6 +1,6 @@
 ﻿// src/app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createChatServerClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/chat/aai";
 import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent, getIntentInstruction } from "@/lib/intent-classifier";
@@ -13,20 +13,28 @@ import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
-  await supabase.from("conversations").insert({
+  const { error } = await supabase.from("conversations").insert({
     id,
     user_id: userId,
     title: title?.slice(0, 100) || "New conversation",
   });
+  if (error) {
+    console.error("Failed to create conversation:", error);
+    throw new Error(`Failed to create conversation: ${error.message}`);
+  }
 }
 
 async function saveMessage(supabase: any, userId: string, conversationId: string, role: string, content: string) {
-  await supabase.from("messages").insert({
+  const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
     user_id: userId,
     role,
     content,
   });
+  if (error) {
+    console.error("Failed to save message:", error);
+    throw new Error(`Failed to save message: ${error.message}`);
+  }
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -137,7 +145,7 @@ FORMATTING RULES FOR RICH CONTENT:
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createChatServerClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

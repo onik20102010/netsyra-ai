@@ -14,7 +14,7 @@ import {
   Link,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { createClient, createChatClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 interface ChatSidebarProps {
@@ -58,7 +58,6 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
-  const chatSupabase = createChatClient();
 
   useEffect(() => {
     if (selectedModel === "live") {
@@ -84,7 +83,7 @@ export default function ChatSidebar({
   useEffect(() => {
     if (!user) return;
     const fetchConversations = async () => {
-      const { data } = await chatSupabase
+      const { data, error } = await supabase
         .from("conversations")
         .select("id, title, pinned, archived")
         .eq("user_id", user.id)
@@ -92,7 +91,11 @@ export default function ChatSidebar({
         .order("pinned", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(20);
-      setConversations(data || []);
+      if (error) {
+        console.error("Error fetching conversations:", error);
+      } else {
+        setConversations(data || []);
+      }
     };
     fetchConversations();
   }, [user, supabase, refreshKey]);
@@ -128,7 +131,7 @@ export default function ChatSidebar({
   }, [user, supabase]);
 
   const togglePin = async (id: string, current: boolean) => {
-    await chatSupabase.from("conversations").update({ pinned: !current }).eq("id", id);
+    await supabase.from("conversations").update({ pinned: !current }).eq("id", id);
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, pinned: !current } : c))
     );
@@ -136,7 +139,7 @@ export default function ChatSidebar({
   };
 
   const archiveConv = async (id: string) => {
-    await chatSupabase.from("conversations").update({ archived: true }).eq("id", id);
+    await supabase.from("conversations").update({ archived: true }).eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
     toast.success("Archived");
   };
