@@ -322,9 +322,11 @@ export default function ChatInterface({
     };
   }, []);
 
-  const MarkdownRenderer = ({ content }: { content: string }) => {
+  const MarkdownRenderer = ({ content, modelTier }: { content: string; modelTier?: string }) => {
     const clean = stripThinkTags(content);
     const widgets: React.ReactNode[] = [];
+    const isProOrAAI = modelTier === "pro" || modelTier === "aai";
+    const isPlus = modelTier === "plus";
 
     const processed = clean
       .replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
@@ -355,7 +357,7 @@ export default function ChatInterface({
     const parts = processed.split(/(\[\[WIDGET:\d+\]\])/);
 
     return (
-      <div className="space-y-2">
+      <div className={cn("space-y-2", isPlus ? "overflow-visible h-auto" : "")}>
         {parts.map((part, i) => {
           const match = part.match(/^\[\[WIDGET:(\d+)\]\]$/);
           if (match) {
@@ -477,6 +479,18 @@ export default function ChatInterface({
                 },
                 ul({ node, children, ...props }: any) {
                   const depth = (node as any)?.depth ?? 0;
+                  // For N Pro and N AAI: use standard list styling with bullets
+                  if (isProOrAAI) {
+                    return (
+                      <ul
+                        className="my-2 space-y-1 pl-5 list-disc list-outside"
+                        {...props}
+                      >
+                        {children}
+                      </ul>
+                    );
+                  }
+                  // For N Fast and others: keep existing custom styling
                   return (
                     <ul
                       className={cn(
@@ -513,6 +527,16 @@ export default function ChatInterface({
                     );
                   }
 
+                  // For N Pro and N AAI: use block-level list items (vertical stack)
+                  if (isProOrAAI) {
+                    return (
+                      <li className="list-item mb-1 text-sm leading-relaxed text-zinc-800" {...props}>
+                        {children}
+                      </li>
+                    );
+                  }
+
+                  // For N Fast and others: keep existing flex layout
                   return (
                     <li className="flex gap-2 text-sm leading-relaxed text-zinc-800" {...props}>
                       <span className="flex-shrink-0 select-none">{bulletChar}</span>
@@ -920,7 +944,10 @@ export default function ChatInterface({
                       className={cn(
                         msg.role === "user"
                           ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
-                          : "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2"
+                          : cn(
+                              "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2",
+                              msg.modelUsed === "plus" ? "overflow-visible h-auto" : ""
+                            )
                       )}
                     >
                       {isEditing ? (
@@ -966,7 +993,7 @@ export default function ChatInterface({
                         </div>
                       ) : (
                         <>
-                          <MarkdownRenderer content={msg.content} />
+                          <MarkdownRenderer content={msg.content} modelTier={msg.modelUsed} />
                           {msg.confidence !== undefined && msg.confidence < 0.6 && (
                             <span className="inline-block text-xs text-amber-500 ml-2">
                               ⚠️ Low confidence
@@ -1100,8 +1127,11 @@ export default function ChatInterface({
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                     <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                   </div>
-                  <div className="max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2">
-                    <MarkdownRenderer content={partialReply} />
+                  <div className={cn(
+                    "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2",
+                    selectedModel === "plus" ? "overflow-visible h-auto" : ""
+                  )}>
+                    <MarkdownRenderer content={partialReply} modelTier={selectedModel} />
                     {isLoading && (
                       <span className="inline-block w-2 h-5 bg-gray-900 ml-0.5 animate-pulse align-middle rounded-sm" />
                     )}

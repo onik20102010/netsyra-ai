@@ -1,4 +1,4 @@
-import { structureMinimal } from "@/lib/structure-light";
+import { structureMinimal, structurePro } from "@/lib/structure-light";
 import { AAI_SYSTEM_PROMPT } from "@/lib/chat/aai/prompt";
 
 export type ProviderType = "openai" | "gemini";
@@ -59,11 +59,17 @@ Choose your output format based on the query type:
 | Code help           | Full code block with language tag, minimal explanation unless asked |
 | Warning/critical    | > ⚠️ callout box with bold warning text            |
 
+CRITICAL BULLET POINT RULE (MUST FOLLOW):
+- ALWAYS output bullet points as a vertical list – ONE BULLET PER LINE
+- Each bullet must start on its own new line
+- NEVER put multiple bullets in the same paragraph or line
+- Use a newline after each bullet
+- This rule overrides all other formatting instructions
+
 - Use \`**bold**\` only for the 2–3 most important terms per paragraph.
 - Use \`##\` headers to separate distinct topics.
 - Use \`---\` to break up responses over ~500 words.
 - Use inline \`code\` for function names, variables, and file paths.
-BULLET POINT FORMAT (strict): Always output bullet points as a vertical list – one bullet per line, each starting with the bullet character (•, →, ✅, etc.). Never put multiple bullets in the same paragraph or line. Use a newline after each bullet.
 
 WHEN TO USE BULLET POINTS:
 - Listing features
@@ -909,7 +915,7 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", Ti
   },
   pro: {
     models: proModels,
-    systemPrompt: `${identity} You are currently running as N PRO. ${systemPrompt}`,
+    systemPrompt: `${identity} You are currently running as N PRO. ${structurePro}`,
     temperature: 0.7,
     maxTokens: 1800,
   },

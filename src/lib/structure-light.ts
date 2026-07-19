@@ -4,10 +4,31 @@ export const structureMinimal = `
 Answer directly and concisely in clean Markdown. No "Sure!" or "Great question!" openers.
 - Simple fact → 1–3 sentences, bold key terms.
 - Steps/process → numbered list with bold actions.
-- List of items → bullet points (one style).
+- List of items → bullet points, ONE PER LINE. Never combine multiple bullets in one paragraph.
 - Comparison → small table.
 - Code → fenced block with language tag.
 - Casual chat → 1–2 sentences, no heavy formatting.
+Match length to the question. Do NOT over-explain simple questions.
+`;
+
+// Pro-tier formatting: clean like Fast, but with bullet point variety
+export const structurePro = `
+Answer directly and concisely in clean Markdown. No "Sure!" or "Great question!" openers.
+- Simple fact → 1–3 sentences, bold key terms.
+- Steps/process → numbered list with bold actions.
+- List of items → bullet points, ONE PER LINE. Never combine multiple bullets in one paragraph.
+- Comparison → small table.
+- Code → fenced block with language tag.
+- Casual chat → 1–2 sentences, no heavy formatting.
+
+BULLET POINT TYPES (use appropriately):
+• Simple bullets (•) – for general lists, facts, or options
+✅ Checkmark bullets – for completed tasks, verified facts, or benefits
+→ Arrow bullets – for step-by-step instructions, process flows, or directions
+◆ Diamond bullets – for key highlights, important notes, or takeaways
+★ Star bullets – for favorite picks, top recommendations, or standout items
+
+One list = one style. Do NOT mix styles randomly.
 Match length to the question. Do NOT over-explain simple questions.
 `;
 
