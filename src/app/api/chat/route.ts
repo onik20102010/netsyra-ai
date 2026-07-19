@@ -13,6 +13,8 @@ import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
 import { routeModel } from "@/lib/chat/router";
 import { compressHistory } from "@/lib/chat/context-compression";
+import { getCachedReply, setCachedReply } from "@/lib/scale";
+import { verifyAnswer } from "@/lib/verifier";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -200,6 +202,40 @@ export async function POST(req: NextRequest) {
       const routed = routeModel(userMessage, { historyLength: messages.length });
       modelTier = routed.tier;
       console.log(`🧭 Auto-router: "${userMessage.slice(0, 60)}" → N ${modelTier} (${routed.reason})`);
+
+      // Low-confidence fallback: use tiny model to re-classify on ambiguous cases
+      if (routed.confidence && routed.confidence < 0.6) {
+        console.log(`⚠️ Low router confidence (${routed.confidence}), using tiny-model fallback`);
+        try {
+          const lastTwoMessages = messages.slice(-2).map((m: any) => `${m.role}: ${m.content}`).join("\n");
+          const fallbackPrompt = `You are a tier classifier. Given this conversation context, classify the last user message into one of: fast, plus, pro, code, aai. Return ONLY the tier name.\n\nConversation:\n${lastTwoMessages}\n\nTier:`;
+          
+          const fallbackRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: "llama-3.1-8b-instant",
+              messages: [{ role: "user", content: fallbackPrompt }],
+              temperature: 0.1,
+              max_tokens: 10,
+            }),
+          });
+
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            const fallbackTier = fallbackData.choices?.[0]?.message?.content?.trim().toLowerCase();
+            if (fallbackTier && ["fast", "plus", "pro", "code", "aai"].includes(fallbackTier)) {
+              console.log(`🔄 Tiny-model override: ${modelTier} → ${fallbackTier}`);
+              modelTier = fallbackTier;
+            }
+          }
+        } catch (err) {
+          console.warn("Tiny-model fallback failed, using original tier:", err);
+        }
+      }
     }
 
     // N Live activation conditions
@@ -323,6 +359,39 @@ export async function POST(req: NextRequest) {
       profileNote += `\n\n--- USER MEMORY SUMMARY ---\n${memorySummary}`;
     }
 
+    // ── Cache check: skip for personalized, live, or AAI queries ──
+    const canUseCache = !diveDeep && !profileNote && !memorySummary && modelTier !== "aai" && modelTier !== "live";
+    if (canUseCache) {
+      const cached = getCachedReply(userMessage);
+      if (cached) {
+        console.log(`💾 Cache hit for query: "${userMessage.slice(0, 50)}..."`);
+        await saveMessage(supabase, user.id, convId, "assistant", cached);
+        const encoder = new TextEncoder();
+        const words = cached.split(" ");
+        const stream = new ReadableStream({
+          async start(controller) {
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await new Promise(r => setTimeout(r, 10));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "x-conversation-id": convId,
+            "x-model-used": modelTier,
+            "x-cached": "true",
+          },
+        });
+      }
+    }
+
     // Flag for response header
     let searchAttempted = false;
 
@@ -336,130 +405,145 @@ export async function POST(req: NextRequest) {
       personaNoteText = personaNotes.map((n: any) => `- ${n.note}`).join("\n");
     }
 
-    // ── AAI branch ─────────────────────────────
+    // ── AAI branch: gate with explicit signals ─────────────────────────────
     if (modelTier === "aai") {
-      const history = messages.slice(0, -1).map((m: any) => ({
-        role: m.role,
-        content: m.content,
-        id: m.id,
-        timestamp: Date.now(),
-      }));
+      // Tighten AAI entry: only use full planner for explicit complex signals
+      const lowerMessage = userMessage.toLowerCase();
+      const hasExplicitSignals = 
+        /\b(plan|planning|step by step|multi-day|multi day|agent|workflow|architecture|system design|build a|create a|implement)\b/i.test(lowerMessage) ||
+        userMessage.length > 300 ||
+        (userMessage.includes("code") && userMessage.length > 150);
 
-      // Only N Pro can generate widgets
-      const canUseWidgets = false; // AAI doesn't support widgets
+      if (!hasExplicitSignals) {
+        console.log(`🔄 AAI short-circuit: no explicit signals, using normal tier instead`);
+        // Fall back to Pro tier for simple AAI requests
+        // Override modelTier to 'pro' and continue to regular tier logic
+        modelTier = "pro";
+      } else {
+        // Only proceed with AAI branch if explicit signals are present
+        const history = messages.slice(0, -1).map((m: any) => ({
+          role: m.role,
+          content: m.content,
+          id: m.id,
+          timestamp: Date.now(),
+        }));
 
-      let liveData = "";
-      if (shouldSearch) {
-        searchAttempted = true;
+        // Only N Pro can generate widgets
+        const canUseWidgets = false; // AAI doesn't support widgets
 
-        // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
-        const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
-        const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
-        const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+        let liveData = "";
+        if (shouldSearch) {
+          searchAttempted = true;
 
-        const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+          // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
+          const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+          const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
+          const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
 
-        if (isWidgetQuery && canUseWidgets) {
-          if (isWeatherQuery) {
-            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-            liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
-          } else if (isTimeQuery) {
-            liveData = await getCurrentTimeCard(undefined, userTimezone);
-          } else if (isDateQuery) {
-            liveData = await getCurrentCalendarCard(undefined, userTimezone);
-          }
-        } else if (isWidgetQuery && !canUseWidgets) {
-          // For non-Pro tiers, perform web search instead of widget generation
-          const cleanQ = userMessage.trim();
-          liveData = await performDeepSearch(cleanQ);
-          if (!liveData) {
-            liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
-          }
-          console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
-        } else {
-          // Universal web search – multi‑query or single
-          if (queries.length > 1) {
-            console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
-            liveData = await performMultiDeepSearch(queries);
-          } else {
-            const cleanQ = queries[0] || userMessage;
+          const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+
+          if (isWidgetQuery && canUseWidgets) {
+            if (isWeatherQuery) {
+              const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+              liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+            } else if (isTimeQuery) {
+              liveData = await getCurrentTimeCard(undefined, userTimezone);
+            } else if (isDateQuery) {
+              liveData = await getCurrentCalendarCard(undefined, userTimezone);
+            }
+          } else if (isWidgetQuery && !canUseWidgets) {
+            // For non-Pro tiers, perform web search instead of widget generation
+            const cleanQ = userMessage.trim();
             liveData = await performDeepSearch(cleanQ);
+            if (!liveData) {
+              liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
+            }
+            console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
+          } else {
+            // Universal web search – multi‑query or single
+            if (queries.length > 1) {
+              console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
+              liveData = await performMultiDeepSearch(queries);
+            } else {
+              const cleanQ = queries[0] || userMessage;
+              liveData = await performDeepSearch(cleanQ);
+            }
+            if (!liveData) {
+              liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
+            }
+            console.log(`✅ Search results obtained (${liveData.length} chars)`);
           }
-          if (!liveData) {
-            liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
-          }
-          console.log(`✅ Search results obtained (${liveData.length} chars)`);
         }
-      }
 
-      const widgetInstruction = canUseWidgets ? `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
+        const widgetInstruction = canUseWidgets ? `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
 Weather marker: <!--WIDGET:WEATHER:{"city":"...","temp":34,"condition":"scattered clouds","humidity":36,"windSpeed":3.1,"icon":"cloud"}-->
 Time marker:   <!--WIDGET:CLOCK:{"hours":14,"minutes":6,"seconds":0,"timezone":"Asia/Karachi","label":"Lahore, PK"}-->
 Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"Asia/Karachi","label":"Today"}-->]\n\n` : "";
 
-      let extendedMessage = "";
-      if (profileNote) {
-        extendedMessage += `--- USER PROFILE ---\n${profileNote}\n\n`;
+        let extendedMessage = "";
+        if (profileNote) {
+          extendedMessage += `--- USER PROFILE ---\n${profileNote}\n\n`;
+        }
+        if (personaNoteText) {
+          extendedMessage += `--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.\n\n`;
+        }
+        if (liveData) {
+          extendedMessage += `--- REAL-TIME SEARCH (use this data) ---\n${liveData}\n\n`;
+          extendedMessage += `IMPORTANT: After your answer, add a "## Sources" section with one bullet point per source, like this:\n- [Title](URL)\n- [Title](URL)\nDo NOT skip this section.\n\n`;
+        }
+        extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]`;
+
+        // Prepend widget instruction
+        extendedMessage = widgetInstruction + extendedMessage + `\n\nUser: ${userMessage}`;
+        console.log(`📝 AAI extendedMessage now has ${extendedMessage.length} chars`);
+
+        const aaiResult = await aaiRuntime.processRequest({
+          userMessage: extendedMessage,
+          conversationHistory: history,
+          modelTier,
+          metadata: {
+            conversationId: convId,
+            userId: user.id,
+          },
+        });
+
+        let replyText = aaiResult.response || "";
+        // Hard fallback for empty response
+        if (!replyText.trim()) {
+          replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
+        }
+        await saveMessage(supabase, user.id, convId, "assistant", replyText);
+
+        // Trigger memory summary generation (async, non-blocking)
+        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+        generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
+
+        const encoder = new TextEncoder();
+        const words = replyText.split(" ");
+        const stream = new ReadableStream({
+          async start(controller) {
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await new Promise(r => setTimeout(r, 10));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
+
+        const headers: Record<string, string> = {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "x-conversation-id": convId,
+          "x-model-used": modelTier,
+        };
+        if (searchAttempted) {
+          headers["x-search-performed"] = "true";
+        }
+        return new Response(stream, { headers });
       }
-      if (personaNoteText) {
-        extendedMessage += `--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.\n\n`;
-      }
-      if (liveData) {
-        extendedMessage += `--- REAL-TIME SEARCH (use this data) ---\n${liveData}\n\n`;
-        extendedMessage += `IMPORTANT: After your answer, add a "## Sources" section with one bullet point per source, like this:\n- [Title](URL)\n- [Title](URL)\nDo NOT skip this section.\n\n`;
-      }
-      extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]`;
-
-      // Prepend widget instruction
-      extendedMessage = widgetInstruction + extendedMessage + `\n\nUser: ${userMessage}`;
-      console.log(`📝 AAI extendedMessage now has ${extendedMessage.length} chars`);
-
-      const aaiResult = await aaiRuntime.processRequest({
-        userMessage: extendedMessage,
-        conversationHistory: history,
-        modelTier,
-        metadata: {
-          conversationId: convId,
-          userId: user.id,
-        },
-      });
-
-      let replyText = aaiResult.response || "";
-      // Hard fallback for empty response
-      if (!replyText.trim()) {
-        replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
-      }
-      await saveMessage(supabase, user.id, convId, "assistant", replyText);
-
-      // Trigger memory summary generation (async, non-blocking)
-      const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-      generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
-
-      const encoder = new TextEncoder();
-      const words = replyText.split(" ");
-      const stream = new ReadableStream({
-        async start(controller) {
-          for (const word of words) {
-            const chunk = { choices: [{ delta: { content: word + " " } }] };
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-            await new Promise(r => setTimeout(r, 10));
-          }
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-        },
-      });
-
-      const headers: Record<string, string> = {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "x-conversation-id": convId,
-        "x-model-used": modelTier,
-      };
-      if (searchAttempted) {
-        headers["x-search-performed"] = "true";
-      }
-      return new Response(stream, { headers });
     }
 
     // ── Regular tier with fallback ────────────
@@ -853,10 +937,27 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fullContent } }] })}\n\n`));
                 }
 
-                saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);
+                // Verify answer if search was used (non-NLive path)
+                let finalContent = fullContent;
+                if (searchAttempted && !shouldUseNLive && searchSources.length > 0) {
+                  const sourceUrls = searchSources.map(s => s.url);
+                  try {
+                    finalContent = await verifyAnswer(fullContent, sourceUrls, userMessage);
+                    console.log(`✅ Answer verified (${finalContent.length} chars)`);
+                  } catch (err) {
+                    console.warn("Verification failed, using original answer:", err);
+                  }
+                }
+
+                saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
                 getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
                   generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
                 }).catch(console.error);
+
+                // Cache the response if cacheable
+                if (canUseCache && finalContent.length > 20) {
+                  setCachedReply(userMessage, finalContent);
+                }
 
                 controller.enqueue(encoder.encode("data: [DONE]\n\n"));
                 controller.close();
@@ -956,12 +1057,29 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fallbackMsg } }] })}\n\n`));
               }
 
-              saveMessage(supabase, user.id, convId, "assistant", fullContent).catch(console.error);
+              // Verify answer if search was used (non-NLive path)
+              let finalContent = fullContent;
+              if (searchAttempted && !shouldUseNLive && searchSources.length > 0) {
+                const sourceUrls = searchSources.map(s => s.url);
+                try {
+                  finalContent = await verifyAnswer(fullContent, sourceUrls, userMessage);
+                  console.log(`✅ Answer verified (${finalContent.length} chars)`);
+                } catch (err) {
+                  console.warn("Verification failed, using original answer:", err);
+                }
+              }
+
+              saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
 
               // Trigger memory summary generation (async, non-blocking)
               getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
                 generateMemorySummary(user.id, messages, totalMessageCount).catch(console.error);
               }).catch(console.error);
+
+              // Cache the response if cacheable
+              if (canUseCache && finalContent.length > 20) {
+                setCachedReply(userMessage, finalContent);
+              }
 
               controller.enqueue(encoder.encode("data: [DONE]\n\n"));
               controller.close();
