@@ -14,6 +14,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Paperclip,
+  Image as ImageIcon,
+  XCircle,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -39,6 +42,7 @@ type Message = {
   confidence?: number;
   sources?: { title: string; url: string }[];
   modelUsed?: string;
+  images?: { id: string; url: string; name: string }[];
 };
 
 // Friendly display names for the model tiers (used to show what Auto picked).
@@ -213,6 +217,8 @@ export default function ChatInterface({
   const [isTyping, setIsTyping] = useState(false);
   const [showStream, setShowStream] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<{ id: string; file: File; url: string; name: string }[]>([]);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -668,19 +674,65 @@ export default function ChatInterface({
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && attachedImages.length === 0) || isLoading) return;
+
+    let messageContent = input.trim();
+    let apiContent = input.trim();
+
+    // Process images if attached
+    if (attachedImages.length > 0) {
+      const imageDescription = await processImagesWithGroq(attachedImages);
+      if (imageDescription) {
+        apiContent = apiContent ? `${apiContent}\n\n[Image Analysis: ${imageDescription}]` : `[Image Analysis: ${imageDescription}]`;
+      }
+
+      // Convert File objects to base64 data URLs so they persist in messages
+      const imagePromises = attachedImages.map((img) => {
+        return new Promise<{ id: string; url: string; name: string }>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve({ id: img.id, url: reader.result as string, name: img.name });
+          };
+          reader.onerror = () => {
+            resolve({ id: img.id, url: img.url, name: img.name });
+          };
+          reader.readAsDataURL(img.file);
+        });
+      });
+      const persistentImages = await Promise.all(imagePromises);
+
+      // Now safe to revoke blob URLs
+      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
+
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: messageContent || "",
+        images: persistentImages,
+      };
+
+      setMessages(prev => [...prev, userMessage]);
+      setInput("");
+      setAttachedImages([]);
+
+      const contextMessages = [...messages, userMessage].slice(-6);
+      await sendMessage(apiContent, contextMessages);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input.trim(),
+      content: messageContent || "",
+      images: undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    setAttachedImages([]);
 
     const contextMessages = [...messages, userMessage].slice(-6);
-    await sendMessage(userMessage.content, contextMessages);
+    await sendMessage(apiContent, contextMessages);
   };
 
   const handleRefresh = async (assistantId: string) => {
@@ -744,6 +796,80 @@ export default function ChatInterface({
 
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
+
+  const isImageAttachEnabled = selectedModel === "plus";
+
+  // Clear attached images when switching away from N Plus
+  useEffect(() => {
+    if (!isImageAttachEnabled && attachedImages.length > 0) {
+      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
+      setAttachedImages([]);
+    }
+  }, [isImageAttachEnabled]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    if (!isImageAttachEnabled) {
+      toast.error("Image analysis is only available with N Plus model");
+      return;
+    }
+
+    const newImages = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
+
+    if (attachedImages.length + newImages.length > 2) {
+      toast.error("You can only attach up to 2 images at a time");
+      return;
+    }
+
+    setAttachedImages(prev => [...prev, ...newImages]);
+  };
+
+  const removeAttachedImage = (id: string) => {
+    setAttachedImages(prev => {
+      const image = prev.find(img => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.url);
+      }
+      return prev.filter(img => img.id !== id);
+    });
+  };
+
+  const processImagesWithGroq = async (images: { id: string; file: File; url: string; name: string }[]) => {
+    if (images.length === 0) return "";
+
+    setIsProcessingImage(true);
+    try {
+      const formData = new FormData();
+      images.forEach(img => {
+        formData.append('images', img.file);
+      });
+
+      const response = await fetch('/api/groq/image-process', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process images');
+      }
+
+      const data = await response.json();
+      return data.description || "";
+    } catch (error) {
+      console.error('Error processing images:', error);
+      toast.error('Failed to process images');
+      return "";
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -823,7 +949,21 @@ export default function ChatInterface({
                           </button>
                         </div>
                       ) : isUser ? (
-                        <p>{msg.content}</p>
+                        <div>
+                          {msg.images && msg.images.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {msg.images.map((img) => (
+                                <img
+                                  key={img.id}
+                                  src={img.url}
+                                  alt={img.name}
+                                  className="h-32 w-32 object-cover rounded-lg border border-white/20"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {msg.content && <p>{msg.content}</p>}
+                        </div>
                       ) : (
                         <>
                           <MarkdownRenderer content={msg.content} />
@@ -1017,9 +1157,53 @@ export default function ChatInterface({
           )}
 
           <form onSubmit={handleSend} className="relative">
+            {/* Attached Images Preview */}
+            {attachedImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 px-1">
+                {attachedImages.map((img) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      className="h-16 w-16 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAttachedImage(img.id)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XCircle className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              <div className="flex-shrink-0 pb-1">
+              <div className="flex-shrink-0 flex items-end pb-1">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
+              </div>
+
+              {/* Attachment Button - only enabled when N Plus is selected */}
+              <div className="flex-shrink-0 flex items-end pb-1">
+                <input
+                  type="file"
+                  id="image-attachment"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  disabled={!isImageAttachEnabled || attachedImages.length >= 2 || isLoading}
+                />
+                <label
+                  htmlFor={isImageAttachEnabled ? "image-attachment" : undefined}
+                  aria-label="Attach images"
+                  role="button"
+                  className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isImageAttachEnabled ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed'} ${!isImageAttachEnabled || attachedImages.length >= 2 || isLoading ? 'opacity-30' : ''}`}
+                  title={isImageAttachEnabled ? "Attach images (N Plus)" : "Image analysis requires N Plus model"}
+                >
+                  <Paperclip className={`w-4 h-4 ${isImageAttachEnabled ? 'text-gray-500' : 'text-gray-300'}`} />
+                </label>
               </div>
 
               <textarea
@@ -1036,9 +1220,9 @@ export default function ChatInterface({
                     setInput(e.target.value);
                   }
                 }}
-                placeholder="Message Netsyra..."
+                placeholder={attachedImages.length > 0 ? "Add a message about these images..." : "Message Netsyra..."}
                 rows={1}
-                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 text-sm max-h-[120px]"
+                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 text-sm max-h-[150px] overflow-y-auto"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -1049,10 +1233,15 @@ export default function ChatInterface({
 
               <button
                 type="submit"
-                disabled={isLoading || !input.trim() || lineLimitReached}
-                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
+                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || lineLimitReached || isProcessingImage}
+                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm mb-0.5"
+                aria-label="Send message"
               >
-                <Send className="w-4 h-4" />
+                {isProcessingImage ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </div>
 

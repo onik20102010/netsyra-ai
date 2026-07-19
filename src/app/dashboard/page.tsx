@@ -116,7 +116,7 @@ const sections = [
     title: "13. CONTACT INFORMATION",
     content: [
       `If you have any questions, concerns, or feedback regarding these Terms, please contact us at:`,
-      `Email: onik20102010@gmail.com`,
+      `Email: netsyraai@gmail.com`,
     ],
   },
   {
@@ -318,7 +318,7 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-white">Need Help?</h3>
               <p className="text-gray-400 text-sm">
                 If you have any questions, feel free to contact us.<br />
-                <a href="mailto:onik20102010@gmail.com" className="text-gray-300 hover:text-white transition">onik20102010@gmail.com</a>
+                <a href="mailto:netsyraai@gmail.com" className="text-gray-300 hover:text-white transition">netsyraai@gmail.com</a>
               </p>
             </div>
           </div>

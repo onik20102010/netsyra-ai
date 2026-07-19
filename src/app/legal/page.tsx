@@ -62,7 +62,7 @@ const sections = [
     title: "Report Infringement",
     content: [
       "If you believe your work has been copied or used without authorization, please contact us at:",
-      "Email: onik20102010@gmail.com",
+      "Email: netsyraai@gmail.com",
     ],
   },
 ];

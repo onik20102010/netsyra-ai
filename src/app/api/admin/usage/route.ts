@@ -7,7 +7,7 @@ const DAILY_GROQ_LIMIT = 100000;
 export async function GET() {
   const supabase = await createChatServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "netsyraai@gmail.com";
 
   if (!user || user.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

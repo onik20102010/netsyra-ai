@@ -6,7 +6,7 @@ import { createClient, createChatClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { BarChart3, MessageSquare, Users } from "lucide-react";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "onik20102010@gmail.com";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "netsyraai@gmail.com";
 
 type UserRow = {
   id: string;

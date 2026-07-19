@@ -752,6 +752,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     let lastError: string | null = null;
 
     for (const modelConfig of tier.models) {
+      console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey})`);
       let apiKey = process.env[modelConfig.apiKeyEnv];
       // Use fallback key if primary is missing or we're on the fallback model
       if (!apiKey || modelConfig.modelKey === "live_fallback" || modelConfig.modelKey === "aai_fallback") {
@@ -866,6 +867,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             },
           });
 
+          console.log(`✅ Model succeeded: ${modelConfig.modelName} (${modelConfig.modelKey})`);
           const headers: Record<string, string> = {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
@@ -970,6 +972,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           },
         });
 
+        console.log(`✅ Model succeeded: ${modelConfig.modelName} (${modelConfig.modelKey})`);
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",

@@ -109,7 +109,7 @@ const sections = [
     title: "11. CONTACT INFORMATION",
     content: [
       "If you have any questions, concerns, or feedback regarding these Terms, please contact us at:",
-      "Email: onik20102010@gmail.com",
+      "Email: netsyraai@gmail.com",
     ],
   },
 ];

@@ -749,7 +749,7 @@ const fastModels: ModelConfig[] = [
     provider: "openai",
     apiKeyEnv: "GROQ_API_KEY",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "meta-llama/llama-4-scout-17b-16e-instruct",
+    modelName: "qwen/qwen3.6-27b",
     modelKey: "fast_6",
   },
 ];

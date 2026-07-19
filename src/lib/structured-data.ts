@@ -13,7 +13,7 @@ export function organizationJsonLd() {
     ],
     contactPoint: {
       "@type": "ContactPoint",
-      email: "onik20102010@gmail.com",
+      email: "netsyraai@gmail.com",
       contactType: "support",
       availableLanguage: "English",
     },

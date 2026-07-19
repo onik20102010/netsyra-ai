@@ -213,7 +213,7 @@ export default function ChatSidebar({
               title="Enable real-time web search for any model"
             >
               <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-cyan-600" : "text-gray-400"}`} />
-              N Live
+              Deep Dive
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
                 diveDeep ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
               }`}>
