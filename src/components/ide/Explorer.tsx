@@ -1,13 +1,21 @@
 // d:\netsyra\src\components\ide\Explorer.tsx
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useIdeStore, FileItem, openWorkspaceFromDisk, closeWorkspaceFromDisk, getFileIconDetails } from "@/ide";
 import { 
   Folder, FolderOpen, File, FileCode, FileJson, FileText, Image, 
   ChevronRight, ChevronDown, Plus, FolderPlus, Trash2, Pencil, 
-  FolderOpen as FolderOpenIcon, X
+  FolderOpen as FolderOpenIcon, X, FilePlus
 } from "lucide-react";
+
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  targetItem: FileItem | null;
+  targetPath: string;
+}
 
 export function Explorer() {
   const workspace = useIdeStore((s) => s.workspace);
@@ -20,6 +28,72 @@ export function Explorer() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [isCreating, setIsCreating] = useState<{ parentPath: string; isDir: boolean } | null>(null);
   const [newName, setNewName] = useState("");
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    targetItem: null,
+    targetPath: ''
+  });
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+      }
+    };
+
+    if (contextMenu.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu.visible]);
+
+  // Handle right-click context menu
+  const handleContextMenu = (e: React.MouseEvent, item: FileItem | null, targetPath: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      targetItem: item,
+      targetPath: item ? (item.isDirectory ? item.path : targetPath) : targetPath
+    });
+  };
+
+  // Context menu actions
+  const handleContextMenuAction = (action: string) => {
+    const parentPath = contextMenu.targetItem?.isDirectory 
+      ? contextMenu.targetItem.path 
+      : contextMenu.targetPath;
+
+    if (action === 'newFile') {
+      setIsCreating({ parentPath, isDir: false });
+      setNewName("");
+      // Expand the folder if it's a directory
+      if (contextMenu.targetItem?.isDirectory) {
+        setExpandedFolders(prev => new Set([...prev, parentPath]));
+      }
+    } else if (action === 'newFolder') {
+      setIsCreating({ parentPath, isDir: true });
+      setNewName("");
+      // Expand the folder if it's a directory
+      if (contextMenu.targetItem?.isDirectory) {
+        setExpandedFolders(prev => new Set([...prev, parentPath]));
+      }
+    }
+
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
 
   // Toggle folder expansion
   const toggleFolder = (path: string) => {
@@ -40,17 +114,6 @@ export function Explorer() {
     }
   };
 
-  // Handle right-click context menu for creating inside folders
-  const handleContextMenu = (e: React.MouseEvent, item: FileItem) => {
-    e.preventDefault();
-    if (item.isDirectory) {
-      setIsCreating({ parentPath: item.path, isDir: false });
-      setNewName("");
-      // Expand the folder to show the input
-      setExpandedFolders(prev => new Set([...prev, item.path]));
-    }
-  };
-
   // Recursive Tree Renderer
   const renderTree = (items: FileItem[], level = 0) => {
     return items.map((item) => {
@@ -66,7 +129,7 @@ export function Explorer() {
               }`}
               style={{ paddingLeft: `${level * 12 + 8}px` }}
               onClick={() => toggleFolder(item.path)}
-              onContextMenu={(e) => handleContextMenu(e, item)}
+              onContextMenu={(e) => handleContextMenu(e, item, item.path)}
             >
               <span className="mr-1 text-[#858585]">
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -161,6 +224,7 @@ export function Explorer() {
           className={`flex items-center h-[28px] px-2 cursor-pointer hover:bg-[#2a2d2e] ${isActive ? "bg-[#04395e] text-white" : ""}`}
           style={{ paddingLeft: `${level * 12 + 20}px` }}
           onClick={() => openFile(item.id)}
+          onContextMenu={(e) => handleContextMenu(e, item, item.path.substring(0, item.path.lastIndexOf('/')) || '')}
         >
           <span className="mr-1">
             <IconComponent size={16} color={color} />
@@ -218,7 +282,14 @@ export function Explorer() {
       </div>
 
       {/* Tree Content */}
-      <div className="flex-1 overflow-auto min-h-0 bg-[#252526] pt-1">
+      <div 
+        className="flex-1 overflow-auto min-h-0 bg-[#252526] pt-1"
+        onContextMenu={(e) => {
+          if (workspace) {
+            handleContextMenu(e, null, workspace.rootPath);
+          }
+        }}
+      >
         {workspace ? (
           renderTree(workspace.files)
         ) : (
@@ -228,6 +299,33 @@ export function Explorer() {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu.visible && (
+        <div
+          ref={contextMenuRef}
+          className="fixed bg-[#252526] border border-[#3e3e3e] rounded shadow-xl py-1 z-50 min-w-[180px]"
+          style={{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }}
+        >
+          <button
+            className="w-full px-3 py-1.5 text-left text-[13px] text-[#cccccc] hover:bg-[#04395e] flex items-center gap-2 transition-colors"
+            onClick={() => handleContextMenuAction('newFile')}
+          >
+            <FilePlus size={14} />
+            New File
+          </button>
+          <button
+            className="w-full px-3 py-1.5 text-left text-[13px] text-[#cccccc] hover:bg-[#04395e] flex items-center gap-2 transition-colors"
+            onClick={() => handleContextMenuAction('newFolder')}
+          >
+            <FolderPlus size={14} />
+            New Folder
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/ch
 import { performDeepSearch, performMultiDeepSearch, performNLiveSearch } from "@/lib/chat/services/live-data";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
+import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner";
 import { safeFetch } from "@/lib/safe-fetch";
 import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
@@ -246,38 +247,188 @@ export async function POST(req: NextRequest) {
     function needsWebSearch(query: string): boolean {
       const lowerQuery = query.toLowerCase();
       
-      // Keywords indicating need for current information
-      const timeSensitiveKeywords = [
+      // 1. Current Information (time-sensitive data)
+      const currentInfoKeywords = [
         'latest', 'new', 'recent', 'current', 'today', 'now', 'yesterday', 'tomorrow',
-        'price', 'cost', 'stock', 'market', 'rate', 'value', 'expensive', 'cheap', 'discount', 'sale', 'deal',
-        'news', 'update', 'breaking', 'headline', 'trending', 'viral', 'announcement',
-        'weather', 'forecast', 'temperature', 'rain', 'snow', 'wind', 'humidity',
-        'time', 'date', 'what time', 'what date', 'when', 'schedule', 'calendar',
-        'what happened', 'recently', 'this year', 'this month', 'this week', 'this day',
-        'review', 'rating', 'best', 'top', 'vs', 'versus', 'compare', 'comparison',
-        'upcoming', 'scheduled', 'release', 'launch', 'event', 'concert', 'movie',
-        'status', 'is open', 'is closed', 'available', 'in stock', 'out of stock',
-        'live', 'streaming', 'broadcast', 'on air', 'right now',
-        'score', 'result', 'winner', 'final', 'match', 'game', 'tournament',
-        'election', 'vote', 'poll', 'campaign', 'candidate',
-        'crypto', 'bitcoin', 'ethereum', 'nft', 'blockchain', 'trading',
-        'technology', 'tech', 'startup', 'funding', 'ipo', 'acquisition',
-        'sports', 'nba', 'nfl', 'mlb', 'soccer', 'football', 'cricket',
-        'celebrity', 'actor', 'singer', 'artist', 'influencer',
-        'product', 'buy', 'purchase', 'order', 'delivery', 'shipping',
-        'website', 'online', 'app', 'software', 'update', 'version',
-        'scam', 'legit', 'safe', 'trust', 'verified', 'authentic',
-        'location', 'near me', 'around me', 'closest', 'nearest',
-        'flight', 'airport', 'delay', 'cancel', 'booking',
-        'hotel', 'restaurant', 'reservation', 'booked',
-        'traffic', 'accident', 'road', 'highway', 'route',
-        'covid', 'pandemic', 'health', 'symptoms', 'treatment',
-        'policy', 'law', 'regulation', 'rule', 'government',
-        'trend', 'popular', 'famous', 'viral', 'hot',
+        'news', 'breaking', 'headline', 'trending', 'viral', 'announcement',
+        'weather', 'forecast', 'temperature', 'rain', 'snow', 'wind', 'humidity', 'air quality',
+        'stock prices', 'crypto prices', 'exchange rates', 'market value',
+        'sports scores', 'live standings', 'rankings', 'election results',
+        'current president', 'current prime minister', 'current ceo', 'current statistics', 'current population',
       ];
       
-      // Check for time-sensitive keywords
-      if (timeSensitiveKeywords.some(keyword => lowerQuery.includes(keyword))) {
+      // 2. Recent Events
+      const recentEventsKeywords = [
+        'this morning', 'this afternoon', 'tonight', 'this week', 'last week', 'this month',
+        'just announced', 'just released', 'new update', 'new feature', 'new version',
+        'what happened today', 'what changed', 'what\'s new',
+      ];
+      
+      // 3. Live Data
+      const liveDataKeywords = [
+        'flight status', 'train status', 'bus status', 'live traffic', 'road closures',
+        'internet outage', 'server status', 'website status', 'api status', 'cloud service status',
+        'electricity outage', 'gas prices', 'fuel prices', 'live rankings', 'live leaderboard',
+        'live score', 'shipping tracking', 'delivery tracking',
+      ];
+      
+      // 4. Product Research
+      const productResearchKeywords = [
+        'best laptop', 'best gaming pc', 'best smartphone', 'best monitor', 'best keyboard', 'best mouse',
+        'compare products', 'vs', 'versus', 'iphone vs samsung', 'macbook vs windows',
+        'reviews', 'ratings', 'customer opinions', 'specifications', 'benchmarks',
+        'battery life', 'price comparison', 'discounts', 'deals', 'availability', 'where to buy',
+      ];
+      
+      // 5. Company Information
+      const companyInfoKeywords = [
+        'company pricing', 'subscription plans', 'api pricing', 'company features', 'latest features',
+        'roadmap', 'careers', 'hiring', 'founders', 'ceo', 'investors', 'funding', 'acquisitions',
+        'official website', 'support page', 'documentation', 'security policy', 'privacy policy',
+      ];
+      
+      // 6. Official Documentation
+      const docsKeywords = [
+        'react docs', 'next.js docs', 'vue docs', 'angular docs', 'openai docs', 'anthropic docs',
+        'gemini docs', 'supabase docs', 'firebase docs', 'aws docs', 'azure docs', 'cloudflare docs',
+        'python docs', 'java docs', 'c# docs', 'rust docs', 'docker docs', 'kubernetes docs',
+        'linux documentation', 'official docs', 'documentation',
+      ];
+      
+      // 7. Programming Error Lookup
+      const errorKeywords = [
+        'stack trace', 'build error', 'compiler error', 'runtime error', 'package issue',
+        'npm error', 'pnpm error', 'yarn error', 'pip error', 'dependency conflict',
+        'api changed', 'deprecated feature', 'framework bug', 'github issue', 'known bug',
+        'error code lookup', 'unexpected behavior', 'fix error', 'solve error',
+      ];
+      
+      // 8. Package & Library Information
+      const packageKeywords = [
+        'npm package', 'pypi package', 'cargo crate', 'nuget package', 'maven package', 'gradle dependency',
+        'github repository', 'gitlab project', 'latest release', 'release notes', 'changelog',
+        'latest version', 'download link', 'installation guide', 'compatibility', 'maintenance status',
+      ];
+      
+      // 9. Location-Based Requests
+      const locationKeywords = [
+        'near me', 'around me', 'closest', 'nearest', 'restaurants', 'hotels', 'hospitals',
+        'pharmacies', 'coffee shops', 'shopping malls', 'grocery stores', 'banks', 'atms',
+        'gas stations', 'schools', 'universities', 'gyms', 'parks', 'museums', 'tourist attractions',
+        'opening hours', 'directions', 'nearby services',
+      ];
+      
+      // 10. Academic Research
+      const academicKeywords = [
+        'research papers', 'journal articles', 'ieee', 'acm', 'nature', 'science', 'pubmed',
+        'arxiv', 'google scholar', 'systematic review', 'meta-analysis', 'latest research',
+        'conference papers', 'citations', 'academic references',
+      ];
+      
+      // 11. Legal & Government Information
+      const legalKeywords = [
+        'visa rules', 'immigration', 'passport requirements', 'customs regulations', 'tax laws',
+        'labor laws', 'employment law', 'copyright law', 'privacy law', 'gdpr',
+        'government forms', 'official regulations', 'legal requirements', 'licensing', 'permits', 'court decisions',
+      ];
+      
+      // 12. Medical & Health Information
+      const medicalKeywords = [
+        'symptoms', 'disease', 'treatment', 'medications', 'side effects', 'dosage',
+        'drug recalls', 'vaccine guidance', 'cdc recommendations', 'who recommendations',
+        'fda announcements', 'public health alerts', 'medical research', 'clinical trials',
+      ];
+      
+      // 13. Financial Information
+      const financialKeywords = [
+        'stock market', 'company earnings', 'quarterly reports', 'annual reports', 'inflation',
+        'interest rates', 'exchange rates', 'investment performance', 'cryptocurrency',
+        'gold price', 'silver price', 'oil prices', 'market analysis', 'financial news',
+      ];
+      
+      // 14. Entertainment
+      const entertainmentKeywords = [
+        'movie release date', 'tv show schedule', 'streaming platforms', 'netflix', 'disney+',
+        'spotify', 'music release', 'celebrity news', 'actor information', 'game release',
+        'esports tournaments', 'awards', 'trailers',
+      ];
+      
+      // 15. Tutorials & Learning Resources
+      const tutorialKeywords = [
+        'official tutorial', 'getting started', 'beginner guide', 'advanced guide',
+        'examples', 'sample project', 'walkthrough', 'best practices', 'learning resources',
+        'certification guide', 'video tutorial', 'how to', 'learn',
+      ];
+      
+      // 16. User Explicitly Requests Web Search
+      const explicitSearchKeywords = [
+        'search the web', 'search online', 'browse the internet', 'browse the web',
+        'use the internet', 'look it up', 'google it', 'bing it', 'find online',
+        'check online', 'verify online', 'search for me',
+      ];
+      
+      // 17. Verification Required
+      const verificationKeywords = [
+        'verify this', 'fact check', 'confirm this', 'validate this', 'is this true',
+        'check this claim', 'confirm the source', 'verify the statistics', 'authenticate information',
+      ];
+      
+      // 18. Downloads & Resources
+      const downloadKeywords = [
+        'download software', 'official installer', 'latest iso', 'latest apk', 'latest release',
+        'drivers', 'firmware', 'manuals', 'pdf', 'templates', 'datasets',
+      ];
+      
+      // 19. Images, Videos & Media
+      const mediaKeywords = [
+        'images', 'photos', 'wallpapers', 'diagrams', 'screenshots', 'videos',
+        'youtube tutorial', 'livestream', 'infographics', 'illustrations',
+      ];
+      
+      // 20. Comparisons
+      const comparisonKeywords = [
+        'compare', 'versus', 'vs', 'difference between', 'pros and cons', 'which is better',
+        'alternatives', 'replacement', 'competitor comparison', 'benchmark comparison',
+      ];
+      
+      // 21. Reviews & Community Opinions
+      const reviewKeywords = [
+        'reddit opinions', 'user reviews', 'customer reviews', 'community feedback',
+        'experiences', 'testimonials', 'ratings', 'discussions', 'recommendations',
+      ];
+      
+      // 22. Events & Conferences
+      const eventKeywords = [
+        'conference', 'event schedule', 'keynote', 'meetup', 'webinar', 'workshop',
+        'hackathon', 'seminar', 'summit', 'registration',
+      ];
+      
+      // 23. Security & Vulnerabilities
+      const securityKeywords = [
+        'cve', 'security advisory', 'vulnerability', 'exploit', 'malware', 'ransomware',
+        'security update', 'patch', 'zero-day', 'threat intelligence',
+      ];
+      
+      // 24. APIs & Services
+      const apiKeywords = [
+        'api documentation', 'api pricing', 'api limits', 'authentication', 'sdk',
+        'webhook', 'endpoint', 'rate limits', 'service status', 'integration guide',
+      ];
+      
+      // Combine all keyword arrays
+      const allKeywords = [
+        ...currentInfoKeywords, ...recentEventsKeywords, ...liveDataKeywords,
+        ...productResearchKeywords, ...companyInfoKeywords, ...docsKeywords,
+        ...errorKeywords, ...packageKeywords, ...locationKeywords,
+        ...academicKeywords, ...legalKeywords, ...medicalKeywords,
+        ...financialKeywords, ...entertainmentKeywords, ...tutorialKeywords,
+        ...explicitSearchKeywords, ...verificationKeywords, ...downloadKeywords,
+        ...mediaKeywords, ...comparisonKeywords, ...reviewKeywords,
+        ...eventKeywords, ...securityKeywords, ...apiKeywords,
+      ];
+      
+      // Check for any keyword match
+      if (allKeywords.some(keyword => lowerQuery.includes(keyword))) {
         return true;
       }
       
@@ -292,6 +443,9 @@ export async function POST(req: NextRequest) {
         /is it legit/i,
         /scam/i,
         /easygetstore/i, // Specific example from user
+        /\.gov/i, // Government websites
+        /\.edu/i, // Educational websites
+        /\.org/i, // Organization websites
       ];
       
       if (patterns.some(pattern => pattern.test(query))) {
@@ -301,13 +455,24 @@ export async function POST(req: NextRequest) {
       return false;
     }
 
-    // Query needs current information (decoupled from N Live — both paths may search)
-    const needsSearch = needsWebSearch(userMessage);
+    // Query needs current information — use intelligent search planner
+    // First check obvious keywords (fast path), then AI planner for entity understanding
+    const keywordSearchNeeded = needsWebSearch(userMessage);
+    let searchPlan: SearchPlan = { shouldSearch: keywordSearchNeeded, searchQuery: userMessage, reason: "Keyword match" };
+    
+    if (!keywordSearchNeeded) {
+      // No obvious keyword match — use AI planner for entity-based queries
+      searchPlan = await planSearch(userMessage);
+    }
+
+    const needsSearch = searchPlan.shouldSearch;
+    const enrichedQuery = searchPlan.searchQuery || userMessage;
     
     // Clean the query using multi‑query extraction for N Live
-    const queries = needsSearch ? await cleanSearchQueries(userMessage) : [userMessage];
+    const queries = needsSearch ? await cleanSearchQueries(enrichedQuery) : [userMessage];
     if (needsSearch && queries.length > 0) {
-      console.log(`🧹 Cleaned queries: "${userMessage}" → [${queries.join(", ")}]`);
+      console.log(`🔍 Search plan: "${userMessage.slice(0, 50)}" → search=${needsSearch}, reason=${searchPlan.reason}`);
+      console.log(`🧹 Cleaned queries: "${enrichedQuery.slice(0, 50)}" → [${queries.join(", ")}]`);
     }
 
     const shouldSearch = needsSearch;

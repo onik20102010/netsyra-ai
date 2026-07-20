@@ -929,12 +929,12 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", Ti
     models: codeModels,
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code. Use fenced code blocks with language tags for all code. Use inline code for function names, variables, file paths. Use numbered lists for setup steps. Use bullet points for feature lists. Use tables for comparing options. Use bold for key terms and warnings. Use headings for multi-part explanations. Use blockquotes for important notes. Keep explanations minimal unless asked. Answer directly first.`,
     temperature: 0.2,
-    maxTokens: 1500,
+    maxTokens: 1450,
   },
   aai: {
     models: aaiModels,
     systemPrompt: `${identity} You are currently running as N AAI. ${AAI_SYSTEM_PROMPT}`,
     temperature: 0.7,
-    maxTokens: 2000,
+    maxTokens: 1700,
   },
 };

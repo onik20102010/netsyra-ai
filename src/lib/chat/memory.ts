@@ -15,25 +15,38 @@ const MEMORY_GENERATION_PROMPT = `
 You are a memory synthesis system. Your task is to analyze the conversation history and extract long-term, useful information about the user.
 
 Focus ONLY on:
-- Preferences (what they like/dislike)
-- Interests and hobbies
+- Professional background (developer, engineer, doctor, etc.)
+- Current projects they're working on
+- Conversation preferences (technical, casual, detailed, concise)
+- Interests and topics they frequently discuss
 - Goals and aspirations
-- Communication style
-- Thinking patterns
-- Frequently mentioned facts about their life/work
-- Professional background
-- Learning objectives
+- Communication style and thinking patterns
+- Specific preferences (tools, frameworks, approaches)
 
 DO NOT include:
-- Temporary chat content
-- Specific questions from this session
+- Temporary chat content or specific questions from this session
 - Recent events that won't be relevant long-term
-- Personal identifiable information (PII)
-- Sensitive information
+- Personal identifiable information (PII) or sensitive data
+- Repetitive details
 
-Output a concise summary (200-400 words) that evolves over time. If existing summary exists, merge new insights with it while removing outdated information.
+Output a STRUCTURED summary with these sections (keep each section 1-2 sentences max):
 
-Format as plain text, no markdown, no lists. Just a flowing paragraph.
+## OVERVIEW
+User's profession, main interests, and current project status.
+
+## INTERESTS
+Topics they frequently discuss or ask about.
+
+## COMMUNICATION STYLE
+How they prefer to communicate (detailed, concise, technical, casual).
+
+## GOALS
+Their long-term objectives or what they're working toward.
+
+## PREFERENCES
+Specific tools, frameworks, or approaches they prefer.
+
+If existing summary exists, merge new insights with it while removing outdated information. Keep total summary under 300 words. Use clear section headers.
 `;
 
 export async function getUserMemorySummary(userId: string): Promise<string | null> {
@@ -67,16 +80,32 @@ export async function generateMemorySummary(
 
   const existingSummary = existing?.summary || "No existing summary.";
 
+  // Get user profile to avoid duplication
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name, goal, custom_instructions")
+    .eq("user_id", userId)
+    .single();
+
+  const profileInfo = profile ? `
+USER PROFILE (already stored separately - DO NOT duplicate this):
+- Name: ${profile.name || "N/A"}
+- Goal: ${profile.goal || "N/A"}
+- Custom Instructions: ${profile.custom_instructions || "N/A"}
+` : "";
+
   // Build context for summary generation
   const summaryContext = `
 EXISTING SUMMARY:
 ${existingSummary}
 
+${profileInfo}
 RECENT CONVERSATION HISTORY (last 12 messages):
 ${conversationHistory.slice(-12).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}
 
 TASK: Update the existing summary by incorporating new insights from the recent conversation. 
-Remove outdated information. Keep the summary concise (200-400 words). Focus on long-term patterns.
+Remove outdated information. Keep the summary concise (200-300 words). Focus on long-term patterns.
+IMPORTANT: Do NOT duplicate information already in the user profile (name, goal, custom instructions).
 `;
 
   try {
@@ -94,7 +123,7 @@ Remove outdated information. Keep the summary concise (200-400 words). Focus on 
           { role: "user", content: summaryContext },
         ],
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 600,
       }),
     });
 
