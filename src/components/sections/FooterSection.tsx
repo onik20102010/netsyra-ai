@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Zap, Cpu, BrainCircuit, Globe, Code, Sparkles, Shield } from "lucide-react";
+import { Zap, Cpu, BrainCircuit, Globe, Code, Sparkles, Shield, Bot } from "lucide-react";
 
 const modelLinks = [
   { name: "N Fast", href: "/chat?model=fast", icon: Zap },
@@ -8,6 +8,8 @@ const modelLinks = [
   { name: "N Pro", href: "/chat?model=pro", icon: BrainCircuit },
   { name: "N Live", href: "/chat?model=live", icon: Globe },
   { name: "N Code", href: "/chat?model=code", icon: Code },
+  { name: "N AAI", href: "/chat?model=aai", icon: Bot },
+  { name: "N Auto", href: "/chat?model=auto", icon: Sparkles },
 ];
 
 export default function FooterSection() {

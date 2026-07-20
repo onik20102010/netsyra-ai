@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { ArrowRight, Zap, Cpu, BrainCircuit, Globe, Code } from "lucide-react";
+import { ArrowRight, Zap, Cpu, BrainCircuit, Globe, Code, Bot, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 const models = [
@@ -39,6 +39,20 @@ const models = [
     desc: "Expert coding assistant for production code.",
     gradient: "from-teal-400 to-cyan-500",
   },
+  {
+    id: "aai",
+    name: "N AAI",
+    icon: Bot,
+    desc: "Multi-step agentic workflows and autonomous execution.",
+    gradient: "from-violet-400 to-purple-500",
+  },
+  {
+    id: "auto",
+    name: "N Auto",
+    icon: Sparkles,
+    desc: "Automatic model routing based on your prompt intent.",
+    gradient: "from-amber-400 to-orange-500",
+  },
 ];
 
 export default function CTASection() {
@@ -75,7 +89,7 @@ export default function CTASection() {
           </div>
 
           {/* Model cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {models.map((model) => (
               <motion.div
                 key={model.id}

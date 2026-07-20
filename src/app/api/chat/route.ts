@@ -480,17 +480,42 @@ export async function POST(req: NextRequest) {
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
 
-    const usageCheck = await checkAndUpdateUsage(supabase, user.id, modelTier);
-    if (!usageCheck.allowed) {
-      const resetTime = new Date(usageCheck.resetAt);
+    // ── USAGE CHECK (CRITICAL - this must work) ──
+    console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
+    let usageCheck;
+    try {
+      usageCheck = await checkAndUpdateUsage(supabase, user.id, modelTier);
+      console.log(`🟢 Usage check result:`, usageCheck);
+    } catch (error) {
+      console.error(`🔴 USAGE CHECK FAILED:`, error);
+      return NextResponse.json(
+        { error: "Usage tracking failed. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    if (!usageCheck || !usageCheck.allowed) {
+      const resetTime = new Date(usageCheck?.resetAt || new Date(Date.now() + 24 * 60 * 60 * 1000));
       const timeLeftMs = resetTime.getTime() - Date.now();
       const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
       const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
+      
+      console.log(`🚫🚫🚫 RATE LIMIT BLOCKED for user ${user.id}, tier ${modelTier}. Usage check:`, usageCheck);
+      
       return NextResponse.json(
-        { error: `You've used all ${MODEL_LIMITS[modelTier]} ${modelTier} messages. Resets in ${hours}h ${minutes}m.`, remaining: 0, resetAt: usageCheck.resetAt },
+        { 
+          error: `You've used all ${MODEL_LIMITS[modelTier]} ${modelTier} messages for today. Resets in ${hours}h ${minutes}m ${seconds}s.`, 
+          remaining: 0, 
+          resetAt: usageCheck?.resetAt,
+          tier: modelTier,
+          limit: MODEL_LIMITS[modelTier]
+        },
         { status: 429 }
       );
     }
+
+    console.log(`✅ Usage check PASSED. Remaining: ${usageCheck.remaining}`);
 
     if (newConversation || !conversationId) {
       await createConversation(supabase, user.id, convId, userMessage);

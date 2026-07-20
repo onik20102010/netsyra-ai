@@ -1,213 +1,131 @@
 "use client";
-import React, { useState } from 'react';
-import { Sparkles, Terminal, Activity, ShieldCheck, Zap, Layers, Cpu, Globe, Code } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Sparkles, Zap, Globe, Bot, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import IntelligenceField from './IntelligenceField';
 
-// Types for our orchestration architecture
-interface ModelOption {
-  id: string;
-  name: string;
-  badge: string;
-  description: string;
-  icon: React.ReactNode;
-  latency: string;
-  capabilities: string[];
-}
+export default function HeroSection() {
+  const [particles, setParticles] = useState<Array<{ top: string; left: string; delay: string }>>([]);
 
-export default function NetsyraHomepage() {
-  const [userPrompt, setUserPrompt] = useState('');
-  const [detectedIntent, setDetectedIntent] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>('auto');
-
-  // Multi-model matrix definitions
-  const models: ModelOption[] = [
-    { id: 'n-fast', name: 'N fast', badge: 'Speed Optimized', description: 'Ultra-low latency pipelines for repetitive queries & simple translations.', icon: <Zap className="w-4 h-4 text-amber-400" />, latency: '120ms', capabilities: ['Real-time', 'Token-Efficient'] },
-    { id: 'n-plus', name: 'N plus', badge: 'Balanced Peak', description: 'The baseline worker engine. Great for conversational flows and processing files.', icon: <Layers className="w-4 h-4 text-blue-400" />, latency: '280ms', capabilities: ['Multimodal', 'Balanced'] },
-    { id: 'n-pro', name: 'N pro', badge: 'Deep Logic', description: 'Advanced system reasoning matrix for massive contextual analytics.', icon: <Cpu className="w-4 h-4 text-purple-400" />, latency: '650ms', capabilities: ['Deep Context', 'Heavy Math'] },
-    { id: 'n-live', name: 'N live', badge: 'Web-Augmented', description: 'Continuous access vectors fetching live web environments and parameters.', icon: <Globe className="w-4 h-4 text-emerald-400" />, latency: '410ms', capabilities: ['Live Web Search', 'Sensor Fetch'] },
-    { id: 'n-code', name: 'N code', badge: 'Syntax Engineer', description: 'Dedicated code structure logic for continuous syntax generation & debugging.', icon: <Code className="w-4 h-4 text-pink-400" />, latency: '340ms', capabilities: ['Zero-shot Scripts', 'AST Analysis'] },
-  ];
-
-  // Client-side real-time orchestration simulation for the UI
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setUserPrompt(text);
-
-    if (!text.trim()) {
-      setDetectedIntent(null);
-      setSelectedModel('auto');
-      return;
-    }
-
-    const lower = text.toLowerCase();
-    if (lower.includes('function') || lower.includes('const') || lower.includes('bug') || lower.includes('code') || lower.includes('<')) {
-      setDetectedIntent('Code Generation / Refactoring Detected');
-      setSelectedModel('n-code');
-    } else if (lower.includes('today') || lower.includes('news') || lower.includes('price') || lower.includes('stock')) {
-      setDetectedIntent('Real-time Context Evaluation Requested');
-      setSelectedModel('n-live');
-    } else if (lower.includes('calculate') || lower.includes('prove') || lower.includes('analyze')) {
-      setDetectedIntent('Complex Logic Matrix Flagged');
-      setSelectedModel('n-pro');
-    } else if (text.length > 120) {
-      setDetectedIntent('Standard Comprehensive Context Balanced');
-      setSelectedModel('n-plus');
-    } else {
-      setDetectedIntent('Express Execution Route Selected');
-      setSelectedModel('n-fast');
-    }
-  };
+  useEffect(() => {
+    const newParticles = Array.from({ length: 12 }, (_, i) => ({
+      top: `${8 + (i * 7.5)}%`,
+      left: `${3 + (i * 8)}%`,
+      delay: `${i * 0.4}s`,
+    }));
+    setParticles(newParticles);
+  }, []);
 
   return (
-    <section className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-purple-500/30 selection:text-purple-200" aria-label="Hero">
-      
-      {/* Hero Orchestration Section */}
-      <div className="max-w-7xl mx-auto px-6 pt-16 pb-24">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center space-x-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full text-xs font-medium text-purple-400 mb-6">
-            <Activity className="w-3 h-3" />
-            <span>Autonomous Dynamic Multi-Model Gateway</span>
-          </div>
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-            One Core Interface.<br />
-            <span className="bg-gradient-to-r from-purple-400 via-indigo-400 to-blue-400 bg-clip-text text-transparent">
-              Five Specialized Models.
-            </span>
-          </h1>
-          <p className="text-lg text-slate-400 leading-relaxed">
-            Stop guessing which LLM fits your workload. NetsyraAI dynamically parses prompt structures, measures semantic complexity, and shoots tasks down the optimal hardware pipeline instantly.
-          </p>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden" aria-label="Hero">
+      {/* Living Intelligence Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[#080809]" />
+        
+        {/* Aurora gradients */}
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[300px] opacity-[0.07] bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-transparent" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[250px] opacity-[0.05] bg-gradient-to-r from-violet-600/15 via-purple-600/15 to-transparent" />
+        <div className="absolute top-[30%] left-[35%] w-[40%] h-[40%] rounded-full blur-[200px] opacity-[0.03] bg-gradient-to-r from-cyan-500/10 to-transparent" />
+        
+        {/* Mesh gradient */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `radial-gradient(circle at 20% 30%, rgba(99,102,241,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(139,92,246,0.2) 0%, transparent 50%)`,
+        }} />
+        
+        {/* Minimal particles */}
+        <div className="absolute inset-0 opacity-20">
+          {particles.map((particle, i) => (
+            <div
+              key={i}
+              className="absolute w-px h-px bg-white/60 rounded-full"
+              style={{
+                top: particle.top,
+                left: particle.left,
+                animation: `fade ${4 + (i % 2)}s ease-in-out infinite ${particle.delay}`,
+              }}
+            />
+          ))}
         </div>
-
-        {/* 3. Interactive Route Matrix Sandbox */}
-        <section id="orchestrator" className="mb-24">
-          <div className="bg-slate-900/50 border border-slate-900 rounded-2xl p-6 md:p-8 backdrop-blur-sm shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -z-10" />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* Prompt Engine Interface Input */}
-              <div className="lg:col-span-7 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
-                    <Terminal className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Global Context Stream</span>
-                  </label>
-                  {detectedIntent && (
-                    <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 animate-pulse">
-                      {detectedIntent}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="relative">
-                  <textarea
-                    value={userPrompt}
-                    onChange={handleInputChange}
-                    placeholder="Type anything (e.g., 'Write an async function to fetch stock tickers' or 'Translate this contract' to watch the orchestrator select the model...)"
-                    className="w-full h-44 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all duration-200 resize-none text-sm leading-relaxed"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-slate-500">Routing is evaluated at edge via token structural metrics.</span>
-                  <button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:from-purple-500 hover:to-indigo-500 transition-all duration-200 shadow-lg shadow-purple-600/20">
-                    Execute Matrix
-                  </button>
-                </div>
-              </div>
-
-              {/* Live Selection Feedback Array */}
-              <div className="lg:col-span-5 space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                  Active Orchestration Strategy
-                </span>
-
-                <div className="space-y-2">
-                  {/* Dynamic Override Switcher Box */}
-                  <div className={`p-3 rounded-xl border transition-all duration-300 flex items-center justify-between ${selectedModel === 'auto' ? 'bg-purple-950/20 border-purple-500/40' : 'bg-slate-950 border-slate-900'}`}>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-7 h-7 rounded-md bg-purple-500/10 flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-200">Netsyra Auto-Route</h4>
-                        <p className="text-[11px] text-slate-500">Autonomous intent matching architecture</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded">Active</span>
-                  </div>
-
-                  {/* Individual Models Loops */}
-                  {models.map((m) => {
-                    const isSelected = selectedModel === m.id;
-                    return (
-                      <div
-                        key={m.id}
-                        className={`p-3 rounded-xl border transition-all duration-300 flex items-center justify-between ${
-                          isSelected 
-                            ? 'bg-slate-900 border-indigo-500/60 shadow-lg ring-1 ring-indigo-500/30' 
-                            : 'bg-slate-950/40 border-slate-900/60 opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center">
-                            {m.icon}
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h4 className="text-xs font-bold text-slate-200">{m.name}</h4>
-                              <span className="text-[9px] font-medium px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded">{m.badge}</span>
-                            </div>
-                            <p className="text-[11px] text-slate-400 truncate max-w-[180px] sm:max-w-xs">{m.description}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[11px] font-mono text-slate-500 block">{m.latency}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* 4. Core Features Block Grid */}
-        <section id="models" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
-          <div className="border border-slate-900 bg-slate-900/20 p-6 rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5 text-blue-400" />
-            </div>
-            <h3 className="font-bold text-lg text-white mb-2">Sub-Milisecond Thresholds</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Simple prompts map instantly into *N fast*, bypassing heavy model weights to save processing latency and platform billing overheads.
-            </p>
-          </div>
-          
-          <div className="border border-slate-900 bg-slate-900/20 p-6 rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center mb-4">
-              <Code className="w-5 h-5 text-pink-400" />
-            </div>
-            <h3 className="font-bold text-lg text-white mb-2">Syntax Specialized Pipelines</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              When software structures are evaluated, *N code* deploys strict abstract syntax analysis tokens built purposely to map engineering tasks natively.
-            </p>
-          </div>
-
-          <div className="border border-slate-900 bg-slate-900/20 p-6 rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-              <ShieldCheck className="w-5 h-5 text-purple-400" />
-            </div>
-            <h3 className="font-bold text-lg text-white mb-2">Google Verified Architecture</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Fully isolated execution frames protecting user context matrices under strict OAuth authorization structures.
-            </p>
-          </div>
-        </section>
       </div>
 
+      {/* Hero Content */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-16 lg:pt-36 lg:pb-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
+          
+          {/* Left Column */}
+          <div className="space-y-10">
+            <div className="inline-flex items-center space-x-2 bg-white/[0.03] border border-white/[0.08] px-4 py-2 rounded-full backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-sm font-medium text-white/80">Auto Routing System</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
+              Zero-token deterministic
+              <br />
+              <span className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-transparent">
+                routing engine.
+              </span>
+            </h1>
+
+            <p className="text-lg text-white/50 leading-relaxed max-w-lg">
+              Feature extraction, weighted signal scoring, and hard overrides for user preferences. Netsyra routes every prompt to the optimal model tier.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/chat"
+                className="group inline-flex items-center justify-center space-x-2 bg-white text-black font-medium px-6 py-3 rounded-lg hover:bg-white/90 transition-all duration-200"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/about"
+                className="inline-flex items-center justify-center space-x-2 bg-white/[0.05] border border-white/[0.1] text-white font-medium px-6 py-3 rounded-lg hover:bg-white/[0.08] transition-all duration-200"
+              >
+                <span>See How It Works</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="flex items-center space-x-8 pt-2">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-white/40" />
+                <span className="text-sm text-white/40">Model Tiers</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Globe className="w-4 h-4 text-white/40" />
+                <span className="text-sm text-white/40">Orchestrator AI</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Bot className="w-4 h-4 text-white/40" />
+                <span className="text-sm text-white/40">Learning System</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Intelligence Field */}
+          <div className="relative h-[500px] hidden lg:block">
+            {/* Ambient glow behind container */}
+            <div className="absolute -inset-6 bg-gradient-to-r from-blue-500/[0.06] via-indigo-500/[0.04] to-violet-500/[0.06] rounded-3xl blur-3xl -z-10" />
+            <IntelligenceField />
+          </div>
+
+          {/* Mobile Intelligence Field */}
+          <div className="relative h-[320px] lg:hidden">
+            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/[0.05] to-violet-500/[0.05] rounded-3xl blur-2xl -z-10" />
+            <IntelligenceField mobile />
+          </div>
+        </div>
+      </div>
+
+      {/* CSS Animation Keyframes */}
+      <style jsx global>{`
+        @keyframes fade {
+          0%, 100% { opacity: 0.2; }
+          50% { opacity: 0.6; }
+        }
+      `}</style>
     </section>
   );
 }
