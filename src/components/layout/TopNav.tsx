@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Sparkles, Code } from "lucide-react";
+import { LogOut, User, Sparkles, Code, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -72,6 +72,16 @@ export default function TopNav() {
               >
                 <Code className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Code IDE</span>
+              </Button>
+            </Link>
+
+            {/* Upgrade to Pro button */}
+            <Link href="/billing/subscription">
+              <Button
+                className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-full px-3 sm:px-4 text-sm transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <CreditCard size={16} />
+                <span className="hidden sm:inline">Upgrade to Pro</span>
               </Button>
             </Link>
 

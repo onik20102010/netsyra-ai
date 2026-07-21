@@ -80,6 +80,13 @@ export default function HeroSection() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
+                href="/billing/subscription"
+                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-6 py-3 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all duration-200"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Subscribe</span>
+              </Link>
+              <Link
                 href="/about"
                 className="inline-flex items-center justify-center space-x-2 bg-white/[0.05] border border-white/[0.1] text-white font-medium px-6 py-3 rounded-lg hover:bg-white/[0.08] transition-all duration-200"
               >

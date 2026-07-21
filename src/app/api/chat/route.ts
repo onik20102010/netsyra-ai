@@ -546,6 +546,16 @@ export async function POST(req: NextRequest) {
     // ── Fetch user memory summary ──
     const memorySummary = await getUserMemorySummary(user.id);
 
+    // ── Check if user has active subscription ──
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const isPaidUser = !!sub;
+
     // ── Fetch user profile (used by both branches) ──
     const { data: profile } = await supabase
       .from("profiles")
@@ -1221,6 +1231,22 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     for (const modelConfig of tier.models) {
       console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey})`);
       let apiKey = process.env[modelConfig.apiKeyEnv];
+
+      // Use different API key for paid users
+      const MESH_API_KEY = process.env.MESH_API_KEY;    // paid tier key
+      const GROQ_API_KEY = process.env.GROQ_API_KEY;    // free tier key
+
+      // Override the apiKey based on subscription
+      if (isPaidUser && MESH_API_KEY) {
+        // Paid users get Mesh API for Pro/Plus, still use Groq for fallback
+        if (modelTier === "pro" || modelTier === "plus") {
+          // Use Mesh endpoint and key
+          modelConfig.endpoint = "https://api.mesh.ai/v1/chat/completions";
+          apiKey = MESH_API_KEY;
+          modelConfig.modelName = "gpt-4o"; // Update with your actual Mesh model name
+        }
+      }
+
       // Use fallback key if primary is missing or we're on the fallback model
       if (!apiKey || modelConfig.modelKey === "live_fallback" || modelConfig.modelKey === "aai_fallback") {
         apiKey = process.env.GROQ_API_KEY_4 || process.env[modelConfig.apiKeyEnv];

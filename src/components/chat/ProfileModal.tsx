@@ -2,9 +2,10 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Zap } from "lucide-react";
+import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Zap, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { createChatClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -265,6 +266,16 @@ export default function ProfileModal({
                         </span>
                       )}
                     </button>
+
+                    {/* Subscription button */}
+                    <Link
+                      href="/billing/subscription"
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium hover:from-blue-500 hover:to-indigo-500 transition shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Upgrade to Premium</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </>
                 ) : (
                   /* Usage Dashboard */
