@@ -1869,10 +1869,12 @@ export async function getWeather(city: string): Promise<string> {
 }
 
 // ── Unified time/date data fetcher (used by clock & calendar) ──
-async function fetchTimeData(zone?: string, userTimezone?: string): Promise<{
+export async function fetchTimeData(zone?: string, userTimezone?: string): Promise<{
   utcDatetime: string;
   timezone: string;
   label: string;
+  formattedTime?: string; // Pre-formatted time string
+  formattedDate?: string; // Pre-formatted date string
 } | null> {
   let resolvedZone = zone || userTimezone || "UTC";
 
@@ -1897,10 +1899,37 @@ async function fetchTimeData(zone?: string, userTimezone?: string): Promise<{
       if (res.ok) {
         const data = await res.json();
         if (data.status === "OK") {
+          // Use the formatted string directly from TimeZoneDB - it's already in the target timezone
+          // Format: "2026-07-21 12:45:33"
+          const formatted = data.formatted;
+          const [datePart, timePart] = formatted.split(" ");
+          const [year, month, day] = datePart.split("-");
+          const [hour, minute, second] = timePart.split(":");
+
+          // Manually format the time to avoid server-side timezone conversion issues
+          const hourNum = parseInt(hour, 10);
+          const isPM = hourNum >= 12;
+          const hour12 = hourNum % 12 || 12;
+          const ampm = isPM ? "PM" : "AM";
+
+          const timeStr = `${hour12}:${minute}:${second} ${ampm}`;
+
+          // Format the date manually
+          const monthNames = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"];
+          const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          const dayName = dayNames[dateObj.getDay()];
+          const monthName = monthNames[parseInt(month) - 1];
+
+          const dateStr = `${dayName}, ${monthName} ${parseInt(day)}, ${year}`;
+
           return {
-            utcDatetime: new Date(data.timestamp * 1000).toISOString(),
+            utcDatetime: data.utc_datetime || new Date(data.timestamp * 1000).toISOString(),
             timezone: data.zoneName,
             label: `${zone || data.zoneName}`,
+            formattedTime: timeStr,
+            formattedDate: dateStr,
           };
         }
       }
@@ -1914,10 +1943,37 @@ async function fetchTimeData(zone?: string, userTimezone?: string): Promise<{
     );
     if (res.ok) {
       const data = await res.json();
+      // Use datetime (already in target timezone) and format manually
+      const datetime = data.datetime; // e.g., "2026-07-21T12:45:33+05:00"
+      const datePart = datetime.split("T")[0];
+      const timePart = datetime.split("T")[1].split("+")[0].split("Z")[0];
+      const [year, month, day] = datePart.split("-");
+      const [hour, minute, second] = timePart.split(":");
+
+      // Manually format the time
+      const hourNum = parseInt(hour, 10);
+      const isPM = hourNum >= 12;
+      const hour12 = hourNum % 12 || 12;
+      const ampm = isPM ? "PM" : "AM";
+
+      const timeStr = `${hour12}:${minute}:${second} ${ampm}`;
+
+      // Format the date manually
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"];
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      const dayName = dayNames[dateObj.getDay()];
+      const monthName = monthNames[parseInt(month) - 1];
+
+      const dateStr = `${dayName}, ${monthName} ${parseInt(day)}, ${year}`;
+
       return {
         utcDatetime: data.utc_datetime,
         timezone: data.timezone,
         label: `${zone || data.timezone}`,
+        formattedTime: timeStr,
+        formattedDate: dateStr,
       };
     }
   } catch {}

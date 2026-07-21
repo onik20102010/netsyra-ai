@@ -3,15 +3,11 @@
 import { useEffect, useState } from "react";
 
 interface ClockData {
-  hours: number;
-  minutes: number;
-  seconds: number;
   timezone: string;
   label: string;
 }
 
 function AnalogClock({ h, m, s }: { h: number; m: number; s: number }) {
-  // Guard against NaN – fallback to zero
   const safeH = isNaN(h) ? 0 : h;
   const safeM = isNaN(m) ? 0 : m;
   const safeS = isNaN(s) ? 0 : s;
@@ -49,37 +45,49 @@ function AnalogClock({ h, m, s }: { h: number; m: number; s: number }) {
 }
 
 export default function ClockWidget({ data }: { data: ClockData }) {
-  const [tick, setTick] = useState(0);
+  const [time, setTime] = useState("");
+  const [analogTime, setAnalogTime] = useState({ h: 0, m: 0, s: 0 });
 
   useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    const update = () => {
+      const now = new Date();
+      const formatted = now.toLocaleTimeString("en-US", {
+        timeZone: data.timezone,
+        hour12: true,
+      });
+      setTime(formatted);
+
+      // Get hours, minutes, seconds for analog clock
+      const hours = parseInt(now.toLocaleTimeString("en-US", {
+        timeZone: data.timezone,
+        hour12: false,
+        hour: "numeric",
+      }));
+      const minutes = parseInt(now.toLocaleTimeString("en-US", {
+        timeZone: data.timezone,
+        hour12: false,
+        minute: "numeric",
+      }));
+      const seconds = parseInt(now.toLocaleTimeString("en-US", {
+        timeZone: data.timezone,
+        hour12: false,
+        second: "numeric",
+      }));
+
+      setAnalogTime({ h: hours, m: minutes, s: seconds });
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  // If any time value is invalid, use the user's local browser time as fallback
-  let hours = data.hours;
-  let minutes = data.minutes;
-  let seconds = data.seconds;
-
-  if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-    const now = new Date();
-    hours = now.getHours();
-    minutes = now.getMinutes();
-    seconds = now.getSeconds();
-  }
-
-  const liveSeconds = (seconds + tick) % 60;
-  const liveMinutes = (minutes + Math.floor((seconds + tick) / 60)) % 60;
-  const liveHours = (hours + Math.floor((minutes + Math.floor((seconds + tick) / 60)) / 60)) % 24;
+  }, [data.timezone]);
 
   return (
     <div className="my-4 rounded-2xl p-5 bg-gray-50 shadow-lg max-w-xs text-center">
       <h3 className="text-lg font-semibold text-gray-700 mb-2">🕐 {data.label}</h3>
-      <div className="text-3xl font-bold text-gray-900">
-        {String(liveHours).padStart(2, "0")}:{String(liveMinutes).padStart(2, "0")}:{String(liveSeconds).padStart(2, "0")}
-      </div>
+      <div className="text-3xl font-bold text-gray-900 mb-2">{time}</div>
       <div className="text-sm text-gray-500 mb-2">{data.timezone}</div>
-      <AnalogClock h={liveHours} m={liveMinutes} s={liveSeconds} />
+      <AnalogClock h={analogTime.h} m={analogTime.m} s={analogTime.s} />
     </div>
   );
 }

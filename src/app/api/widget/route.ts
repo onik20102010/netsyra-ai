@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
+import { getWeatherData } from "@/lib/time-utils";
+import { getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
 
 const VALID_TYPES = new Set(["weather", "time", "calendar", "date"]);
 const MAX_QUERY_LENGTH = 100;
@@ -25,7 +26,10 @@ export async function GET(req: NextRequest) {
   let result = "";
   if (type === "weather") {
     const city = query.replace(/weather|temperature|rain|forecast|in /gi, "").trim() || "Lahore";
-    result = await getWeather(city);
+    const weatherData = await getWeatherData(city);
+    if (weatherData) {
+      result = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+    }
   } else if (type === "time") {
     const zone = query.replace(/time|clock|in /gi, "").trim() || undefined;
     result = await getCurrentTimeCard(zone);

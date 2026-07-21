@@ -4,7 +4,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/chat/aai";
 import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent } from "@/lib/intent-classifier";
-import { getWeather, getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
+import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
+import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
 import { performDeepSearch, performMultiDeepSearch, performNLiveSearch } from "@/lib/chat/services/live-data";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
@@ -246,12 +247,25 @@ export async function POST(req: NextRequest) {
     // Detect if query needs web search (latest/current information)
     function needsWebSearch(query: string): boolean {
       const lowerQuery = query.toLowerCase();
-      
+
+      // 0. Time/weather/date queries - use API, not web search
+      const timeWeatherDateKeywords = [
+        'what\'s the time', 'what is the time', 'current time', 'what time', 'time now',
+        'what\'s the date', 'what is the date', 'today\'s date', 'current date', 'what date',
+        'what\'s the weather', 'what is the weather', 'weather in', 'temperature in',
+        'forecast', 'clock', 'what is it time', 'what time is it', 'tell me the time',
+        'show me the time', 'tell me the date', 'show me the date', 'what day is it',
+        'what day today', 'what\'s today', 'what is today', 'current weather',
+        'weather today', 'temperature today', 'weather forecast', 'time in', 'date in',
+      ];
+      if (timeWeatherDateKeywords.some(kw => lowerQuery.includes(kw))) {
+        return false;
+      }
+
       // 1. Current Information (time-sensitive data)
       const currentInfoKeywords = [
         'latest', 'new', 'recent', 'current', 'today', 'now', 'yesterday', 'tomorrow',
         'news', 'breaking', 'headline', 'trending', 'viral', 'announcement',
-        'weather', 'forecast', 'temperature', 'rain', 'snow', 'wind', 'humidity', 'air quality',
         'stock prices', 'crypto prices', 'exchange rates', 'market value',
         'sports scores', 'live standings', 'rankings', 'election results',
         'current president', 'current prime minister', 'current ceo', 'current statistics', 'current population',
@@ -480,6 +494,12 @@ export async function POST(req: NextRequest) {
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
 
+    // ── Time/Weather/Date Query Detection (independent of search decision) ──
+    const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+    const isTimeQuery = /^(what( i|')?s the )?time|clock|what is it time/i.test(userMessage.trim());
+    const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+    const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+
     // ── USAGE CHECK (CRITICAL - this must work) ──
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
     let usageCheck;
@@ -550,7 +570,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Cache check: skip for personalized, live, or AAI queries ──
-    const canUseCache = !diveDeep && !profileNote && !memorySummary && modelTier !== "aai" && modelTier !== "live";
+    const canUseCache = !diveDeep && !profileNote && !memorySummary && modelTier !== "aai" && modelTier !== "live" && !isWidgetQuery;
     if (canUseCache) {
       const cached = getCachedReply(userMessage);
       if (cached) {
@@ -577,6 +597,98 @@ export async function POST(req: NextRequest) {
             "x-conversation-id": convId,
             "x-model-used": modelTier,
             "x-cached": "true",
+          },
+        });
+      }
+    }
+
+    // ── Time/Weather/Date Handler (bypasses search for all tiers) ──
+    if (isWidgetQuery) {
+      console.log(`🕐 Time/Weather/Date query detected - using API instead of search`);
+      const canUseWidgets = modelTier === "pro";
+      let responseData = "";
+
+      if (isWeatherQuery) {
+        const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+        const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+        if (weatherData) {
+          if (canUseWidgets) {
+            responseData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+          } else {
+            responseData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
+          }
+        }
+      } else if (isTimeQuery) {
+        // Use the same time API (fetchTimeData) for all tiers to ensure consistency
+        const timeData = await fetchTimeData(undefined, userTimezone);
+        if (timeData) {
+          if (canUseWidgets) {
+            // N Pro: Format as widget
+            const clockData = {
+              utcDatetime: timeData.utcDatetime,
+              timezone: timeData.timezone,
+              label: timeData.label,
+            };
+            responseData = `<!--WIDGET:CLOCK:${JSON.stringify(clockData)}-->`;
+          } else {
+            // N Fast/Plus: Use pre-formatted strings from the API to avoid server-side timezone conversion
+            const timeStr = timeData.formattedTime || "";
+            const dateStr = timeData.formattedDate || "";
+            if (timeStr && dateStr) {
+              responseData = `🕐 ${timeStr} ${dateStr} (${timeData.timezone})`;
+            }
+          }
+        }
+      } else if (isDateQuery) {
+        // Use the same time API (fetchTimeData) for all tiers to ensure consistency
+        const timeData = await fetchTimeData(undefined, userTimezone);
+        if (timeData) {
+          if (canUseWidgets) {
+            // N Pro: Format as widget
+            const calData = {
+              utcDatetime: timeData.utcDatetime,
+              timezone: timeData.timezone,
+              label: timeData.label,
+            };
+            responseData = `<!--WIDGET:CALENDAR:${JSON.stringify(calData)}-->`;
+          } else {
+            // N Fast/Plus: Format as plain text using the same data
+            const dt = new Date(timeData.utcDatetime);
+            const dateStr = new Intl.DateTimeFormat("en-US", {
+              timeZone: timeData.timezone,
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }).format(dt);
+
+            responseData = `📅 ${dateStr}`;
+          }
+        }
+      }
+
+      if (responseData) {
+        await saveMessage(supabase, user.id, convId, "assistant", responseData);
+        const encoder = new TextEncoder();
+        const words = responseData.split(" ");
+        const stream = new ReadableStream({
+          async start(controller) {
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await new Promise(r => setTimeout(r, 10));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "x-conversation-id": convId,
+            "x-model-used": modelTier,
           },
         });
       }
@@ -635,22 +747,45 @@ export async function POST(req: NextRequest) {
           if (isWidgetQuery && canUseWidgets) {
             if (isWeatherQuery) {
               const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-              liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+              const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+              if (weatherData) {
+                liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+              }
             } else if (isTimeQuery) {
               liveData = await getCurrentTimeCard(undefined, userTimezone);
             } else if (isDateQuery) {
               liveData = await getCurrentCalendarCard(undefined, userTimezone);
             }
           } else if (isWidgetQuery && !canUseWidgets) {
-            // For non-Pro tiers, perform web search instead of widget generation
-            const cleanQ = userMessage.trim();
-            liveData = await performDeepSearch(cleanQ);
-            if (!liveData) {
-              liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
+            // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
+            if (isWeatherQuery) {
+              const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+              const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+              if (weatherData) {
+                liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
+              }
+            } else if (isTimeQuery) {
+              const timeData = await getCurrentTimeAndLocation(null, userTimezone);
+              if (timeData) {
+                liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
+              }
+            } else if (isDateQuery) {
+              const now = new Date();
+              const dateStr = now.toLocaleDateString("en-US", {
+                timeZone: userTimezone || "UTC",
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+              liveData = `📅 ${dateStr}`;
             }
-            console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
+            if (!liveData) {
+              liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
+            }
+            console.log(`✅ API data obtained for non-Pro widget query (${liveData.length} chars)`);
           } else {
-            // Universal web search – multi‑query or single
+            // Universal web search – multi‑query or single (for all tiers)
             if (queries.length > 1) {
               console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
               liveData = await performMultiDeepSearch(queries);
@@ -826,27 +961,51 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
       if (isWidgetQuery && canUseWidgets) {
+        // N Pro: Use widgets for time/weather/date, NO web search for pure widget queries
         if (isWeatherQuery) {
           const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          liveData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
+          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          if (weatherData) {
+            liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+          }
         } else if (isTimeQuery) {
           liveData = await getCurrentTimeCard(undefined, userTimezone);
         } else if (isDateQuery) {
           liveData = await getCurrentCalendarCard(undefined, userTimezone);
         }
+        // Skip web search for pure widget queries in N Pro - return early
+        if (liveData) {
+          console.log(`✅ N Pro widget data obtained (${liveData.length} chars)`);
+          return;
+        }
       } else if (isWidgetQuery && !canUseWidgets) {
-        // For non-Pro tiers, perform web search instead of widget generation
-        const cleanQ = userMessage.trim();
-        const searchResult = await performNLiveSearch(cleanQ);
-        if (searchResult.answer) {
-          liveData = searchResult.answer;
-          searchSources = searchResult.sources;
-          searchPlatform = searchResult.platform;
+        // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
+        if (isWeatherQuery) {
+          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          if (weatherData) {
+            liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
+          }
+        } else if (isTimeQuery) {
+          const timeData = await getCurrentTimeAndLocation(null, userTimezone);
+          if (timeData) {
+            liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
+          }
+        } else if (isDateQuery) {
+          const now = new Date();
+          const dateStr = now.toLocaleDateString("en-US", {
+            timeZone: userTimezone || "UTC",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          liveData = `📅 ${dateStr}`;
         }
         if (!liveData) {
-          liveData = `No reliable information found. Please try again later.`;
+          liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
         }
-        console.log(`✅ Search results obtained for non-Pro widget query (${liveData.length} chars)`);
+        console.log(`✅ API data obtained for non-Pro widget query (${liveData.length} chars)`);
       } else {
         // Universal web search – multi‑query or single
         if (queries.length > 1) {
@@ -897,19 +1056,53 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
       // Handle mixed queries: extract non-widget part for search
       if (isWidgetQuery && canUseWidgets) {
-        // Extract the non-widget part of the query
+        // N Pro: Use widgets for time/weather/date, NO web search for pure widget queries
         if (isWeatherQuery) {
           const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          widgetData = await getWeather(cityMatch?.[1]?.trim() || "Lahore");
-          // Remove weather part from query for web search
-          searchQuery = userMessage.replace(/weather|temperature|rain|forecast|in\s+[A-Za-z\s]+/gi, "").trim();
+          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          if (weatherData) {
+            widgetData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+          }
+          // Only search if there's additional content beyond the weather query
+          const remainingQuery = userMessage.replace(/weather|temperature|rain|forecast|in\s+[A-Za-z\s]+/gi, "").trim();
+          searchQuery = remainingQuery.length > 3 ? remainingQuery : "";
         } else if (isTimeQuery) {
           widgetData = await getCurrentTimeCard(undefined, userTimezone);
-          searchQuery = userMessage.replace(/what( i|')?s the \)?time|clock/gi, "").trim();
+          // Only search if there's additional content beyond the time query
+          const remainingQuery = userMessage.replace(/what( i|')?s the \)?time|clock/gi, "").trim();
+          searchQuery = remainingQuery.length > 3 ? remainingQuery : "";
         } else if (isDateQuery) {
           widgetData = await getCurrentCalendarCard(undefined, userTimezone);
-          searchQuery = userMessage.replace(/what( i|')?s (the )?date|today'?s date|what day/gi, "").trim();
+          // Only search if there's additional content beyond the date query
+          const remainingQuery = userMessage.replace(/what( i|')?s (the )?date|today'?s date|what day/gi, "").trim();
+          searchQuery = remainingQuery.length > 3 ? remainingQuery : "";
         }
+      } else if (isWidgetQuery && !canUseWidgets) {
+        // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
+        if (isWeatherQuery) {
+          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          if (weatherData) {
+            widgetData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
+          }
+        } else if (isTimeQuery) {
+          const timeData = await getCurrentTimeAndLocation(null, userTimezone);
+          if (timeData) {
+            widgetData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
+          }
+        } else if (isDateQuery) {
+          const now = new Date();
+          const dateStr = now.toLocaleDateString("en-US", {
+            timeZone: userTimezone || "UTC",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          widgetData = `📅 ${dateStr}`;
+        }
+        // Don't perform web search for time/weather/date in non-Pro tiers
+        searchQuery = "";
       }
 
       // Perform N Live search

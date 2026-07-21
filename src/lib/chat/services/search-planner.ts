@@ -16,8 +16,20 @@ const EXPLICIT_SEARCH_KEYWORDS = [
   "web search", "internet search",
 ];
 
+// Time/weather/date queries - these should NOT trigger web search (use API instead)
+const TIME_WEATHER_DATE_KEYWORDS = [
+  "what's the time", "what is the time", "current time", "what time", "time now",
+  "what's the date", "what is the date", "today's date", "current date", "what date",
+  "what's the weather", "what is the weather", "weather in", "temperature in",
+  "forecast", "weather", "temperature", "clock",
+  "what is it time", "what time is it", "tell me the time", "show me the time",
+  "tell me the date", "show me the date", "what day is it", "what day today",
+  "what's today", "what is today", "current weather", "weather today",
+  "temperature today", "weather forecast", "time in", "date in",
+];
+
 const OBVIOUS_TIME_SENSITIVE = [
-  "weather", "forecast", "temperature", "stock price", "crypto price",
+  "stock price", "crypto price",
   "exchange rate", "live score", "flight status", "breaking news",
   "today news", "current news", "latest news", "trending",
   "air quality", "traffic", "road closure", "server status",
@@ -54,15 +66,18 @@ RULES:
    - YES → search
    - NO → no search
 
-4. If searching, EXPAND the query with relevant context:
+4. IMPORTANT: Time, weather, and date queries should NOT trigger web search. These are handled by dedicated APIs.
+   - If query is about current time, date, or weather → NO SEARCH
+
+5. If searching, EXPAND the query with relevant context:
    - Living person → add "latest news, recent achievements, current status"
    - Company → add "latest announcements, products, updates"
    - Technology → add "latest release, documentation, new features"
    - Preserve any time references (today, this week, 2026, etc.)
 
-5. If the user mentions a year (2025, 2026) with a historical entity, SEARCH for modern developments.
+6. If the user mentions a year (2025, 2026) with a historical entity, SEARCH for modern developments.
 
-6. Single-word entity queries (e.g. "Ronaldo", "OpenAI", "React") should be expanded intelligently.
+7. Single-word entity queries (e.g. "Ronaldo", "OpenAI", "React") should be expanded intelligently.
 
 OUTPUT FORMAT (strict - no markdown, no explanation):
 SEARCH: yes or no
@@ -101,9 +116,17 @@ Input: "Messi yesterday"
 SEARCH: yes
 QUERY: Lionel Messi yesterday latest news
 
+Input: "what time is it"
+SEARCH: no
+QUERY: none
+
 Input: "weather in London"
-SEARCH: yes
-QUERY: weather in London today
+SEARCH: no
+QUERY: none
+
+Input: "today's date"
+SEARCH: no
+QUERY: none
 
 Input: "World War 2"
 SEARCH: no
@@ -137,6 +160,15 @@ function parsePlannerResponse(response: string): SearchPlan {
 
 export async function planSearch(userMessage: string): Promise<SearchPlan> {
   const lowerQuery = userMessage.toLowerCase().trim();
+
+  // Fast path 0: Time/weather/date queries → use API, not web search
+  if (TIME_WEATHER_DATE_KEYWORDS.some((kw) => lowerQuery.includes(kw))) {
+    return {
+      shouldSearch: false,
+      searchQuery: "",
+      reason: "Time/weather/date query - use API instead of web search",
+    };
+  }
 
   // Fast path 1: Explicit search requests → always search
   if (EXPLICIT_SEARCH_KEYWORDS.some((kw) => lowerQuery.includes(kw))) {
