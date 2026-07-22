@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    // The correct field for the Paddle hosted checkout URL
-    const checkoutUrl = data?.data?.checkout?.url;
+    // Handle multiple possible URL fields from Paddle API
+    const checkoutUrl = data?.data?.checkout?.url || data?.data?.url || data?.data?.checkout_url;
 
     if (!checkoutUrl) {
-      console.error("No checkout URL in Paddle response:", JSON.stringify(data));
-      return NextResponse.json({ error: "No checkout URL returned" }, { status: 500 });
+      console.error("Full Paddle response:", JSON.stringify(data));
+      return NextResponse.json({ error: "No checkout URL found" }, { status: 500 });
     }
 
     return NextResponse.json({ checkoutUrl });

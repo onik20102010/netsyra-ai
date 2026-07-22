@@ -10,6 +10,7 @@ const csp = [
   "font-src 'self' data: https://cdn.jsdelivr.net",
   "connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
   "worker-src 'self' blob:",
+  "frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com",
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",
