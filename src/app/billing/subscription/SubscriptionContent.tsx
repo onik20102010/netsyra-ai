@@ -75,7 +75,6 @@ export default function SubscriptionContent() {
         return;
       }
       const data = await res.json();
-      alert("Checkout URL: " + data.checkoutUrl);
       window.location.href = data.checkoutUrl;
     } catch (err) {
       console.error(err);
