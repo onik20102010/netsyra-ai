@@ -42,6 +42,16 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
+    const fullResponse = JSON.stringify(data);
+    console.log("FULL PADDLE RESPONSE:", fullResponse);
+
+    // TEMPORARY DEBUG RESPONSE
+    return NextResponse.json({
+      debug: true,
+      fullResponse: data,
+      extractedCheckoutUrl: data?.data?.checkout?.url || data?.data?.url || data?.data?.checkout_url,
+    });
+
     // Handle multiple possible URL fields from Paddle API
     const checkoutUrl = data?.data?.checkout?.url || data?.data?.url || data?.data?.checkout_url;
 
