@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Paddle } from "@paddle/paddle-node-sdk";
+import crypto from "crypto";
+
+function verifyPaddleSignature(
+  rawBody: string,
+  signatureHeader: string,
+  secret: string
+): boolean {
+  try {
+    // signatureHeader looks like: ts=1690000000;h1=abc123...
+    const parts = Object.fromEntries(
+      signatureHeader.split(";").map((part) => part.trim().split("="))
+    );
+    const ts = parts["ts"];
+    const h1 = parts["h1"];
+    if (!ts || !h1) return false;
+
+    const signedPayload = `${ts}:${rawBody}`;
+    const expectedH1 = crypto
+      .createHmac("sha256", secret)
+      .update(signedPayload)
+      .digest("hex");
+
+    return crypto.timingSafeEqual(
+      Buffer.from(h1),
+      Buffer.from(expectedH1)
+    );
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -12,14 +41,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  let event;
-  try {
-    // Use the SDK's unmarshal method – it does exist
-    event = Paddle.webhooks.unmarshal(rawBody, secret, signature);
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+  // Verify signature manually – no SDK dependency
+  if (!verifyPaddleSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
+
+  const event = JSON.parse(rawBody);
 
   const userId = event.data?.custom_data?.user_id;
   if (!userId) {
@@ -32,7 +59,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    switch (event.eventType) {
+    switch (event.event_type) {          // note: the real event uses snake_case
       case "subscription.activated":
       case "subscription.updated": {
         const items = event.data?.items;
@@ -40,14 +67,14 @@ export async function POST(req: NextRequest) {
 
         await supabase.from("subscriptions").upsert({
           subscription_id: event.data.id,
-          customer_id: event.data.customerId,
+          customer_id: event.data.customer_id,   // snake_case in the real event
           user_id: userId,
           status: event.data.status,
           price_id: firstItem?.price?.id,
           product_id: firstItem?.product?.id,
-          scheduled_change_action: event.data.scheduledChange?.action,
-          scheduled_change_at: event.data.scheduledChange?.effectiveAt,
-          current_period_end: event.data.currentBillingPeriod?.endsAt,
+          scheduled_change_action: event.data.scheduled_change?.action,
+          scheduled_change_at: event.data.scheduled_change?.effective_at,
+          current_period_end: event.data.current_billing_period?.ends_at,
           updated_at: new Date().toISOString(),
         }, { onConflict: "subscription_id" });
         break;
