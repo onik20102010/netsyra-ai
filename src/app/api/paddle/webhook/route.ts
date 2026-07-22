@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+import { Paddle } from "@paddle/paddle-node-sdk";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -12,19 +12,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  // Parse the event
   let event;
   try {
-    event = JSON.parse(rawBody);
+    // Use the SDK's unmarshal method – it does exist
+    event = Paddle.webhooks.unmarshal(rawBody, secret, signature);
   } catch (err) {
-    console.error("Failed to parse webhook body:", err);
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    console.error("Webhook signature verification failed:", err);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   const userId = event.data?.custom_data?.user_id;
-  // Not all events have a user_id – just acknowledge those without one
   if (!userId) {
-    console.log(`Event ${event.event_type} has no user_id – skipping`);
     return NextResponse.json({ received: true });
   }
 
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    switch (event.event_type) {
+    switch (event.eventType) {
       case "subscription.activated":
       case "subscription.updated": {
         const items = event.data?.items;
@@ -42,14 +40,14 @@ export async function POST(req: NextRequest) {
 
         await supabase.from("subscriptions").upsert({
           subscription_id: event.data.id,
-          customer_id: event.data.customer_id,
+          customer_id: event.data.customerId,
           user_id: userId,
           status: event.data.status,
           price_id: firstItem?.price?.id,
           product_id: firstItem?.product?.id,
-          scheduled_change_action: event.data.scheduled_change?.action,
-          scheduled_change_at: event.data.scheduled_change?.effective_at,
-          current_period_end: event.data.current_billing_period?.ends_at,
+          scheduled_change_action: event.data.scheduledChange?.action,
+          scheduled_change_at: event.data.scheduledChange?.effectiveAt,
+          current_period_end: event.data.currentBillingPeriod?.endsAt,
           updated_at: new Date().toISOString(),
         }, { onConflict: "subscription_id" });
         break;
@@ -70,9 +68,6 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         }, { onConflict: "customer_id" });
         break;
-
-      default:
-        // ignore other events
     }
   } catch (err) {
     console.error("Webhook handler error:", err);
