@@ -6,10 +6,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { priceId } = await req.json();
-  console.log("PRICE ID:", priceId);
+  const { priceId, customerEmail } = await req.json();
+  console.log("PRICE ID:", priceId, "EMAIL:", customerEmail);
 
   const apiKey = process.env.PADDLE_API_KEY;
+  console.log("API KEY (first 10 chars):", apiKey?.substring(0, 10) + "...");
   if (!apiKey) return NextResponse.json({ error: "Paddle not configured" }, { status: 500 });
 
   // Use correct environment
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
         custom_data: {
           user_id: user.id,
         },
+        customer_email: customerEmail || user.email,
         return_url: `http://localhost:3000/billing?success=true`,
       }),
     });

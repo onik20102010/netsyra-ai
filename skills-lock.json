@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "paddle-checkout-web": {
+      "source": "developer.paddle.com",
+      "sourceType": "well-known",
+      "computedHash": "87a5616231933dea7e19d624008532761fcffc9495d9225b33dff9636a2b8430"
+    }
+  }
+}
