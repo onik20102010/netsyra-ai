@@ -8,7 +8,6 @@ function verifyPaddleSignature(
   secret: string
 ): boolean {
   try {
-    // signatureHeader looks like: ts=1690000000;h1=abc123...
     const parts = Object.fromEntries(
       signatureHeader.split(";").map((part) => part.trim().split("="))
     );
@@ -41,12 +40,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  // Verify signature manually – no SDK dependency
+  // Verify signature
   if (!verifyPaddleSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const event = JSON.parse(rawBody);
+  let event: any;
+  try {
+    event = JSON.parse(rawBody);
+  } catch (err) {
+    console.error("Failed to parse webhook JSON:", err);
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Only process subscription & customer events
+  const eventType = event.event_type;
+  if (
+    !["subscription.activated", "subscription.updated", "subscription.canceled",
+      "customer.created", "customer.updated"].includes(eventType)
+  ) {
+    return NextResponse.json({ received: true });  // acknowledge and ignore
+  }
 
   const userId = event.data?.custom_data?.user_id;
   if (!userId) {
@@ -59,7 +73,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    switch (event.event_type) {          // note: the real event uses snake_case
+    switch (eventType) {
       case "subscription.activated":
       case "subscription.updated": {
         const items = event.data?.items;
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
 
         await supabase.from("subscriptions").upsert({
           subscription_id: event.data.id,
-          customer_id: event.data.customer_id,   // snake_case in the real event
+          customer_id: event.data.customer_id,
           user_id: userId,
           status: event.data.status,
           price_id: firstItem?.price?.id,
@@ -97,8 +111,9 @@ export async function POST(req: NextRequest) {
         break;
     }
   } catch (err) {
-    console.error("Webhook handler error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Webhook DB error:", err);
+    console.error("Event body:", rawBody);
+    return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
