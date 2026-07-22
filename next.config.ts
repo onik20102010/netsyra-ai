@@ -4,7 +4,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
   "default-src 'self'",
-  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net blob:" : "script-src 'self' https://cdn.jsdelivr.net blob:",
+  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:" : "script-src 'self' https://cdn.jsdelivr.net https://cdn.paddle.com blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data: https://cdn.jsdelivr.net",
