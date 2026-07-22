@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === "development";
-
 const csp = [
   "default-src 'self'",
-  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:" : "script-src 'self' https://cdn.jsdelivr.net https://cdn.paddle.com blob:",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data: https://cdn.jsdelivr.net",
@@ -14,7 +12,7 @@ const csp = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",
-  isDev ? "" : "upgrade-insecure-requests",
+  "upgrade-insecure-requests",
 ]
   .filter(Boolean)
   .join("; ");
