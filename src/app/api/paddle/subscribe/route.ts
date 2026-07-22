@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
     ? "https://api.paddle.com"
     : "https://sandbox-api.paddle.com";
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
   try {
     const res = await fetch(`${baseUrl}/transactions`, {
       method: "POST",
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
           user_id: user.id,
         },
         customer_email: customerEmail || user.email,
-        return_url: `http://localhost:3000/billing?success=true`,
+        return_url: `${siteUrl}/billing?success=true`,
       }),
     });
 
