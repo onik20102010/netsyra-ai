@@ -60,10 +60,10 @@ export default function HeroSection() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
-              Zero-token deterministic
+              Multiple models 500+
               <br />
               <span className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-transparent">
-                routing engine.
+                for each specific tasks.
               </span>
             </h1>
 
