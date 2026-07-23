@@ -117,7 +117,7 @@ export default function RootLayout({
       <head>
         <meta
           httpEquiv="Content-Security-Policy"
-          content="script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.paddle.com blob:; frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com;"
+          content="script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:; frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com;"
         />
       </head>
       <body

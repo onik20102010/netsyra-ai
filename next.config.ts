@@ -1,3 +1,4 @@
+// Build: 2026-07-23-v2 CSP fix
 import type { NextConfig } from "next";
 
 const csp = [
