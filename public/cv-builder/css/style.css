@@ -3055,6 +3055,318 @@ label {
   font-weight: 600;
 }
 
+/* Apple Minimal Template */
+.cv-page.apple-minimal {
+  background: #ffffff;
+}
+.cv-page.apple-minimal .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 1in 1in 1in 1in;
+}
+.cv-page.apple-minimal .cv-sidebar {
+  display: none;
+}
+.cv-page.apple-minimal .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.apple-minimal .cv-header {
+  text-align: left;
+  margin-bottom: 48px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.cv-page.apple-minimal .cv-name {
+  font-size: 36px;
+  font-weight: 400;
+  color: #111111;
+  margin-bottom: 12px;
+  font-family: 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+  text-align: left;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.cv-page.apple-minimal .cv-title {
+  font-size: 18px;
+  font-weight: 400;
+  color: #4B5563;
+  margin-bottom: 20px;
+  font-family: 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+  text-align: left;
+}
+.cv-page.apple-minimal .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 11px;
+  color: #4B5563;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+  text-align: left;
+}
+.cv-page.apple-minimal .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.apple-minimal .cv-contact-item i {
+  color: #4B5563;
+  font-size: 10px;
+}
+.cv-page.apple-minimal .cv-section {
+  margin-bottom: 40px;
+}
+.cv-page.apple-minimal .cv-section-heading {
+  font-size: 16px;
+  font-weight: 500;
+  color: #111111;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
+  font-family: 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-entry {
+  margin-bottom: 24px;
+}
+.cv-page.apple-minimal .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.apple-minimal .cv-entry-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111111;
+  font-family: 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-entry-date {
+  font-size: 11px;
+  font-weight: 400;
+  color: #4B5563;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: #4B5563;
+  margin-bottom: 8px;
+  font-family: 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-entry-description {
+  font-size: 11px;
+  color: #4B5563;
+  line-height: 1.7;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.apple-minimal .cv-entry-description li {
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+.cv-page.apple-minimal .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.apple-minimal .cv-skill-item {
+  font-size: 11px;
+  color: #4B5563;
+  background: transparent;
+  padding: 0;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+  font-weight: 400;
+}
+.cv-page.apple-minimal .cv-sidebar-section {
+  display: none;
+}
+.cv-page.apple-minimal .cv-photo-section {
+  display: none;
+}
+.cv-page.apple-minimal .skill-bar {
+  display: none;
+}
+.cv-page.apple-minimal .cv-summary {
+  font-size: 11px;
+  color: #4B5563;
+  line-height: 1.8;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+  margin-bottom: 24px;
+}
+.cv-page.apple-minimal .cv-language-item {
+  font-size: 11px;
+  color: #4B5563;
+  margin-bottom: 6px;
+  font-family: 'SF Pro Text', 'Inter', 'Helvetica Neue', 'Avenir', 'Aptos', sans-serif;
+}
+.cv-page.apple-minimal .cv-language-item strong {
+  color: #111111;
+  font-weight: 500;
+}
+
+/* Research Scholar Template */
+.cv-page.research-scholar {
+  background: #ffffff;
+}
+.cv-page.research-scholar .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.8in 0.9in 0.8in 0.9in;
+}
+.cv-page.research-scholar .cv-sidebar {
+  display: none;
+}
+.cv-page.research-scholar .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.research-scholar .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #1E3A8A;
+}
+.cv-page.research-scholar .cv-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 8px;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+  text-align: left;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.cv-page.research-scholar .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1E3A8A;
+  margin-bottom: 16px;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+  text-align: left;
+}
+.cv-page.research-scholar .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #4B5563;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+  text-align: left;
+}
+.cv-page.research-scholar .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.research-scholar .cv-contact-item i {
+  color: #1E3A8A;
+  font-size: 10px;
+}
+.cv-page.research-scholar .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.research-scholar .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1E3A8A;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.research-scholar .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.research-scholar .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4B5563;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E3A8A;
+  margin-bottom: 8px;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-entry-description {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.6;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.research-scholar .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.research-scholar .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.research-scholar .cv-skill-item {
+  font-size: 11px;
+  color: #374151;
+  background: transparent;
+  padding: 0;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+  font-weight: 500;
+}
+.cv-page.research-scholar .cv-sidebar-section {
+  display: none;
+}
+.cv-page.research-scholar .cv-photo-section {
+  display: none;
+}
+.cv-page.research-scholar .skill-bar {
+  display: none;
+}
+.cv-page.research-scholar .cv-summary {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.7;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+  margin-bottom: 20px;
+}
+.cv-page.research-scholar .cv-language-item {
+  font-size: 11px;
+  color: #374151;
+  margin-bottom: 6px;
+  font-family: 'Times New Roman', 'Cambria', 'Garamond', 'Georgia', 'Aptos', 'Inter', serif;
+}
+.cv-page.research-scholar .cv-language-item strong {
+  color: #111111;
+  font-weight: 600;
+}
+
 /* Executive (bold top header, no sidebar) */
 .cv-page.executive .cv-inner {
   flex-direction: column;

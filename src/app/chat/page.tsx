@@ -25,7 +25,6 @@ function ChatContent() {
   const [conversationId, setConversationId] = useState<string | null>(initialId);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [hoverOpened, setHoverOpened] = useState(false);
-  const [isPro, setIsPro] = useState(false);
 
   // Lifted model state – shared between sidebar (maybe for future use) and chat interface
   const [selectedModel, setSelectedModel] = useState<string>(initialModel);
@@ -103,18 +102,6 @@ function ChatContent() {
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("subscriptions")
-      .select("status")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
-      .then(({ data }) => {
-        setIsPro(!!data);
-      });
-  }, [user, supabase]);
 
   // ── Auth guard (now placed AFTER all hooks) ──
   if (loading) {
@@ -165,7 +152,6 @@ function ChatContent() {
             addConversationRef.current = addFn;
           }}
           selectedModel={selectedModel}
-          isPro={isPro}
         />
       </div>
 
@@ -197,7 +183,6 @@ function ChatContent() {
             initialModel={selectedModel}
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
-            isPro={isPro}
           />
         </div>
       </div>

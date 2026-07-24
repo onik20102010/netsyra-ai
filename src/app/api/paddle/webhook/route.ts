@@ -37,21 +37,23 @@ export async function POST(req: NextRequest) {
   const secret = process.env.PADDLE_WEBHOOK_SECRET;
   if (!secret) {
     console.error("PADDLE_WEBHOOK_SECRET is missing");
-    return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
+    // Return 200 so Paddle stops retrying
+    return NextResponse.json({ received: true });
   }
 
+  // Always acknowledge the event, even if signature fails
   if (!verifyPaddleSignature(rawBody, signature, secret)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    console.error("Invalid signature – event acknowledged anyway");
+    return NextResponse.json({ received: true });
   }
 
   let event: any;
   try {
     event = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ received: true });
   }
 
-  const eventType = event.event_type;
   const userId = event.data?.custom_data?.user_id;
   if (!userId) {
     return NextResponse.json({ received: true });
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Only process the events we care about
+  // Process only the events we care about
   const relevantEvents = [
     "subscription.activated",
     "subscription.updated",
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
     "transaction.ready",
     "transaction.completed",
   ];
-  if (!relevantEvents.includes(eventType)) {
+  if (!relevantEvents.includes(event.event_type)) {
     return NextResponse.json({ received: true });
   }
 
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("Subscription upsert error:", error.message);
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+    return NextResponse.json({ received: true });
   }
 
   return NextResponse.json({ received: true });

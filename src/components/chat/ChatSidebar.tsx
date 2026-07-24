@@ -29,7 +29,6 @@ interface ChatSidebarProps {
   refreshKey?: number;
   onAddConversationReady?: (addFn: (conv: Conversation) => void) => void;
   selectedModel?: string;
-  isPro?: boolean;
 }
 
 type Conversation = {
@@ -51,7 +50,6 @@ export default function ChatSidebar({
   refreshKey = 0,
   onAddConversationReady,
   selectedModel,
-  isPro = false,
 }: ChatSidebarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -59,6 +57,7 @@ export default function ChatSidebar({
   const [displayName, setDisplayName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPro, setIsPro] = useState(false);
   const supabase = createClient();
 
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -73,6 +72,19 @@ export default function ChatSidebar({
       onAddConversationReady(handleAddConversation);
     }
   }, [onAddConversationReady, handleAddConversation]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => {
+        setIsPro(!!data);
+      });
+  }, [user, supabase]);
 
   useEffect(() => {
     if (!user) return;

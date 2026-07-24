@@ -63,7 +63,6 @@ interface ChatInterfaceProps {
   initialModel?: string;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
-  isPro?: boolean;
 }
 
 function CopyButton({ code }: { code: string }) {
