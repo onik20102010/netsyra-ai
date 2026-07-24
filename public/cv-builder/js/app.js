@@ -223,6 +223,31 @@ function closeDesignPanel() {
   document.getElementById('designPanelOverlay').classList.remove('active');
 }
 
+// ==================== MOBILE MENU ====================
+function toggleMobileMenu() {
+  const overlay = document.getElementById('mobileMenuOverlay');
+  overlay.classList.toggle('active');
+  
+  // Sync mobile template select with main select
+  const mainSelect = document.getElementById('templateSelect');
+  const mobileSelect = document.getElementById('templateSelectMobile');
+  if (mobileSelect && mainSelect) {
+    mobileSelect.value = mainSelect.value;
+  }
+  
+  // Sync credit count
+  const mainCreditCount = document.getElementById('creditCount');
+  const mobileCreditCount = document.getElementById('creditCountMobile');
+  if (mobileCreditCount && mainCreditCount) {
+    mobileCreditCount.textContent = mainCreditCount.textContent;
+  }
+  
+  // Initialize mobile industry search when menu opens
+  if (overlay.classList.contains('active')) {
+    initMobileIndustrySearch();
+  }
+}
+
 // ==================== SECTION MANAGER ====================
 let sectionConfig = [
   { id:'summary', name:'Professional Summary', visible:true, custom:false },
@@ -1061,27 +1086,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==================== INDUSTRY PRESET DROPDOWN ====================
-(function() {
-  const wrapper = document.getElementById('industrySearchWrapper');
-  const input = document.getElementById('industrySearchInput');
-  const dropdown = document.getElementById('searchDropdown');
-  const toggleBtn = document.getElementById('toggleDropdownBtn');
-  const hiddenInput = document.getElementById('industryPreset');
+// Industry options with presets (value / text pairs for the new Landscaping group)
+const industryOptions = [
+  { label: 'Technology', options: ['Software Engineer', 'Data Scientist', 'Product Manager', 'UX Designer', 'DevOps Engineer', 'AI Specialist'] },
+  { label: 'Business', options: ['Marketing Manager', 'Financial Analyst', 'HR Specialist', 'Consultant', 'Sales Executive'] },
+  { label: 'Creative', options: ['Graphic Designer', 'Content Writer', 'Video Editor', 'Photographer'] },
+  { label: 'Engineering', options: ['Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer'] },
+  { label: '🌿 Landscaping & Garden Design', options: [
+    { value: 'landscaping', text: 'Landscaping & Garden Design (General)' },
+    { value: 'landscaping_horticulture', text: 'Horticulture Specialist' },
+    { value: 'landscaping_design', text: 'Garden Designer' },
+    { value: 'landscaping_maintenance', text: 'Landscape Maintenance' },
+    { value: 'landscaping_contractor', text: 'Landscape Contractor' }
+  ]}
+];
 
-  // Industry options with presets (value / text pairs for the new Landscaping group)
-  const industryOptions = [
-    { label: 'Technology', options: ['Software Engineer', 'Data Scientist', 'Product Manager', 'UX Designer', 'DevOps Engineer', 'AI Specialist'] },
-    { label: 'Business', options: ['Marketing Manager', 'Financial Analyst', 'HR Specialist', 'Consultant', 'Sales Executive'] },
-    { label: 'Creative', options: ['Graphic Designer', 'Content Writer', 'Video Editor', 'Photographer'] },
-    { label: 'Engineering', options: ['Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer'] },
-    { label: '🌿 Landscaping & Garden Design', options: [
-      { value: 'landscaping', text: 'Landscaping & Garden Design (General)' },
-      { value: 'landscaping_horticulture', text: 'Horticulture Specialist' },
-      { value: 'landscaping_design', text: 'Garden Designer' },
-      { value: 'landscaping_maintenance', text: 'Landscape Maintenance' },
-      { value: 'landscaping_contractor', text: 'Landscape Contractor' }
-    ]}
-  ];
+function initIndustrySearch(wrapperId, inputId, dropdownId, toggleBtnId, hiddenInputId) {
+  const wrapper = document.getElementById(wrapperId);
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  const toggleBtn = document.getElementById(toggleBtnId);
+  const hiddenInput = document.getElementById(hiddenInputId);
+
+  if (!wrapper || !input || !dropdown || !toggleBtn || !hiddenInput) return;
 
   function buildDropdown(filter = '') {
     dropdown.innerHTML = '';
@@ -1105,6 +1132,23 @@ document.addEventListener('DOMContentLoaded', () => {
           dropdown.classList.remove('show');
           toggleBtn.classList.remove('open');
           applyIndustryPreset(value);
+          
+          // Sync with other instance if exists
+          if (wrapperId === 'industrySearchWrapper') {
+            const mobileInput = document.getElementById('industrySearchInputMobile');
+            const mobileHidden = document.getElementById('industryPresetMobile');
+            if (mobileInput && mobileHidden) {
+              mobileInput.value = text;
+              mobileHidden.value = value;
+            }
+          } else {
+            const desktopInput = document.getElementById('industrySearchInput');
+            const desktopHidden = document.getElementById('industryPreset');
+            if (desktopInput && desktopHidden) {
+              desktopInput.value = text;
+              desktopHidden.value = value;
+            }
+          }
         });
         dropdown.appendChild(item);
       });
@@ -1133,7 +1177,15 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleBtn.classList.remove('open');
     }
   });
-})();
+}
+
+// Initialize desktop industry search
+initIndustrySearch('industrySearchWrapper', 'industrySearchInput', 'searchDropdown', 'toggleDropdownBtn', 'industryPreset');
+
+// Initialize mobile industry search when menu opens
+function initMobileIndustrySearch() {
+  initIndustrySearch('industrySearchWrapperMobile', 'industrySearchInputMobile', 'searchDropdownMobile', 'toggleDropdownBtnMobile', 'industryPresetMobile');
+}
 
 // ==================== INDUSTRY PRESETS ====================
 const industryPresets = {
