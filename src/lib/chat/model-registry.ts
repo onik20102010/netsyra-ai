@@ -899,8 +899,19 @@ const aaiModels: ModelConfig[] = [
   },
 ];
 
+// ── N NI (Premium model for Pro subscribers) ──
+const niModels: ModelConfig[] = [
+  {
+    provider: "openai",
+    apiKeyEnv: "GROQ_API_KEY",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    modelName: "llama-3.3-70b-versatile",
+    modelKey: "ni",
+  },
+];
+
 // ── EXPORT ────────────────────────────────────────────────
-export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", TierConfig> = {
+export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "ni", TierConfig> = {
   fast: {
     models: fastModels,
     systemPrompt: `${identity} You are currently running as N FAST. Be very concise. One or two sentences max. ${structureMinimal}`,
@@ -926,6 +937,12 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai", Ti
     maxTokens: 1100,
   },
   code: {
+  ni: {
+    models: niModels,
+    systemPrompt: `${identity} You are N NI, the premium Netsyra model. Provide expert, thorough, and insightful responses.`,
+    temperature: 0.7,
+    maxTokens: 2500,
+  },
     models: codeModels,
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code. Use fenced code blocks with language tags for all code. Use inline code for function names, variables, file paths. Use numbered lists for setup steps. Use bullet points for feature lists. Use tables for comparing options. Use bold for key terms and warnings. Use headings for multi-part explanations. Use blockquotes for important notes. Keep explanations minimal unless asked. Answer directly first.`,
     temperature: 0.2,

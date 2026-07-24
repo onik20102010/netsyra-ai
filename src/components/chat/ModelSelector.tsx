@@ -82,6 +82,14 @@ const AaiIcon = () => (
   </svg>
 );
 
+/** Crown – for N NI (Premium) */
+const NiIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M2 4l3 2 2-3 2 3 3-2 2 10H2z" strokeLinejoin="round" />
+    <path d="M2 14h12" strokeLinecap="round" />
+  </svg>
+);
+
 /** Right arrow – for "More" */
 const ChevronRightIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -114,10 +122,12 @@ export default function ModelSelector({
   selected,
   onSelect,
   upward = false,
+  isPro = false,
 }: {
   selected: string;
   onSelect: (id: string) => void;
   upward?: boolean;
+  isPro?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -167,10 +177,15 @@ export default function ModelSelector({
 
   const allModels = [...basicModels, ...advancedModels];
   const currentModel = allModels.find((m) => m.id === selected) || basicModels[0];
+  
+  // Pro users only see NI model, free users see all except NI
+  const displayBasicModels = isPro ? [] : basicModels;
+  const displayAdvancedModels = isPro ? advancedModels.filter(m => m.id === "ni") : advancedModels.filter(m => m.id !== "ni");
 
   const renderModelButton = (model: (typeof allModels)[0]) => {
     const status = modelStatuses[model.id];
     const isDisabled = status && !status.allowed;
+    const isLockedBySubscription = model.id === "ni" && !isPro;
     const remainingMs = status ? new Date(status.resetsAt).getTime() - Date.now() : 0;
     const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
 
@@ -179,13 +194,13 @@ export default function ModelSelector({
         key={model.id}
         type="button"
         onClick={() => {
-          if (!isDisabled) handleSelect(model.id);
+          if (!isDisabled && !isLockedBySubscription) handleSelect(model.id);
         }}
-        disabled={isDisabled}
+        disabled={isDisabled || isLockedBySubscription}
         className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all ${
           selected === model.id
             ? "bg-indigo-50 text-indigo-700 font-medium"
-            : isDisabled
+            : isDisabled || isLockedBySubscription
             ? "text-gray-300 cursor-not-allowed"
             : "text-gray-600 hover:bg-gray-50"
         } ${isMobile ? "py-3 text-base" : ""}`}
@@ -194,10 +209,10 @@ export default function ModelSelector({
         <div className="text-left flex-1">
           <div className="font-medium text-xs sm:text-sm">{model.name}</div>
           <div className="text-[10px] sm:text-xs text-gray-400">
-            {isDisabled ? `Resets in ${remainingHours}h` : model.desc}
+            {isLockedBySubscription ? "Pro only" : isDisabled ? `Resets in ${remainingHours}h` : model.desc}
           </div>
         </div>
-        {isDisabled && <span className="text-xs text-gray-400">🔒</span>}
+        {(isDisabled || isLockedBySubscription) && <span className="text-xs text-gray-400">🔒</span>}
       </button>
     );
   };
@@ -230,16 +245,23 @@ export default function ModelSelector({
           >
             <p className="text-xs text-gray-400 px-3 py-1">Select Model</p>
 
-            {basicModels.map(renderModelButton)}
+            {displayBasicModels.map(renderModelButton)}
 
-            {isMobile && (
+            {isMobile && displayAdvancedModels.length > 0 && (
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <p className="text-xs text-gray-400 px-3 py-1">Advanced</p>
-                {advancedModels.map(renderModelButton)}
+                {displayAdvancedModels.map(renderModelButton)}
               </div>
             )}
 
-            {!isMobile && !showAdvanced && (
+            {isMobile && isPro && displayAdvancedModels.length === 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
+                {advancedModels.filter(m => m.id === "ni").map(renderModelButton)}
+              </div>
+            )}
+
+            {!isMobile && !showAdvanced && displayAdvancedModels.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowAdvanced(true)}
@@ -248,6 +270,13 @@ export default function ModelSelector({
                 <span>More</span>
                 <ChevronRightIcon />
               </button>
+            )}
+
+            {!isMobile && isPro && displayAdvancedModels.length === 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
+                {advancedModels.filter(m => m.id === "ni").map(renderModelButton)}
+              </div>
             )}
 
             {!isMobile && showAdvanced && (
@@ -260,7 +289,7 @@ export default function ModelSelector({
                   <ChevronLeftIcon />
                   Back
                 </button>
-                {advancedModels.map(renderModelButton)}
+                {displayAdvancedModels.map(renderModelButton)}
               </div>
             )}
           </motion.div>

@@ -556,6 +556,14 @@ export async function POST(req: NextRequest) {
 
     const isPaidUser = !!sub;
 
+    // ── NI tier requires active subscription ──
+    if (modelTier === "ni" && !isPaidUser) {
+      return NextResponse.json(
+        { error: "The NI model requires an active subscription. Please upgrade to Pro." },
+        { status: 402 }
+      );
+    }
+
     // ── Fetch user profile (used by both branches) ──
     const { data: profile } = await supabase
       .from("profiles")

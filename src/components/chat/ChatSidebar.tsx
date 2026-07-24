@@ -50,6 +50,7 @@ export default function ChatSidebar({
   refreshKey = 0,
   onAddConversationReady,
   selectedModel,
+  isPro = false,
 }: ChatSidebarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -333,7 +334,12 @@ export default function ChatSidebar({
                       <p className="text-sm text-gray-900 truncate font-medium">
                         {displayName || user?.email?.split("@")[0] || "User"}
                       </p>
-                      {!displayName && <p className="text-xs text-gray-500">Click to set your name</p>}
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isPro ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                        <p className={`text-xs ${isPro ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
+                          {isPro ? 'NI Pro' : 'Free'}
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />

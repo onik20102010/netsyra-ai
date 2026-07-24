@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { Menu, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 function ChatContent() {
   const { user, loading } = useAuth();
@@ -24,6 +25,7 @@ function ChatContent() {
   const [conversationId, setConversationId] = useState<string | null>(initialId);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [hoverOpened, setHoverOpened] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   // Lifted model state – shared between sidebar (maybe for future use) and chat interface
   const [selectedModel, setSelectedModel] = useState<string>(initialModel);
@@ -31,6 +33,7 @@ function ChatContent() {
   const router = useRouter();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addConversationRef = useRef<((conv: any) => void) | null>(null);
+  const supabase = createClient();
 
   // ── All hooks must be called before any early return ──
   const handleHoverEnter = useCallback(() => {
@@ -100,6 +103,19 @@ function ChatContent() {
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => {
+        setIsPro(!!data);
+      });
+  }, [user, supabase]);
+
   // ── Auth guard (now placed AFTER all hooks) ──
   if (loading) {
     return (
@@ -149,6 +165,7 @@ function ChatContent() {
             addConversationRef.current = addFn;
           }}
           selectedModel={selectedModel}
+          isPro={isPro}
         />
       </div>
 
@@ -180,6 +197,7 @@ function ChatContent() {
             initialModel={selectedModel}
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
+            isPro={isPro}
           />
         </div>
       </div>

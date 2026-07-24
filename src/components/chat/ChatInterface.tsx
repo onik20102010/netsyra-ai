@@ -63,6 +63,7 @@ interface ChatInterfaceProps {
   initialModel?: string;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  isPro?: boolean;
 }
 
 function CopyButton({ code }: { code: string }) {
@@ -201,6 +202,7 @@ export default function ChatInterface({
   onConversationCreated,
   selectedModel,
   setSelectedModel,
+  isPro = false,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -1211,7 +1213,7 @@ export default function ChatInterface({
 
             <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
               <div className="flex-shrink-0 flex items-end pb-1">
-                <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward />
+                <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward isPro={isPro} />
               </div>
 
               {/* Attachment Button - only enabled when N Plus is selected */}
