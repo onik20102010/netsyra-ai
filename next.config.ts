@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Content-Type", value: "text/plain" }],
       },
       {
+        source: "/billing/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "" },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: csp },
