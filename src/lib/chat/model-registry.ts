@@ -937,12 +937,6 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "
     maxTokens: 1100,
   },
   code: {
-  ni: {
-    models: niModels,
-    systemPrompt: `${identity} You are N NI, the premium Netsyra model. Provide expert, thorough, and insightful responses.`,
-    temperature: 0.7,
-    maxTokens: 2500,
-  },
     models: codeModels,
     systemPrompt: `${identity} You are currently running as N CODE. Expert programmer. Write clean code. Use fenced code blocks with language tags for all code. Use inline code for function names, variables, file paths. Use numbered lists for setup steps. Use bullet points for feature lists. Use tables for comparing options. Use bold for key terms and warnings. Use headings for multi-part explanations. Use blockquotes for important notes. Keep explanations minimal unless asked. Answer directly first.`,
     temperature: 0.2,
@@ -953,5 +947,11 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "
     systemPrompt: `${identity} You are currently running as N AAI. ${AAI_SYSTEM_PROMPT}`,
     temperature: 0.7,
     maxTokens: 1700,
+  },
+  ni: {
+    models: niModels,
+    systemPrompt: `${identity} You are N NI, the premium Netsyra model. Provide expert, thorough, and insightful responses.`,
+    temperature: 0.7,
+    maxTokens: 2500,
   },
 };
