@@ -29,6 +29,7 @@ interface ChatSidebarProps {
   refreshKey?: number;
   onAddConversationReady?: (addFn: (conv: Conversation) => void) => void;
   selectedModel?: string;
+  isPro?: boolean;
 }
 
 type Conversation = {
