@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  let event;
+  let event: any;
   try {
     event = JSON.parse(rawBody);
   } catch {
@@ -62,16 +62,15 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // ── Handle all subscription & transaction events ──
-  const allowedEvents = [
+  // Only process the events we care about
+  const relevantEvents = [
     "subscription.activated",
     "subscription.updated",
     "subscription.canceled",
     "transaction.ready",
     "transaction.completed",
   ];
-
-  if (!allowedEvents.includes(eventType)) {
+  if (!relevantEvents.includes(eventType)) {
     return NextResponse.json({ received: true });
   }
 
@@ -79,43 +78,39 @@ export async function POST(req: NextRequest) {
   const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
   const customerId = event.data.customer_id || "pending";
 
-  // Ensure a customer record exists first (so foreign key doesn't fail)
+  // ── Ensure customer exists before subscription (FK constraint) ──
   if (customerId !== "pending") {
-    const { error: custErr } = await supabase.from("customers").upsert({
+    await supabase.from("customers").upsert({
       customer_id: customerId,
       email: event.data.email || "unknown",
       updated_at: new Date().toISOString(),
     }, { onConflict: "customer_id" });
-    if (custErr) {
-      console.error("Customer upsert error:", JSON.stringify(custErr));
-    }
   }
 
-  // Now upsert subscription
+  // ── Insert / update subscription with fallback for product_id ──
   const subscriptionData = {
     subscription_id: event.data.subscription_id || event.data.id,
     customer_id: customerId,
     user_id: userId,
     status: event.data.status || "active",
-    price_id: firstItem?.price?.id,
-    product_id: firstItem?.product?.id,
+    price_id: firstItem?.price?.id || "unknown",
+    product_id: firstItem?.product?.id || "unknown",
     scheduled_change_action: event.data.scheduled_change?.action,
     scheduled_change_at: event.data.scheduled_change?.effective_at,
-    current_period_end: event.data.current_billing_period?.ends_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    current_period_end:
+      event.data.current_billing_period?.ends_at ||
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
 
-  console.log("Upserting subscription:", JSON.stringify(subscriptionData));
-
-  const { error: subErr } = await supabase
+  const { error } = await supabase
     .from("subscriptions")
     .upsert(subscriptionData, { onConflict: "subscription_id" });
 
-  if (subErr) {
-    console.error("Subscription upsert error:", JSON.stringify(subErr));
+  if (error) {
+    console.error("Subscription upsert error:", error.message);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
-  console.log("Subscription upserted successfully");
   return NextResponse.json({ received: true });
 }
