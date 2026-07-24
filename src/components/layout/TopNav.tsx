@@ -46,11 +46,7 @@ export default function TopNav() {
               </Button>
             </Link>
 
-            <a
-              href="/cv-builder/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Link href="/cv-builder">
               <Button
                 variant="ghost"
                 className="text-white/80 hover:text-white hover:bg-white/10 rounded-full px-3 sm:px-4 text-sm transition-all"
@@ -62,7 +58,7 @@ export default function TopNav() {
                 </svg>
                 <span className="hidden sm:inline">CV-Builder Pro</span>
               </Button>
-            </a>
+            </Link>
 
             {/* Code IDE button – now links to /ide */}
             <Link href="/ide">
