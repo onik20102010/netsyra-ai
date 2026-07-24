@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams } from "next/navigation";
 import { initializePaddle } from "@paddle/paddle-js";
+import { createClient } from "@/lib/supabase/client";
 
 const STATIC_PRICE = { amount: 18, currency: "USD" };
 
@@ -51,6 +52,19 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [priceLoading, setPriceLoading] = useState(true);
   const [paddle, setPaddle] = useState<any>(null);
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => setIsPro(!!data));
+  }, [user]);
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
@@ -240,19 +254,15 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   ))}
                 </ul>
                 <button
-                  onClick={() => handleSubscribe(priceId)}
-                  disabled={subscribing}
+                  onClick={() => !isPro && handleSubscribe(priceId)}
+                  disabled={subscribing || isPro}
                   className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:opacity-50 ${
                     isPro
-                      ? 'bg-blue-600 text-white hover:bg-blue-500'
-                      : 'bg-white/10 text-white/50 hover:bg-white/15'
+                      ? 'bg-green-600/20 border border-green-500/30 text-green-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {subscribing ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <>Get Started <ArrowRight className="w-4 h-4" /></>
-                  )}
+                  {isPro ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </div>
             );

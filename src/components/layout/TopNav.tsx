@@ -5,11 +5,25 @@ import { Button } from "@/components/ui/button";
 import { LogOut, User, Sparkles, Code, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function TopNav() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => setIsPro(!!data));
+  }, [user]);
 
   return (
     <motion.nav
@@ -75,15 +89,22 @@ export default function TopNav() {
               </Button>
             </Link>
 
-            {/* Upgrade to Pro button */}
-            <Link href="/billing/subscription">
-              <Button
-                className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-full px-3 sm:px-4 text-sm transition-all flex items-center gap-1 sm:gap-2"
-              >
-                <CreditCard size={16} />
-                <span className="hidden sm:inline">Upgrade to Pro</span>
-              </Button>
-            </Link>
+            {/* Pro badge or Upgrade button */}
+            {isPro ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-sm font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                Pro
+              </div>
+            ) : (
+              <Link href="/billing/subscription">
+                <Button
+                  className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-full px-3 sm:px-4 text-sm transition-all flex items-center gap-1 sm:gap-2"
+                >
+                  <CreditCard size={16} />
+                  <span className="hidden sm:inline">Upgrade to Pro</span>
+                </Button>
+              </Link>
+            )}
 
             {/* Separator */}
             <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
