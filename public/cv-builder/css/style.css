@@ -2898,6 +2898,163 @@ label {
   font-weight: 500;
 }
 
+/* Microsoft Style Template */
+.cv-page.microsoft-style {
+  background: #ffffff;
+}
+.cv-page.microsoft-style .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.8in 0.9in 0.8in 0.9in;
+}
+.cv-page.microsoft-style .cv-sidebar {
+  display: none;
+}
+.cv-page.microsoft-style .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.microsoft-style .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #0078D4;
+}
+.cv-page.microsoft-style .cv-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #0078D4;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+  text-align: left;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.cv-page.microsoft-style .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4B5563;
+  margin-bottom: 16px;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.microsoft-style .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 11px;
+  color: #6B7280;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.microsoft-style .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.microsoft-style .cv-contact-item i {
+  color: #0078D4;
+  font-size: 10px;
+}
+.cv-page.microsoft-style .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.microsoft-style .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0078D4;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.microsoft-style .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.microsoft-style .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6B7280;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4B5563;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-entry-description {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.6;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.microsoft-style .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.microsoft-style .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.cv-page.microsoft-style .cv-skill-item {
+  font-size: 11px;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+  font-weight: 500;
+}
+.cv-page.microsoft-style .cv-sidebar-section {
+  display: none;
+}
+.cv-page.microsoft-style .cv-photo-section {
+  display: none;
+}
+.cv-page.microsoft-style .skill-bar {
+  display: none;
+}
+.cv-page.microsoft-style .cv-summary {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.7;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.microsoft-style .cv-language-item {
+  font-size: 11px;
+  color: #374151;
+  margin-bottom: 6px;
+  font-family: 'Aptos', 'Segoe UI', 'Calibri', 'Inter', 'Arial', sans-serif;
+}
+.cv-page.microsoft-style .cv-language-item strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
 /* Executive (bold top header, no sidebar) */
 .cv-page.executive .cv-inner {
   flex-direction: column;
