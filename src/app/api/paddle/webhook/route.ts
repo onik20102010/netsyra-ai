@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  let event: any;
+  let event;
   try {
     event = JSON.parse(rawBody);
   } catch {
@@ -53,8 +53,6 @@ export async function POST(req: NextRequest) {
 
   const eventType = event.event_type;
   const userId = event.data?.custom_data?.user_id;
-
-  // Ignore events without a user_id
   if (!userId) {
     return NextResponse.json({ received: true });
   }
@@ -64,60 +62,60 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  try {
-    // ── Process subscription events ─────────────
-    if (
-      eventType === "subscription.activated" ||
-      eventType === "subscription.updated" ||
-      eventType === "subscription.canceled"
-    ) {
-      const items = event.data?.items;
-      const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
+  // ── Handle all subscription & transaction events ──
+  const allowedEvents = [
+    "subscription.activated",
+    "subscription.updated",
+    "subscription.canceled",
+    "transaction.ready",
+    "transaction.completed",
+  ];
 
-      await supabase.from("subscriptions").upsert({
-        subscription_id: event.data.id,
-        customer_id: event.data.customer_id,
-        user_id: userId,
-        status: event.data.status,
-        price_id: firstItem?.price?.id,
-        product_id: firstItem?.product?.id,
-        scheduled_change_action: event.data.scheduled_change?.action,
-        scheduled_change_at: event.data.scheduled_change?.effective_at,
-        current_period_end: event.data.current_billing_period?.ends_at,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "subscription_id" });
+  if (!allowedEvents.includes(eventType)) {
+    return NextResponse.json({ received: true });
+  }
+
+  const items = event.data?.items;
+  const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
+  const customerId = event.data.customer_id || "pending";
+
+  // Ensure a customer record exists first (so foreign key doesn't fail)
+  if (customerId !== "pending") {
+    const { error: custErr } = await supabase.from("customers").upsert({
+      customer_id: customerId,
+      email: event.data.email || "unknown",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "customer_id" });
+    if (custErr) {
+      console.error("Customer upsert error:", JSON.stringify(custErr));
     }
+  }
 
-    // ── NEW: Process transaction events for instant activation ──
-    if (eventType === "transaction.ready" || eventType === "transaction.completed") {
-      const items = event.data?.items;
-      const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
+  // Now upsert subscription
+  const subscriptionData = {
+    subscription_id: event.data.subscription_id || event.data.id,
+    customer_id: customerId,
+    user_id: userId,
+    status: event.data.status || "active",
+    price_id: firstItem?.price?.id,
+    product_id: firstItem?.product?.id,
+    scheduled_change_action: event.data.scheduled_change?.action,
+    scheduled_change_at: event.data.scheduled_change?.effective_at,
+    current_period_end: event.data.current_billing_period?.ends_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 
-      // Create an "instant" subscription record using the transaction data
-      await supabase.from("subscriptions").upsert({
-        subscription_id: event.data.subscription_id || event.data.id, // fallback to transaction id
-        customer_id: event.data.customer_id || "pending",
-        user_id: userId,
-        status: "active",
-        price_id: firstItem?.price?.id,
-        product_id: firstItem?.product?.id,
-        current_period_end: event.data.billing_period?.ends_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "subscription_id" });
-    }
+  console.log("Upserting subscription:", JSON.stringify(subscriptionData));
 
-    // ── Process customer events ─────────────────
-    if (eventType === "customer.created" || eventType === "customer.updated") {
-      await supabase.from("customers").upsert({
-        customer_id: event.data.id,
-        email: event.data.email,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "customer_id" });
-    }
-  } catch (err) {
-    console.error("Webhook DB error:", err);
+  const { error: subErr } = await supabase
+    .from("subscriptions")
+    .upsert(subscriptionData, { onConflict: "subscription_id" });
+
+  if (subErr) {
+    console.error("Subscription upsert error:", JSON.stringify(subErr));
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
+  console.log("Subscription upserted successfully");
   return NextResponse.json({ received: true });
 }

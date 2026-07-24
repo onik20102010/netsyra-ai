@@ -1414,6 +1414,1333 @@ label {
   font-weight: 600;
 }
 
+/* Minimal Professional Template */
+.cv-page.minimal-professional {
+  background: #ffffff;
+}
+.cv-page.minimal-professional .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.75in 0.8in 0.75in 0.8in;
+}
+.cv-page.minimal-professional .cv-sidebar {
+  display: none;
+}
+.cv-page.minimal-professional .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.minimal-professional .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e5e5;
+}
+.cv-page.minimal-professional .cv-name {
+  font-size: 28px;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+  letter-spacing: -0.3px;
+}
+.cv-page.minimal-professional .cv-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 16px;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+}
+.cv-page.minimal-professional .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 12px;
+  color: #666666;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+}
+.cv-page.minimal-professional .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.minimal-professional .cv-contact-item i {
+  display: none;
+}
+.cv-page.minimal-professional .cv-section {
+  margin-bottom: 32px;
+}
+.cv-page.minimal-professional .cv-section-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.minimal-professional .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.cv-page.minimal-professional .cv-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-entry-date {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-entry-description {
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.6;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.minimal-professional .cv-entry-description li {
+  margin-bottom: 4px;
+  line-height: 1.6;
+}
+.cv-page.minimal-professional .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.minimal-professional .cv-skill-item {
+  font-size: 12px;
+  color: #666666;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  font-weight: 500;
+}
+.cv-page.minimal-professional .cv-skill-item::after {
+  content: "";
+  margin: 0;
+}
+.cv-page.minimal-professional .cv-sidebar-section {
+  display: none;
+}
+.cv-page.minimal-professional .cv-photo-section {
+  display: none;
+}
+.cv-page.minimal-professional .skill-bar {
+  display: none;
+}
+.cv-page.minimal-professional .cv-summary {
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.7;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  margin-bottom: 24px;
+}
+.cv-page.minimal-professional .cv-language-item {
+  font-size: 12px;
+  color: #666666;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.minimal-professional .cv-language-item strong {
+  color: #111111;
+  font-weight: 600;
+}
+
+/* Corporate Blue Template */
+.cv-page.corporate-blue {
+  background: #ffffff;
+}
+.cv-page.corporate-blue .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.75in 0.8in 0.75in 0.8in;
+}
+.cv-page.corporate-blue .cv-sidebar {
+  display: none;
+}
+.cv-page.corporate-blue .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.corporate-blue .cv-header {
+  text-align: left;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #2563EB;
+}
+.cv-page.corporate-blue .cv-name {
+  font-size: 30px;
+  font-weight: 700;
+  color: #2563EB;
+  margin-bottom: 8px;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+}
+.cv-page.corporate-blue .cv-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E3A8A;
+  margin-bottom: 12px;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+}
+.cv-page.corporate-blue .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  font-size: 11px;
+  color: #333333;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+  text-align: left;
+}
+.cv-page.corporate-blue .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.corporate-blue .cv-contact-item i {
+  color: #2563EB;
+  font-size: 10px;
+}
+.cv-page.corporate-blue .cv-section {
+  margin-bottom: 24px;
+}
+.cv-page.corporate-blue .cv-section-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563EB;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #2563EB;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-entry {
+  margin-bottom: 16px;
+}
+.cv-page.corporate-blue .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.cv-page.corporate-blue .cv-entry-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E3A8A;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-entry-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563EB;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-entry-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 6px;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-entry-description {
+  font-size: 11px;
+  color: #333333;
+  line-height: 1.5;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.corporate-blue .cv-entry-description li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+.cv-page.corporate-blue .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.corporate-blue .cv-skill-item {
+  font-size: 11px;
+  color: #333333;
+  background: transparent;
+  padding: 0;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+  font-weight: 500;
+}
+.cv-page.corporate-blue .cv-skill-item::after {
+  content: "";
+  margin: 0;
+}
+.cv-page.corporate-blue .cv-sidebar-section {
+  display: none;
+}
+.cv-page.corporate-blue .cv-photo-section {
+  display: none;
+}
+.cv-page.corporate-blue .skill-bar {
+  display: none;
+}
+.cv-page.corporate-blue .cv-summary {
+  font-size: 11px;
+  color: #333333;
+  line-height: 1.5;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+  margin-bottom: 16px;
+}
+.cv-page.corporate-blue .cv-language-item {
+  font-size: 11px;
+  color: #333333;
+  margin-bottom: 6px;
+  font-family: 'Calibri', 'Aptos', 'Inter', 'Arial', 'Helvetica', sans-serif;
+}
+.cv-page.corporate-blue .cv-language-item strong {
+  color: #1E3A8A;
+  font-weight: 600;
+}
+
+/* Executive Elite Template */
+.cv-page.executive-elite {
+  background: #ffffff;
+}
+.cv-page.executive-elite .cv-inner {
+  flex-direction: row;
+  background: #ffffff;
+  padding: 0.8in 0.8in 0.8in 0.8in;
+}
+.cv-page.executive-elite .cv-sidebar {
+  width: 28%;
+  background: #ffffff;
+  padding: 2em 1.5em;
+  border-right: 1px solid #e5e5e5;
+}
+.cv-page.executive-elite .cv-main {
+  width: 72%;
+  padding: 2em 2.5em;
+  background: #ffffff;
+}
+.cv-page.executive-elite .cv-header {
+  text-align: left;
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #0F172A;
+}
+.cv-page.executive-elite .cv-name {
+  font-size: 38px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 10px;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+  text-align: left;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.cv-page.executive-elite .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2B2B2B;
+  margin-bottom: 20px;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+.cv-page.executive-elite .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 11px;
+  color: #2B2B2B;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+  text-align: left;
+}
+.cv-page.executive-elite .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.executive-elite .cv-contact-item i {
+  color: #0F172A;
+  font-size: 10px;
+}
+.cv-page.executive-elite .cv-section {
+  margin-bottom: 32px;
+}
+.cv-page.executive-elite .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e5e5;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-entry {
+  margin-bottom: 24px;
+}
+.cv-page.executive-elite .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.executive-elite .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-entry-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2B2B2B;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2B2B2B;
+  margin-bottom: 10px;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-entry-description {
+  font-size: 11px;
+  color: #2B2B2B;
+  line-height: 1.7;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.executive-elite .cv-entry-description li {
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+.cv-page.executive-elite .cv-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cv-page.executive-elite .cv-skill-item {
+  font-size: 11px;
+  color: #2B2B2B;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+  font-weight: 500;
+}
+.cv-page.executive-elite .cv-sidebar-section {
+  margin-bottom: 28px;
+}
+.cv-page.executive-elite .cv-sidebar-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0F172A;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e5e5;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-photo-section {
+  display: none;
+}
+.cv-page.executive-elite .skill-bar {
+  display: none;
+}
+.cv-page.executive-elite .cv-summary {
+  font-size: 11px;
+  color: #2B2B2B;
+  line-height: 1.8;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+  margin-bottom: 24px;
+}
+.cv-page.executive-elite .cv-language-item {
+  font-size: 11px;
+  color: #2B2B2B;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Aptos', 'Helvetica Neue', 'Avenir', 'Source Sans Pro', 'IBM Plex Sans', sans-serif;
+}
+.cv-page.executive-elite .cv-language-item strong {
+  color: #0F172A;
+  font-weight: 600;
+}
+
+/* Tech Modern Template */
+.cv-page.tech-modern {
+  background: #ffffff;
+}
+.cv-page.tech-modern .cv-inner {
+  flex-direction: row;
+  background: #ffffff;
+  padding: 0.75in 0.75in 0.75in 0.75in;
+}
+.cv-page.tech-modern .cv-sidebar {
+  width: 32%;
+  background: #ffffff;
+  padding: 2em 1.5em;
+  border-right: 1px solid #f1f5f9;
+}
+.cv-page.tech-modern .cv-main {
+  width: 68%;
+  padding: 2em 2.5em;
+  background: #ffffff;
+}
+.cv-page.tech-modern .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #2563EB;
+}
+.cv-page.tech-modern .cv-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+  text-align: left;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.cv-page.tech-modern .cv-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #4F46E5;
+  margin-bottom: 16px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.tech-modern .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.tech-modern .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.tech-modern .cv-contact-item i {
+  color: #2563EB;
+  font-size: 10px;
+}
+.cv-page.tech-modern .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.tech-modern .cv-section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.tech-modern .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.tech-modern .cv-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4F46E5;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-entry-description {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.6;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.tech-modern .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.tech-modern .cv-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cv-page.tech-modern .cv-skill-item {
+  font-size: 11px;
+  color: #475569;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+  font-weight: 500;
+}
+.cv-page.tech-modern .cv-sidebar-section {
+  margin-bottom: 24px;
+}
+.cv-page.tech-modern .cv-sidebar-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-photo-section {
+  display: none;
+}
+.cv-page.tech-modern .skill-bar {
+  display: none;
+}
+.cv-page.tech-modern .cv-summary {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.7;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.tech-modern .cv-language-item {
+  font-size: 11px;
+  color: #475569;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Helvetica', 'Roboto', 'Source Sans Pro', sans-serif;
+}
+.cv-page.tech-modern .cv-language-item strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Software Engineer Pro Template */
+.cv-page.software-engineer-pro {
+  background: #ffffff;
+}
+.cv-page.software-engineer-pro .cv-inner {
+  flex-direction: row;
+  background: #ffffff;
+  padding: 0.75in 0.75in 0.75in 0.75in;
+}
+.cv-page.software-engineer-pro .cv-sidebar {
+  width: 30%;
+  background: #ffffff;
+  padding: 2em 1.5em;
+  border-right: 1px solid #e2e8f0;
+}
+.cv-page.software-engineer-pro .cv-main {
+  width: 70%;
+  padding: 2em 2.5em;
+  background: #ffffff;
+}
+.cv-page.software-engineer-pro .cv-header {
+  text-align: left;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #4338CA;
+}
+.cv-page.software-engineer-pro .cv-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+  text-align: left;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.cv-page.software-engineer-pro .cv-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #4338CA;
+  margin-bottom: 14px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.software-engineer-pro .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 10px;
+  color: #64748b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.software-engineer-pro .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cv-page.software-engineer-pro .cv-contact-item i {
+  color: #4338CA;
+  font-size: 9px;
+}
+.cv-page.software-engineer-pro .cv-section {
+  margin-bottom: 24px;
+}
+.cv-page.software-engineer-pro .cv-section-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-entry {
+  margin-bottom: 18px;
+}
+.cv-page.software-engineer-pro .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.cv-page.software-engineer-pro .cv-entry-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-entry-date {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-entry-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4338CA;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-entry-description {
+  font-size: 10px;
+  color: #475569;
+  line-height: 1.5;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-entry-description ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+.cv-page.software-engineer-pro .cv-entry-description li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+.cv-page.software-engineer-pro .cv-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cv-page.software-engineer-pro .cv-skill-item {
+  font-size: 10px;
+  color: #475569;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+  font-weight: 500;
+}
+.cv-page.software-engineer-pro .cv-sidebar-section {
+  margin-bottom: 20px;
+}
+.cv-page.software-engineer-pro .cv-sidebar-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-photo-section {
+  display: none;
+}
+.cv-page.software-engineer-pro .skill-bar {
+  display: none;
+}
+.cv-page.software-engineer-pro .cv-summary {
+  font-size: 10px;
+  color: #475569;
+  line-height: 1.6;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+  margin-bottom: 18px;
+}
+.cv-page.software-engineer-pro .cv-language-item {
+  font-size: 10px;
+  color: #475569;
+  margin-bottom: 5px;
+  font-family: 'Inter', 'IBM Plex Sans', 'Aptos', 'Roboto', 'Helvetica', 'Source Sans Pro', sans-serif;
+}
+.cv-page.software-engineer-pro .cv-language-item strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Creative Designer Template */
+.cv-page.creative-designer {
+  background: #ffffff;
+}
+.cv-page.creative-designer .cv-inner {
+  flex-direction: row;
+  background: #ffffff;
+  padding: 0.75in 0.75in 0.75in 0.75in;
+}
+.cv-page.creative-designer .cv-sidebar {
+  width: 32%;
+  background: #fafafa;
+  padding: 2em 1.8em;
+  border-right: 1px solid #f0f0f0;
+}
+.cv-page.creative-designer .cv-main {
+  width: 68%;
+  padding: 2em 2.5em;
+  background: #ffffff;
+}
+.cv-page.creative-designer .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #7C3AED;
+}
+.cv-page.creative-designer .cv-name {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.cv-page.creative-designer .cv-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #7C3AED;
+  margin-bottom: 16px;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: 0.5px;
+}
+.cv-page.creative-designer .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #666666;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.creative-designer .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.creative-designer .cv-contact-item i {
+  color: #7C3AED;
+  font-size: 10px;
+}
+.cv-page.creative-designer .cv-section {
+  margin-bottom: 30px;
+}
+.cv-page.creative-designer .cv-section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #7C3AED;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #7C3AED;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-entry {
+  margin-bottom: 22px;
+}
+.cv-page.creative-designer .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.creative-designer .cv-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #7C3AED;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 8px;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-entry-description {
+  font-size: 11px;
+  color: #555555;
+  line-height: 1.7;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.creative-designer .cv-entry-description li {
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+.cv-page.creative-designer .cv-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cv-page.creative-designer .cv-skill-item {
+  font-size: 11px;
+  color: #555555;
+  background: transparent;
+  padding: 0;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+  font-weight: 500;
+}
+.cv-page.creative-designer .cv-sidebar-section {
+  margin-bottom: 24px;
+}
+.cv-page.creative-designer .cv-sidebar-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e0e0;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-photo-section {
+  display: none;
+}
+.cv-page.creative-designer .skill-bar {
+  display: none;
+}
+.cv-page.creative-designer .cv-summary {
+  font-size: 11px;
+  color: #555555;
+  line-height: 1.8;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.creative-designer .cv-language-item {
+  font-size: 11px;
+  color: #555555;
+  margin-bottom: 6px;
+  font-family: 'Poppins', 'Inter', 'Manrope', 'DM Sans', 'Plus Jakarta Sans', 'Avenir', 'SF Pro', sans-serif;
+}
+.cv-page.creative-designer .cv-language-item strong {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+/* Portfolio Showcase Template */
+.cv-page.portfolio-showcase {
+  background: #ffffff;
+}
+.cv-page.portfolio-showcase .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.75in 0.8in 0.75in 0.8in;
+}
+.cv-page.portfolio-showcase .cv-sidebar {
+  display: none;
+}
+.cv-page.portfolio-showcase .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.portfolio-showcase .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #4F46E5;
+}
+.cv-page.portfolio-showcase .cv-name {
+  font-size: 38px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.cv-page.portfolio-showcase .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4F46E5;
+  margin-bottom: 16px;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+.cv-page.portfolio-showcase .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.portfolio-showcase .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.portfolio-showcase .cv-contact-item i {
+  color: #4F46E5;
+  font-size: 10px;
+}
+.cv-page.portfolio-showcase .cv-section {
+  margin-bottom: 32px;
+}
+.cv-page.portfolio-showcase .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #4F46E5;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.portfolio-showcase .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.portfolio-showcase .cv-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4F46E5;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-entry-description {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.6;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.portfolio-showcase .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.portfolio-showcase .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.portfolio-showcase .cv-skill-item {
+  font-size: 11px;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+  font-weight: 500;
+}
+.cv-page.portfolio-showcase .cv-sidebar-section {
+  display: none;
+}
+.cv-page.portfolio-showcase .cv-photo-section {
+  display: none;
+}
+.cv-page.portfolio-showcase .skill-bar {
+  display: none;
+}
+.cv-page.portfolio-showcase .cv-summary {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.7;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.portfolio-showcase .cv-language-item {
+  font-size: 11px;
+  color: #475569;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'IBM Plex Sans', 'SF Pro', sans-serif;
+}
+.cv-page.portfolio-showcase .cv-language-item strong {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+/* Startup Innovator Template */
+.cv-page.startup-innovator {
+  background: #ffffff;
+}
+.cv-page.startup-innovator .cv-inner {
+  flex-direction: row;
+  background: #ffffff;
+  padding: 0.75in 0.75in 0.75in 0.75in;
+}
+.cv-page.startup-innovator .cv-sidebar {
+  width: 32%;
+  background: #ffffff;
+  padding: 2em 1.5em;
+  border-right: 1px solid #f1f5f9;
+}
+.cv-page.startup-innovator .cv-main {
+  width: 68%;
+  padding: 2em 2.5em;
+  background: #ffffff;
+}
+.cv-page.startup-innovator .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #6366F1;
+}
+.cv-page.startup-innovator .cv-name {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.cv-page.startup-innovator .cv-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #6366F1;
+  margin-bottom: 16px;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+.cv-page.startup-innovator .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+  text-align: left;
+}
+.cv-page.startup-innovator .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.startup-innovator .cv-contact-item i {
+  color: #6366F1;
+  font-size: 10px;
+}
+.cv-page.startup-innovator .cv-section {
+  margin-bottom: 30px;
+}
+.cv-page.startup-innovator .cv-section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #6366F1;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #6366F1;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.startup-innovator .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.startup-innovator .cv-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6366F1;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-entry-description {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.6;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.startup-innovator .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.startup-innovator .cv-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cv-page.startup-innovator .cv-skill-item {
+  font-size: 11px;
+  color: #475569;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+  font-weight: 500;
+}
+.cv-page.startup-innovator .cv-sidebar-section {
+  margin-bottom: 24px;
+}
+.cv-page.startup-innovator .cv-sidebar-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-photo-section {
+  display: none;
+}
+.cv-page.startup-innovator .skill-bar {
+  display: none;
+}
+.cv-page.startup-innovator .cv-summary {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.7;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.startup-innovator .cv-language-item {
+  font-size: 11px;
+  color: #475569;
+  margin-bottom: 6px;
+  font-family: 'Inter', 'Manrope', 'Plus Jakarta Sans', 'IBM Plex Sans', 'DM Sans', 'Space Grotesk', 'SF Pro', sans-serif;
+}
+.cv-page.startup-innovator .cv-language-item strong {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
 /* Executive (bold top header, no sidebar) */
 .cv-page.executive .cv-inner {
   flex-direction: column;
