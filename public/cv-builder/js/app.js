@@ -1016,8 +1016,14 @@ function setTemplate(templateId) {
   userData.settings.template = templateId;
   saveToStorage();
   updatePreview();
-  
-  // Update active button state
+
+  // Update dropdown selected value
+  const templateSelect = document.getElementById('templateSelect');
+  if (templateSelect) {
+    templateSelect.value = templateId;
+  }
+
+  // Update active button state (for backward compatibility)
   document.querySelectorAll('.template-switcher .btn').forEach(btn => {
     btn.classList.remove('active');
     if (btn.dataset.template === templateId) btn.classList.add('active');
@@ -1207,6 +1213,12 @@ function initApp() {
   applyThemeToUI();
   bindDesignPanelEvents();
   loadSectionConfig();
+
+  // Set template dropdown value
+  const templateSelect = document.getElementById('templateSelect');
+  if (templateSelect && userData.settings.template) {
+    templateSelect.value = userData.settings.template;
+  }
 
   // Sync personal info form with data
   document.getElementById('fullName').value = userData.personalInfo.fullName || '';

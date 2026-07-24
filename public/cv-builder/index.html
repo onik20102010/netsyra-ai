@@ -46,38 +46,20 @@
         <div class="top-bar" id="topBar">
             <span class="logo"><i class="fas fa-star"></i> CV Builder Pro</span>
 
-            <!-- Template Switcher (10 professionally designed templates) -->
-            <div class="template-switcher">
-                <button class="btn btn-sm btn-accent-outline active" data-template="classic" onclick="setTemplate('classic')" title="Traditional layout with sidebar">
-                    <i class="fas fa-file-alt"></i> Classic
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="modern" onclick="setTemplate('modern')" title="Modern dark sidebar">
-                    <i class="fas fa-bold"></i> Modern
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="creative" onclick="setTemplate('creative')" title="Bold headers">
-                    <i class="fas fa-paint-brush"></i> Creative
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="ats-classic" onclick="setTemplate('ats-classic')" title="Safe for applicant tracking systems (ATS)">
-                    <i class="fas fa-robot"></i> ATS Classic
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="executive" onclick="setTemplate('executive')" title="Bold top header, no sidebar">
-                    <i class="fas fa-crown"></i> Executive
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="minimal" onclick="setTemplate('minimal')" title="Clean single column">
-                    <i class="fas fa-minus"></i> Minimal
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="tech" onclick="setTemplate('tech')" title="Monospace & code-friendly">
-                    <i class="fas fa-laptop-code"></i> Tech
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="academic" onclick="setTemplate('academic')" title="Serif fonts, traditional academic style">
-                    <i class="fas fa-university"></i> Academic
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="infographic" onclick="setTemplate('infographic')" title="Visual, metric-heavy layout">
-                    <i class="fas fa-chart-pie"></i> Infographic
-                </button>
-                <button class="btn btn-sm btn-accent-outline" data-template="creative2" onclick="setTemplate('creative2')" title="Reverse layout with light sidebar">
-                    <i class="fas fa-exchange-alt"></i> Creative 2
-                </button>
+            <!-- Template Dropdown -->
+            <div class="template-dropdown">
+                <select id="templateSelect" onchange="setTemplate(this.value)">
+                    <option value="classic">Classic</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="ats-classic">ATS Classic</option>
+                    <option value="executive">Executive</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="tech">Tech</option>
+                    <option value="academic">Academic</option>
+                    <option value="infographic">Infographic</option>
+                    <option value="creative2">Creative 2</option>
+                </select>
             </div>
 
             <!-- Searchable Industry Preset -->

@@ -815,6 +815,28 @@ label {
   .template-switcher {
     justify-content: center;
   }
+  .template-dropdown {
+    display: flex;
+    align-items: center;
+  }
+  .template-dropdown select {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .template-dropdown select:hover {
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .template-dropdown select:focus {
+    border-color: var(--accent-main);
+  }
   /* Section nav: still horizontal but better for touch */
   .section-nav {
     padding: 0.8rem 1rem;
@@ -1246,6 +1268,35 @@ label {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+/* Template dropdown */
+.template-dropdown {
+  display: flex;
+  align-items: center;
+}
+.template-dropdown select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 0.4rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+.template-dropdown select:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.template-dropdown select:focus {
+  border-color: var(--accent-main);
+}
+.template-dropdown select option {
+  background: var(--bg-dark);
+  color: var(--text-primary);
 }
 
 /* Subtle card hover lift on dynamic entries */

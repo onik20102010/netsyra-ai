@@ -34,24 +34,33 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("paddle-signature") || "";
 
+  console.log("=== WEBHOOK RECEIVED ===");
+  console.log("Signature header:", signature);
+  console.log("Raw body (first 200 chars):", rawBody.substring(0, 200));
+
   const secret = process.env.PADDLE_WEBHOOK_SECRET;
+  console.log("Secret exists:", !!secret, "Secret length:", secret?.length);
+
   if (!secret) {
-    console.error("PADDLE_WEBHOOK_SECRET is missing");
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  // Verify signature
+  // Signature verification
   if (!verifyPaddleSignature(rawBody, signature, secret)) {
+    console.error("=== SIGNATURE VERIFICATION FAILED ===");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  let event: any;
+  let event;
   try {
     event = JSON.parse(rawBody);
   } catch (err) {
-    console.error("Failed to parse webhook JSON:", err);
+    console.error("Failed to parse JSON:", err);
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  console.log("Event type:", event.event_type);
+  console.log("User ID from custom_data:", event.data?.custom_data?.user_id);
 
   // Only process subscription & customer events
   const eventType = event.event_type;
