@@ -837,6 +837,19 @@ function updatePreview() {
   const cvInner = document.getElementById('cvInner');
   const pi = userData.personalInfo;
   const accent = userTheme.accent;
+  const template = userData.settings.template || 'classic';
+
+  // ATS Professional template has special rendering
+  if (template === 'ats-professional') {
+    renderATSProfessional();
+    return;
+  }
+
+  // Modern Executive template has special rendering
+  if (template === 'modern-executive') {
+    renderModernExecutive();
+    return;
+  }
 
   // Determine sidebar visibility & width
   const sidebarHidden = userTheme.sidebarPos === 'none';
@@ -958,13 +971,345 @@ function updatePreview() {
   cvPage.style.padding = userTheme.pageMargin + 'px';
 
   // Template class
-  cvPage.className = 'cv-page ' + (userData.settings.template || 'classic');
+  cvPage.className = 'cv-page ' + template;
 
   // Make preview editable
   makePreviewEditable();
+}
 
-  // History push (debounced)
-  debouncedPushHistory();
+// ATS Professional Template Renderer
+function renderATSProfessional() {
+  const cvInner = document.getElementById('cvInner');
+  const cvPage = document.getElementById('cvPage');
+  const pi = userData.personalInfo;
+
+  // Build ATS Professional HTML structure
+  let html = `
+    <div class="cv-header">
+      <h1 class="cv-name">${escapeHTML(pi.fullName || 'Your Name')}</h1>
+      <div class="cv-title">${escapeHTML(pi.jobTitle || 'Job Title')}</div>
+      <div class="cv-contact-details">
+        ${pi.location ? `<div class="cv-contact-item">${escapeHTML(pi.location)}</div>` : ''}
+        ${pi.phone ? `<div class="cv-contact-item">${escapeHTML(pi.phone)}</div>` : ''}
+        ${pi.email ? `<div class="cv-contact-item">${escapeHTML(pi.email)}</div>` : ''}
+        ${pi.website ? `<div class="cv-contact-item">${escapeHTML(pi.website)}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  // Professional Summary
+  if (pi.summary) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">PROFESSIONAL SUMMARY</h2>
+        <div class="cv-summary">${escapeHTML(pi.summary)}</div>
+      </div>
+    `;
+  }
+
+  // Work Experience
+  if (userData.experience.length > 0) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">WORK EXPERIENCE</h2>
+        ${userData.experience.map(e => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(e.company || 'Company')}</div>
+              <div class="cv-entry-date">${escapeHTML(e.startDate || 'Start')} – ${escapeHTML(e.endDate || 'Present')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(e.jobTitle || 'Job Title')}</div>
+            ${e.description ? `
+              <div class="cv-entry-description">
+                <ul>
+                  ${e.description.split('\n').filter(line => line.trim()).map(line => `<li>${escapeHTML(line)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Education
+  if (userData.education.length > 0) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">EDUCATION</h2>
+        ${userData.education.map(e => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(e.institution || 'Institution')}</div>
+              <div class="cv-entry-date">${escapeHTML(e.year || 'Year')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(e.degree || 'Degree')} ${e.grade ? '– ' + escapeHTML(e.grade) : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Skills
+  if (userData.skills.length > 0) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">SKILLS</h2>
+        <div class="cv-skills-list">
+          ${userData.skills.map(s => `<span class="cv-skill-item">${escapeHTML(s.name || 'Skill')}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Projects
+  if (userData.projects.length > 0) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">PROJECTS</h2>
+        ${userData.projects.map(p => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(p.name || 'Project')}</div>
+              <div class="cv-entry-date">${escapeHTML(p.year || 'Year')}</div>
+            </div>
+            ${p.role ? `<div class="cv-entry-subtitle">${escapeHTML(p.role)}</div>` : ''}
+            ${p.description ? `
+              <div class="cv-entry-description">
+                <ul>
+                  ${p.description.split('\n').filter(line => line.trim()).map(line => `<li>${escapeHTML(line)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Certifications
+  if (userData.certifications.length > 0) {
+    html += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">CERTIFICATIONS</h2>
+        ${userData.certifications.map(c => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(c.name || 'Certification')}</div>
+              <div class="cv-entry-date">${escapeHTML(c.year || 'Year')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(c.issuer || 'Issuer')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  cvInner.innerHTML = html;
+  cvInner.style.flexDirection = 'column';
+
+  // Page size
+  if (userTheme.pageSize === 'letter') {
+    cvPage.style.width = '216mm';
+    cvPage.style.minHeight = '279mm';
+  } else {
+    cvPage.style.width = '210mm';
+    cvPage.style.minHeight = '297mm';
+  }
+  cvPage.style.padding = '0';
+
+  // Template class
+  cvPage.className = 'cv-page ats-professional';
+
+  // Make preview editable
+  makePreviewEditable();
+}
+
+// Modern Executive Template Renderer
+function renderModernExecutive() {
+  const cvInner = document.getElementById('cvInner');
+  const cvPage = document.getElementById('cvPage');
+  const pi = userData.personalInfo;
+
+  // Build sidebar HTML
+  let sidebarHTML = `
+    <div class="cv-sidebar">
+      <div class="cv-sidebar-section">
+        <h3 class="cv-sidebar-heading">CONTACT</h3>
+        <div class="cv-contact-details">
+          ${pi.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i>${escapeHTML(pi.email)}</div>` : ''}
+          ${pi.phone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i>${escapeHTML(pi.phone)}</div>` : ''}
+          ${pi.location ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i>${escapeHTML(pi.location)}</div>` : ''}
+          ${pi.website ? `<div class="cv-contact-item"><i class="fas fa-link"></i>${escapeHTML(pi.website)}</div>` : ''}
+        </div>
+      </div>
+  `;
+
+  // Skills in sidebar
+  if (userData.skills.length > 0) {
+    sidebarHTML += `
+      <div class="cv-sidebar-section">
+        <h3 class="cv-sidebar-heading">SKILLS</h3>
+        <div class="cv-skills-list">
+          ${userData.skills.map(s => `<div class="cv-skill-item">${escapeHTML(s.name || 'Skill')}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Languages in sidebar
+  if (userData.languages.length > 0) {
+    sidebarHTML += `
+      <div class="cv-sidebar-section">
+        <h3 class="cv-sidebar-heading">LANGUAGES</h3>
+        ${userData.languages.map(l => `<div class="cv-language-item"><strong>${escapeHTML(l.name || 'Language')}</strong> – ${escapeHTML(l.proficiency || 'Proficiency')}</div>`).join('')}
+      </div>
+    `;
+  }
+
+  // Certifications in sidebar
+  if (userData.certifications.length > 0) {
+    sidebarHTML += `
+      <div class="cv-sidebar-section">
+        <h3 class="cv-sidebar-heading">CERTIFICATIONS</h3>
+        ${userData.certifications.map(c => `<div class="cv-skill-item">${escapeHTML(c.name || 'Certification')} ${c.year ? '(' + escapeHTML(c.year) + ')' : ''}</div>`).join('')}
+      </div>
+    `;
+  }
+
+  sidebarHTML += `</div>`;
+
+  // Build main content HTML
+  let mainHTML = `
+    <div class="cv-main">
+      <div class="cv-header">
+        <h1 class="cv-name">${escapeHTML(pi.fullName || 'Your Name')}</h1>
+        <div class="cv-title">${escapeHTML(pi.jobTitle || 'Job Title')}</div>
+        <div class="cv-contact-details">
+          ${pi.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i>${escapeHTML(pi.email)}</div>` : ''}
+          ${pi.phone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i>${escapeHTML(pi.phone)}</div>` : ''}
+          ${pi.website ? `<div class="cv-contact-item"><i class="fas fa-link"></i>${escapeHTML(pi.website)}</div>` : ''}
+          ${pi.location ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i>${escapeHTML(pi.location)}</div>` : ''}
+        </div>
+      </div>
+  `;
+
+  // Professional Summary
+  if (pi.summary) {
+    mainHTML += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">EXECUTIVE SUMMARY</h2>
+        <div class="cv-summary">${escapeHTML(pi.summary)}</div>
+      </div>
+    `;
+  }
+
+  // Work Experience
+  if (userData.experience.length > 0) {
+    mainHTML += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">PROFESSIONAL EXPERIENCE</h2>
+        ${userData.experience.map(e => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(e.company || 'Company')}</div>
+              <div class="cv-entry-date">${escapeHTML(e.startDate || 'Start')} – ${escapeHTML(e.endDate || 'Present')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(e.jobTitle || 'Job Title')}</div>
+            ${e.description ? `
+              <div class="cv-entry-description">
+                <ul>
+                  ${e.description.split('\n').filter(line => line.trim()).map(line => `<li>${escapeHTML(line)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Education
+  if (userData.education.length > 0) {
+    mainHTML += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">EDUCATION</h2>
+        ${userData.education.map(e => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(e.institution || 'Institution')}</div>
+              <div class="cv-entry-date">${escapeHTML(e.year || 'Year')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(e.degree || 'Degree')} ${e.grade ? '– ' + escapeHTML(e.grade) : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Projects
+  if (userData.projects.length > 0) {
+    mainHTML += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">KEY PROJECTS</h2>
+        ${userData.projects.map(p => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(p.name || 'Project')}</div>
+              <div class="cv-entry-date">${escapeHTML(p.year || 'Year')}</div>
+            </div>
+            ${p.role ? `<div class="cv-entry-subtitle">${escapeHTML(p.role)}</div>` : ''}
+            ${p.description ? `
+              <div class="cv-entry-description">
+                <ul>
+                  ${p.description.split('\n').filter(line => line.trim()).map(line => `<li>${escapeHTML(line)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Awards
+  if (userData.awards.length > 0) {
+    mainHTML += `
+      <div class="cv-section">
+        <h2 class="cv-section-heading">AWARDS & RECOGNITION</h2>
+        ${userData.awards.map(a => `
+          <div class="cv-entry">
+            <div class="cv-entry-header">
+              <div class="cv-entry-title">${escapeHTML(a.title || 'Award')}</div>
+              <div class="cv-entry-date">${escapeHTML(a.year || 'Year')}</div>
+            </div>
+            <div class="cv-entry-subtitle">${escapeHTML(a.issuer || 'Issuer')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  mainHTML += `</div>`;
+
+  cvInner.innerHTML = sidebarHTML + mainHTML;
+  cvInner.style.flexDirection = 'row';
+
+  // Page size
+  if (userTheme.pageSize === 'letter') {
+    cvPage.style.width = '216mm';
+    cvPage.style.minHeight = '279mm';
+  } else {
+    cvPage.style.width = '210mm';
+    cvPage.style.minHeight = '297mm';
+  }
+  cvPage.style.padding = '0';
+
+  // Template class
+  cvPage.className = 'cv-page modern-executive';
+
+  // Make preview editable
+  makePreviewEditable();
 }
 
 function makePreviewEditable() {
