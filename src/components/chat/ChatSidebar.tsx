@@ -58,6 +58,7 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
+  const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
   const supabase = createClient();
 
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -84,6 +85,20 @@ export default function ChatSidebar({
       .then(({ data }) => {
         setIsPro(!!data);
       });
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchWebSearchUsage = async () => {
+      const { data } = await supabase
+        .rpc('get_or_reset_web_search_usage', { p_user_id: user.id });
+      if (data && data[0]) {
+        const dailyLimit = data[0].daily_limit || 5;
+        const currentCount = data[0].search_count || 0;
+        setWebSearchRemaining(dailyLimit - currentCount);
+      }
+    };
+    fetchWebSearchUsage();
   }, [user, supabase]);
 
   useEffect(() => {
@@ -353,6 +368,13 @@ export default function ChatSidebar({
                           {isPro ? 'NI Pro' : 'Free'}
                         </p>
                       </div>
+                      {webSearchRemaining !== null && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-gray-400">
+                            {webSearchRemaining} web searches left today
+                          </span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />

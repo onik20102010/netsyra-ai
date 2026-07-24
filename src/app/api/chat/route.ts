@@ -564,6 +564,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Check web search usage before allowing web search ──
+    const { data: webSearchUsage } = await supabase
+      .rpc('get_or_reset_web_search_usage', { p_user_id: user.id });
+
+    const dailyLimit = webSearchUsage?.[0]?.daily_limit || 5;
+    const currentSearchCount = webSearchUsage?.[0]?.search_count || 0;
+    const remainingSearches = dailyLimit - currentSearchCount;
+
     // ── Fetch user profile (used by both branches) ──
     const { data: profile } = await supabase
       .from("profiles")
@@ -804,6 +812,14 @@ export async function POST(req: NextRequest) {
             console.log(`✅ API data obtained for non-Pro widget query (${liveData.length} chars)`);
           } else {
             // Universal web search – multi‑query or single (for all tiers)
+            // Check web search limit before performing search
+            if (remainingSearches <= 0) {
+              return NextResponse.json(
+                { error: `Daily web search limit reached (${dailyLimit} searches/day). Please upgrade to Pro for ${isPaidUser ? 'more' : 'unlimited'} searches or wait 24 hours for reset.` },
+                { status: 429 }
+              );
+            }
+
             if (queries.length > 1) {
               console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
               liveData = await performMultiDeepSearch(queries);
@@ -811,6 +827,15 @@ export async function POST(req: NextRequest) {
               const cleanQ = queries[0] || userMessage;
               liveData = await performDeepSearch(cleanQ);
             }
+
+            // Increment web search usage after successful search
+            const { data: incrementResult } = await supabase
+              .rpc('increment_web_search_usage', { p_user_id: user.id });
+
+            if (incrementResult === -1) {
+              console.warn("Web search limit reached during increment");
+            }
+
             if (!liveData) {
               liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
             }
