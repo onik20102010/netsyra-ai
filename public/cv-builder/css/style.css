@@ -3367,6 +3367,474 @@ label {
   font-weight: 600;
 }
 
+/* Medical Professional Template */
+.cv-page.medical-professional {
+  background: #ffffff;
+}
+.cv-page.medical-professional .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.8in 0.9in 0.8in 0.9in;
+}
+.cv-page.medical-professional .cv-sidebar {
+  display: none;
+}
+.cv-page.medical-professional .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.medical-professional .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #2563EB;
+}
+.cv-page.medical-professional .cv-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+  text-align: left;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.cv-page.medical-professional .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2563EB;
+  margin-bottom: 16px;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.medical-professional .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #475569;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.medical-professional .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.medical-professional .cv-contact-item i {
+  color: #2563EB;
+  font-size: 10px;
+}
+.cv-page.medical-professional .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.medical-professional .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2563EB;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.medical-professional .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.medical-professional .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563EB;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-entry-description {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.6;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.medical-professional .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.medical-professional .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.medical-professional .cv-skill-item {
+  font-size: 11px;
+  color: #374151;
+  background: transparent;
+  padding: 0;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+  font-weight: 500;
+}
+.cv-page.medical-professional .cv-sidebar-section {
+  display: none;
+}
+.cv-page.medical-professional .cv-photo-section {
+  display: none;
+}
+.cv-page.medical-professional .skill-bar {
+  display: none;
+}
+.cv-page.medical-professional .cv-summary {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.7;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.medical-professional .cv-language-item {
+  font-size: 11px;
+  color: #374151;
+  margin-bottom: 6px;
+  font-family: 'Aptos', 'Calibri', 'Cambria', 'Garamond', 'Helvetica', 'Arial', sans-serif;
+}
+.cv-page.medical-professional .cv-language-item strong {
+  color: #111111;
+  font-weight: 600;
+}
+
+/* Healthcare Specialist Template */
+.cv-page.healthcare-specialist {
+  background: #ffffff;
+}
+.cv-page.healthcare-specialist .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.8in 0.9in 0.8in 0.9in;
+}
+.cv-page.healthcare-specialist .cv-sidebar {
+  display: none;
+}
+.cv-page.healthcare-specialist .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.healthcare-specialist .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #16A34A;
+}
+.cv-page.healthcare-specialist .cv-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+  text-align: left;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.cv-page.healthcare-specialist .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #16A34A;
+  margin-bottom: 16px;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.healthcare-specialist .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #475569;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+  text-align: left;
+}
+.cv-page.healthcare-specialist .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.healthcare-specialist .cv-contact-item i {
+  color: #16A34A;
+  font-size: 10px;
+}
+.cv-page.healthcare-specialist .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.healthcare-specialist .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #16A34A;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.healthcare-specialist .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.healthcare-specialist .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #16A34A;
+  margin-bottom: 8px;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-entry-description {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.6;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.healthcare-specialist .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.healthcare-specialist .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.healthcare-specialist .cv-skill-item {
+  font-size: 11px;
+  color: #374151;
+  background: transparent;
+  padding: 0;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+  font-weight: 500;
+}
+.cv-page.healthcare-specialist .cv-sidebar-section {
+  display: none;
+}
+.cv-page.healthcare-specialist .cv-photo-section {
+  display: none;
+}
+.cv-page.healthcare-specialist .skill-bar {
+  display: none;
+}
+.cv-page.healthcare-specialist .cv-summary {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.7;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+  margin-bottom: 20px;
+}
+.cv-page.healthcare-specialist .cv-language-item {
+  font-size: 11px;
+  color: #374151;
+  margin-bottom: 6px;
+  font-family: 'Aptos', 'Calibri', 'Inter', 'Helvetica', 'Source Sans Pro', 'Arial', sans-serif;
+}
+.cv-page.healthcare-specialist .cv-language-item strong {
+  color: #111111;
+  font-weight: 600;
+}
+
+/* Legal Professional Template */
+.cv-page.legal-professional {
+  background: #ffffff;
+}
+.cv-page.legal-professional .cv-inner {
+  flex-direction: column;
+  background: #ffffff;
+  padding: 0.8in 0.9in 0.8in 0.9in;
+}
+.cv-page.legal-professional .cv-sidebar {
+  display: none;
+}
+.cv-page.legal-professional .cv-main {
+  width: 100%;
+  padding: 0;
+  background: #ffffff;
+}
+.cv-page.legal-professional .cv-header {
+  text-align: left;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #1E3A8A;
+}
+.cv-page.legal-professional .cv-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 8px;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+  text-align: left;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.cv-page.legal-professional .cv-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1E3A8A;
+  margin-bottom: 16px;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+  text-align: left;
+}
+.cv-page.legal-professional .cv-contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 11px;
+  color: #374151;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+  text-align: left;
+}
+.cv-page.legal-professional .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-page.legal-professional .cv-contact-item i {
+  color: #1E3A8A;
+  font-size: 10px;
+}
+.cv-page.legal-professional .cv-section {
+  margin-bottom: 28px;
+}
+.cv-page.legal-professional .cv-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1E3A8A;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-entry {
+  margin-bottom: 20px;
+}
+.cv-page.legal-professional .cv-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cv-page.legal-professional .cv-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-entry-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #374151;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-entry-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E3A8A;
+  margin-bottom: 8px;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-entry-description {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.6;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-entry-description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+.cv-page.legal-professional .cv-entry-description li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.cv-page.legal-professional .cv-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cv-page.legal-professional .cv-skill-item {
+  font-size: 11px;
+  color: #374151;
+  background: transparent;
+  padding: 0;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+  font-weight: 500;
+}
+.cv-page.legal-professional .cv-sidebar-section {
+  display: none;
+}
+.cv-page.legal-professional .cv-photo-section {
+  display: none;
+}
+.cv-page.legal-professional .skill-bar {
+  display: none;
+}
+.cv-page.legal-professional .cv-summary {
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.7;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+  margin-bottom: 20px;
+}
+.cv-page.legal-professional .cv-language-item {
+  font-size: 11px;
+  color: #374151;
+  margin-bottom: 6px;
+  font-family: 'Garamond', 'Cambria', 'Times New Roman', 'Georgia', 'Aptos', 'Helvetica', serif;
+}
+.cv-page.legal-professional .cv-language-item strong {
+  color: #111111;
+  font-weight: 600;
+}
+
 /* Executive (bold top header, no sidebar) */
 .cv-page.executive .cv-inner {
   flex-direction: column;
