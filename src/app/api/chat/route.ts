@@ -1,4 +1,4 @@
-﻿// src/app/api/chat/route.ts
+// src/app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/chat/aai";
@@ -33,7 +33,7 @@ import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, c
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
-  const { error } = await supabase.from("conversations").insert({
+  const { error } = await supabase.from("chat.conversations").insert({
     id,
     user_id: userId,
     title: title?.slice(0, 100) || "New conversation",
@@ -45,7 +45,7 @@ async function createConversation(supabase: any, userId: string, id: string, tit
 }
 
 async function saveMessage(supabase: any, userId: string, conversationId: string, role: string, content: string) {
-  const { error } = await supabase.from("messages").insert({
+  const { error } = await supabase.from("chat.messages").insert({
     conversation_id: conversationId,
     user_id: userId,
     role,
@@ -59,7 +59,7 @@ async function saveMessage(supabase: any, userId: string, conversationId: string
 
 async function getUserTotalMessageCount(supabase: any, userId: string): Promise<number> {
   const { count, error } = await supabase
-    .from("messages")
+    .from("chat.messages")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   return error ? 0 : (count || 0);
@@ -619,7 +619,7 @@ export async function POST(req: NextRequest) {
 
     // ── Dynamic window sizing (GPT-style) ──
     const { count: conversationMessageCount } = await supabase
-      .from("messages")
+      .from("chat.messages")
       .select("*", { count: "exact", head: true })
       .eq("conversation_id", convId);
 

@@ -53,12 +53,12 @@ export default function ProfileModal({
       if (!user) return;
 
       const { count: totalCount } = await supabase
-        .from("messages")
+        .from("chat.messages")
         .select("*", { count: "exact", head: true });
 
       const today = new Date().toISOString().split("T")[0];
       const { count: todayCount } = await supabase
-        .from("messages")
+        .from("chat.messages")
         .select("*", { count: "exact", head: true })
         .gte("created_at", today);
 

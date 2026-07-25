@@ -93,7 +93,7 @@ export async function updateProConversationSummary(
   
   // Get conversation message count
   const { count: messageCount } = await supabase
-    .from("messages")
+    .from("chat.messages")
     .select("*", { count: "exact", head: true })
     .eq("conversation_id", conversationId);
 

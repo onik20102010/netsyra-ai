@@ -289,7 +289,7 @@ export default function ChatInterface({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data, error } = await supabase
-        .from("messages")
+        .from("chat.messages")
         .select("id, conversation_id, user_id, role, content, created_at")
         .eq("conversation_id", conversationId)
         .eq("user_id", user.id)
