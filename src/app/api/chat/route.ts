@@ -33,6 +33,7 @@ import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, c
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
+  console.log(`Creating conversation: id=${id}, userId=${userId}, title=${title}`);
   const { error } = await supabase.from("conversations").insert({
     id,
     user_id: userId,
@@ -42,9 +43,24 @@ async function createConversation(supabase: any, userId: string, id: string, tit
     console.error("Failed to create conversation:", error);
     throw new Error(`Failed to create conversation: ${error.message}`);
   }
+  console.log(`Conversation created successfully: ${id}`);
 }
 
 async function saveMessage(supabase: any, userId: string, conversationId: string, role: string, content: string) {
+  console.log(`Saving message: conversationId=${conversationId}, userId=${userId}, role=${role}`);
+  
+  // First verify conversation exists
+  const { data: conv, error: convError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .single();
+  
+  if (convError || !conv) {
+    console.error(`Conversation ${conversationId} does not exist:`, convError);
+    throw new Error(`Conversation ${conversationId} does not exist`);
+  }
+  
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
     user_id: userId,
@@ -55,6 +71,7 @@ async function saveMessage(supabase: any, userId: string, conversationId: string
     console.error("Failed to save message:", error);
     throw new Error(`Failed to save message: ${error.message}`);
   }
+  console.log(`Message saved successfully`);
 }
 
 async function getUserTotalMessageCount(supabase: any, userId: string): Promise<number> {
