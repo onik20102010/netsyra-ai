@@ -13,10 +13,14 @@ import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner"
 import { safeFetch } from "@/lib/safe-fetch";
 import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
+import { buildMessageContext, generateConversationSummary } from "@/lib/chat/conversation-summary";
 import { routeModel } from "@/lib/chat/router";
+import { AVAILABLE_TOOLS } from "@/lib/chat/tools/web-search";
+import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
+import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, deductCredits } from "@/lib/chat/ni-router";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -50,6 +54,29 @@ async function getUserTotalMessageCount(supabase: any, userId: string): Promise<
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   return error ? 0 : (count || 0);
+}
+
+// ── Tool execution helpers ──────────────────────────────
+async function executeToolCall(toolCall: any): Promise<string> {
+  const { name, arguments: args } = toolCall;
+  
+  switch (name) {
+    case "web_search":
+      return await executeWebSearch(args);
+    default:
+      return `Unknown tool: ${name}`;
+  }
+}
+
+function hasToolCalls(response: any): boolean {
+  if (response.choices && response.choices[0]?.message?.tool_calls) {
+    return response.choices[0].message.tool_calls.length > 0;
+  }
+  return false;
+}
+
+function extractToolCalls(response: any): any[] {
+  return response.choices?.[0]?.message?.tool_calls || [];
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -543,6 +570,38 @@ export async function POST(req: NextRequest) {
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
+    // ── Conversation Memory: Build context with summary if conversation is long ──
+    const { count: conversationMessageCount } = await supabase
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("conversation_id", convId);
+
+    const MESSAGE_THRESHOLD = 6;
+    let messagesForContext = messages;
+
+    if (conversationMessageCount && conversationMessageCount > MESSAGE_THRESHOLD) {
+      // Build context with summary + recent messages
+      messagesForContext = await buildMessageContext(
+        convId,
+        messages.slice(-5), // Keep last 5 messages
+        conversationMessageCount
+      );
+
+      // Generate/update summary every 6 messages
+      if (conversationMessageCount % 6 === 0) {
+        // Fetch all messages for this conversation to generate summary
+        const { data: allMessages } = await supabase
+          .from("messages")
+          .select("role, content")
+          .eq("conversation_id", convId)
+          .order("created_at", { ascending: true });
+
+        if (allMessages && allMessages.length > 0) {
+          await generateConversationSummary(convId, allMessages);
+        }
+      }
+    }
+
     // ── Fetch user memory summary ──
     const memorySummary = await getUserMemorySummary(user.id);
 
@@ -562,6 +621,53 @@ export async function POST(req: NextRequest) {
         { error: "The NI model requires an active subscription. Please upgrade to Pro." },
         { status: 402 }
       );
+    }
+
+    // ── NI Router: Determine actual model for NI tier ──
+    let niModelRoute = null;
+    if (modelTier === "ni") {
+      // Analyze task and route to appropriate model (now async with AI classifier)
+      const taskAnalysis = await analyzeTask(userMessage, {
+        codeLength: messages.length * 50, // rough estimate
+        fileCount: 1,
+        conversationHistoryLength: messages.length,
+      });
+
+      // Get Claude credits for routing decision
+      const { data: claudeCredits } = await supabase
+        .rpc('get_or_reset_claude_credits', { p_user_id: user.id });
+
+      const claudeCreditsRemaining = claudeCredits?.[0]?.credits_remaining || 0;
+
+      niModelRoute = routeTask(taskAnalysis, claudeCreditsRemaining);
+      console.log(`🧠 NI Router: ${getRoutingExplanation(niModelRoute)} (confidence: ${taskAnalysis.confidence})`);
+
+      // Check if route has error (insufficient credits)
+      if (niModelRoute.error) {
+        console.log(`⚠️ ${niModelRoute.error}`);
+        // Continue with fallback model, error message will be shown to user
+      }
+
+      // Deduct Claude credits if using Claude (using new deductCredits function)
+      if (niModelRoute.model === 'claude-sonnet-4.6-coding') {
+        const creditsNeeded = estimateClaudeCredits(taskAnalysis);
+        const creditResult = await deductCredits(user.id, creditsNeeded, supabase);
+
+        if (!creditResult.success) {
+          console.log(`⚠️ Credit deduction failed: ${creditResult.error}`);
+          // Use fallback model
+          if (niModelRoute.fallback) {
+            niModelRoute = niModelRoute.fallback;
+          } else {
+            niModelRoute = {
+              model: 'deepseek-v4-pro',
+              provider: 'deepseek',
+              reason: 'Claude credits exhausted, using DeepSeek V4 Pro fallback',
+              error: creditResult.error,
+            };
+          }
+        }
+      }
     }
 
     // ── Check web search usage before allowing web search ──
@@ -939,7 +1045,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
     // ── Context compression: summarize older turns, keep recent verbatim ──
     const { recent: recentMessages, summary: rollingSummary } = await compressHistory(
-      messages.map((m: any) => ({ role: m.role, content: m.content }))
+      messagesForContext.map((m: any) => ({ role: m.role, content: m.content }))
     );
 
     // Build messages array with system prompt
@@ -1442,6 +1548,8 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             temperature: tier.temperature,
             max_tokens: hardCap,
             stream: true,
+            tools: AVAILABLE_TOOLS,
+            tool_choice: "auto",
           }),
         });
 
@@ -1455,6 +1563,8 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
         let fullContent = "";
+        let toolCallsBuffer: any[] = [];
+        let pendingToolCall = false;
 
         const stream = new ReadableStream({
           async start(controller) {
@@ -1481,13 +1591,93 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
                   try {
                     const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
+                    const delta = parsed.choices?.[0]?.delta;
+                    
+                    // Check for tool calls
+                    if (delta?.tool_calls) {
+                      toolCallsBuffer.push(...delta.tool_calls);
+                      pendingToolCall = true;
+                      // Don't stream tool calls to client
+                      continue;
+                    }
+                    
+                    const content = delta?.content;
                     if (content) {
                       fullContent += content;
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
                     }
                   } catch (e) {
                     // skip invalid JSON
+                  }
+                }
+              }
+
+              // Handle tool calls if present
+              if (pendingToolCall && toolCallsBuffer.length > 0) {
+                console.log("🔧 Tool calls detected, executing...");
+                
+                for (const toolCall of toolCallsBuffer) {
+                  const toolResult = await executeToolCall(toolCall);
+                  console.log(`🔧 Tool result: ${toolResult.slice(0, 100)}...`);
+                  
+                  // Add tool result to messages and call model again
+                  const toolMessage = {
+                    role: "tool" as const,
+                    tool_call_id: toolCall.id,
+                    content: toolResult,
+                  };
+                  
+                  const followUpMessages = [...apiMessages, {
+                    role: "assistant" as const,
+                    tool_calls: toolCallsBuffer,
+                  }, toolMessage];
+                  
+                  // Get final response from model
+                  const followUpRes = await fetch(modelConfig.endpoint, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${apiKey}`,
+                    },
+                    body: JSON.stringify({
+                      model: modelConfig.modelName,
+                      messages: followUpMessages,
+                      temperature: tier.temperature,
+                      max_tokens: hardCap,
+                      stream: true,
+                    }),
+                  });
+                  
+                  if (followUpRes.ok) {
+                    const followUpReader = followUpRes.body?.getReader();
+                    if (followUpReader) {
+                      let followUpBuffer = "";
+                      while (true) {
+                        const { done, value } = await followUpReader.read();
+                        if (done) break;
+                        
+                        followUpBuffer += decoder.decode(value, { stream: true });
+                        const followUpLines = followUpBuffer.split("\n");
+                        followUpBuffer = followUpLines.pop() || "";
+                        
+                        for (const followUpLine of followUpLines) {
+                          if (!followUpLine.startsWith("data: ")) continue;
+                          const followUpData = followUpLine.slice(6).trim();
+                          if (followUpData === "[DONE]") continue;
+                          
+                          try {
+                            const followUpParsed = JSON.parse(followUpData);
+                            const followUpContent = followUpParsed.choices?.[0]?.delta?.content;
+                            if (followUpContent) {
+                              fullContent += followUpContent;
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify(followUpParsed)}\n\n`));
+                            }
+                          } catch (e) {
+                            // skip invalid JSON
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }

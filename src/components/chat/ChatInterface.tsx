@@ -741,7 +741,7 @@ export default function ChatInterface({
       setInput("");
       setAttachedImages([]);
 
-      const contextMessages = [...messages, userMessage].slice(-6);
+      const contextMessages = [...messages, userMessage];
       await sendMessage(apiContent, contextMessages);
       return;
     }
@@ -757,7 +757,7 @@ export default function ChatInterface({
     setInput("");
     setAttachedImages([]);
 
-    const contextMessages = [...messages, userMessage].slice(-6);
+    const contextMessages = [...messages, userMessage];
     await sendMessage(apiContent, contextMessages);
   };
 
@@ -771,7 +771,7 @@ export default function ChatInterface({
     const truncated = messages.slice(0, idx);
     setMessages(truncated);
 
-    const contextMessages = [...truncated.slice(-6)];
+    const contextMessages = [...truncated];
     await sendMessage(userMsg.content, contextMessages);
   };
 
@@ -802,7 +802,7 @@ export default function ChatInterface({
     setMessages(truncated);
     cancelEditing();
 
-    const contextMessages = truncated.slice(-6);
+    const contextMessages = truncated;
     await sendMessage(newContent, contextMessages);
   };
 

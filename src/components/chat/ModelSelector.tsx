@@ -115,6 +115,7 @@ const basicModels = [
 const advancedModels = [
   { id: "code", name: "N Code", icon: CodeIcon, desc: "Expert coding" },
   { id: "aai", name: "N AAI", icon: AaiIcon, desc: "Autonomous AI" },
+  { id: "ni", name: "N NI", icon: NiIcon, desc: "Premium model" },
 ];
 
 // ── Component ──────────────────────────────────────
@@ -177,10 +178,12 @@ export default function ModelSelector({
 
   const allModels = [...basicModels, ...advancedModels];
   const currentModel = allModels.find((m) => m.id === selected) || basicModels[0];
-  
+
   // Pro users only see NI model, free users see all except NI
   const displayBasicModels = isPro ? [] : basicModels;
-  const displayAdvancedModels = isPro ? advancedModels.filter(m => m.id === "ni") : advancedModels.filter(m => m.id !== "ni");
+  const displayAdvancedModels = isPro
+    ? advancedModels.filter(m => m.id === "ni")
+    : advancedModels.filter(m => m.id !== "ni");
 
   const renderModelButton = (model: (typeof allModels)[0]) => {
     const status = modelStatuses[model.id];
@@ -247,21 +250,22 @@ export default function ModelSelector({
 
             {displayBasicModels.map(renderModelButton)}
 
-            {isMobile && displayAdvancedModels.length > 0 && (
+            {/* Show advanced models directly for Pro users, or under "Advanced"/"Premium" section for others */}
+            {isPro && displayAdvancedModels.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
+                {displayAdvancedModels.map(renderModelButton)}
+              </div>
+            )}
+
+            {!isPro && isMobile && displayAdvancedModels.length > 0 && (
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <p className="text-xs text-gray-400 px-3 py-1">Advanced</p>
                 {displayAdvancedModels.map(renderModelButton)}
               </div>
             )}
 
-            {isMobile && isPro && displayAdvancedModels.length === 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
-                {advancedModels.filter(m => m.id === "ni").map(renderModelButton)}
-              </div>
-            )}
-
-            {!isMobile && !showAdvanced && displayAdvancedModels.length > 0 && (
+            {!isPro && !isMobile && !showAdvanced && displayAdvancedModels.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowAdvanced(true)}
@@ -270,13 +274,6 @@ export default function ModelSelector({
                 <span>More</span>
                 <ChevronRightIcon />
               </button>
-            )}
-
-            {!isMobile && isPro && displayAdvancedModels.length === 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
-                {advancedModels.filter(m => m.id === "ni").map(renderModelButton)}
-              </div>
             )}
 
             {!isMobile && showAdvanced && (

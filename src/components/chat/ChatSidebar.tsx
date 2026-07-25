@@ -59,6 +59,7 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
   const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
+  const [imageGenRemaining, setImageGenRemaining] = useState<{ remaining4hr: number; remainingMonth: number } | null>(null);
   const supabase = createClient();
 
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -99,6 +100,21 @@ export default function ChatSidebar({
       }
     };
     fetchWebSearchUsage();
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchImageGenUsage = async () => {
+      const { data } = await supabase
+        .rpc('get_or_reset_image_generation_usage', { p_user_id: user.id });
+      if (data && data[0]) {
+        setImageGenRemaining({
+          remaining4hr: data[0].remaining_4hr || 10,
+          remainingMonth: data[0].remaining_month || 150,
+        });
+      }
+    };
+    fetchImageGenUsage();
   }, [user, supabase]);
 
   useEffect(() => {
@@ -372,6 +388,13 @@ export default function ChatSidebar({
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-xs text-gray-400">
                             {webSearchRemaining} web searches left today
+                          </span>
+                        </div>
+                      )}
+                      {imageGenRemaining !== null && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-gray-400">
+                            {imageGenRemaining.remainingMonth} images left this month
                           </span>
                         </div>
                       )}
