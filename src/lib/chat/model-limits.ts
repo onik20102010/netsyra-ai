@@ -12,61 +12,61 @@ export const modelLimits: Record<string, ModelLimit> = {
     modelId: "fast",
     label: "N Fast",
     tokensPerDay: 1500,
-    messagesPerDay: 40,  // not message-limited
+    messagesPerDay: 20,
   },
   plus: {
     modelId: "plus",
     label: "N Plus",
-    tokensPerDay: 1400,      // primary
-    messagesPerDay: 35,
+    tokensPerDay: 1400,
+    messagesPerDay: 10,
   },
   plus_fallback: {
     modelId: "plus",
     label: "N Plus (fallback)",
     tokensPerDay: 1600,
-    messagesPerDay: 35,
+    messagesPerDay: 10,
   },
   pro: {
     modelId: "pro",
     label: "N Pro",
-    tokensPerDay: 2000,      // primary
-    messagesPerDay: 30,
+    tokensPerDay: 2000,
+    messagesPerDay: 5,
   },
   pro_fallback: {
     modelId: "pro",
     label: "N Pro (fallback)",
     tokensPerDay: 18000,
-    messagesPerDay: 30,
+    messagesPerDay: 5,
   },
   live: {
     modelId: "live",
     label: "N Live",
-    tokensPerDay: 800,    // not token-limited
-    messagesPerDay: 50,
+    tokensPerDay: 800,
+    messagesPerDay: 5,
   },
   live_fallback: {
     modelId: "live",
     label: "N Live (fallback)",
     tokensPerDay: 800,
-    messagesPerDay: 50,
+    messagesPerDay: 5,
   },
   code: {
     modelId: "code",
     label: "N Code",
-    tokensPerDay: 2500,    // not limited (adjust if needed)
-    messagesPerDay: 30,
+    tokensPerDay: 2500,
+    messagesPerDay: 5,
   },
   aai: {
     modelId: "aai",
     label: "N AAI",
-    tokensPerDay: 5000,    // higher limit for AAI
-    messagesPerDay: 25,   // fewer messages due to complexity
+    tokensPerDay: 5000,
+    messagesPerDay: 5,
   },
   aai_fallback: {
     modelId: "aai",
     label: "N AAI (fallback)",
     tokensPerDay: 5000,
-    messagesPerDay: 25,
+    messagesPerDay: 5,
   },
 };
 

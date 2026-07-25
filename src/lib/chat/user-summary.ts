@@ -13,27 +13,33 @@ interface UserSummary {
   message_count_at_update: number;
 }
 
-const USER_SUMMARY_PROMPT = `
-You are a user behavior analysis system. Your task is to analyze the user's conversation history and create a concise summary of their behavior patterns.
+const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how ChatGPT remembers users. Your job is to distill the user's conversation history into a concise, natural-sounding memory that captures who they are and what matters to them.
 
-Focus on:
-- What the user describes most frequently
-- What the user likes to do
-- If the user is working on specific projects
-- Key interests and preferences
+## What to capture (in order of priority):
+1. **Identity & Context**: What the user does, their role, their current situation
+2. **Recurring Themes**: Topics they bring up repeatedly across conversations
+3. **Preferences & Style**: How they like information presented, their communication style
+4. **Active Projects**: What they're currently working on or trying to accomplish
+5. **Explicit Requests**: Things they directly asked you to remember
 
-Format the summary EXACTLY in this style:
-"User likes [specific interests]. User wants [specific goals]. User describes [topics] the most."
+## What to ignore:
+- One-off questions or temporary queries
+- Greetings, small talk, or filler
+- Information already in their profile (name, goal, custom instructions)
+- Anything that won't be relevant in future conversations
 
-Requirements:
+## Writing style:
+- Write in natural, flowing sentences like a human would remember someone
+- Use the format: "User is [role/identity]. User likes [interests]. User wants [goals]. User often discusses [topics]. User is working on [projects]."
+- Be specific, not generic. Instead of "User likes coding", say "User is a React developer building a SaaS dashboard"
+- Prioritize the most important 2-3 facts if space is tight
+- Update incrementally: keep what's still true, drop what's outdated, add what's new
+
+## Hard rules:
 - Maximum 500 characters including spaces and punctuation
-- Focus on long-term patterns, not temporary content
-- Use simple, clear language
-- Update existing summary by adding new patterns and removing less relevant ones
-- Keep the most important information within the character limit
-
-If existing summary exists, merge new insights while removing outdated information. Maintain the exact format.
-`;
+- Never duplicate profile information (name, goal, custom instructions)
+- If the existing summary is good, only add genuinely new information
+- When at capacity, drop the least important/relevant fact to make room for new ones`;
 
 export async function getUserSummary(userId: string): Promise<string | null> {
   const supabase = await createServerSupabaseClient();
@@ -82,18 +88,28 @@ USER PROFILE (already stored separately - DO NOT duplicate this):
 ` : "";
 
   // Build context for summary generation
+  const userMessages = conversationHistory
+    .filter(m => m.role === 'user')
+    .slice(-10)
+    .map(m => m.content)
+    .join('\n---\n');
+
   const summaryContext = `
-EXISTING SUMMARY:
+## Current memory:
 ${existingSummary}
 
 ${profileInfo}
-RECENT CONVERSATION HISTORY (last 10 messages):
-${conversationHistory.slice(-10).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}
 
-TASK: Update the existing summary by incorporating new insights from the recent conversation.
-Remove outdated information. Keep the summary under 500 characters including spaces and punctuation.
-Focus on long-term patterns and user behavior. Maintain the exact format: "User likes... User wants... User describes..."
-IMPORTANT: Do NOT duplicate information already in the user profile.
+## Recent user messages (last 10):
+${userMessages}
+
+## Task:
+Review the recent messages and update the memory. Follow the system prompt rules:
+- Add new, genuinely important information about the user
+- Keep what's still accurate from the current memory
+- Remove anything that's become outdated or irrelevant
+- Stay under 500 characters
+- Never duplicate profile info
 `;
 
   try {
@@ -172,13 +188,23 @@ IMPORTANT: Do NOT duplicate information already in the user profile.
 }
 
 export async function shouldUseUserSummary(userMessage: string): Promise<boolean> {
-  // Check if user is asking about past information or things the bot might not know
-  const pastKeywords = [
+  const lowerMessage = userMessage.toLowerCase();
+  
+  // Personal context triggers - user is talking about themselves
+  const personalTriggers = [
     'remember', 'before', 'earlier', 'previously', 'past', 'mentioned',
     'told you', 'said', 'discussed', 'talked about', 'my', 'i am',
-    'i like', 'i want', 'i need', 'working on', 'project'
+    'i like', 'i want', 'i need', 'working on', 'project', 'my project',
+    'my work', 'my job', 'my goal', 'about me', 'know about me',
+    'what do you know', 'recall', 'remind me'
   ];
   
-  const lowerMessage = userMessage.toLowerCase();
-  return pastKeywords.some(keyword => lowerMessage.includes(keyword));
+  // Reference triggers - user is referring to something previously discussed
+  const referenceTriggers = [
+    'that thing', 'what we discussed', 'our conversation', 'as i said',
+    'like i mentioned', 'the thing about', 'going back to', 'continuing from'
+  ];
+  
+  const allTriggers = [...personalTriggers, ...referenceTriggers];
+  return allTriggers.some(keyword => lowerMessage.includes(keyword));
 }

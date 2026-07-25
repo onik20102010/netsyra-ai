@@ -16,6 +16,7 @@ import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
 import { buildMessageContext, generateConversationSummary } from "@/lib/chat/conversation-summary";
 import { getUserSummary, generateUserSummary, shouldUseUserSummary } from "@/lib/chat/user-summary";
 import { getProUserSummary, generateProUserSummary, shouldUseProUserSummary } from "@/lib/chat/pro-user-summary";
+import { buildProMessageContext, updateProConversationSummary, getProConversationSummary } from "@/lib/chat/pro-conversation-summary";
 import { routeModel } from "@/lib/chat/router";
 import { AVAILABLE_TOOLS } from "@/lib/chat/tools/web-search";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
@@ -572,15 +573,6 @@ export async function POST(req: NextRequest) {
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
-    // ── Conversation Memory: Build context with last 5 messages for free plan ──
-    const { count: conversationMessageCount } = await supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("conversation_id", convId);
-
-    // Always use last 5 messages for context
-    let messagesForContext = messages.slice(-5);
-
     // ── Check if user has active subscription ──
     const { data: sub } = await supabase
       .from("subscriptions")
@@ -590,6 +582,29 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const isPaidUser = !!sub;
+
+    // ── Conversation Memory: Build context based on plan ──
+    const { count: conversationMessageCount } = await supabase
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("conversation_id", convId);
+
+    // Pro users get last 30 messages, free users get last 5
+    const MESSAGE_THRESHOLD = isPaidUser ? 30 : 5;
+    let messagesForContext = messages.slice(-MESSAGE_THRESHOLD);
+
+    // For Pro users, use enhanced conversation summary when chat exceeds threshold
+    if (isPaidUser && conversationMessageCount && conversationMessageCount > MESSAGE_THRESHOLD) {
+      messagesForContext = await buildProMessageContext(
+        convId,
+        messages.slice(-MESSAGE_THRESHOLD),
+        conversationMessageCount
+      );
+      
+      // Incrementally update conversation summary for Pro users
+      const existingSummary = await getProConversationSummary(convId);
+      await updateProConversationSummary(convId, { role: "user", content: userMessage }, existingSummary);
+    }
 
     // Generate user summary after 5 messages (free) or 10 messages (pro)
     const summaryThreshold = isPaidUser ? 10 : 5;

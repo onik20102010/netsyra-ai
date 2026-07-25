@@ -15,47 +15,59 @@ interface ProUserSummary {
   message_count_at_update: number;
 }
 
-const PRO_USER_SUMMARY_PROMPT = `
-You are an advanced user behavior analysis system for Pro users. Your task is to analyze the user's conversation history and create a comprehensive summary of their behavior patterns, preferences, and context.
+const PRO_USER_SUMMARY_PROMPT = `You are a premium personal memory system for Pro users, similar to ChatGPT's memory but more detailed and professional. Your job is to build a rich, nuanced understanding of the user across all their conversations.
 
-Focus on:
-- Detailed professional background and expertise
-- Current projects and their specific requirements
-- Technical preferences and tool choices
-- Communication patterns and response preferences
-- Long-term goals and objectives
-- Learning patterns and areas of interest
-- Problem-solving approaches and methodologies
+## What to capture (in order of priority):
 
-Format the summary in these sections:
+### 1. Professional Identity
+- Their role, industry, and expertise level
+- Technical stack and tools they use regularly
+- Their work context (startup, enterprise, freelance, student)
+- Career stage and aspirations
 
-## Professional Profile
-[Detailed professional background, expertise level, main areas of focus]
+### 2. Active Projects & Goals
+- What they're currently building or working on
+- Specific project requirements and constraints
+- Their long-term professional objectives
+- Deadlines or milestones they've mentioned
 
-## Current Projects
-[Specific projects user is working on, their requirements, and progress]
+### 3. Technical Preferences
+- Preferred languages, frameworks, and tools
+- Architectural patterns they favor
+- Development methodologies they follow
+- Tools they've expressed frustration with
 
-## Technical Preferences
-[Preferred tools, frameworks, languages, and methodologies]
+### 4. Communication & Learning Style
+- How they prefer information presented (concise vs detailed, code-first vs explanation-first)
+- Their preferred response format (bullet points, paragraphs, code blocks)
+- How they learn best (examples, documentation, hands-on)
+- Their patience level for detailed explanations
 
-## Communication Style
-[How user prefers to receive information, level of detail desired]
+### 5. Behavioral Patterns
+- Common types of questions they ask
+- Times of day they're most active
+- How they approach problem-solving
+- Their decision-making style
 
-## Goals & Objectives
-[Long-term professional goals and what they're working toward]
+## Writing style:
+- Write in natural, flowing prose like a colleague's notes about a coworker
+- Be specific: "Uses Next.js 14 with App Router and prefers Server Components" not "Likes React"
+- Include concrete details when available
+- Structure with clear sections but keep the writing natural
+- Prioritize actionable insights that directly improve response quality
 
-## Interaction Patterns
-[Common themes in their questions, areas they frequently explore]
+## Update strategy:
+- **Add**: New professional details, project updates, preference changes
+- **Keep**: Core identity and long-term patterns that remain accurate
+- **Refine**: Update when new information provides better context
+- **Drop**: Temporary interests, one-off questions, outdated project details
+- **Merge**: Combine related observations into richer profiles
 
-Requirements:
+## Hard rules:
 - Maximum 1000 characters including spaces and punctuation
-- Focus on actionable insights that improve response quality
-- Include specific technical details when available
-- Update existing summary by adding new patterns and refining existing ones
-- Maintain high relevance for professional context
-
-If existing summary exists, merge new insights while removing outdated information. Keep the most valuable information within the character limit.
-`;
+- Never duplicate profile information (name, goal, custom instructions)
+- Focus on professional context and actionable insights
+- When at capacity, prioritize professional identity and active projects`;
 
 export async function getProUserSummary(userId: string): Promise<string | null> {
   const supabase = await createServerSupabaseClient();
@@ -267,14 +279,25 @@ function analyzeProjectContext(messages: Array<{ role: string; content: string }
 }
 
 export async function shouldUseProUserSummary(userMessage: string): Promise<boolean> {
-  // Pro users get more contextual usage of their summary
-  const proKeywords = [
+  const lowerMessage = userMessage.toLowerCase();
+  
+  // Personal context triggers
+  const personalTriggers = [
     'remember', 'before', 'earlier', 'previously', 'past', 'mentioned',
     'told you', 'said', 'discussed', 'talked about', 'my', 'i am',
     'i like', 'i want', 'i need', 'working on', 'project', 'expert',
-    'experience', 'prefer', 'usually', 'typically', 'my approach'
+    'experience', 'prefer', 'usually', 'typically', 'my approach',
+    'my stack', 'my setup', 'my workflow', 'my team', 'my company',
+    'what do you know about me', 'recall', 'remind me'
   ];
   
-  const lowerMessage = userMessage.toLowerCase();
-  return proKeywords.some(keyword => lowerMessage.includes(keyword));
+  // Professional context triggers
+  const professionalTriggers = [
+    'recommend', 'suggest', 'advice', 'best for me', 'based on my',
+    'given my', 'considering my', 'for my use case', 'for my project',
+    'in my situation', 'with my experience', 'at my level'
+  ];
+  
+  const allTriggers = [...personalTriggers, ...professionalTriggers];
+  return allTriggers.some(keyword => lowerMessage.includes(keyword));
 }

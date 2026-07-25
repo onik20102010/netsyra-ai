@@ -11,29 +11,31 @@ import { createClient } from "@/lib/supabase/client";
 const STATIC_PRICE = { amount: 18, currency: "USD" };
 
 export interface Tier {
-  name: 'Starter' | 'Pro' | 'Advanced';
+  name: 'Free' | 'Plus' | 'Pro';
   description: string;
   features: string[];
   priceId: { month: string; year: string };
+  isFree?: boolean;
 }
 
 const TIERS: Tier[] = [
   {
-    name: 'Starter',
-    description: 'Perfect for individuals',
-    features: ['Basic AI models', '100 messages/day', 'Community support'],
+    name: 'Free',
+    description: 'Perfect for getting started',
+    features: ['Basic AI models', '50 messages/day', 'Limited access', 'High limits on models', 'Normal context window'],
+    priceId: { month: '', year: '' },
+    isFree: true,
+  },
+  {
+    name: 'Plus',
+    description: 'Enhanced AI capabilities',
+    features: ['Gemini models access', 'Image generations', 'Image analyzing', 'Strong reasoning'],
     priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
   },
   {
     name: 'Pro',
-    description: 'For power users',
-    features: ['All AI models', 'Unlimited messages', 'Priority support', 'Advanced analytics'],
-    priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
-  },
-  {
-    name: 'Advanced',
-    description: 'For teams and organizations',
-    features: ['Everything in Pro', 'Team collaboration', 'Custom integrations', 'Dedicated support'],
+    description: 'For professionals and teams',
+    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best choice for coding, researching, designing', 'No image generation'],
     priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
   },
 ];
@@ -213,6 +215,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
             const priceId = annual ? tier.priceId.year : tier.priceId.month;
             const currentPrice = getPrice(priceId);
             const isPro = tier.name === 'Pro';
+            const isFree = tier.isFree;
 
             return (
               <div
@@ -220,6 +223,8 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                 className={`${
                   isPro
                     ? 'bg-gradient-to-b from-blue-600/20 to-transparent border border-blue-500/30'
+                    : isFree
+                    ? 'bg-white/[0.03] border border-white/[0.08]'
                     : 'bg-white/[0.03] border border-white/[0.08]'
                 } rounded-2xl p-8 relative`}
               >
@@ -233,7 +238,12 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   <p className="text-white/50 text-sm">{tier.description}</p>
                 </div>
                 <div className="mb-6">
-                  {priceLoading ? (
+                  {isFree ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-4xl font-bold">$0</span>
+                      <span className="text-white/50">/month</span>
+                    </div>
+                  ) : priceLoading ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="animate-spin w-6 h-6 text-blue-400" />
                       <span className="text-white/50">Loading price...</span>
@@ -254,15 +264,17 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   ))}
                 </ul>
                 <button
-                  onClick={() => !isPro && handleSubscribe(priceId)}
-                  disabled={subscribing || isPro}
+                  onClick={() => !isFree && !isPro && handleSubscribe(priceId)}
+                  disabled={subscribing || isPro || isFree}
                   className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:opacity-50 ${
-                    isPro
+                    isFree
+                      ? 'bg-white/10 border border-white/20 text-white/50 cursor-not-allowed'
+                      : isPro
                       ? 'bg-green-600/20 border border-green-500/30 text-green-400 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {isPro ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
+                  {isFree ? 'Current Plan' : isPro ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </div>
             );
