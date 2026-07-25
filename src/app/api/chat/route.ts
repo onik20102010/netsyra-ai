@@ -18,6 +18,12 @@ import { getUserSummary, generateUserSummary, shouldUseUserSummary } from "@/lib
 import { getProUserSummary, generateProUserSummary, shouldUseProUserSummary } from "@/lib/chat/pro-user-summary";
 import { buildProMessageContext, updateProConversationSummary, getProConversationSummary } from "@/lib/chat/pro-conversation-summary";
 import { routeModel } from "@/lib/chat/router";
+// ── New unified systems ──
+import { unifiedClassify, quickClassify } from "@/lib/chat/unified-classifier";
+import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
+import { queueMessage, shouldProcessQueue, processQueue, getDynamicWindowSize, detectQueryComplexity, detectTopicSwitch } from "@/lib/chat/unified-memory";
+import { getSystemPrompt } from "@/lib/chat/model-registry";
+import { countTokensSync, calculateTokenBudget, selectEfficientModel } from "@/lib/chat/token-counter";
 import { AVAILABLE_TOOLS } from "@/lib/chat/tools/web-search";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
@@ -567,6 +573,34 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Usage check PASSED. Remaining: ${usageCheck.remaining}`);
 
+    // ── Cache check: deterministic + semantic ──
+    if (!diveDeep && !isWidgetQuery && modelTier !== "aai" && modelTier !== "live") {
+      const cached = await checkCache(userMessage);
+      if (cached) {
+        console.log(`💾 Cache hit (${cached.source}): "${userMessage.slice(0, 50)}..."`);
+        await saveMessage(supabase, user.id, convId, "assistant", cached.response);
+        const encoder = new TextEncoder();
+        const words = cached.response.split(" ");
+        const stream = new ReadableStream({
+          async start(controller) {
+            for (const word of words) {
+              const chunk = { choices: [{ delta: { content: word + " " } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        });
+      }
+    }
+
     if (newConversation || !conversationId) {
       await createConversation(supabase, user.id, convId, userMessage);
     }
@@ -583,47 +617,26 @@ export async function POST(req: NextRequest) {
 
     const isPaidUser = !!sub;
 
-    // ── Conversation Memory: Build context based on plan ──
+    // ── Dynamic window sizing (GPT-style) ──
     const { count: conversationMessageCount } = await supabase
       .from("messages")
       .select("*", { count: "exact", head: true })
       .eq("conversation_id", convId);
 
-    // Pro users get last 30 messages, free users get last 5
-    const MESSAGE_THRESHOLD = isPaidUser ? 30 : 5;
-    let messagesForContext = messages.slice(-MESSAGE_THRESHOLD);
+    // TODO: Use dynamic window sizing when unified-memory is integrated
+    // const queryComplexity = detectQueryComplexity(userMessage, messages.length);
+    // const dynamicWindow = getDynamicWindowSize(queryComplexity, isPaidUser ? 'pro' : 'free');
+    const dynamicWindow = isPaidUser ? 30 : 5;
+    
+    let messagesForContext = messages.slice(-dynamicWindow);
 
     // For Pro users, use enhanced conversation summary when chat exceeds threshold
-    if (isPaidUser && conversationMessageCount && conversationMessageCount > MESSAGE_THRESHOLD) {
+    if (isPaidUser && conversationMessageCount && conversationMessageCount > dynamicWindow) {
       messagesForContext = await buildProMessageContext(
         convId,
-        messages.slice(-MESSAGE_THRESHOLD),
+        messages.slice(-dynamicWindow),
         conversationMessageCount
       );
-      
-      // Incrementally update conversation summary for Pro users
-      const existingSummary = await getProConversationSummary(convId);
-      await updateProConversationSummary(convId, { role: "user", content: userMessage }, existingSummary);
-    }
-
-    // Generate user summary after 5 messages (free) or 10 messages (pro)
-    const summaryThreshold = isPaidUser ? 10 : 5;
-    if (conversationMessageCount && conversationMessageCount % summaryThreshold === 0) {
-      // Fetch recent messages for user summary generation
-      const { data: recentMessages } = await supabase
-        .from("messages")
-        .select("role, content")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(isPaidUser ? 20 : 10);
-
-      if (recentMessages && recentMessages.length > 0) {
-        if (isPaidUser) {
-          await generateProUserSummary(user.id, recentMessages, conversationMessageCount);
-        } else {
-          await generateUserSummary(user.id, recentMessages, conversationMessageCount);
-        }
-      }
     }
 
     // ── Fetch appropriate user summary based on subscription ──
@@ -631,11 +644,9 @@ export async function POST(req: NextRequest) {
     let shouldUseSummary = false;
     
     if (isPaidUser) {
-      // Pro users get enhanced summary
       userSummary = await getProUserSummary(user.id);
       shouldUseSummary = userSummary ? await shouldUseProUserSummary(userMessage) : false;
     } else {
-      // Free users get basic summary
       userSummary = await getUserSummary(user.id);
       shouldUseSummary = userSummary ? await shouldUseUserSummary(userMessage) : false;
     }
@@ -649,11 +660,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ── NI Router: Determine actual model for NI tier ──
-    let niModelRoute = null;
+    let niModelRoute: any = null;
     if (modelTier === "ni") {
-      // Check if all NI token limits are exhausted
       const allLimitsExhausted = await checkAllLimitsExhausted(user.id, supabase);
-      
       if (allLimitsExhausted) {
         return NextResponse.json(
           { error: "Your daily NI token limits have been exhausted. Please wait 24 hours for reset." },
@@ -661,11 +670,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Get remaining tokens for all models
       const tokenRemaining = await getTotalNiRemaining(user.id, supabase);
       const gpt5TokenRemaining = await getTotalGPT5Remaining(user.id, supabase);
-
-      // Transform to match routeTask expected format
       const tokenLimits = {
         opusRemaining: tokenRemaining.opus,
         sonnetRemaining: tokenRemaining.sonnet,
@@ -674,9 +680,14 @@ export async function POST(req: NextRequest) {
         gpt5MiniRemaining: gpt5TokenRemaining.mini,
       };
 
-      // Analyze task and route to appropriate model (now async with AI classifier)
+      // TODO: Use unified classifier when integrated
+      // const classification = await unifiedClassify(userMessage, {
+      //   historyLength: messages.length,
+      //   forceAI: false,
+      // });
+      
       const taskAnalysis = await analyzeTask(userMessage, {
-        codeLength: messages.length * 50, // rough estimate
+        codeLength: messages.length * 50,
         fileCount: 1,
         conversationHistoryLength: messages.length,
       });
@@ -684,54 +695,35 @@ export async function POST(req: NextRequest) {
       niModelRoute = routeTask(taskAnalysis, tokenLimits);
       console.log(`🧠 NI Router: ${getRoutingExplanation(niModelRoute)} (confidence: ${taskAnalysis.confidence})`);
 
-      // Check if route has error (insufficient tokens)
       if (niModelRoute.error) {
         console.log(`⚠️ ${niModelRoute.error}`);
-        // Continue with fallback model, error message will be shown to user
       }
 
-      // Deduct tokens based on selected model (skip if noTokenLimit flag is set)
+      // TODO: Use accurate token counting when integrated
+      // const tokensNeeded = countTokensSync(userMessage) + countTokensSync(tiers.ni.systemPrompt) + 500;
       const tokensNeeded = estimateTokensNeeded(taskAnalysis);
       let modelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
       
-      if (niModelRoute.model === 'claude-opus-4.6') {
-        modelType = 'claude-opus-4.6';
-      } else if (niModelRoute.model === 'claude-sonnet-4.6') {
-        modelType = 'claude-sonnet-4.6';
-      } else if (niModelRoute.model === 'deepseek-v4-pro') {
-        modelType = 'deepseek-v4-pro';
-      } else if (niModelRoute.model === 'gpt-5') {
-        modelType = 'gpt-5';
-      } else if (niModelRoute.model === 'gpt-5-mini') {
-        modelType = 'gpt-5-mini';
-      }
+      if (niModelRoute.model === 'claude-opus-4.6') modelType = 'claude-opus-4.6';
+      else if (niModelRoute.model === 'claude-sonnet-4.6') modelType = 'claude-sonnet-4.6';
+      else if (niModelRoute.model === 'deepseek-v4-pro') modelType = 'deepseek-v4-pro';
+      else if (niModelRoute.model === 'gpt-5') modelType = 'gpt-5';
+      else if (niModelRoute.model === 'gpt-5-mini') modelType = 'gpt-5-mini';
 
-      // Skip token deduction for default fallback (noTokenLimit flag)
       if (niModelRoute.noTokenLimit) {
         console.log(`🔄 Using ${niModelRoute.model} with no token limit tracking`);
       } else {
         const tokenResult = await checkAndDeductTokens(user.id, modelType, tokensNeeded, supabase);
-
         if (!tokenResult.success) {
-          console.log(`⚠️ Token deduction failed: ${tokenResult.error}`);
-          // Use fallback model
           if (niModelRoute.fallback) {
             niModelRoute = niModelRoute.fallback;
-            // Try to deduct tokens for fallback model
             let fallbackModelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
-            
-            if (niModelRoute.model === 'claude-sonnet-4.6') {
-              fallbackModelType = 'claude-sonnet-4.6';
-            } else if (niModelRoute.model === 'gpt-5-mini') {
-              fallbackModelType = 'gpt-5-mini';
-            } else if (niModelRoute.model === 'deepseek-v4-pro') {
-              fallbackModelType = 'deepseek-v4-pro';
-            }
+            if (niModelRoute.model === 'claude-sonnet-4.6') fallbackModelType = 'claude-sonnet-4.6';
+            else if (niModelRoute.model === 'gpt-5-mini') fallbackModelType = 'gpt-5-mini';
+            else if (niModelRoute.model === 'deepseek-v4-pro') fallbackModelType = 'deepseek-v4-pro';
             
             const fallbackResult = await checkAndDeductTokens(user.id, fallbackModelType, tokensNeeded, supabase);
-            
             if (!fallbackResult.success) {
-              // If fallback also fails, return error
               return NextResponse.json(
                 { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
                 { status: 429 }
@@ -804,7 +796,6 @@ export async function POST(req: NextRequest) {
             for (const word of words) {
               const chunk = { choices: [{ delta: { content: word + " " } }] };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await new Promise(r => setTimeout(r, 10));
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
@@ -897,7 +888,6 @@ export async function POST(req: NextRequest) {
             for (const word of words) {
               const chunk = { choices: [{ delta: { content: word + " " } }] };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await new Promise(r => setTimeout(r, 10));
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
@@ -1092,7 +1082,6 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
             for (const word of words) {
               const chunk = { choices: [{ delta: { content: word + " " } }] };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await new Promise(r => setTimeout(r, 10));
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
@@ -1364,7 +1353,6 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
             for (const word of words) {
               const chunk = { choices: [{ delta: { content: word + " " } }] };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await new Promise(r => setTimeout(r, 10));
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
@@ -1406,7 +1394,6 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
             for (const word of words) {
               const chunk = { choices: [{ delta: { content: word + " " } }] };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await new Promise(r => setTimeout(r, 10));
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();

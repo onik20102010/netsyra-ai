@@ -297,14 +297,16 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
         </div>
       </div>
 
-      {/* Pan/zoom viewport */}
+      {/* Pan/zoom viewport — NO nested scrolling, CSS containment for performance */}
       <div
         ref={outerRef}
-        className="overflow-auto cursor-grab relative"
+        className="cursor-grab relative"
         style={{
-          maxHeight: "800px",
-          touchAction: "none",
-          willChange: "transform",
+          minHeight: "200px",
+          maxHeight: "600px",
+          overflow: "hidden",
+          touchAction: "pan-y pinch-zoom",
+          contain: "layout style paint",
           background: "radial-gradient(circle at center, #1a1a1a 0%, #0f0f0f 70%)",
         }}
         onWheel={handleWheel}
@@ -319,7 +321,10 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
         <div
           ref={innerRef}
           className="mermaid-container inline-block origin-top-left"
-          style={{ willChange: "transform" }}
+          style={{ 
+            willChange: "transform",
+            contain: "layout style paint",
+          }}
         />
       </div>
     </div>
