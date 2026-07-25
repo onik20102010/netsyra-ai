@@ -33,7 +33,7 @@ import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, c
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
-  const { error } = await supabase.from("chat.conversations").insert({
+  const { error } = await supabase.from("conversations").insert({
     id,
     user_id: userId,
     title: title?.slice(0, 100) || "New conversation",
@@ -45,7 +45,7 @@ async function createConversation(supabase: any, userId: string, id: string, tit
 }
 
 async function saveMessage(supabase: any, userId: string, conversationId: string, role: string, content: string) {
-  const { error } = await supabase.from("chat.messages").insert({
+  const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
     user_id: userId,
     role,
@@ -59,7 +59,7 @@ async function saveMessage(supabase: any, userId: string, conversationId: string
 
 async function getUserTotalMessageCount(supabase: any, userId: string): Promise<number> {
   const { count, error } = await supabase
-    .from("chat.messages")
+    .from("messages")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   return error ? 0 : (count || 0);
@@ -196,8 +196,7 @@ FORMATTING RULES FOR RICH CONTENT:
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createChatServerClient();
-    const publicSupabase = await createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -609,7 +608,7 @@ export async function POST(req: NextRequest) {
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
     // ── Check if user has active subscription ──
-    const { data: sub } = await publicSupabase
+    const { data: sub } = await supabase
       .from("subscriptions")
       .select("status")
       .eq("user_id", user.id)
@@ -620,7 +619,7 @@ export async function POST(req: NextRequest) {
 
     // ── Dynamic window sizing (GPT-style) ──
     const { count: conversationMessageCount } = await supabase
-      .from("chat.messages")
+      .from("messages")
       .select("*", { count: "exact", head: true })
       .eq("conversation_id", convId);
 
@@ -749,7 +748,7 @@ export async function POST(req: NextRequest) {
     const remainingSearches = dailyLimit - currentSearchCount;
 
     // ── Fetch user profile (used by both branches) ──
-    const { data: profile } = await publicSupabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("name, goal, custom_instructions")
       .eq("user_id", user.id)

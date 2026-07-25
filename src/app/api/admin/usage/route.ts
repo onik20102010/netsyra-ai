@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { createChatServerClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 // Aggregate daily Groq token limit across all free tiers (estimate)
 const DAILY_GROQ_LIMIT = 100000;
 
 export async function GET() {
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "netsyraai@gmail.com";
 

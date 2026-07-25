@@ -2,7 +2,7 @@
 // Summarizes older messages in a conversation when it gets too long
 // This enables GPT-like memory: keep recent context, summarize older parts
 
-import { createChatServerClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const CONVERSATION_SUMMARY_PROMPT = `
 You are a conversation summarization system. Your task is to analyze the conversation history and create a concise summary of the older messages.
@@ -47,7 +47,7 @@ export interface ConversationSummary {
 export async function getConversationSummary(
   conversationId: string
 ): Promise<ConversationSummary | null> {
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("chat_summaries")
     .select("*")
@@ -67,7 +67,7 @@ export async function generateConversationSummary(
   conversationId: string,
   messages: Array<{ role: string; content: string }>
 ): Promise<string | null> {
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
   
   // Get existing summary
   const existingSummary = await getConversationSummary(conversationId);

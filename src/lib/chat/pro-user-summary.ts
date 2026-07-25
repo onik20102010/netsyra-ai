@@ -2,7 +2,7 @@
 // Enhanced summary system for Pro plan users with more detailed analysis
 // Maintains comprehensive user behavior patterns across all chats
 
-import { createChatServerClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 interface ProUserSummary {
   id: string;
@@ -70,7 +70,7 @@ const PRO_USER_SUMMARY_PROMPT = `You are a premium personal memory system for Pr
 - When at capacity, prioritize professional identity and active projects`;
 
 export async function getProUserSummary(userId: string): Promise<string | null> {
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("pro_user_summaries")
     .select("summary")
@@ -89,7 +89,7 @@ export async function generateProUserSummary(
   // Generate after every 10 messages for Pro users (less frequent, more comprehensive)
   if (totalMessageCount % 10 !== 0) return;
 
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
   
   // Get existing summary
   const { data: existing } = await supabase

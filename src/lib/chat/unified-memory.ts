@@ -2,7 +2,7 @@
 // Replaces three separate API calls with one batched pipeline.
 // Queue-based incremental updates instead of per-message processing.
 
-import { createChatServerClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 // ── Types ───────────────────────────────────────────────────
 interface PendingMessage {
@@ -112,7 +112,7 @@ export async function processQueue(
     .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, 300)}`)
     .join('\n');
 
-  const supabase = await createChatServerClient();
+  const supabase = await createServerSupabaseClient();
 
   try {
     if (plan === 'free') {

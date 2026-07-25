@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { createChatClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { useChatUsage } from "@/hooks/useChatUsage";
 
 type Message = {
@@ -231,7 +231,7 @@ export default function ChatInterface({
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const supabase = createChatClient();
+  const supabase = createClient();
 
   const { refetch: refetchUsage } = useChatUsage();
 
@@ -289,7 +289,7 @@ export default function ChatInterface({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data, error } = await supabase
-        .from("chat.messages")
+        .from("messages")
         .select("id, conversation_id, user_id, role, content, created_at")
         .eq("conversation_id", conversationId)
         .eq("user_id", user.id)
