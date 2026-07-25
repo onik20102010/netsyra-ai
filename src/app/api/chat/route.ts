@@ -49,16 +49,25 @@ async function createConversation(supabase: any, userId: string, id: string, tit
 async function saveMessage(supabase: any, userId: string, conversationId: string, role: string, content: string) {
   console.log(`Saving message: conversationId=${conversationId}, userId=${userId}, role=${role}`);
   
-  // First verify conversation exists
-  const { data: conv, error: convError } = await supabase
+  // Verify conversation exists, create if not (handles race conditions / RLS timing on Vercel)
+  const { data: conv } = await supabase
     .from("conversations")
     .select("id")
     .eq("id", conversationId)
-    .single();
+    .maybeSingle();
   
-  if (convError || !conv) {
-    console.error(`Conversation ${conversationId} does not exist:`, convError);
-    throw new Error(`Conversation ${conversationId} does not exist`);
+  if (!conv) {
+    console.log(`Conversation ${conversationId} not found, creating it now...`);
+    const { error: createError } = await supabase.from("conversations").insert({
+      id: conversationId,
+      user_id: userId,
+      title: content?.slice(0, 100) || "New conversation",
+    });
+    if (createError) {
+      console.error("Failed to auto-create conversation:", createError);
+      throw new Error(`Failed to create conversation: ${createError.message}`);
+    }
+    console.log(`Conversation ${conversationId} auto-created in saveMessage`);
   }
   
   const { error } = await supabase.from("messages").insert({
@@ -590,11 +599,19 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Usage check PASSED. Remaining: ${usageCheck.remaining}`);
 
+    // ── Ensure conversation exists BEFORE cache check (so cache hits work on new conversations) ──
+    if (newConversation || !conversationId) {
+      console.log(`Creating conversation: newConversation=${newConversation}, conversationId=${conversationId}, convId=${convId}`);
+      await createConversation(supabase, user.id, convId, userMessage);
+      console.log(`Conversation creation completed for ${convId}`);
+    }
+
     // ── Cache check: deterministic + semantic ──
     if (!diveDeep && !isWidgetQuery && modelTier !== "aai" && modelTier !== "live") {
       const cached = await checkCache(userMessage);
       if (cached) {
         console.log(`💾 Cache hit (${cached.source}): "${userMessage.slice(0, 50)}..."`);
+        await saveMessage(supabase, user.id, convId, "user", userMessage);
         await saveMessage(supabase, user.id, convId, "assistant", cached.response);
         const encoder = new TextEncoder();
         const words = cached.response.split(" ");
@@ -616,12 +633,6 @@ export async function POST(req: NextRequest) {
           },
         });
       }
-    }
-
-    if (newConversation || !conversationId) {
-      console.log(`Creating conversation: newConversation=${newConversation}, conversationId=${conversationId}, convId=${convId}`);
-      await createConversation(supabase, user.id, convId, userMessage);
-      console.log(`Conversation creation completed for ${convId}`);
     }
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
