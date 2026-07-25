@@ -619,7 +619,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (newConversation || !conversationId) {
+      console.log(`Creating conversation: newConversation=${newConversation}, conversationId=${conversationId}, convId=${convId}`);
       await createConversation(supabase, user.id, convId, userMessage);
+      console.log(`Conversation creation completed for ${convId}`);
     }
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
