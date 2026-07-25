@@ -369,22 +369,17 @@ export default function ChatSidebar({
               className="w-full hover:bg-gray-100 transition text-left rounded-lg p-2 -m-2"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                  {(displayName || user?.email || "U").charAt(0).toUpperCase()}
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
+                    {(displayName || user?.email || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${isPro ? 'bg-indigo-500' : 'bg-gray-300'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   {nameLoaded ? (
-                    <>
-                      <p className="text-sm text-gray-900 truncate font-medium">
-                        {displayName || user?.email?.split("@")[0] || "User"}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${isPro ? 'bg-indigo-500' : 'bg-gray-300'}`} />
-                        <p className={`text-xs ${isPro ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
-                          {isPro ? 'NI Pro' : 'Free'}
-                        </p>
-                      </div>
-                    </>
+                    <p className="text-sm text-gray-900 truncate font-medium">
+                      {displayName || user?.email?.split("@")[0] || "User"}
+                    </p>
                   ) : (
                     <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
                   )}
