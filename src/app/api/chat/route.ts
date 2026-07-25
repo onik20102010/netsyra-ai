@@ -1,6 +1,6 @@
 // src/app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createChatServerClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import { aaiRuntime } from "@/lib/chat/aai";
 import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent } from "@/lib/intent-classifier";
@@ -196,7 +196,8 @@ FORMATTING RULES FOR RICH CONTENT:
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createChatServerClient();
+    const publicSupabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -608,7 +609,7 @@ export async function POST(req: NextRequest) {
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
     // ── Check if user has active subscription ──
-    const { data: sub } = await supabase
+    const { data: sub } = await publicSupabase
       .from("subscriptions")
       .select("status")
       .eq("user_id", user.id)
@@ -748,7 +749,7 @@ export async function POST(req: NextRequest) {
     const remainingSearches = dailyLimit - currentSearchCount;
 
     // ── Fetch user profile (used by both branches) ──
-    const { data: profile } = await supabase
+    const { data: profile } = await publicSupabase
       .from("profiles")
       .select("name, goal, custom_instructions")
       .eq("user_id", user.id)

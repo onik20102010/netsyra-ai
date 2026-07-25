@@ -1,7 +1,7 @@
 // User Memory Summary Service
 // Generates and maintains long-term user memory summaries
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createChatServerClient } from "@/lib/supabase/server";
 
 interface MemorySummary {
   id: string;
@@ -50,7 +50,7 @@ If existing summary exists, merge new insights with it while removing outdated i
 `;
 
 export async function getUserMemorySummary(userId: string): Promise<string | null> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   const { data, error } = await supabase
     .from("user_memory_summaries")
     .select("summary")
@@ -69,7 +69,7 @@ export async function generateMemorySummary(
   // Only generate after every 6 messages
   if (totalMessageCount % 6 !== 0) return;
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   
   // Get existing summary
   const { data: existing } = await supabase

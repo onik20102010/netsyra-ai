@@ -2,7 +2,7 @@
 // Chat-specific incremental summary generation for Pro plan users
 // Maintains detailed conversation history with 1500 character limit
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createChatServerClient } from "@/lib/supabase/server";
 
 interface ProConversationSummary {
   id: string;
@@ -73,7 +73,7 @@ const PRO_CONVERSATION_SUMMARY_PROMPT = `You are an advanced conversation memory
 export async function getProConversationSummary(
   conversationId: string
 ): Promise<ProConversationSummary | null> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   const { data, error } = await supabase
     .from("pro_conversation_summaries")
     .select("*")
@@ -89,7 +89,7 @@ export async function updateProConversationSummary(
   newMessage: { role: string; content: string },
   existingSummary: ProConversationSummary | null
 ): Promise<void> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   
   // Get conversation message count
   const { count: messageCount } = await supabase

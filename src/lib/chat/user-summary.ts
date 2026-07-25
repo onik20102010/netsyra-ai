@@ -2,7 +2,7 @@
 // Creates and maintains a 500-character summary of user behavior across all chats
 // Updated based on interaction patterns and user activity
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createChatServerClient } from "@/lib/supabase/server";
 
 interface UserSummary {
   id: string;
@@ -42,7 +42,7 @@ const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how Ch
 - When at capacity, drop the least important/relevant fact to make room for new ones`;
 
 export async function getUserSummary(userId: string): Promise<string | null> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   const { data, error } = await supabase
     .from("user_summaries")
     .select("summary")
@@ -61,7 +61,7 @@ export async function generateUserSummary(
   // Only generate after every 5 messages
   if (totalMessageCount % 5 !== 0) return;
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createChatServerClient();
   
   // Get existing summary
   const { data: existing } = await supabase

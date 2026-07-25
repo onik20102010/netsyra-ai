@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { createClient } from "@/lib/supabase/client";
+import { createChatClient } from "@/lib/supabase/client";
 import { useChatUsage } from "@/hooks/useChatUsage";
 
 type Message = {
@@ -231,7 +231,7 @@ export default function ChatInterface({
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const supabase = createClient();
+  const supabase = createChatClient();
 
   const { refetch: refetchUsage } = useChatUsage();
 
