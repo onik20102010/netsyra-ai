@@ -13,6 +13,7 @@ export default function ChatThreadPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [diveDeep, setDiveDeep] = useState(false);
   const [selectedModel, setSelectedModel] = useState("auto");   // ✅ default to auto-router
+  const [isPro, setIsPro] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const supabase = createChatClient();
 
@@ -30,6 +31,19 @@ export default function ChatThreadPage() {
         .eq("user_id", sessionData.session.user.id)
         .single();
       setIsValid(!!data);
+
+      // Check Pro status and set NI model
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", sessionData.session.user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      const proStatus = !!subData;
+      setIsPro(proStatus);
+      if (proStatus) {
+        setSelectedModel("ni");
+      }
     };
     check();
   }, [conversationId, supabase]);
@@ -95,8 +109,9 @@ export default function ChatThreadPage() {
             conversationId={conversationId}
             setConversationId={() => {}}
             diveDeep={diveDeep}
-            selectedModel={selectedModel}          // ← added
-            setSelectedModel={setSelectedModel}    // ← added
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            isPro={isPro}
           />
         </div>
       </div>

@@ -384,20 +384,6 @@ export default function ChatSidebar({
                           {isPro ? 'NI Pro' : 'Free'}
                         </p>
                       </div>
-                      {webSearchRemaining !== null && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-xs text-gray-400">
-                            {webSearchRemaining} web searches left today
-                          </span>
-                        </div>
-                      )}
-                      {imageGenRemaining !== null && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-xs text-gray-400">
-                            {imageGenRemaining.remainingMonth} images left this month
-                          </span>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />

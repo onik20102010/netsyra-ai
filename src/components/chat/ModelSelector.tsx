@@ -185,6 +185,9 @@ export default function ModelSelector({
     ? advancedModels.filter(m => m.id === "ni")
     : advancedModels.filter(m => m.id !== "ni");
 
+  // For Pro users, just show NI directly without section header
+  const showOnlyNi = isPro && displayAdvancedModels.length === 1 && displayAdvancedModels[0].id === "ni";
+
   const renderModelButton = (model: (typeof allModels)[0]) => {
     const status = modelStatuses[model.id];
     const isDisabled = status && !status.allowed;
@@ -252,10 +255,17 @@ export default function ModelSelector({
 
             {/* Show advanced models directly for Pro users, or under "Advanced"/"Premium" section for others */}
             {isPro && displayAdvancedModels.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
-                {displayAdvancedModels.map(renderModelButton)}
-              </div>
+              <>
+                {showOnlyNi ? (
+                  // Show NI directly without section header for Pro users
+                  displayAdvancedModels.map(renderModelButton)
+                ) : (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
+                    {displayAdvancedModels.map(renderModelButton)}
+                  </div>
+                )}
+              </>
             )}
 
             {!isPro && isMobile && displayAdvancedModels.length > 0 && (

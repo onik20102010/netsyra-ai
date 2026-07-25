@@ -28,7 +28,8 @@ function ChatContent() {
   const [isPro, setIsPro] = useState(false);
 
   // Lifted model state – shared between sidebar (maybe for future use) and chat interface
-  const [selectedModel, setSelectedModel] = useState<string>(initialModel);
+  // For Pro users, default to NI model
+  const [selectedModel, setSelectedModel] = useState<string>(isPro ? "ni" : initialModel);
 
   const router = useRouter();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,7 +112,14 @@ function ChatContent() {
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
-      .then(({ data }) => setIsPro(!!data));
+      .then(({ data }) => {
+        const proStatus = !!data;
+        setIsPro(proStatus);
+        // Set NI model for Pro users
+        if (proStatus) {
+          setSelectedModel("ni");
+        }
+      });
   }, [user, supabase]);
 
 
