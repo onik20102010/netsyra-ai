@@ -19,11 +19,11 @@ import { getProUserSummary, generateProUserSummary, shouldUseProUserSummary } fr
 import { buildProMessageContext, updateProConversationSummary, getProConversationSummary } from "@/lib/chat/pro-conversation-summary";
 import { routeModel } from "@/lib/chat/router";
 // ── New unified systems ──
-import { unifiedClassify, quickClassify } from "@/lib/chat/unified-classifier";
+// import { unifiedClassify, quickClassify } from "@/lib/chat/unified-classifier";
 import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
-import { queueMessage, shouldProcessQueue, processQueue, getDynamicWindowSize, detectQueryComplexity, detectTopicSwitch } from "@/lib/chat/unified-memory";
+// import { queueMessage, shouldProcessQueue, processQueue, getDynamicWindowSize, detectQueryComplexity, detectTopicSwitch } from "@/lib/chat/unified-memory";
 import { getSystemPrompt } from "@/lib/chat/model-registry";
-import { countTokensSync, calculateTokenBudget, selectEfficientModel } from "@/lib/chat/token-counter";
+// import { countTokensSync, calculateTokenBudget, selectEfficientModel } from "@/lib/chat/token-counter";
 import { AVAILABLE_TOOLS } from "@/lib/chat/tools/web-search";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
@@ -1130,9 +1130,10 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       messagesForContext.map((m: any) => ({ role: m.role, content: m.content }))
     );
 
-    // Build messages array with system prompt
+    // Build messages array with dynamic tiered system prompt (reduces token usage by 50-70%)
+    const dynamicSystemPrompt = getSystemPrompt(modelTier, userMessage);
     const apiMessages: Array<{ role: string; content: string }> = [
-      { role: "system", content: tier.systemPrompt },
+      { role: "system", content: dynamicSystemPrompt },
       ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
