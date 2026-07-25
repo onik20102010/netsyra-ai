@@ -1019,12 +1019,53 @@ const aaiModels: ModelConfig[] = [
 
 // ── N NI (Premium model for Pro subscribers) ──
 const niModels: ModelConfig[] = [
+  // Claude Opus 4.6 (highest tier for complex tasks)
   {
     provider: "openai",
-    apiKeyEnv: "GROQ_API_KEY",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    modelName: "llama-3.3-70b-versatile",
-    modelKey: "ni",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.anthropic.com/v1/messages",
+    modelName: "claude-opus-4.6",
+    modelKey: "ni_opus",
+  },
+  // Claude Sonnet 4.6 (high tier for coding/reasoning)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.anthropic.com/v1/messages",
+    modelName: "claude-sonnet-4.6",
+    modelKey: "ni_sonnet",
+  },
+  // GPT-5 (premium for reasoning/planning/creative)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    modelName: "gpt-5",
+    modelKey: "ni_gpt5",
+  },
+  // GPT-5-mini (fallback for reasoning tasks)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    modelName: "gpt-5-mini",
+    modelKey: "ni_gpt5_mini",
+  },
+  // DeepSeek V4 Pro (fallback for coding tasks)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.deepseek.com/v1/chat/completions",
+    modelName: "deepseek-v4-pro",
+    modelKey: "ni_deepseek",
+  },
+  // DeepSeek V4 Flash (for easy tasks)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.deepseek.com/v1/chat/completions",
+    modelName: "deepseek-v4-flash",
+    modelKey: "ni_deepseek_flash",
   },
 ];
 
@@ -1068,8 +1109,8 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "
   },
   ni: {
     models: niModels,
-    systemPrompt: `${identity} You are N NI, the premium Netsyra model. Provide expert, thorough, and insightful responses.`,
+    systemPrompt: `${identity} You are N NI, the premium Netsyra model for Pro subscribers. ${systemPrompt}`,
     temperature: 0.7,
-    maxTokens: 2500,
+    maxTokens: 4000,
   },
 };

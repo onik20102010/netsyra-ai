@@ -20,7 +20,7 @@ import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
-import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, deductCredits } from "@/lib/chat/ni-router";
+import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, checkAndDeductTokens, checkAllLimitsExhausted, getTotalNiRemaining, estimateTokensNeeded, checkGPT5LimitsExhausted, getTotalGPT5Remaining } from "@/lib/chat/ni-router";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -626,6 +626,29 @@ export async function POST(req: NextRequest) {
     // ── NI Router: Determine actual model for NI tier ──
     let niModelRoute = null;
     if (modelTier === "ni") {
+      // Check if all NI token limits are exhausted
+      const allLimitsExhausted = await checkAllLimitsExhausted(user.id, supabase);
+      
+      if (allLimitsExhausted) {
+        return NextResponse.json(
+          { error: "Your daily NI token limits have been exhausted. Please wait 24 hours for reset." },
+          { status: 429 }
+        );
+      }
+
+      // Get remaining tokens for all models
+      const tokenRemaining = await getTotalNiRemaining(user.id, supabase);
+      const gpt5TokenRemaining = await getTotalGPT5Remaining(user.id, supabase);
+
+      // Transform to match routeTask expected format
+      const tokenLimits = {
+        opusRemaining: tokenRemaining.opus,
+        sonnetRemaining: tokenRemaining.sonnet,
+        deepseekRemaining: tokenRemaining.deepseek,
+        gpt5Remaining: gpt5TokenRemaining.gpt5,
+        gpt5MiniRemaining: gpt5TokenRemaining.mini,
+      };
+
       // Analyze task and route to appropriate model (now async with AI classifier)
       const taskAnalysis = await analyzeTask(userMessage, {
         codeLength: messages.length * 50, // rough estimate
@@ -633,38 +656,67 @@ export async function POST(req: NextRequest) {
         conversationHistoryLength: messages.length,
       });
 
-      // Get Claude credits for routing decision
-      const { data: claudeCredits } = await supabase
-        .rpc('get_or_reset_claude_credits', { p_user_id: user.id });
-
-      const claudeCreditsRemaining = claudeCredits?.[0]?.credits_remaining || 0;
-
-      niModelRoute = routeTask(taskAnalysis, claudeCreditsRemaining);
+      niModelRoute = routeTask(taskAnalysis, tokenLimits);
       console.log(`🧠 NI Router: ${getRoutingExplanation(niModelRoute)} (confidence: ${taskAnalysis.confidence})`);
 
-      // Check if route has error (insufficient credits)
+      // Check if route has error (insufficient tokens)
       if (niModelRoute.error) {
         console.log(`⚠️ ${niModelRoute.error}`);
         // Continue with fallback model, error message will be shown to user
       }
 
-      // Deduct Claude credits if using Claude (using new deductCredits function)
-      if (niModelRoute.model === 'claude-sonnet-4.6-coding') {
-        const creditsNeeded = estimateClaudeCredits(taskAnalysis);
-        const creditResult = await deductCredits(user.id, creditsNeeded, supabase);
+      // Deduct tokens based on selected model (skip if noTokenLimit flag is set)
+      const tokensNeeded = estimateTokensNeeded(taskAnalysis);
+      let modelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
+      
+      if (niModelRoute.model === 'claude-opus-4.6') {
+        modelType = 'claude-opus-4.6';
+      } else if (niModelRoute.model === 'claude-sonnet-4.6') {
+        modelType = 'claude-sonnet-4.6';
+      } else if (niModelRoute.model === 'deepseek-v4-pro') {
+        modelType = 'deepseek-v4-pro';
+      } else if (niModelRoute.model === 'gpt-5') {
+        modelType = 'gpt-5';
+      } else if (niModelRoute.model === 'gpt-5-mini') {
+        modelType = 'gpt-5-mini';
+      }
 
-        if (!creditResult.success) {
-          console.log(`⚠️ Credit deduction failed: ${creditResult.error}`);
+      // Skip token deduction for default fallback (noTokenLimit flag)
+      if (niModelRoute.noTokenLimit) {
+        console.log(`🔄 Using ${niModelRoute.model} with no token limit tracking`);
+      } else {
+        const tokenResult = await checkAndDeductTokens(user.id, modelType, tokensNeeded, supabase);
+
+        if (!tokenResult.success) {
+          console.log(`⚠️ Token deduction failed: ${tokenResult.error}`);
           // Use fallback model
           if (niModelRoute.fallback) {
             niModelRoute = niModelRoute.fallback;
+            // Try to deduct tokens for fallback model
+            let fallbackModelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
+            
+            if (niModelRoute.model === 'claude-sonnet-4.6') {
+              fallbackModelType = 'claude-sonnet-4.6';
+            } else if (niModelRoute.model === 'gpt-5-mini') {
+              fallbackModelType = 'gpt-5-mini';
+            } else if (niModelRoute.model === 'deepseek-v4-pro') {
+              fallbackModelType = 'deepseek-v4-pro';
+            }
+            
+            const fallbackResult = await checkAndDeductTokens(user.id, fallbackModelType, tokensNeeded, supabase);
+            
+            if (!fallbackResult.success) {
+              // If fallback also fails, return error
+              return NextResponse.json(
+                { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
+                { status: 429 }
+              );
+            }
           } else {
-            niModelRoute = {
-              model: 'deepseek-v4-pro',
-              provider: 'deepseek',
-              reason: 'Claude credits exhausted, using DeepSeek V4 Pro fallback',
-              error: creditResult.error,
-            };
+            return NextResponse.json(
+              { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
+              { status: 429 }
+            );
           }
         }
       }

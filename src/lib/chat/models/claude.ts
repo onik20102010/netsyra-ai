@@ -1,4 +1,4 @@
-// Claude Sonnet 4.6 Coding API Integration
+// Claude API Integration (Sonnet 4.6 Coding & Opus 4.6)
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -6,7 +6,7 @@ export interface ClaudeMessage {
 }
 
 export interface ClaudeOptions {
-  model: 'claude-sonnet-4.6-coding';
+  model: 'claude-sonnet-4.6-coding' | 'claude-opus-4.6';
   temperature?: number;
   maxTokens?: number;
   topP?: number;
