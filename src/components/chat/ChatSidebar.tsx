@@ -261,20 +261,6 @@ export default function ChatSidebar({
               </span>
             </button>
 
-            {/* Image Analysis remaining credits */}
-            {imageAnalysisRemaining && (
-              <div className="px-3 py-2 text-xs text-gray-500">
-                <div className="flex items-center justify-between">
-                  <span>Image Analysis</span>
-                  <span className="font-medium">{imageAnalysisRemaining.remainingDaily}/30 day</span>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span>Monthly</span>
-                  <span className="font-medium">{imageAnalysisRemaining.remainingMonthly}/600</span>
-                </div>
-              </div>
-            )}
-
             <div className="my-3 border-t border-gray-200" />
 
             {/* Pinned section */}
