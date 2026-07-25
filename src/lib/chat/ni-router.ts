@@ -20,7 +20,7 @@ type ComplexityLevel = 'trivial' | 'easy' | 'moderate' | 'complex' | 'very_compl
 // ── Legacy types (for backward compatibility) ─────────────
 export type TaskType =
   | 'coding' | 'reasoning' | 'architecture' | 'debugging' | 'refactoring'
-  | 'image_generation' | 'image_analysis';
+  | 'image_analysis';
 
 export type TaskComplexity = 'easy' | 'medium' | 'hard' | 'very_hard';
 
@@ -77,7 +77,7 @@ async function classifyTaskWithAI(
             role: 'system',
             content: `Classify the user's request. Return ONLY valid JSON:
 {
-  "type": "coding|reasoning|architecture|debugging|refactoring|image_generation|image_analysis",
+  "type": "coding|reasoning|architecture|debugging|refactoring|image_analysis",
   "complexity": "easy|medium|hard|very_hard",
   "confidence": 0.0–1.0,
   "primaryCategory": "coding|reasoning|creative|analysis|operations",
@@ -258,7 +258,7 @@ function detectTypeAndComplexityFallback(
   const typeMap: Record<PrimaryCategory, TaskType> = {
     coding: 'coding',
     reasoning: 'reasoning',
-    creative: 'image_generation',
+    creative: 'reasoning',
     analysis: 'image_analysis',
     operations: 'debugging',
   };
@@ -457,6 +457,82 @@ export async function getTotalGPT5Remaining(
   }
 }
 
+// ── Image Analysis Limit Functions ─────────────────────
+
+export async function checkImageAnalysisLimitsExhausted(
+  userId: string,
+  supabase: any
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc(
+      'check_image_analysis_limits_exhausted',
+      { p_user_id: userId }
+    );
+    if (error) {
+      console.error('Error checking image analysis limits:', error);
+      return false;
+    }
+    return data || false;
+  } catch (error) {
+    console.error('Error checking image analysis limits:', error);
+    return false;
+  }
+}
+
+export async function deductImageAnalysisCredit(
+  userId: string,
+  supabase: any
+): Promise<{ success: boolean; remainingDaily: number; remainingMonthly: number; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc(
+      'deduct_image_analysis_credit',
+      { p_user_id: userId }
+    );
+    if (error) {
+      console.error('Error deducting image analysis credit:', error);
+      return { success: false, remainingDaily: 0, remainingMonthly: 0, error: error.message };
+    }
+    if (!data) {
+      return { success: false, remainingDaily: 0, remainingMonthly: 0, error: 'Failed to deduct credit' };
+    }
+    return {
+      success: data.success || false,
+      remainingDaily: data.remaining_daily || 0,
+      remainingMonthly: data.remaining_monthly || 0,
+      error: data.error,
+    };
+  } catch (error) {
+    console.error('Error deducting image analysis credit:', error);
+    return { success: false, remainingDaily: 0, remainingMonthly: 0, error: 'Unknown error' };
+  }
+}
+
+export async function getImageAnalysisRemaining(
+  userId: string,
+  supabase: any
+): Promise<{ remainingDaily: number; remainingMonthly: number }> {
+  try {
+    const { data, error } = await supabase.rpc(
+      'get_or_reset_image_analysis_usage',
+      { p_user_id: userId }
+    );
+    if (error) {
+      console.error('Error getting image analysis remaining:', error);
+      return { remainingDaily: 30, remainingMonthly: 600 };
+    }
+    if (!data || data.length === 0) {
+      return { remainingDaily: 30, remainingMonthly: 600 };
+    }
+    return {
+      remainingDaily: data[0].remaining_daily || 30,
+      remainingMonthly: data[0].remaining_monthly || 600,
+    };
+  } catch (error) {
+    console.error('Error getting image analysis remaining:', error);
+    return { remainingDaily: 30, remainingMonthly: 600 };
+  }
+}
+
 // ── Estimate tokens needed for a task ───────────────────
 export function estimateTokensNeeded(analysis: TaskAnalysis): number {
   const { complexity, estimatedLines, estimatedFiles } = analysis;
@@ -496,8 +572,6 @@ export function routeTask(
   const { type, complexity, primarySubType, primaryCategory } = analysis;
   const tokensNeeded = estimateTokensNeeded(analysis);
 
-  if (type === 'image_generation')
-    return { model: 'gpt-image-1', provider: 'openai', reason: 'Image generation' };
   if (type === 'image_analysis')
     return { model: 'gemini-flash-lite', provider: 'google', reason: 'Image analysis' };
 

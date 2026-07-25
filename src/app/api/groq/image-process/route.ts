@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/client';
+import { checkImageAnalysisLimitsExhausted, deductImageAnalysisCredit } from '@/lib/chat/ni-router';
 
 const TIMEOUT_MS = 45000;
 
@@ -11,6 +13,31 @@ const GEMINI_VISION_MODELS = [
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Check if image analysis limits are exhausted
+    const isExhausted = await checkImageAnalysisLimitsExhausted(user.id, supabase);
+    if (isExhausted) {
+      return NextResponse.json(
+        { error: 'Your image analysis limits have been exhausted. Daily limit: 30 images, Monthly limit: 600 images.' },
+        { status: 429 }
+      );
+    }
+
+    // Deduct credit before processing
+    const creditResult = await deductImageAnalysisCredit(user.id, supabase);
+    if (!creditResult.success) {
+      return NextResponse.json(
+        { error: creditResult.error || 'Failed to deduct image analysis credit' },
+        { status: 429 }
+      );
+    }
+
     const formData = await request.formData();
     const images = formData.getAll('images') as File[];
 

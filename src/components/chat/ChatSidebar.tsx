@@ -16,6 +16,7 @@ import {
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { getImageAnalysisRemaining } from "@/lib/chat/ni-router";
 
 interface ChatSidebarProps {
   open: boolean;
@@ -59,7 +60,7 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
   const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
-  const [imageGenRemaining, setImageGenRemaining] = useState<{ remaining4hr: number; remainingMonth: number } | null>(null);
+  const [imageAnalysisRemaining, setImageAnalysisRemaining] = useState<{ remainingDaily: number; remainingMonthly: number } | null>(null);
   const supabase = createClient();
 
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -104,17 +105,11 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (!user) return;
-    const fetchImageGenUsage = async () => {
-      const { data } = await supabase
-        .rpc('get_or_reset_image_generation_usage', { p_user_id: user.id });
-      if (data && data[0]) {
-        setImageGenRemaining({
-          remaining4hr: data[0].remaining_4hr || 10,
-          remainingMonth: data[0].remaining_month || 150,
-        });
-      }
+    const fetchImageAnalysisUsage = async () => {
+      const remaining = await getImageAnalysisRemaining(user.id, supabase);
+      setImageAnalysisRemaining(remaining);
     };
-    fetchImageGenUsage();
+    fetchImageAnalysisUsage();
   }, [user, supabase]);
 
   useEffect(() => {
@@ -265,6 +260,20 @@ export default function ChatSidebar({
                 {diveDeep ? "ON" : "OFF"}
               </span>
             </button>
+
+            {/* Image Analysis remaining credits */}
+            {imageAnalysisRemaining && (
+              <div className="px-3 py-2 text-xs text-gray-500">
+                <div className="flex items-center justify-between">
+                  <span>Image Analysis</span>
+                  <span className="font-medium">{imageAnalysisRemaining.remainingDaily}/30 day</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span>Monthly</span>
+                  <span className="font-medium">{imageAnalysisRemaining.remainingMonthly}/600</span>
+                </div>
+              </div>
+            )}
 
             <div className="my-3 border-t border-gray-200" />
 
