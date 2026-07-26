@@ -30,19 +30,19 @@ const TIERS: Tier[] = [
     name: 'Go Plus',
     description: 'Enhanced AI capabilities',
     features: ['Gemini models access', 'Image generations', 'Image analyzing', 'Strong reasoning'],
-    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
+    priceId: { month: 'pri_01kyf27thzh41n39q3cja2cphq', year: 'pri_01kyf27thzh41n39q3cja2cphq' },
   },
   {
     name: 'Pro',
     description: 'For professionals and developers',
     features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best for coding, researching, designing', 'No image generation'],
-    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
+    priceId: { month: 'pri_01kyf2acjbxs0s8nytjae84ckm', year: 'pri_01kyf2acjbxs0s8nytjae84ckm' },
   },
   {
     name: '+ Pro',
     description: 'All the features in Pro',
     features: ['All features in Pro', 'Image generation', 'All models in Pro', 'Best for everyday tasks and coding'],
-    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
+    priceId: { month: 'pri_01kyf2ckc62mpde2s2rfmdjra4', year: 'pri_01kyf2ckc62mpde2s2rfmdjra4' },
   },
 ];
 

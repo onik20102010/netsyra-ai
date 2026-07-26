@@ -37,35 +37,6 @@ export function TitleBar() {
       <div className="flex-1 text-center text-[14px] font-medium tracking-tight text-[#cccccc]">
         Netsyra IDE
       </div>
-
-      {/* RIGHT: Window Controls */}
-      <div className="flex items-center h-full gap-0">
-        <button
-          className="h-full px-3 hover:bg-[#4a4a4a] transition-colors flex items-center justify-center"
-          onClick={() => console.log("Minimize triggered")}
-          title="Minimize"
-        >
-          <Minus size={14} />
-        </button>
-        <button
-          className="h-full px-3 hover:bg-[#4a4a4a] transition-colors flex items-center justify-center"
-          onClick={() => console.log("Maximize triggered")}
-          title="Maximize"
-        >
-          <Square size={14} />
-        </button>
-        <button
-          className="h-full px-3 hover:bg-[#e81123] hover:text-white transition-colors flex items-center justify-center"
-          onClick={() => {
-            if (window.confirm("Are you sure you want to close this tab?")) {
-              window.close(); // Note: Browsers restrict script closing windows, but it acts as a neat UI cue.
-            }
-          }}
-          title="Close"
-        >
-          <X size={16} />
-        </button>
-      </div>
     </div>
   );
 }
