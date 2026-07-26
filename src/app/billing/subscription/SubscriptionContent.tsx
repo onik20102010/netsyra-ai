@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 const STATIC_PRICE = { amount: 18, currency: "USD" };
 
 export interface Tier {
-  name: 'Free' | 'Plus' | 'Pro';
+  name: 'Free' | 'Plus' | 'Pro' | '+ Pro';
   description: string;
   features: string[];
   priceId: { month: string; year: string };
@@ -34,8 +34,14 @@ const TIERS: Tier[] = [
   },
   {
     name: 'Pro',
-    description: 'For professionals and teams',
-    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best choice for coding, researching, designing', 'No image generation'],
+    description: 'For professionals and developers',
+    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best choice for coding, researching, designing, developement', 'No image generation'],
+    priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
+  },
+  {
+    name: '+ Pro',
+    description: 'All the features in Pro',
+    features: ['All the features in Pro', 'With few couple hours limit on high model', 'Image generation', 'All models in Pro', 'Best choice for every day task and coding, researching, designing, developement'],
     priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
   },
 ];
@@ -55,17 +61,27 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const [priceLoading, setPriceLoading] = useState(true);
   const [paddle, setPaddle] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("subscriptions")
-      .select("status")
+      .select("status, plan_type")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
-      .then(({ data }) => setIsPro(!!data));
+      .then(({ data }) => {
+        setIsPro(!!data);
+        if (data?.plan_type) {
+          setCurrentPlan(data.plan_type);
+        } else if (data) {
+          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+        } else {
+          setCurrentPlan('Free');
+        }
+      });
   }, [user]);
 
   useEffect(() => {
@@ -210,25 +226,34 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
 
       {/* Pricing Cards */}
       <div className="max-w-7xl mx-auto px-6 pb-20">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-4 gap-8">
           {TIERS.map((tier) => {
             const priceId = annual ? tier.priceId.year : tier.priceId.month;
             const currentPrice = getPrice(priceId);
-            const isPro = tier.name === 'Pro';
+            const isProTier = tier.name === 'Pro';
+            const isPlusProTier = tier.name === '+ Pro';
             const isFree = tier.isFree;
+            const isCurrentPlan = tier.name === currentPlan;
 
             return (
               <div
                 key={tier.name}
                 className={`${
-                  isPro
+                  isPlusProTier
+                    ? 'bg-gradient-to-b from-purple-600/20 to-transparent border border-purple-500/30'
+                    : isProTier
                     ? 'bg-gradient-to-b from-blue-600/20 to-transparent border border-blue-500/30'
                     : isFree
                     ? 'bg-white/[0.03] border border-white/[0.08]'
                     : 'bg-white/[0.03] border border-white/[0.08]'
                 } rounded-2xl p-8 relative`}
               >
-                {isPro && (
+                {isPlusProTier && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-xs font-medium px-3 py-1 rounded-full">
+                    Best Value
+                  </div>
+                )}
+                {isProTier && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-xs font-medium px-3 py-1 rounded-full">
                     Most Popular
                   </div>
@@ -264,17 +289,19 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   ))}
                 </ul>
                 <button
-                  onClick={() => !isFree && !isPro && handleSubscribe(priceId)}
-                  disabled={subscribing || isPro || isFree}
+                  onClick={() => !isFree && !isCurrentPlan && handleSubscribe(priceId)}
+                  disabled={subscribing || isCurrentPlan || isFree}
                   className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:opacity-50 ${
                     isFree
                       ? 'bg-white/10 border border-white/20 text-white/50 cursor-not-allowed'
-                      : isPro
+                      : isCurrentPlan
                       ? 'bg-green-600/20 border border-green-500/30 text-green-400 cursor-not-allowed'
+                      : isPlusProTier
+                      ? 'bg-purple-600 text-white hover:bg-purple-500'
                       : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {isFree ? 'Current Plan' : isPro ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
+                  {isFree ? 'Current Plan' : isCurrentPlan ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </div>
             );
