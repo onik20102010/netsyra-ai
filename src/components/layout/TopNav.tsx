@@ -12,17 +12,27 @@ export default function TopNav() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [isPro, setIsPro] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("subscriptions")
-      .select("status")
+      .select("status, plan_type")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
-      .then(({ data }) => setIsPro(!!data));
+      .then(({ data }) => {
+        setIsPro(!!data);
+        if (data?.plan_type) {
+          setCurrentPlan(data.plan_type);
+        } else if (data) {
+          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+        } else {
+          setCurrentPlan('Free');
+        }
+      });
   }, [user]);
 
   return (
@@ -89,21 +99,29 @@ export default function TopNav() {
               </Button>
             </Link>
 
-            {/* Pro badge or Upgrade button */}
+            {/* Current plan badge or Upgrade button */}
             {isPro ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-sm font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                Pro
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                currentPlan === '+ Pro'
+                  ? 'bg-purple-600/20 border border-purple-500/30 text-purple-400'
+                  : currentPlan === 'Pro'
+                  ? 'bg-blue-600/20 border border-blue-500/30 text-blue-400'
+                  : 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  currentPlan === '+ Pro'
+                    ? 'bg-purple-400'
+                    : currentPlan === 'Pro'
+                    ? 'bg-blue-400'
+                    : 'bg-indigo-400'
+                }`} />
+                {currentPlan}
               </div>
             ) : (
-              <Link href="/billing/subscription">
-                <Button
-                  className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-full px-3 sm:px-4 text-sm transition-all flex items-center gap-1 sm:gap-2"
-                >
-                  <CreditCard size={16} />
-                  <span className="hidden sm:inline">Upgrade to Pro</span>
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white/60 text-sm font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                Free
+              </div>
             )}
 
             {/* Separator */}
