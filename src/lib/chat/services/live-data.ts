@@ -1,4 +1,54 @@
-// ── Universal web search (Tavily + Wikipedia) ──
+// ── Universal web search (Serper + Tavily + Wikipedia) ──
+
+async function serperSearch(query: string): Promise<{
+  answer: string;
+  sources: { title: string; url: string; snippet: string }[];
+}> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return { answer: "", sources: [] };
+
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": apiKey,
+      },
+      body: JSON.stringify({
+        q: query,
+        num: 10,
+      }),
+    });
+
+    if (!res.ok) return { answer: "", sources: [] };
+    const data = await res.json();
+
+    // Extract answer from knowledgeGraph if available
+    let answer = "";
+    if (data.knowledgeGraph?.description) {
+      answer = data.knowledgeGraph.description;
+    } else if (data.answerBox?.answer) {
+      answer = data.answerBox.answer;
+    } else {
+      // Build answer from organic results
+      const organicResults = data.organic || [];
+      if (organicResults.length > 0) {
+        answer = organicResults.slice(0, 3).map((r: any) => r.snippet).join("\n\n");
+      }
+    }
+
+    // Extract sources
+    const sources = (data.organic || []).slice(0, 5).map((r: any) => ({
+      title: r.title,
+      url: r.link,
+      snippet: r.snippet?.slice(0, 300) || "",
+    }));
+
+    return { answer, sources };
+  } catch {
+    return { answer: "", sources: [] };
+  }
+}
 
 async function tavilySearchWithAnswer(query: string): Promise<{
   answer: string;
@@ -75,6 +125,19 @@ export async function performMultiDeepSearch(queries: string[]): Promise<string>
   return validResults
     .map((r, i) => `### Topic ${i + 1}: ${queries[i]}\n${r}`)
     .join("\n\n");
+}
+
+export async function performSerperSearch(query: string): Promise<string> {
+  // Serper search with Google results
+  const serperResult = await serperSearch(query);
+  if (serperResult.answer) {
+    let result = `\n\n--- WEB SEARCH ---\n${serperResult.answer}`;
+    if (serperResult.sources.length > 0) {
+      result += `\n\n## Sources\n${serperResult.sources.map((s) => `- [${s.title}](${s.url})`).join("\n")}`;
+    }
+    return result;
+  }
+  return "";
 }
 
 export async function performTavilySearch(query: string): Promise<string> {

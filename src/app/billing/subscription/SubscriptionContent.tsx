@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 const STATIC_PRICE = { amount: 18, currency: "USD" };
 
 export interface Tier {
-  name: 'Free' | 'Plus' | 'Pro' | '+ Pro';
+  name: 'Free' | 'Go Plus' | 'Pro' | '+ Pro';
   description: string;
   features: string[];
   priceId: { month: string; year: string };
@@ -22,27 +22,27 @@ const TIERS: Tier[] = [
   {
     name: 'Free',
     description: 'Perfect for getting started',
-    features: ['Basic AI models', '50 messages/day', 'Limited access', 'High limits on models', 'Normal context window'],
+    features: ['Basic AI models', '50 messages/day', 'Limited access'],
     priceId: { month: '', year: '' },
     isFree: true,
   },
   {
-    name: 'Plus',
+    name: 'Go Plus',
     description: 'Enhanced AI capabilities',
     features: ['Gemini models access', 'Image generations', 'Image analyzing', 'Strong reasoning'],
-    priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
+    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
   },
   {
     name: 'Pro',
     description: 'For professionals and developers',
-    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best choice for coding, researching, designing, developement', 'No image generation'],
-    priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
+    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best for coding, researching, designing', 'No image generation'],
+    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
   },
   {
     name: '+ Pro',
     description: 'All the features in Pro',
-    features: ['All the features in Pro', 'With few couple hours limit on high model', 'Image generation', 'All models in Pro', 'Best choice for every day task and coding, researching, designing, developement'],
-    priceId: { month: 'pri_01ky298kved9c1cpydj09qpr1k', year: 'pri_01ky298kved9c1cpydj09qpr1k' }, // TODO: replace with actual IDs
+    features: ['All features in Pro', 'Image generation', 'All models in Pro', 'Best for everyday tasks and coding'],
+    priceId: { month: 'pri_...', year: 'pri_...' }, // TODO: replace with actual IDs
   },
 ];
 
@@ -61,23 +61,23 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const [priceLoading, setPriceLoading] = useState(true);
   const [paddle, setPaddle] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("subscriptions")
-      .select("status, plan_type")
+      .select("status, plan")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
       .then(({ data }) => {
         setIsPro(!!data);
-        if (data?.plan_type) {
-          setCurrentPlan(data.plan_type);
+        if (data?.plan) {
+          setCurrentPlan(data.plan);
         } else if (data) {
-          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+          setCurrentPlan('Go Plus'); // Default to Go Plus if no plan specified
         } else {
           setCurrentPlan('Free');
         }

@@ -12,23 +12,23 @@ export default function TopNav() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [isPro, setIsPro] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("subscriptions")
-      .select("status, plan_type")
+      .select("status, plan")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
       .then(({ data }) => {
         setIsPro(!!data);
-        if (data?.plan_type) {
-          setCurrentPlan(data.plan_type);
+        if (data?.plan) {
+          setCurrentPlan(data.plan);
         } else if (data) {
-          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+          setCurrentPlan('Go Plus'); // Default to Go Plus if no plan specified
         } else {
           setCurrentPlan('Free');
         }

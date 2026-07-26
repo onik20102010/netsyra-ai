@@ -59,7 +59,7 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
   const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
   const [imageAnalysisRemaining, setImageAnalysisRemaining] = useState<{ remainingDaily: number; remainingMonthly: number } | null>(null);
   const supabase = createClient();
@@ -81,16 +81,16 @@ export default function ChatSidebar({
     if (!user) return;
     supabase
       .from("subscriptions")
-      .select("status, plan_type")
+      .select("status, plan")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
       .then(({ data }) => {
         setIsPro(!!data);
-        if (data?.plan_type) {
-          setCurrentPlan(data.plan_type);
+        if (data?.plan) {
+          setCurrentPlan(data.plan);
         } else if (data) {
-          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+          setCurrentPlan('Go Plus'); // Default to Go Plus if no plan specified
         } else {
           setCurrentPlan('Free');
         }
@@ -381,7 +381,7 @@ export default function ChatSidebar({
                       ? 'bg-purple-500'
                       : currentPlan === 'Pro'
                       ? 'bg-blue-500'
-                      : currentPlan === 'Plus'
+                      : currentPlan === 'Go Plus'
                       ? 'bg-indigo-500'
                       : 'bg-gray-300'
                   }`} />

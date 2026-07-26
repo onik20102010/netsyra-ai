@@ -13,6 +13,7 @@ export interface ToolResult {
 
 export interface WebSearchArgs {
   query: string;
+  isPaidUser?: boolean;
 }
 
 export interface WebSearchResult {

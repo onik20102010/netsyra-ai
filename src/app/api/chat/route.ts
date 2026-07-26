@@ -6,7 +6,8 @@ import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent } from "@/lib/intent-classifier";
 import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
-import { performDeepSearch, performMultiDeepSearch, performNLiveSearch, performTavilySearch, performWikipediaSearch } from "@/lib/chat/services/live-data";
+import { performDeepSearch, performMultiDeepSearch, performNLiveSearch, performTavilySearch, performWikipediaSearch, performSerperSearch } from "@/lib/chat/services/live-data";
+import { canUseModel } from "@/lib/plan-access";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
 import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner";
@@ -640,12 +641,21 @@ export async function POST(req: NextRequest) {
     // ── Check if user has active subscription ──
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("status")
+      .select("plan, status")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
     const isPaidUser = !!sub;
+    const userPlan = sub?.plan || "free";
+
+    // ── Check if user's plan allows the requested model tier ──
+    if (!canUseModel(userPlan, modelTier)) {
+      return NextResponse.json(
+        { error: `The ${modelTier} tier is not available on your plan. Upgrade to access it.` },
+        { status: 403 }
+      );
+    }
 
     // ── Dynamic window sizing (GPT-style) ──
     const { count: conversationMessageCount } = await supabase
@@ -780,61 +790,113 @@ export async function POST(req: NextRequest) {
     // Flag for response header
     let searchAttempted = false;
 
-    // ── NI Pro Web Search: Tavily (limited) → Wikipedia (unlimited) → pass to model ──
+    // ── NI Pro Web Search: Serper (paid) → Tavily (fallback) → Wikipedia (unlimited) → pass to model ──
     let niSearchResults = "";
     let niSearchSources: { title: string; url: string }[] = [];
     if (modelTier === "ni" && shouldSearch) {
       searchAttempted = true;
 
       console.log(`🔍 NI Pro: Performing web search for query "${userMessage}"`);
-      console.log(`📊 Tavily usage: ${currentTavilyCount}/${tavilyDailyLimit || 'unlimited'}`);
+      console.log(`📊 User is paid: ${isPaidUser}`);
 
-      // Try Tavily first if within limits
-      let usedTavily = false;
-      if (remainingTavilySearches > 0) {
+      // Paid users: Try Serper first, then Tavily, then Wikipedia
+      // Free users: Try Tavily (limited), then Wikipedia (unlimited)
+      if (isPaidUser) {
+        console.log(`🔍 NI Pro (Paid): Using Serper search`);
+        // Try Serper first for paid users
         if (queries.length > 1) {
           console.log(`🔬 NI Pro Multi-query detected: ${queries.join(", ")}`);
-          const results = await Promise.all(queries.map(q => performTavilySearch(q)));
-          const validResults = results.filter(r => r.trim().length > 0);
-          if (validResults.length > 0) {
-            niSearchResults = validResults.join("\n\n");
-            usedTavily = true;
-          }
-        } else {
-          const cleanQ = queries[0] || userMessage;
-          niSearchResults = await performTavilySearch(cleanQ);
-          if (niSearchResults && niSearchResults.trim().length > 0) {
-            usedTavily = true;
-          }
-        }
-
-        // Increment Tavily usage if successful
-        if (usedTavily) {
-          const { data: incrementResult } = await supabase
-            .rpc('increment_tavily_usage', { p_user_id: user.id });
-
-          if (incrementResult === -1) {
-            console.warn("Tavily limit reached during increment");
-          }
-
-          console.log(`✅ NI Pro Tavily search results obtained (${niSearchResults.length} chars)`);
-        }
-      }
-
-      // Fall back to Wikipedia if Tavily failed or limit reached
-      if (!niSearchResults || niSearchResults.trim().length === 0) {
-        console.log(`🔄 Falling back to Wikipedia search`);
-        if (queries.length > 1) {
-          const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
+          const results = await Promise.all(queries.map(q => performSerperSearch(q)));
           const validResults = results.filter(r => r.trim().length > 0);
           if (validResults.length > 0) {
             niSearchResults = validResults.join("\n\n");
           }
         } else {
           const cleanQ = queries[0] || userMessage;
-          niSearchResults = await performWikipediaSearch(cleanQ);
+          niSearchResults = await performSerperSearch(cleanQ);
         }
-        console.log(`✅ NI Pro Wikipedia search results obtained (${niSearchResults.length} chars)`);
+
+        // Fall back to Tavily if Serper fails
+        if (!niSearchResults || niSearchResults.trim().length === 0) {
+          console.log(`🔄 Serper failed, falling back to Tavily`);
+          if (queries.length > 1) {
+            const results = await Promise.all(queries.map(q => performTavilySearch(q)));
+            const validResults = results.filter(r => r.trim().length > 0);
+            if (validResults.length > 0) {
+              niSearchResults = validResults.join("\n\n");
+            }
+          } else {
+            const cleanQ = queries[0] || userMessage;
+            niSearchResults = await performTavilySearch(cleanQ);
+          }
+        }
+
+        // Fall back to Wikipedia if Tavily also fails
+        if (!niSearchResults || niSearchResults.trim().length === 0) {
+          console.log(`🔄 Tavily failed, falling back to Wikipedia`);
+          if (queries.length > 1) {
+            const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
+            const validResults = results.filter(r => r.trim().length > 0);
+            if (validResults.length > 0) {
+              niSearchResults = validResults.join("\n\n");
+            }
+          } else {
+            const cleanQ = queries[0] || userMessage;
+            niSearchResults = await performWikipediaSearch(cleanQ);
+          }
+        }
+
+        console.log(`✅ NI Pro search results obtained (${niSearchResults.length} chars)`);
+      } else {
+        // Free users: Tavily (limited) → Wikipedia (unlimited)
+        console.log(`📊 Tavily usage: ${currentTavilyCount}/${tavilyDailyLimit || 'unlimited'}`);
+
+        let usedTavily = false;
+        if (remainingTavilySearches > 0) {
+          if (queries.length > 1) {
+            console.log(`🔬 NI Pro Multi-query detected: ${queries.join(", ")}`);
+            const results = await Promise.all(queries.map(q => performTavilySearch(q)));
+            const validResults = results.filter(r => r.trim().length > 0);
+            if (validResults.length > 0) {
+              niSearchResults = validResults.join("\n\n");
+              usedTavily = true;
+            }
+          } else {
+            const cleanQ = queries[0] || userMessage;
+            niSearchResults = await performTavilySearch(cleanQ);
+            if (niSearchResults && niSearchResults.trim().length > 0) {
+              usedTavily = true;
+            }
+          }
+
+          // Increment Tavily usage if successful
+          if (usedTavily) {
+            const { data: incrementResult } = await supabase
+              .rpc('increment_tavily_usage', { p_user_id: user.id });
+
+            if (incrementResult === -1) {
+              console.warn("Tavily limit reached during increment");
+            }
+
+            console.log(`✅ NI Pro Tavily search results obtained (${niSearchResults.length} chars)`);
+          }
+        }
+
+        // Fall back to Wikipedia if Tavily failed or limit reached
+        if (!niSearchResults || niSearchResults.trim().length === 0) {
+          console.log(`🔄 Falling back to Wikipedia search`);
+          if (queries.length > 1) {
+            const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
+            const validResults = results.filter(r => r.trim().length > 0);
+            if (validResults.length > 0) {
+              niSearchResults = validResults.join("\n\n");
+            }
+          } else {
+            const cleanQ = queries[0] || userMessage;
+            niSearchResults = await performWikipediaSearch(cleanQ);
+          }
+          console.log(`✅ NI Pro Wikipedia search results obtained (${niSearchResults.length} chars)`);
+        }
       }
 
       // Extract sources from search results for display

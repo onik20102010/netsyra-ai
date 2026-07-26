@@ -80,6 +80,15 @@ export async function POST(req: NextRequest) {
   const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
   const customerId = event.data.customer_id || "pending";
 
+  // Determine plan from product name
+  let plan = "free";
+  if (firstItem?.product?.name) {
+    const productName = firstItem.product.name.toLowerCase();
+    if (productName.includes("go plus")) plan = "Go Plus";
+    else if (productName.includes("+pro")) plan = "+ Pro";
+    else if (productName.includes("pro")) plan = "Pro";
+  }
+
   // ── Ensure customer exists before subscription (FK constraint) ──
   if (customerId !== "pending") {
     await supabase.from("customers").upsert({
@@ -97,6 +106,7 @@ export async function POST(req: NextRequest) {
     status: event.data.status || "active",
     price_id: firstItem?.price?.id || "unknown",
     product_id: firstItem?.product?.id || "unknown",
+    plan,
     scheduled_change_action: event.data.scheduled_change?.action,
     scheduled_change_at: event.data.scheduled_change?.effective_at,
     current_period_end:
