@@ -59,6 +59,7 @@ export default function ChatSidebar({
   const [nameLoaded, setNameLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<'Free' | 'Plus' | 'Pro' | '+ Pro'>('Free');
   const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
   const [imageAnalysisRemaining, setImageAnalysisRemaining] = useState<{ remainingDaily: number; remainingMonthly: number } | null>(null);
   const supabase = createClient();
@@ -80,12 +81,19 @@ export default function ChatSidebar({
     if (!user) return;
     supabase
       .from("subscriptions")
-      .select("status")
+      .select("status, plan_type")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
       .then(({ data }) => {
         setIsPro(!!data);
+        if (data?.plan_type) {
+          setCurrentPlan(data.plan_type);
+        } else if (data) {
+          setCurrentPlan('Plus'); // Default to Plus if no plan_type specified
+        } else {
+          setCurrentPlan('Free');
+        }
       });
   }, [user, supabase]);
 
@@ -368,7 +376,15 @@ export default function ChatSidebar({
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
                     {(displayName || user?.email || "U").charAt(0).toUpperCase()}
                   </div>
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${isPro ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                    currentPlan === '+ Pro'
+                      ? 'bg-purple-500'
+                      : currentPlan === 'Pro'
+                      ? 'bg-blue-500'
+                      : currentPlan === 'Plus'
+                      ? 'bg-indigo-500'
+                      : 'bg-gray-300'
+                  }`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   {nameLoaded ? (

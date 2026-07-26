@@ -77,6 +77,28 @@ export async function performMultiDeepSearch(queries: string[]): Promise<string>
     .join("\n\n");
 }
 
+export async function performTavilySearch(query: string): Promise<string> {
+  // Tavily with built‑in answer
+  const tavilyResult = await tavilySearchWithAnswer(query);
+  if (tavilyResult.answer) {
+    let result = `\n\n--- WEB SEARCH ---\n${tavilyResult.answer}`;
+    if (tavilyResult.sources.length > 0) {
+      result += `\n\n## Sources\n${tavilyResult.sources.map((s) => `- [${s.title}](${s.url})`).join("\n")}`;
+    }
+    return result;
+  }
+  return "";
+}
+
+export async function performWikipediaSearch(query: string): Promise<string> {
+  // Wikipedia extract (3-4 main sentences)
+  const wikiExtract = await wikipediaExtract(query);
+  if (wikiExtract) {
+    return `\n\n--- WEB SEARCH ---\n${wikiExtract}\n\nSource: Wikipedia`;
+  }
+  return "";
+}
+
 export async function performDeepSearch(query: string): Promise<string> {
   // 1. Tavily with built‑in answer
   const tavilyResult = await tavilySearchWithAnswer(query);
