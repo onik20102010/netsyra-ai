@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, ArrowRight, Sparkles, Zap, Shield, Crown, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Check, ArrowRight, Sparkles, Zap, Shield, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams } from "next/navigation";
 import { initializePaddle } from "@paddle/paddle-js";
 import { createClient } from "@/lib/supabase/client";
-
-const STATIC_PRICE = { amount: 18, currency: "USD" };
 
 export interface Tier {
   name: 'Free' | 'Go Plus' | 'Pro' | '+ Pro';
@@ -58,10 +55,10 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
 
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
-  const [prices, setPrices] = useState<Record<string, string>>({});
   const [priceLoading, setPriceLoading] = useState(true);
   const [paddle, setPaddle] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
+  const [serverPrices, setServerPrices] = useState<Record<string, { amount: string; currency: string; formatted: string; interval: string }>>({});
   const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
 
   useEffect(() => {
@@ -154,48 +151,26 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       });
   }, []);
 
+  // Fetch prices from server-side API (more reliable than client-side PricePreview)
   useEffect(() => {
-    if (!paddle) return;
-
-    const fetchPrices = async () => {
+    const fetchServerPrices = async () => {
       setPriceLoading(true);
-      const priceIds = TIERS.flatMap(tier => [
-        tier.priceId.month,
-        tier.priceId.year,
-      ]).filter(id => id && id !== '' && id !== 'pri_...');
-
-      if (priceIds.length === 0) {
-        setPriceLoading(false);
-        return;
-      }
-
       try {
-        const previewOptions: any = {
-          items: priceIds.map((id: string) => ({ priceId: id, quantity: 1 })),
-        };
-
-        if (country) {
-          previewOptions.customer = { countryCode: country };
-        }
-
-        const data = await paddle.PricePreview(previewOptions);
-
-        if (data?.data?.details?.lineItems) {
-          const newPrices: Record<string, string> = {};
-          data.data.details.lineItems.forEach((item: any) => {
-            newPrices[item.price.id] = item.formattedTotals.total;
-          });
-          setPrices(newPrices);
+        const res = await fetch('/api/paddle/prices');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.prices) {
+            setServerPrices(data.prices);
+          }
         }
       } catch (err) {
-        console.warn("Price preview failed:", err);
+        console.warn('Server price fetch failed:', err);
       } finally {
         setPriceLoading(false);
       }
     };
-
-    fetchPrices();
-  }, [paddle, annual, country]);
+    fetchServerPrices();
+  }, []);
 
   const handleSubscribe = async (priceId: string) => {
     if (!paddle) {
@@ -288,7 +263,12 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
     }
   };
 
-  const getPrice = (priceId: string) => prices[priceId] || 'Loading...';
+  const getPrice = (priceId: string) => {
+    if (serverPrices[priceId]) {
+      return serverPrices[priceId].formatted;
+    }
+    return '';
+  };
 
   return (
     <div className="min-h-screen bg-[#080809] text-white">
@@ -381,11 +361,16 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                       <Loader2 className="animate-spin w-6 h-6 text-blue-400" />
                       <span className="text-white/50">Loading price...</span>
                     </div>
-                  ) : (
+                  ) : currentPrice ? (
                     <>
                       <span className="text-4xl font-bold">{currentPrice}</span>
-                      <span className="text-white/50">/month</span>
+                      <span className="text-white/50">/{annual ? 'year' : 'month'}</span>
                     </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-4xl font-bold">—</span>
+                      <span className="text-white/50">/{annual ? 'year' : 'month'}</span>
+                    </div>
                   )}
                 </div>
                 <ul className="space-y-3 mb-8">
