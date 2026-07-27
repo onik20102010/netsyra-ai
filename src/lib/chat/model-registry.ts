@@ -1029,6 +1029,45 @@ const aaiModels: ModelConfig[] = [
   },
 ];
 
+// ── N Go Plus (Enhanced AI with DeepSeek models) ──
+const goPlusModels: ModelConfig[] = [
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.deepseek.com/v1/chat/completions",
+    modelName: "deepseek-v4-flash",
+    modelKey: "go_plus_1",
+  },
+];
+
+// ── N Plus Pro (Premium models with fallback logic) ──
+const plusProModels: ModelConfig[] = [
+  // Claude Opus 4.8 Coding (for debugging and very hard coding)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.anthropic.com/v1/messages",
+    modelName: "claude-opus-4.8",
+    modelKey: "plus_pro_opus",
+  },
+  // GPT-5.6 Luna (for general reasoning and very complex questions)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    modelName: "gpt-5.6-luna",
+    modelKey: "plus_pro_luna",
+  },
+  // DeepSeek-V4-pro (for low to medium complexity, large documents/codes)
+  {
+    provider: "openai",
+    apiKeyEnv: "MESH_API_KEY",
+    endpoint: "https://api.deepseek.com/v1/chat/completions",
+    modelName: "deepseek-v4-pro",
+    modelKey: "plus_pro_deepseek",
+  },
+];
+
 // ── N NI (Premium model for Pro subscribers) ──
 const niModels: ModelConfig[] = [
   // Claude Opus 4.6 (highest tier for complex tasks)
@@ -1082,7 +1121,7 @@ const niModels: ModelConfig[] = [
 ];
 
 // ── EXPORT ────────────────────────────────────────────────
-export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "ni", TierConfig> = {
+export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "go_plus" | "ni" | "plus_pro", TierConfig> = {
   fast: {
     models: fastModels,
     systemPrompt: buildPrompt('fast', 'casual'),
@@ -1121,9 +1160,21 @@ ${AAI_SYSTEM_PROMPT}`,
     temperature: 0.7,
     maxTokens: 1700,
   },
+  go_plus: {
+    models: goPlusModels,
+    systemPrompt: buildPrompt('go_plus', 'casual'),
+    temperature: 0.5,
+    maxTokens: 1500,
+  },
   ni: {
     models: niModels,
     systemPrompt: buildPrompt('ni', 'reasoning'),
+    temperature: 0.7,
+    maxTokens: 4000,
+  },
+  plus_pro: {
+    models: plusProModels,
+    systemPrompt: buildPrompt('plus_pro', 'casual'),
     temperature: 0.7,
     maxTokens: 4000,
   },

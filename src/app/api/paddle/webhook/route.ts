@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
   let plan = "free";
   if (firstItem?.product?.name) {
     const productName = firstItem.product.name.toLowerCase();
-    if (productName.includes("go plus")) plan = "Go Plus";
-    else if (productName.includes("+pro")) plan = "+ Pro";
-    else if (productName.includes("pro")) plan = "Pro";
+    if (productName.includes("go plus")) plan = "go_plus";
+    else if (productName.includes("+pro")) plan = "plus_pro";
+    else if (productName.includes("pro")) plan = "pro";
   }
 
   // ── Ensure customer exists before subscription (FK constraint) ──

@@ -22,7 +22,7 @@ const TIERS: Tier[] = [
   {
     name: 'Free',
     description: 'Perfect for getting started',
-    features: ['Basic AI models', '50 messages/day', 'Limited access'],
+    features: ['Everyday chat', 'Very cheapest', 'Document analysis', 'Brainstorming', 'Data formatting', 'Writing (emails, blogs, articles)', 'Homework help', 'Medium-length coding'],
     priceId: { month: '', year: '' },
     isFree: true,
   },
@@ -118,7 +118,12 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       const priceIds = TIERS.flatMap(tier => [
         tier.priceId.month,
         tier.priceId.year,
-      ]);
+      ]).filter(id => id && id !== '' && id !== 'pri_...');
+
+      if (priceIds.length === 0) {
+        setPriceLoading(false);
+        return;
+      }
 
       try {
         const previewOptions: any = {

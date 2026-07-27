@@ -7,7 +7,10 @@ import { classifyIntent } from "@/lib/intent-classifier";
 import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
 import { performDeepSearch, performMultiDeepSearch, performNLiveSearch, performTavilySearch, performWikipediaSearch, performSerperSearch } from "@/lib/chat/services/live-data";
-import { canUseModel } from "@/lib/plan-access";
+import { canUseModel, getAllowedTiers } from "@/lib/plan-access";
+import { getRouterConfig } from "@/lib/routers/router-factory";
+import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
+import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
 import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner";
@@ -554,6 +557,46 @@ export async function POST(req: NextRequest) {
 
     const shouldSearch = needsSearch;
 
+    // ── Check if user has active subscription ──
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("plan, status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const isPaidUser = !!sub;
+    const userPlan = sub?.plan || "free";
+    const routerConfig = getRouterConfig(userPlan);
+
+    // ── For Plus Pro, select model based on complexity and token availability ──
+    let selectedModelKey = modelTier;
+    if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits) {
+      console.log(`🎯 Using Plus Pro model selection fallback logic`);
+      try {
+        const modelSelection = await selectAvailablePlusProModel(
+          supabase,
+          user.id,
+          userMessage,
+          modelTier,
+          routerConfig.perModelTokenLimits
+        );
+        selectedModelKey = modelSelection.modelKey;
+        console.log(`🎯 Selected model: ${selectedModelKey}, Reason: ${modelSelection.reason}`);
+      } catch (error) {
+        console.error(`🔴 Model selection failed, using default:`, error);
+        selectedModelKey = 'plus_pro_deepseek'; // Fallback to DeepSeek
+      }
+    }
+
+    // ── Check if user's plan allows the requested model tier ──
+    if (!routerConfig.allowedModelKeys.includes(modelTier)) {
+      return NextResponse.json(
+        { error: `The ${modelTier} tier is not available on your plan. Upgrade to access it.` },
+        { status: 403 }
+      );
+    }
+
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
 
@@ -565,40 +608,79 @@ export async function POST(req: NextRequest) {
 
     // ── USAGE CHECK (CRITICAL - this must work) ──
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
-    let usageCheck;
+
+    // Check token limits for all plans
+    let tokenCheck;
     try {
-      usageCheck = await checkAndUpdateUsage(supabase, user.id, modelTier);
-      console.log(`🟢 Usage check result:`, usageCheck);
+      // For Plus Pro, check per-model token limits
+      if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && selectedModelKey) {
+        const modelLimits = routerConfig.perModelTokenLimits[selectedModelKey];
+        if (modelLimits) {
+          tokenCheck = await checkTokenLimits(
+            supabase,
+            user.id,
+            modelTier,
+            modelLimits.daily,
+            modelLimits.monthly,
+            selectedModelKey
+          );
+        } else {
+          // Fallback to tier-level limits if model not found
+          tokenCheck = await checkTokenLimits(
+            supabase,
+            user.id,
+            modelTier,
+            routerConfig.dailyTokenLimit,
+            routerConfig.monthlyTokenLimit
+          );
+        }
+      } else {
+        // For all other plans, use tier-level token limits
+        tokenCheck = await checkTokenLimits(
+          supabase,
+          user.id,
+          modelTier,
+          routerConfig.dailyTokenLimit,
+          routerConfig.monthlyTokenLimit
+        );
+      }
+      console.log(`🟢 Token check result:`, tokenCheck);
     } catch (error) {
-      console.error(`🔴 USAGE CHECK FAILED:`, error);
+      console.error(`🔴 TOKEN CHECK FAILED:`, error);
       return NextResponse.json(
-        { error: "Usage tracking failed. Please try again." },
+        { error: "Token usage tracking failed. Please try again." },
         { status: 500 }
       );
     }
 
-    if (!usageCheck || !usageCheck.allowed) {
-      const resetTime = new Date(usageCheck?.resetAt || new Date(Date.now() + 24 * 60 * 60 * 1000));
-      const timeLeftMs = resetTime.getTime() - Date.now();
-      const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
-      const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
-      
-      console.log(`🚫🚫🚫 RATE LIMIT BLOCKED for user ${user.id}, tier ${modelTier}. Usage check:`, usageCheck);
-      
+    // Block if token limit is reached
+    if (!tokenCheck || !tokenCheck.allowed) {
+      const dailyResetTime = new Date(tokenCheck?.dailyResetAt || new Date(Date.now() + 24 * 60 * 60 * 1000));
+      const monthlyResetTime = new Date(tokenCheck?.monthlyResetAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+      const dailyTimeLeftMs = dailyResetTime.getTime() - Date.now();
+      const monthlyTimeLeftMs = monthlyResetTime.getTime() - Date.now();
+
+      const dailyHours = Math.floor(dailyTimeLeftMs / (1000 * 60 * 60));
+      const dailyMinutes = Math.floor((dailyTimeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+      const monthlyDays = Math.floor(monthlyTimeLeftMs / (1000 * 60 * 60 * 24));
+
+      console.log(`🚫🚫🚫 TOKEN LIMIT BLOCKED for user ${user.id}, tier ${modelTier}. Token check:`, tokenCheck);
+
       return NextResponse.json(
-        { 
-          error: `You've used all ${MODEL_LIMITS[modelTier]} ${modelTier} messages for today. Resets in ${hours}h ${minutes}m ${seconds}s.`, 
-          remaining: 0, 
-          resetAt: usageCheck?.resetAt,
+        {
+          error: `You've used all your tokens. Daily limit resets in ${dailyHours}h ${dailyMinutes}m. Monthly limit resets in ${monthlyDays} days.`,
+          remaining: 0,
+          dailyResetAt: tokenCheck?.dailyResetAt,
+          monthlyResetAt: tokenCheck?.monthlyResetAt,
           tier: modelTier,
-          limit: MODEL_LIMITS[modelTier]
+          dailyLimit: routerConfig.dailyTokenLimit,
+          monthlyLimit: routerConfig.monthlyTokenLimit
         },
         { status: 429 }
       );
     }
 
-    console.log(`✅ Usage check PASSED. Remaining: ${usageCheck.remaining}`);
+    console.log(`✅ Token check PASSED. Daily tokens remaining: ${tokenCheck.dailyRemaining}, Monthly tokens remaining: ${tokenCheck.monthlyRemaining}`);
 
     // ── Ensure conversation exists BEFORE cache check (so cache hits work on new conversations) ──
     if (newConversation || !conversationId) {
@@ -638,36 +720,15 @@ export async function POST(req: NextRequest) {
 
     await saveMessage(supabase, user.id, convId, "user", userMessage);
 
-    // ── Check if user has active subscription ──
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("plan, status")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle();
-
-    const isPaidUser = !!sub;
-    const userPlan = sub?.plan || "free";
-
-    // ── Check if user's plan allows the requested model tier ──
-    if (!canUseModel(userPlan, modelTier)) {
-      return NextResponse.json(
-        { error: `The ${modelTier} tier is not available on your plan. Upgrade to access it.` },
-        { status: 403 }
-      );
-    }
-
     // ── Dynamic window sizing (GPT-style) ──
     const { count: conversationMessageCount } = await supabase
       .from("messages")
       .select("*", { count: "exact", head: true })
       .eq("conversation_id", convId);
 
-    // TODO: Use dynamic window sizing when unified-memory is integrated
-    // const queryComplexity = detectQueryComplexity(userMessage, messages.length);
-    // const dynamicWindow = getDynamicWindowSize(queryComplexity, isPaidUser ? 'pro' : 'free');
-    const dynamicWindow = isPaidUser ? 30 : 5;
-    
+    // Use router config for max history length
+    const dynamicWindow = routerConfig.maxHistoryLength;
+
     let messagesForContext = messages.slice(-dynamicWindow);
 
     // For Pro users, use enhanced conversation summary when chat exceeds threshold

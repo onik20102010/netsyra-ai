@@ -13,6 +13,7 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { Menu, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getAllowedTiers } from "@/lib/plan-access";
 
 function ChatContent() {
   const { user, loading } = useAuth();
@@ -26,10 +27,12 @@ function ChatContent() {
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [hoverOpened, setHoverOpened] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [userPlan, setUserPlan] = useState("free");
+  const [allowedTiers, setAllowedTiers] = useState<string[]>(["fast", "plus", "pro", "code", "live", "aai"]);
 
   // Lifted model state – shared between sidebar (maybe for future use) and chat interface
   // For Pro users, default to NI model
-  const [selectedModel, setSelectedModel] = useState<string>(isPro ? "ni" : initialModel);
+  const [selectedModel, setSelectedModel] = useState<string>(initialModel);
 
   const router = useRouter();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,16 +111,19 @@ function ChatContent() {
     if (!user) return;
     supabase
       .from("subscriptions")
-      .select("status")
+      .select("plan, status")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
       .then(({ data }) => {
-        const proStatus = !!data;
-        setIsPro(proStatus);
-        // Set NI model for Pro users
-        if (proStatus) {
-          setSelectedModel("ni");
+        const plan = data?.plan || "free";
+        setUserPlan(plan);
+        const tiers = getAllowedTiers(plan);
+        setAllowedTiers(tiers);
+        setIsPro(!!data);
+        // If plan has only one tier, auto-select it
+        if (tiers.length === 1 && selectedModel !== tiers[0]) {
+          setSelectedModel(tiers[0]);
         }
       });
   }, [user, supabase]);
@@ -204,6 +210,7 @@ function ChatContent() {
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
             isPro={isPro}
+            allowedTiers={allowedTiers}
           />
         </div>
       </div>

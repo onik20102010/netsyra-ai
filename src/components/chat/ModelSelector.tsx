@@ -110,6 +110,7 @@ const basicModels = [
   { id: "fast", name: "N Fast", icon: FastIcon, desc: "Instant" },
   { id: "plus", name: "N Plus", icon: PlusModelIcon, desc: "Balanced" },
   { id: "pro", name: "N Pro", icon: ProIcon, desc: "Deep reasoning" },
+  { id: "go_plus", name: "N Go Plus", icon: PlusModelIcon, desc: "Enhanced AI" },
 ];
 
 const advancedModels = [
@@ -124,11 +125,13 @@ export default function ModelSelector({
   onSelect,
   upward = false,
   isPro = false,
+  allowedTiers,
 }: {
   selected: string;
   onSelect: (id: string) => void;
   upward?: boolean;
   isPro?: boolean;
+  allowedTiers?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -176,14 +179,20 @@ export default function ModelSelector({
     setShowAdvanced(false);
   };
 
-  const allModels = [...basicModels, ...advancedModels];
-  const currentModel = allModels.find((m) => m.id === selected) || basicModels[0];
+  // Filter models based on allowed tiers
+  const filteredBasicModels = allowedTiers
+    ? basicModels.filter(m => allowedTiers.includes(m.id))
+    : basicModels;
+  const filteredAdvancedModels = allowedTiers
+    ? advancedModels.filter(m => allowedTiers.includes(m.id))
+    : advancedModels;
 
-  // Pro users only see NI model, free users see all except NI
-  const displayBasicModels = isPro ? [] : basicModels;
-  const displayAdvancedModels = isPro
-    ? advancedModels.filter(m => m.id === "ni")
-    : advancedModels.filter(m => m.id !== "ni");
+  const allModels = [...filteredBasicModels, ...filteredAdvancedModels];
+  const currentModel = allModels.find((m) => m.id === selected) || filteredBasicModels[0];
+
+  // Use filtered models based on allowed tiers
+  const displayBasicModels = filteredBasicModels;
+  const displayAdvancedModels = filteredAdvancedModels;
 
   // For Pro users, just show NI directly without section header
   const showOnlyNi = isPro && displayAdvancedModels.length === 1 && displayAdvancedModels[0].id === "ni";

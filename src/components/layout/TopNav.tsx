@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PLAN_DISPLAY_NAMES } from "@/lib/plan-access";
 
 export default function TopNav() {
   const { user, loading, signOut } = useAuth();
@@ -115,12 +116,12 @@ export default function TopNav() {
                     ? 'bg-blue-400'
                     : 'bg-indigo-400'
                 }`} />
-                {currentPlan}
+                {PLAN_DISPLAY_NAMES[currentPlan] || currentPlan}
               </div>
             ) : (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white/60 text-sm font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                Free
+                {PLAN_DISPLAY_NAMES[currentPlan] || 'Free'}
               </div>
             )}
 

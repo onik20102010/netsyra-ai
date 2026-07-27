@@ -1,8 +1,23 @@
-export const PLAN_MODEL_ACCESS: Record<string, string[]> = {
-  free: ["fast", "plus", "pro", "live", "code", "aai"], // N Fast, N Plus, N Pro, N Live, N Code, N AAI, N Auto
-  "Go Plus": ["fast", "plus", "pro", "live", "code", "aai", "gemini", "image_generation", "image_analysis"],
-  Pro: ["ni"], // ALL LLM models from NI Pro (sonnet 4.6, opus 4.6, GPT 5, deepseek V4 Pro, deepseek V4 Pro flash, Gemini 2.5 flash lite) - no image gen
-  "+ Pro": ["ni", "image_generation"], // ALL NI Pro models + image generation
+// Plan to allowed model tier keys
+export const PLAN_TIER_MAP: Record<string, string[]> = {
+  free: ["fast", "plus", "pro", "code", "live", "aai"],
+  "Go Plus": ["go_plus"],
+  Pro: ["ni"],
+  "+ Pro": ["plus_pro"],
+};
+
+export function getAllowedTiers(plan: string): string[] {
+  return PLAN_TIER_MAP[plan] || PLAN_TIER_MAP.free;
+}
+
+export const PLAN_DISPLAY_NAMES: Record<string, string> = {
+  free: "Free",
+  go_plus: "Go Plus",
+  pro: "Pro",
+  plus_pro: "+Pro",
+  "Go Plus": "Go Plus",
+  Pro: "Pro",
+  "+ Pro": "+Pro",
 };
 
 export function getPlanFromSubscription(subscription: any): string {
@@ -10,6 +25,6 @@ export function getPlanFromSubscription(subscription: any): string {
 }
 
 export function canUseModel(plan: string, modelTier: string): boolean {
-  const allowed = PLAN_MODEL_ACCESS[plan] || PLAN_MODEL_ACCESS.free;
+  const allowed = getAllowedTiers(plan);
   return allowed.includes(modelTier);
 }

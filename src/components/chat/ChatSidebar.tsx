@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { getImageAnalysisRemaining } from "@/lib/chat/ni-router";
+import { PLAN_DISPLAY_NAMES } from "@/lib/plan-access";
 
 interface ChatSidebarProps {
   open: boolean;

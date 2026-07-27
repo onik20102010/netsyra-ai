@@ -17,10 +17,11 @@ export const MODEL_LIMITS: Record<string, number> = {
 export async function checkAndUpdateUsage(
   supabase: any,
   userId: string,
-  modelTier: string
+  modelTier: string,
+  customLimit?: number
 ): Promise<{ allowed: boolean; remaining: number; resetAt: string }> {
   const now = new Date();
-  const limit = MODEL_LIMITS[modelTier] || 10;
+  const limit = customLimit || MODEL_LIMITS[modelTier] || 10;
 
   console.log(`🔍 Usage check: userId=${userId}, tier=${modelTier}, limit=${limit}`);
 
