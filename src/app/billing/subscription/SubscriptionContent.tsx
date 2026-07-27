@@ -30,19 +30,19 @@ const TIERS: Tier[] = [
     name: 'Go Plus',
     description: 'Enhanced AI capabilities',
     features: ['Gemini models access', 'Image generations', 'Image analyzing', 'Strong reasoning'],
-    priceId: { month: 'pri_01kyf27thzh41n39q3cja2cphq', year: 'pri_01kyf27thzh41n39q3cja2cphq' },
+    priceId: { month: 'pri_01kyf27thzh41n39q3cja2cphq', year: 'pri_01kyf2d4q3h41n39q3cja2cphq' },
   },
   {
     name: 'Pro',
     description: 'For professionals and developers',
     features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best for coding, researching, designing', 'No image generation'],
-    priceId: { month: 'pri_01kyf2acjbxs0s8nytjae84ckm', year: 'pri_01kyf2acjbxs0s8nytjae84ckm' },
+    priceId: { month: 'pri_01kyf2acjbxs0s8nytjae84ckm', year: 'pri_01kyf2d6c62mpde2s2rfmdjra4' },
   },
   {
     name: '+ Pro',
     description: 'All the features in Pro',
     features: ['All features in Pro', 'Image generation', 'All models in Pro', 'Best for everyday tasks and coding'],
-    priceId: { month: 'pri_01kyf2ckc62mpde2s2rfmdjra4', year: 'pri_01kyf2ckc62mpde2s2rfmdjra4' },
+    priceId: { month: 'pri_01kyf2ckc62mpde2s2rfmdjra4', year: 'pri_01kyf2d8q3h41n39q3cja2cphq' },
   },
 ];
 
@@ -54,6 +54,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get("success") === "true";
+  const ptxn = searchParams.get("_ptxn");
 
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -88,6 +89,44 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
         }
       });
   }, [user]);
+
+  // Activate subscription via secure endpoint when _ptxn is in URL
+  useEffect(() => {
+    if (!ptxn || !user) return;
+    console.log('Subscription page: Activating with _ptxn:', ptxn);
+    fetch("/api/paddle/activate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transactionId: ptxn }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log('Subscription page: Activation result:', data);
+        if (data.success) {
+          // Refresh subscription status
+          const supabase = createClient();
+          supabase
+            .from("subscriptions")
+            .select("status, plan")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .maybeSingle()
+            .then(({ data: subData }) => {
+              if (subData?.plan) {
+                const planMap: Record<string, 'Free' | 'Go Plus' | 'Pro' | '+ Pro'> = {
+                  'free': 'Free',
+                  'go_plus': 'Go Plus',
+                  'pro': 'Pro',
+                  'plus_pro': '+ Pro',
+                };
+                setCurrentPlan(planMap[subData.plan] || 'Free');
+                setIsPro(true);
+              }
+            });
+        }
+      })
+      .catch(err => console.error('Activation failed:', err));
+  }, [ptxn, user]);
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
@@ -184,11 +223,68 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       }
 
       await paddle.Checkout.open(checkoutOptions);
+
+      // Listen for checkout completion
+      paddle.Update({
+        eventCallback: (event: any) => {
+          console.log('Paddle event:', event);
+          if (event.name === 'checkout.completed') {
+            console.log('Checkout completed!', event.data);
+            // Directly update subscription via API (fallback for webhook)
+            updateSubscriptionDirectly(priceId);
+          }
+        },
+      });
     } catch (err) {
       console.error("Checkout failed:", err);
       alert("Failed to open checkout. Please try again.");
     } finally {
       setSubscribing(false);
+    }
+  };
+
+  const updateSubscriptionDirectly = async (priceId: string) => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/paddle/update-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          priceId,
+          status: 'active',
+        }),
+      });
+      const data = await res.json();
+      console.log('Direct subscription update result:', data);
+      if (data.success) {
+        // Refresh UI
+        refreshSubscriptionStatus();
+      }
+    } catch (err) {
+      console.error('Failed to update subscription directly:', err);
+    }
+  };
+
+  const refreshSubscriptionStatus = async () => {
+    if (!user) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("status, plan")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (data?.plan) {
+      const planMap: Record<string, 'Free' | 'Go Plus' | 'Pro' | '+ Pro'> = {
+        'free': 'Free',
+        'go_plus': 'Go Plus',
+        'pro': 'Pro',
+        'plus_pro': '+ Pro',
+      };
+      setCurrentPlan(planMap[data.plan] || 'Free');
+      setIsPro(true);
     }
   };
 
@@ -238,7 +334,9 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       <div className="max-w-7xl mx-auto px-6 pb-20">
         <div className="grid md:grid-cols-4 gap-8">
           {TIERS.map((tier) => {
-            const priceId = annual ? tier.priceId.year : tier.priceId.month;
+            const priceId = (annual && tier.priceId.year && tier.priceId.year !== tier.priceId.month)
+              ? tier.priceId.year
+              : tier.priceId.month;
             const currentPrice = getPrice(priceId);
             const isProTier = tier.name === 'Pro';
             const isPlusProTier = tier.name === '+ Pro';

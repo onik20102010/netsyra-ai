@@ -16,7 +16,11 @@ on public.user_memory_summaries(user_id);
 -- Enable RLS
 alter table public.user_memory_summaries enable row level security;
 
--- RLS Policies
+-- RLS Policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own memory summary" ON public.user_memory_summaries;
+DROP POLICY IF EXISTS "Users can insert own memory summary" ON public.user_memory_summaries;
+DROP POLICY IF EXISTS "Users can update own memory summary" ON public.user_memory_summaries;
+
 create policy "Users can read own memory summary"
 on public.user_memory_summaries
 for select

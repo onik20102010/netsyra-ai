@@ -11,8 +11,12 @@ CREATE TABLE IF NOT EXISTS chat_summaries (
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_chat_id ON chat_summaries(chat_id);
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_created_at ON chat_summaries(created_at DESC);
 
--- Add RLS policies
+-- Add RLS policies (drop first for safe re-run)
 ALTER TABLE chat_summaries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own chat summaries" ON chat_summaries;
+DROP POLICY IF EXISTS "Users can insert their own chat summaries" ON chat_summaries;
+DROP POLICY IF EXISTS "Users can update their own chat summaries" ON chat_summaries;
 
 CREATE POLICY "Users can view their own chat summaries"
   ON chat_summaries FOR SELECT
@@ -42,6 +46,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to auto-update updated_at
+DROP TRIGGER IF EXISTS update_chat_summaries_updated_at_trigger ON chat_summaries;
 CREATE TRIGGER update_chat_summaries_updated_at_trigger
   BEFORE UPDATE ON chat_summaries
   FOR EACH ROW

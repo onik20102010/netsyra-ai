@@ -6,7 +6,7 @@
 -- Table
 CREATE TABLE IF NOT EXISTS public.pro_conversation_summaries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE UNIQUE,
+  conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE UNIQUE,
   summary TEXT NOT NULL DEFAULT '',
   user_overview TEXT NOT NULL DEFAULT '',
   likes_dislikes TEXT NOT NULL DEFAULT '',
@@ -18,20 +18,22 @@ CREATE TABLE IF NOT EXISTS public.pro_conversation_summaries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- RLS Policies
-ALTER TABLE public.pro_conversation_summaries ENABLE ROW LEVEL SECURITY;
+-- RLS Policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can view their own conversation summaries" ON public.pro_conversation_summaries;
+DROP POLICY IF EXISTS "Users can insert their own conversation summaries" ON public.pro_conversation_summaries;
+DROP POLICY IF EXISTS "Users can update their own conversation summaries" ON public.pro_conversation_summaries;
 
 CREATE POLICY "Users can view their own conversation summaries"
   ON public.pro_conversation_summaries FOR SELECT
-  USING (auth.uid() = (SELECT user_id FROM conversations WHERE id = conversation_id));
+  USING (auth.uid() = (SELECT user_id FROM public.conversations WHERE id = conversation_id));
 
 CREATE POLICY "Users can insert their own conversation summaries"
   ON public.pro_conversation_summaries FOR INSERT
-  WITH CHECK (auth.uid() = (SELECT user_id FROM conversations WHERE id = conversation_id));
+  WITH CHECK (auth.uid() = (SELECT user_id FROM public.conversations WHERE id = conversation_id));
 
 CREATE POLICY "Users can update their own conversation summaries"
   ON public.pro_conversation_summaries FOR UPDATE
-  USING (auth.uid() = (SELECT user_id FROM conversations WHERE id = conversation_id));
+  USING (auth.uid() = (SELECT user_id FROM public.conversations WHERE id = conversation_id));
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_pro_conversation_summaries_conversation_id ON public.pro_conversation_summaries(conversation_id);

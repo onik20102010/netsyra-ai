@@ -22,7 +22,11 @@ create table if not exists chat.chat_usage (
 -- Enable RLS on chat_usage
 alter table chat.chat_usage enable row level security;
 
--- RLS policies for chat_usage
+-- RLS policies for chat_usage (drop first for safe re-run)
+drop policy if exists "Users can read own chat usage" on chat.chat_usage;
+drop policy if exists "Users can insert own chat usage" on chat.chat_usage;
+drop policy if exists "Users can update own chat usage" on chat.chat_usage;
+
 create policy "Users can read own chat usage"
   on chat.chat_usage for select to authenticated
   using (user_id = auth.uid());
@@ -54,17 +58,17 @@ declare
   v_now timestamptz := now();
   v_limit int;
 begin
-  -- Define limits based on model tier (TESTING: all set to 2)
+  -- Define limits based on model tier
   v_limit := case p_model_tier
-    when 'fast' then 2
-    when 'plus' then 2
-    when 'pro' then 2
-    when 'code' then 2
-    when 'live' then 2
-    when 'aai' then 2
-    when 'group' then 2
-    when 'web_search' then 2
-    else 2
+    when 'fast' then 15
+    when 'plus' then 10
+    when 'pro' then 5
+    when 'code' then 5
+    when 'live' then 5
+    when 'aai' then 5
+    when 'group' then 10
+    when 'web_search' then 10
+    else 10
   end;
 
   -- Get current usage or create new record
@@ -134,17 +138,17 @@ declare
   v_limit int;
   v_now timestamptz := now();
 begin
-  -- Define limits based on model tier (TESTING: all set to 2)
+  -- Define limits based on model tier
   v_limit := case p_model_tier
-    when 'fast' then 2
-    when 'plus' then 2
-    when 'pro' then 2
-    when 'code' then 2
-    when 'live' then 2
-    when 'aai' then 2
-    when 'group' then 2
-    when 'web_search' then 2
-    else 2
+    when 'fast' then 15
+    when 'plus' then 10
+    when 'pro' then 5
+    when 'code' then 5
+    when 'live' then 5
+    when 'aai' then 5
+    when 'group' then 10
+    when 'web_search' then 10
+    else 10
   end;
 
   return query
@@ -187,6 +191,6 @@ create trigger trigger_auto_reset_expired_usage
 create index if not exists idx_chat_usage_reset_at on chat.chat_usage(reset_at);
 
 -- Add comment to document the limits (TESTING: all set to 2)
-comment on column chat.chat_usage.model_tier is 'Model tier: fast(2), plus(2), pro(2), code(2), live(2), aai(2), group(2), web_search(2) messages per 24 hours (TESTING)';
+comment on column chat.chat_usage.model_tier is 'Model tier: fast(15), plus(10), pro(5), code(5), live(5), aai(5), group(10), web_search(10) messages per 24 hours';
 comment on function chat.increment_chat_usage is 'Atomically increments chat usage with limit enforcement and auto-reset';
 comment on function chat.get_usage_status is 'Returns current usage status including remaining messages and reset time';

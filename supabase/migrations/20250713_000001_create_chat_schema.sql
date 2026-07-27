@@ -255,6 +255,40 @@ alter table chat.retrieval_logs enable row level security;
 -- RLS POLICIES
 -- =============================================
 
+-- Drop existing policies for safe re-run
+drop policy if exists "Anyone can create a group" on chat.group_chats;
+drop policy if exists "Members can read their groups" on chat.group_chats;
+drop policy if exists "Members can see member list" on chat.group_members;
+drop policy if exists "Anyone can join a group" on chat.group_members;
+drop policy if exists "Group members can read conversation" on chat.conversations;
+drop policy if exists "Group members can insert conversation" on chat.conversations;
+drop policy if exists "Group members can update conversation" on chat.conversations;
+drop policy if exists "Group members can delete conversation" on chat.conversations;
+drop policy if exists "Group members can read messages" on chat.messages;
+drop policy if exists "Group members can insert messages" on chat.messages;
+drop policy if exists "Users can read own chat usage" on chat.chat_usage;
+drop policy if exists "Users can insert own chat usage" on chat.chat_usage;
+drop policy if exists "Users can update own chat usage" on chat.chat_usage;
+drop policy if exists "Users can read own preferences" on chat.user_preferences;
+drop policy if exists "Users can insert own preferences" on chat.user_preferences;
+drop policy if exists "Users can update own preferences" on chat.user_preferences;
+drop policy if exists "Users can read own model usage" on chat.user_model_usage;
+drop policy if exists "Users can insert own model usage" on chat.user_model_usage;
+drop policy if exists "Users can update own model usage" on chat.user_model_usage;
+drop policy if exists "Users can read own persona notes" on chat.bot_persona_notes;
+drop policy if exists "Users can insert own persona notes" on chat.bot_persona_notes;
+drop policy if exists "Users can update own persona notes" on chat.bot_persona_notes;
+drop policy if exists "Users can delete own persona notes" on chat.bot_persona_notes;
+drop policy if exists "Users can view their own chat summaries" on chat.chat_summaries;
+drop policy if exists "Users can insert their own chat summaries" on chat.chat_summaries;
+drop policy if exists "Users can update their own chat summaries" on chat.chat_summaries;
+drop policy if exists "Users can read own memories" on chat.memories;
+drop policy if exists "Users can insert own memories" on chat.memories;
+drop policy if exists "Users can read own episodic memories" on chat.episodic_memories;
+drop policy if exists "Users can insert own episodic memories" on chat.episodic_memories;
+drop policy if exists "Users can read own retrieval logs" on chat.retrieval_logs;
+drop policy if exists "Users can insert own retrieval logs" on chat.retrieval_logs;
+
 -- group_chats
 create policy "Anyone can create a group"
   on chat.group_chats for insert to authenticated

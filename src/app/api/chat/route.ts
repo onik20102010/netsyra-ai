@@ -15,12 +15,9 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
 import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner";
 import { safeFetch } from "@/lib/safe-fetch";
-import { checkAndUpdateUsage, MODEL_LIMITS } from "@/lib/chat/usage";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
 import { buildMessageContext, generateConversationSummary } from "@/lib/chat/conversation-summary";
 import { getUserSummary, generateUserSummary, shouldUseUserSummary } from "@/lib/chat/user-summary";
-import { getProUserSummary, generateProUserSummary, shouldUseProUserSummary } from "@/lib/chat/pro-user-summary";
-import { buildProMessageContext, updateProConversationSummary, getProConversationSummary } from "@/lib/chat/pro-conversation-summary";
 import { routeModel } from "@/lib/chat/router";
 // ── New unified systems ──
 // import { unifiedClassify, quickClassify } from "@/lib/chat/unified-classifier";
@@ -250,14 +247,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing messages" }, { status: 400 });
     }
 
-    for (const msg of messages) {
-      const lines = (msg.content || "").split("\n");
-      if (lines.length > 80) {
-        return NextResponse.json(
-          { error: "Message exceeds 80 lines. Please shorten it." },
-          { status: 400 }
-        );
-      }
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    if (lastUserMsg && (lastUserMsg.content || "").length > 2000) {
+      return NextResponse.json(
+        { error: "Message exceeds 2000 characters. Please shorten it." },
+        { status: 400 }
+      );
     }
 
     const lastMessage = messages[messages.length - 1];
@@ -731,26 +726,12 @@ export async function POST(req: NextRequest) {
 
     let messagesForContext = messages.slice(-dynamicWindow);
 
-    // For Pro users, use enhanced conversation summary when chat exceeds threshold
-    if (isPaidUser && conversationMessageCount && conversationMessageCount > dynamicWindow) {
-      messagesForContext = await buildProMessageContext(
-        convId,
-        messages.slice(-dynamicWindow),
-        conversationMessageCount
-      );
-    }
-
-    // ── Fetch appropriate user summary based on subscription ──
+    // ── Fetch unified user summary (same for all plans) ──
     let userSummary = null;
     let shouldUseSummary = false;
     
-    if (isPaidUser) {
-      userSummary = await getProUserSummary(user.id);
-      shouldUseSummary = userSummary ? await shouldUseProUserSummary(userMessage) : false;
-    } else {
-      userSummary = await getUserSummary(user.id);
-      shouldUseSummary = userSummary ? await shouldUseUserSummary(userMessage) : false;
-    }
+    userSummary = await getUserSummary(user.id);
+    shouldUseSummary = userSummary ? await shouldUseUserSummary(userMessage) : false;
 
     // ── NI tier requires active subscription ──
     if (modelTier === "ni" && !isPaidUser) {
@@ -1315,11 +1296,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
         // Trigger user summary generation (async, non-blocking)
         const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        if (isPaidUser) {
-          generateProUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        } else {
-          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        }
+        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
 
         const encoder = new TextEncoder();
         const words = replyText.split(" ");
@@ -1614,11 +1591,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
 
         const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        if (isPaidUser) {
-          generateProUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        } else {
-          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        }
+        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
 
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
@@ -1655,11 +1628,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
 
         const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        if (isPaidUser) {
-          generateProUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        } else {
-          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-        }
+        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
 
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
@@ -1839,11 +1808,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
                 saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
                 getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
-                  if (isPaidUser) {
-                    generateProUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-                  } else {
-                    generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-                  }
+                  generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
                 }).catch(console.error);
 
                 // Cache the response if cacheable
@@ -2050,11 +2015,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
               // Trigger user summary generation (async, non-blocking)
               getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
-                if (isPaidUser) {
-                  generateProUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-                } else {
-                  generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-                }
+                generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
               }).catch(console.error);
 
               // Cache the response if cacheable

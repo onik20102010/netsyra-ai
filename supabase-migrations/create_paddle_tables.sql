@@ -25,7 +25,11 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Allow users to read own subscription data
+-- Allow users to read own subscription data (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own subscription" ON public.subscriptions;
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON public.subscriptions;
+DROP POLICY IF EXISTS "Service role can manage customers" ON public.customers;
+
 CREATE POLICY "Users can read own subscription"
   ON public.subscriptions FOR SELECT TO authenticated
   USING (user_id = auth.uid()::text);

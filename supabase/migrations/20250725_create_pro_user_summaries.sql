@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS public.pro_user_summaries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- RLS Policies
-ALTER TABLE public.pro_user_summaries ENABLE ROW LEVEL SECURITY;
+-- RLS Policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can view their own pro summary" ON public.pro_user_summaries;
+DROP POLICY IF EXISTS "Users can insert their own pro summary" ON public.pro_user_summaries;
+DROP POLICY IF EXISTS "Users can update their own pro summary" ON public.pro_user_summaries;
 
 CREATE POLICY "Users can view their own pro summary"
   ON public.pro_user_summaries FOR SELECT

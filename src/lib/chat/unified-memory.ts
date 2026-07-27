@@ -23,11 +23,9 @@ interface SummaryQueueEntry {
 const summaryQueue = new Map<string, SummaryQueueEntry>();
 
 // Processing thresholds
-const FREE_BATCH_SIZE = 5;    // Free: process every 5 messages
-const PRO_BATCH_SIZE = 10;    // Pro: process every 10 messages
-const FREE_MAX_CHARS = 500;   // Free user summary max chars
-const PRO_USER_MAX_CHARS = 1000;  // Pro user summary max chars
-const PRO_CONV_MAX_CHARS = 1500;  // Pro conversation summary max chars
+const FREE_BATCH_SIZE = 5;    // Process every 5 messages for all plans
+const PRO_BATCH_SIZE = 10;    // (kept for compatibility)
+const UNIFIED_MAX_CHARS = 1000;  // Unified user summary max chars for all plans
 const MAX_QUEUE_AGE_MS = 5 * 60 * 1000; // Process if older than 5 min
 
 // ── Queue management ───────────────────────────────────────
@@ -115,38 +113,13 @@ export async function processQueue(
   const supabase = await createServerSupabaseClient();
 
   try {
-    if (plan === 'free') {
-      // Free plan: only user-level summary (cross-chat)
-      const existingSummary = await getExistingUserSummary(supabase, userId);
-      const userSummary = await generateUserSummary(apiKey, transcript, existingSummary, FREE_MAX_CHARS);
-      if (userSummary) {
-        await storeUserSummary(supabase, userId, userSummary);
-      }
-      return { userSummary: userSummary || undefined };
-    } else {
-      // Pro plan: user-level + conversation-level summaries
-      const existingUserSummary = await getExistingProUserSummary(supabase, userId);
-      const existingConvSummary = await getExistingProConvSummary(supabase, conversationId);
-
-      // Generate both in one call
-      const result = await generateProSummaries(
-        apiKey,
-        transcript,
-        existingUserSummary,
-        existingConvSummary,
-        PRO_USER_MAX_CHARS,
-        PRO_CONV_MAX_CHARS
-      );
-
-      if (result.userSummary) {
-        await storeProUserSummary(supabase, userId, result.userSummary);
-      }
-      if (result.conversationSummary) {
-        await storeProConvSummary(supabase, conversationId, userId, result.conversationSummary);
-      }
-
-      return result;
+    // All plans: same user-level summary (cross-chat)
+    const existingSummary = await getExistingUserSummary(supabase, userId);
+    const userSummary = await generateUserSummary(apiKey, transcript, existingSummary, UNIFIED_MAX_CHARS);
+    if (userSummary) {
+      await storeUserSummary(supabase, userId, userSummary);
     }
+    return { userSummary: userSummary || undefined };
   } catch (error) {
     console.error('Summary processing failed:', error);
     return null;
@@ -202,102 +175,6 @@ async function generateUserSummary(
   if (!res.ok) return null;
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || null;
-}
-
-// ── Pro plan: Dual summary generation ──────────────────────
-async function getExistingProUserSummary(supabase: any, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('pro_user_summaries')
-    .select('summary')
-    .eq('user_id', userId)
-    .maybeSingle();
-  return data?.summary || null;
-}
-
-async function getExistingProConvSummary(supabase: any, conversationId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('pro_conversation_summaries')
-    .select('summary')
-    .eq('conversation_id', conversationId)
-    .maybeSingle();
-  return data?.summary || null;
-}
-
-async function storeProUserSummary(supabase: any, userId: string, summary: string): Promise<void> {
-  await supabase
-    .from('pro_user_summaries')
-    .upsert({ user_id: userId, summary, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-}
-
-async function storeProConvSummary(supabase: any, conversationId: string, userId: string, summary: string): Promise<void> {
-  await supabase
-    .from('pro_conversation_summaries')
-    .upsert(
-      { conversation_id: conversationId, user_id: userId, summary, updated_at: new Date().toISOString() },
-      { onConflict: 'conversation_id' }
-    );
-}
-
-async function generateProSummaries(
-  apiKey: string,
-  transcript: string,
-  existingUserSummary: string | null,
-  existingConvSummary: string | null,
-  userMaxChars: number,
-  convMaxChars: number
-): Promise<{ userSummary?: string; conversationSummary?: string }> {
-  const existingUserNote = existingUserSummary
-    ? `\nExisting user summary: ${existingUserSummary}`
-    : '';
-  const existingConvNote = existingConvSummary
-    ? `\nExisting conversation summary: ${existingConvSummary}`
-    : '';
-
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a dual-summary generator. Create TWO summaries from the conversation transcript:
-
-1. USER SUMMARY (max ${userMaxChars} chars): Cross-chat profile. Professional context, projects, technical preferences, communication style. Natural language.
-
-2. CONVERSATION SUMMARY (max ${convMaxChars} chars): This specific chat. Key topics, decisions, code discussed, open questions. Structured but concise.
-
-Return as JSON:
-{
-  "userSummary": "...",
-  "conversationSummary": "..."
-}`,
-        },
-        {
-          role: 'user',
-          content: `Transcript:\n${transcript}${existingUserNote}${existingConvNote}\n\nGenerate both summaries as JSON:`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: Math.ceil((userMaxChars + convMaxChars) / 2),
-      response_format: { type: 'json_object' },
-    }),
-  });
-
-  if (!res.ok) return {};
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) return {};
-
-  try {
-    const parsed = JSON.parse(content);
-    return {
-      userSummary: parsed.userSummary,
-      conversationSummary: parsed.conversationSummary,
-    };
-  } catch {
-    return {};
-  }
 }
 
 // ── Dynamic window sizing ───────────────────────────────────

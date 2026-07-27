@@ -16,7 +16,11 @@ CREATE INDEX IF NOT EXISTS idx_web_search_usage_user_id ON public.web_search_usa
 -- Enable RLS
 ALTER TABLE public.web_search_usage ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can read their own web search usage
+-- Policy: Users can read their own web search usage (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own web search usage" ON public.web_search_usage;
+DROP POLICY IF EXISTS "Users can insert own web search usage" ON public.web_search_usage;
+DROP POLICY IF EXISTS "Users can update own web search usage" ON public.web_search_usage;
+
 CREATE POLICY "Users can read own web search usage"
   ON public.web_search_usage
   FOR SELECT

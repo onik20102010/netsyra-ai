@@ -42,7 +42,7 @@ export async function checkAndUpdateUsage(
   while (retries < maxRetries) {
     try {
       const { data: usageData, error } = await supabase
-        .from("chat_usage")
+        .from("chat.chat_usage")
         .select("messages_used, reset_at")
         .eq("user_id", userId)
         .eq("model_tier", modelTier)
@@ -75,7 +75,7 @@ export async function checkAndUpdateUsage(
     
     // Use atomic upsert with conflict resolution
     const { error: upsertError } = await supabase
-      .from("chat_usage")
+      .from("chat.chat_usage")
       .upsert(
         { 
           user_id: userId, 
@@ -124,7 +124,7 @@ export async function checkAndUpdateUsage(
   if (incrementError) {
     console.warn("RPC increment_chat_usage not available, using direct update");
     const { error: updateError } = await supabase
-      .from("chat_usage")
+      .from("chat.chat_usage")
       .update({ messages_used: usage.messages_used + 1 })
       .eq("user_id", userId)
       .eq("model_tier", modelTier)

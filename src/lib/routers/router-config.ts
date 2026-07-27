@@ -52,7 +52,7 @@ export const routerConfigs: Record<string, RouterConfig> = {
     allowedModelKeys: ['go_plus'],
     dailyTokenLimit: 317000,
     monthlyTokenLimit: 9523810,
-    maxHistoryLength: 10,
+    maxHistoryLength: 40,
     maxTokensPerRequest: 3000,
     webSearchEnabled: true,
     webSearchDailyLimit: 10,
@@ -66,7 +66,7 @@ export const routerConfigs: Record<string, RouterConfig> = {
     allowedModelKeys: ['ni'],
     dailyTokenLimit: 500000,
     monthlyTokenLimit: 15000000,
-    maxHistoryLength: 30,
+    maxHistoryLength: 40,
     maxTokensPerRequest: 3000,
     webSearchEnabled: true,
     webSearchDailyLimit: 50,
@@ -85,7 +85,7 @@ export const routerConfigs: Record<string, RouterConfig> = {
       'plus_pro_luna': { daily: 47619, monthly: 1428571 }, // GPT-5.6 Luna
       'plus_pro_deepseek': { daily: 204342, monthly: 6130268 }, // DeepSeek-V4-pro
     },
-    maxHistoryLength: 50,
+    maxHistoryLength: 40,
     maxTokensPerRequest: 4000,
     webSearchEnabled: true,
     webSearchDailyLimit: 100,

@@ -18,7 +18,11 @@ CREATE INDEX IF NOT EXISTS idx_tavily_usage_user_id ON public.tavily_usage(user_
 -- Enable RLS
 ALTER TABLE public.tavily_usage ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can read their own tavily usage
+-- Policy: Users can read their own tavily usage (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own tavily usage" ON public.tavily_usage;
+DROP POLICY IF EXISTS "Users can insert own tavily usage" ON public.tavily_usage;
+DROP POLICY IF EXISTS "Users can update own tavily usage" ON public.tavily_usage;
+
 CREATE POLICY "Users can read own tavily usage"
   ON public.tavily_usage
   FOR SELECT

@@ -1,9 +1,10 @@
 // Plan to allowed model tier keys
+// Keys must match the database `subscriptions.plan` column values
 export const PLAN_TIER_MAP: Record<string, string[]> = {
   free: ["fast", "plus", "pro", "code", "live", "aai"],
-  "Go Plus": ["go_plus"],
-  Pro: ["ni"],
-  "+ Pro": ["plus_pro"],
+  go_plus: ["go_plus"],
+  pro: ["ni"],
+  plus_pro: ["plus_pro"],
 };
 
 export function getAllowedTiers(plan: string): string[] {
@@ -14,10 +15,7 @@ export const PLAN_DISPLAY_NAMES: Record<string, string> = {
   free: "Free",
   go_plus: "Go Plus",
   pro: "Pro",
-  plus_pro: "+Pro",
-  "Go Plus": "Go Plus",
-  Pro: "Pro",
-  "+ Pro": "+Pro",
+  plus_pro: "+ Pro",
 };
 
 export function getPlanFromSubscription(subscription: any): string {

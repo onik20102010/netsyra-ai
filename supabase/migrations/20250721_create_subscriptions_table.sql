@@ -1,19 +1,16 @@
--- Create subscriptions table for Paddle billing
-CREATE TABLE IF NOT EXISTS public.subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  paddle_subscription_id text,
-  paddle_price_id text,
-  status text NOT NULL DEFAULT 'active', -- active, cancelled, past_due
-  current_period_end timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can read own subscription"
-  ON public.subscriptions FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-
--- Only allow insert/update by service key (via webhook)
--- For now, insert is allowed for authenticated (will be handled by webhook)
+-- Subscriptions table is created by supabase-migrations/create_paddle_tables.sql
+-- with the correct schema (subscription_id TEXT PRIMARY KEY, customer_id FK, etc.)
+-- This migration is a no-op to avoid creating a conflicting table.
+-- If the old table with uuid PK was already created, drop it so the correct one can be used.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_name = 'subscriptions' AND table_schema = 'public'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'subscriptions' AND table_schema = 'public' AND column_name = 'subscription_id'
+  ) THEN
+    DROP TABLE public.subscriptions CASCADE;
+  END IF;
+END $$;

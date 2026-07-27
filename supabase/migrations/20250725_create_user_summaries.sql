@@ -14,8 +14,10 @@ CREATE TABLE IF NOT EXISTS public.user_summaries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- RLS Policies
-ALTER TABLE public.user_summaries ENABLE ROW LEVEL SECURITY;
+-- RLS Policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can view their own summary" ON public.user_summaries;
+DROP POLICY IF EXISTS "Users can insert their own summary" ON public.user_summaries;
+DROP POLICY IF EXISTS "Users can update their own summary" ON public.user_summaries;
 
 CREATE POLICY "Users can view their own summary"
   ON public.user_summaries FOR SELECT

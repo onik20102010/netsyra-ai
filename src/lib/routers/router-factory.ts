@@ -2,7 +2,8 @@ import { routerConfigs, RouterConfig } from './router-config';
 
 /**
  * Normalize plan name to lowercase key
- * @param plan - The plan name from database (e.g., "Go Plus", "Pro", "+ Pro")
+ * @param plan - The plan key from database (e.g., "go_plus", "pro", "plus_pro")
+ *   Also accepts display names ("Go Plus", "+ Pro") for backward compatibility.
  * @returns Normalized plan key (e.g., "go_plus", "pro", "plus_pro")
  */
 function normalizePlanName(plan: string): string {

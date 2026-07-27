@@ -237,7 +237,7 @@ export default function ChatInterface({
 
   const { refetch: refetchUsage } = useChatUsage();
 
-  const MAX_LINES = 80;
+  const MAX_CHARS = 2000;
 
   const isSelfCreatedConv = useRef(false);
 
@@ -1244,11 +1244,10 @@ export default function ChatInterface({
                 ref={mainInputRef}
                 value={input}
                 onChange={(e) => {
-                  const lines = e.target.value.split("\n");
-                  if (lines.length > MAX_LINES) {
+                  if (e.target.value.length > MAX_CHARS) {
                     setLineLimitReached(true);
-                    setInput(lines.slice(0, MAX_LINES).join("\n"));
-                    toast.error("Message is too long. Please reduce to 80 lines or fewer.");
+                    setInput(e.target.value.slice(0, MAX_CHARS));
+                    toast.error("Message is too long. Please reduce to 2000 characters or fewer.");
                   } else {
                     setLineLimitReached(false);
                     setInput(e.target.value);
@@ -1280,12 +1279,12 @@ export default function ChatInterface({
             </div>
 
             <div className="text-xs text-gray-400 text-right pr-1 mt-1">
-              {input.split("\n").length}/{MAX_LINES} lines
+              {input.length}/{MAX_CHARS} chars
             </div>
 
             {lineLimitReached && (
               <p className="text-xs text-rose-500 mt-1">
-                Message is too long. Please reduce to 80 lines or fewer.
+                Message is too long. Please reduce to 2000 characters or fewer.
               </p>
             )}
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">

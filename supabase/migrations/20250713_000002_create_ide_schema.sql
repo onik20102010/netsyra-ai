@@ -147,6 +147,25 @@ alter table ide.user_folder_structure enable row level security;
 -- RLS POLICIES
 -- =============================================
 
+-- Drop existing policies for safe re-run
+drop policy if exists "Users can read own IDE usage" on ide.ide_token_usage;
+drop policy if exists "Users can insert own IDE usage" on ide.ide_token_usage;
+drop policy if exists "Users can update own IDE usage" on ide.ide_token_usage;
+drop policy if exists "Users can read own IDE files" on ide.ide_files;
+drop policy if exists "Users can insert own IDE files" on ide.ide_files;
+drop policy if exists "Users can update own IDE files" on ide.ide_files;
+drop policy if exists "Users can delete own IDE files" on ide.ide_files;
+drop policy if exists "Users can read own IDE chunks" on ide.ide_file_chunks;
+drop policy if exists "Users can insert own IDE chunks" on ide.ide_file_chunks;
+drop policy if exists "Users can delete own IDE chunks" on ide.ide_file_chunks;
+drop policy if exists "Users can view their own project memory" on ide.project_memory;
+drop policy if exists "Users can insert their own project memory" on ide.project_memory;
+drop policy if exists "Users can update their own project memory" on ide.project_memory;
+drop policy if exists "Users can delete their own project memory" on ide.project_memory;
+drop policy if exists "Users can view own folder structure" on ide.user_folder_structure;
+drop policy if exists "Users can upsert own folder structure" on ide.user_folder_structure;
+drop policy if exists "Users can update own folder structure" on ide.user_folder_structure;
+
 -- ide_token_usage
 create policy "Users can read own IDE usage"
   on ide.ide_token_usage for select to authenticated

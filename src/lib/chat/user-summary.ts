@@ -13,14 +13,16 @@ interface UserSummary {
   message_count_at_update: number;
 }
 
-const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how ChatGPT remembers users. Your job is to distill the user's conversation history into a concise, natural-sounding memory that captures who they are and what matters to them.
+const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how ChatGPT remembers users. Your job is to distill the user's conversation history into a concise, natural-sounding memory that captures who they are, what they like/dislike, and what matters to them.
 
 ## What to capture (in order of priority):
 1. **Identity & Context**: What the user does, their role, their current situation
-2. **Recurring Themes**: Topics they bring up repeatedly across conversations
-3. **Preferences & Style**: How they like information presented, their communication style
-4. **Active Projects**: What they're currently working on or trying to accomplish
-5. **Explicit Requests**: Things they directly asked you to remember
+2. **Likes & Dislikes**: Things the user explicitly enjoys or prefers, and things they dislike or find frustrating
+3. **Interests**: Topics they show genuine enthusiasm about, areas they explore in depth
+4. **Recurring Themes**: Topics they bring up repeatedly across conversations
+5. **Preferences & Style**: How they like information presented, their communication style
+6. **Active Projects**: What they're currently working on or trying to accomplish
+7. **Explicit Requests**: Things they directly asked you to remember
 
 ## What to ignore:
 - One-off questions or temporary queries
@@ -30,13 +32,14 @@ const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how Ch
 
 ## Writing style:
 - Write in natural, flowing sentences like a human would remember someone
-- Use the format: "User is [role/identity]. User likes [interests]. User wants [goals]. User often discusses [topics]. User is working on [projects]."
+- Use the format: "User is [role/identity]. User likes [interests]. User dislikes [things]. User wants [goals]. User often discusses [topics]. User is working on [projects]."
 - Be specific, not generic. Instead of "User likes coding", say "User is a React developer building a SaaS dashboard"
 - Prioritize the most important 2-3 facts if space is tight
 - Update incrementally: keep what's still true, drop what's outdated, add what's new
+- Track evolving interests: if user's interests change over time, update accordingly
 
 ## Hard rules:
-- Maximum 500 characters including spaces and punctuation
+- Maximum 1000 characters including spaces and punctuation
 - Never duplicate profile information (name, goal, custom instructions)
 - If the existing summary is good, only add genuinely new information
 - When at capacity, drop the least important/relevant fact to make room for new ones`;
@@ -108,7 +111,7 @@ Review the recent messages and update the memory. Follow the system prompt rules
 - Add new, genuinely important information about the user
 - Keep what's still accurate from the current memory
 - Remove anything that's become outdated or irrelevant
-- Stay under 500 characters
+- Stay under 1000 characters
 - Never duplicate profile info
 `;
 
@@ -134,7 +137,7 @@ Review the recent messages and update the memory. Follow the system prompt rules
           { role: "user", content: summaryContext },
         ],
         temperature: 0.3,
-        max_tokens: 200,
+        max_tokens: 400,
       }),
     });
 
@@ -152,7 +155,7 @@ Review the recent messages and update the memory. Follow the system prompt rules
     }
 
     // Ensure summary is under 500 characters
-    const truncatedSummary = newSummary.length > 500 ? newSummary.slice(0, 500) : newSummary;
+    const truncatedSummary = newSummary.length > 1000 ? newSummary.slice(0, 1000) : newSummary;
 
     // Update interaction counts based on conversation analysis
     const newInteractionCounts = { ...interactionCounts };

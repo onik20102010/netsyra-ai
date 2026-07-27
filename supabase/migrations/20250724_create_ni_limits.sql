@@ -24,27 +24,22 @@ CREATE TABLE IF NOT EXISTS public.image_generation_usage (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- Image analysis usage table
-CREATE TABLE IF NOT EXISTS public.image_analysis_usage (
-  id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  images_month_count INTEGER NOT NULL DEFAULT 0,
-  images_month_reset_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
+-- Image analysis usage table is created by 20250725_create_image_analysis_limits.sql
+-- with daily/monthly counts and comprehensive functions.
 
 -- Create indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_claude_credits_user_id ON public.claude_credits(user_id);
 CREATE INDEX IF NOT EXISTS idx_image_generation_user_id ON public.image_generation_usage(user_id);
-CREATE INDEX IF NOT EXISTS idx_image_analysis_user_id ON public.image_analysis_usage(user_id);
 
 -- Enable RLS
 ALTER TABLE public.claude_credits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.image_generation_usage ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.image_analysis_usage ENABLE ROW LEVEL SECURITY;
 
--- Claude credits policies
+-- Claude credits policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own claude credits" ON public.claude_credits;
+DROP POLICY IF EXISTS "Users can insert own claude credits" ON public.claude_credits;
+DROP POLICY IF EXISTS "Users can update own claude credits" ON public.claude_credits;
+
 CREATE POLICY "Users can read own claude credits"
   ON public.claude_credits
   FOR SELECT
@@ -60,7 +55,11 @@ CREATE POLICY "Users can update own claude credits"
   FOR UPDATE
   USING (auth.uid() = user_id);
 
--- Image generation policies
+-- Image generation policies (drop first for safe re-run)
+DROP POLICY IF EXISTS "Users can read own image generation usage" ON public.image_generation_usage;
+DROP POLICY IF EXISTS "Users can insert own image generation usage" ON public.image_generation_usage;
+DROP POLICY IF EXISTS "Users can update own image generation usage" ON public.image_generation_usage;
+
 CREATE POLICY "Users can read own image generation usage"
   ON public.image_generation_usage
   FOR SELECT
@@ -76,21 +75,7 @@ CREATE POLICY "Users can update own image generation usage"
   FOR UPDATE
   USING (auth.uid() = user_id);
 
--- Image analysis policies
-CREATE POLICY "Users can read own image analysis usage"
-  ON public.image_analysis_usage
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own image analysis usage"
-  ON public.image_analysis_usage
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own image analysis usage"
-  ON public.image_analysis_usage
-  FOR UPDATE
-  USING (auth.uid() = user_id);
+-- Image analysis RLS policies are in 20250725_create_image_analysis_limits.sql
 
 -- Function to get or reset Claude credits
 CREATE OR REPLACE FUNCTION public.get_or_reset_claude_credits(p_user_id UUID)
@@ -243,66 +228,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to get or reset image analysis usage
-CREATE OR REPLACE FUNCTION public.get_or_reset_image_analysis_usage(p_user_id UUID)
-RETURNS TABLE (
-  id BIGINT,
-  images_month_count INTEGER,
-  images_month_reset_at TIMESTAMP WITH TIME ZONE,
-  remaining_month INTEGER
-) AS $$
-DECLARE
-  v_record RECORD;
-  v_remaining_month INTEGER;
-BEGIN
-  -- Try to get existing record
-  SELECT * INTO v_record
-  FROM image_analysis_usage
-  WHERE user_id = p_user_id
-  FOR UPDATE;
-
-  -- If no record exists, create one
-  IF NOT FOUND THEN
-    INSERT INTO image_analysis_usage (user_id, images_month_count, images_month_reset_at)
-    VALUES (p_user_id, 0, DATE_TRUNC('month', NOW()) + INTERVAL '1 month')
-    RETURNING * INTO v_record;
-  -- If monthly reset needed
-  ELSIF v_record.images_month_reset_at < NOW() THEN
-    UPDATE image_analysis_usage
-    SET images_month_count = 0, images_month_reset_at = DATE_TRUNC('month', NOW()) + INTERVAL '1 month', updated_at = NOW()
-    WHERE id = v_record.id
-    RETURNING * INTO v_record;
-  END IF;
-
-  -- Calculate remaining
-  v_remaining_month := 300 - v_record.images_month_count;
-
-  RETURN QUERY
-  SELECT v_record.id, v_record.images_month_count, v_record.images_month_reset_at, v_remaining_month;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Function to increment image analysis usage
-CREATE OR REPLACE FUNCTION public.increment_image_analysis(p_user_id UUID)
-RETURNS INTEGER AS $$
-DECLARE
-  v_remaining_month INTEGER;
-BEGIN
-  -- Get current usage
-  SELECT remaining_month INTO v_remaining_month
-  FROM get_or_reset_image_analysis_usage(p_user_id)
-  LIMIT 1;
-
-  -- Check limit
-  IF v_remaining_month <= 0 THEN
-    RETURN -1; -- Monthly limit reached
-  END IF;
-
-  -- Increment count
-  UPDATE image_analysis_usage
-  SET images_month_count = images_month_count + 1, updated_at = NOW()
-  WHERE user_id = p_user_id;
-
-  RETURN v_remaining_month - 1;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Image analysis functions are in 20250725_create_image_analysis_limits.sql
+-- with daily/monthly tracking and comprehensive limit enforcement.

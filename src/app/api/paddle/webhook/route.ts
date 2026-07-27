@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // Always acknowledge the event, even if signature fails
+  // Reject invalid signatures — Paddle will retry with a valid one
   if (!verifyPaddleSignature(rawBody, signature, secret)) {
-    console.error("Invalid signature – event acknowledged anyway");
-    return NextResponse.json({ received: true });
+    console.error("Invalid webhook signature — rejecting");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   let event: any;
@@ -69,16 +69,86 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Process only the events we care about
-  const relevantEvents = [
+  // Process only subscription events we care about
+  // Transaction events have a different data structure and are handled separately
+  const subscriptionEvents = [
     "subscription.activated",
     "subscription.updated",
     "subscription.canceled",
+  ];
+  const transactionEvents = [
     "transaction.ready",
     "transaction.completed",
   ];
-  if (!relevantEvents.includes(event.event_type)) {
+
+  if (!subscriptionEvents.includes(event.event_type) && !transactionEvents.includes(event.event_type)) {
     console.log(`🔍 Webhook: Ignoring event type ${event.event_type}`);
+    return NextResponse.json({ received: true });
+  }
+
+  // For transaction events, only process if a subscription_id is present
+  // (transaction events may fire before subscription is created)
+  if (transactionEvents.includes(event.event_type)) {
+    const txSubscriptionId = event.data?.subscription_id;
+    if (!txSubscriptionId) {
+      console.log(`🔍 Webhook: Transaction ${event.event_type} has no subscription_id, skipping`);
+      return NextResponse.json({ received: true });
+    }
+    // Use transaction-specific fields
+    const txItems = event.data?.items;
+    const txFirstItem = Array.isArray(txItems) && txItems.length > 0 ? txItems[0] : null;
+    const txCustomerId = event.data?.customer_id || "pending";
+
+    // Determine plan from price ID
+    let txPlan = "free";
+    if (txFirstItem?.price?.id) {
+      const priceId = txFirstItem.price.id;
+      if (priceId === 'pri_01kyf27thzh41n39q3cja2cphq') txPlan = "go_plus";
+      else if (priceId === 'pri_01kyf2acjbxs0s8nytjae84ckm') txPlan = "pro";
+      else if (priceId === 'pri_01kyf2ckc62mpde2s2rfmdjra4') txPlan = "plus_pro";
+    }
+
+    if (txPlan === "free" && txFirstItem?.product?.name) {
+      const productName = txFirstItem.product.name.toLowerCase();
+      if (productName.includes("go plus")) txPlan = "go_plus";
+      else if (productName.includes("+pro") || productName.includes("plus pro")) txPlan = "plus_pro";
+      else if (productName.includes("pro")) txPlan = "pro";
+    }
+
+    if (txCustomerId !== "pending") {
+      await supabase.from("customers").upsert({
+        customer_id: txCustomerId,
+        email: event.data?.customer?.email || "unknown",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "customer_id" });
+    }
+
+    const txSubData = {
+      subscription_id: txSubscriptionId,
+      customer_id: txCustomerId,
+      user_id: userId,
+      status: "active",
+      price_id: txFirstItem?.price?.id || "unknown",
+      product_id: txFirstItem?.product?.id || "unknown",
+      plan: txPlan,
+      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: txError } = await supabase
+      .from("subscriptions")
+      .upsert(txSubData, { onConflict: "subscription_id" });
+
+    if (txError) {
+      console.error("Transaction subscription upsert error:", txError.message);
+      return NextResponse.json({ received: true });
+    }
+
+    console.log(`✅ Webhook: Successfully upserted subscription from transaction for user ${userId}, plan ${txPlan}`);
+
+    // Update profiles.subscription_tier for admin display
+    await supabase.from("profiles").update({ subscription_tier: txPlan }).eq("user_id", userId);
+
     return NextResponse.json({ received: true });
   }
 
@@ -150,5 +220,9 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(`✅ Webhook: Successfully upserted subscription for user ${userId}, plan ${plan}`);
+
+  // Update profiles.subscription_tier for admin display
+  await supabase.from("profiles").update({ subscription_tier: plan }).eq("user_id", userId);
+
   return NextResponse.json({ received: true });
 }
