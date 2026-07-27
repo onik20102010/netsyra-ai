@@ -80,14 +80,29 @@ export async function POST(req: NextRequest) {
   const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
   const customerId = event.data.customer_id || "pending";
 
-  // Determine plan from product name
+  // Determine plan from product name or price ID
   let plan = "free";
-  if (firstItem?.product?.name) {
+  if (firstItem?.price?.id) {
+    const priceId = firstItem.price.id;
+    // Map price IDs to plans
+    if (priceId === 'pri_01kyf27thzh41n39q3cja2cphq') {
+      plan = "go_plus";
+    } else if (priceId === 'pri_01kyf2acjbxs0s8nytjae84ckm') {
+      plan = "pro";
+    } else if (priceId === 'pri_01kyf2ckc62mpde2s2rfmdjra4') {
+      plan = "plus_pro";
+    }
+  }
+
+  // Fallback to product name if price ID doesn't match
+  if (plan === "free" && firstItem?.product?.name) {
     const productName = firstItem.product.name.toLowerCase();
     if (productName.includes("go plus")) plan = "go_plus";
-    else if (productName.includes("+pro")) plan = "plus_pro";
+    else if (productName.includes("+pro") || productName.includes("plus pro")) plan = "plus_pro";
     else if (productName.includes("pro")) plan = "pro";
   }
+
+  console.log(`🔍 Webhook: Determined plan "${plan}" from priceId: ${firstItem?.price?.id}, productName: ${firstItem?.product?.name}`);
 
   // ── Ensure customer exists before subscription (FK constraint) ──
   if (customerId !== "pending") {

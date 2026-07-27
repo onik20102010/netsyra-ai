@@ -89,9 +89,14 @@ export default function ChatSidebar({
       .then(({ data }) => {
         setIsPro(!!data);
         if (data?.plan) {
-          setCurrentPlan(data.plan);
-        } else if (data) {
-          setCurrentPlan('Go Plus'); // Default to Go Plus if no plan specified
+          // Map plan names from database to display names
+          const planMap: Record<string, 'Free' | 'Go Plus' | 'Pro' | '+ Pro'> = {
+            'free': 'Free',
+            'go_plus': 'Go Plus',
+            'pro': 'Pro',
+            'plus_pro': '+ Pro',
+          };
+          setCurrentPlan(planMap[data.plan] || 'Free');
         } else {
           setCurrentPlan('Free');
         }
