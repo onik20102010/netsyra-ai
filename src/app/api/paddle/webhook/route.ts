@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("paddle-signature") || "";
 
+  console.log(`🔍 Webhook received: event_type unknown, user_id unknown`);
+
   const secret = process.env.PADDLE_WEBHOOK_SECRET;
   if (!secret) {
     console.error("PADDLE_WEBHOOK_SECRET is missing");
@@ -50,12 +52,15 @@ export async function POST(req: NextRequest) {
   let event: any;
   try {
     event = JSON.parse(rawBody);
+    console.log(`🔍 Webhook parsed: event_type=${event.event_type}, user_id=${event.data?.custom_data?.user_id}`);
   } catch {
+    console.error("Failed to parse webhook body");
     return NextResponse.json({ received: true });
   }
 
   const userId = event.data?.custom_data?.user_id;
   if (!userId) {
+    console.error("No user_id in webhook custom_data");
     return NextResponse.json({ received: true });
   }
 
@@ -73,6 +78,7 @@ export async function POST(req: NextRequest) {
     "transaction.completed",
   ];
   if (!relevantEvents.includes(event.event_type)) {
+    console.log(`🔍 Webhook: Ignoring event type ${event.event_type}`);
     return NextResponse.json({ received: true });
   }
 
@@ -80,10 +86,13 @@ export async function POST(req: NextRequest) {
   const firstItem = Array.isArray(items) && items.length > 0 ? items[0] : null;
   const customerId = event.data.customer_id || "pending";
 
+  console.log(`🔍 Webhook: items=${JSON.stringify(items)}, customerId=${customerId}`);
+
   // Determine plan from product name or price ID
   let plan = "free";
   if (firstItem?.price?.id) {
     const priceId = firstItem.price.id;
+    console.log(`🔍 Webhook: priceId=${priceId}`);
     // Map price IDs to plans
     if (priceId === 'pri_01kyf27thzh41n39q3cja2cphq') {
       plan = "go_plus";
@@ -97,6 +106,7 @@ export async function POST(req: NextRequest) {
   // Fallback to product name if price ID doesn't match
   if (plan === "free" && firstItem?.product?.name) {
     const productName = firstItem.product.name.toLowerCase();
+    console.log(`🔍 Webhook: productName=${productName}`);
     if (productName.includes("go plus")) plan = "go_plus";
     else if (productName.includes("+pro") || productName.includes("plus pro")) plan = "plus_pro";
     else if (productName.includes("pro")) plan = "pro";
@@ -139,5 +149,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  console.log(`✅ Webhook: Successfully upserted subscription for user ${userId}, plan ${plan}`);
   return NextResponse.json({ received: true });
 }
