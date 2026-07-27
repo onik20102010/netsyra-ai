@@ -60,13 +60,14 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const [isPro, setIsPro] = useState(false);
   const [serverPrices, setServerPrices] = useState<Record<string, { amount: string; currency: string; formatted: string; interval: string }>>({});
   const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("subscriptions")
-      .select("status, plan")
+      .select("status, plan, current_period_end")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
@@ -81,8 +82,12 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
             'plus_pro': '+ Pro',
           };
           setCurrentPlan(planMap[data.plan] || 'Free');
+          if ((data as any).current_period_end) {
+            setSubscriptionEndDate((data as any).current_period_end);
+          }
         } else {
           setCurrentPlan('Free');
+          setSubscriptionEndDate(null);
         }
       });
   }, [user]);
@@ -104,7 +109,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
           const supabase = createClient();
           supabase
             .from("subscriptions")
-            .select("status, plan")
+            .select("status, plan, current_period_end")
             .eq("user_id", user.id)
             .eq("status", "active")
             .maybeSingle()
@@ -118,6 +123,9 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                 };
                 setCurrentPlan(planMap[subData.plan] || 'Free');
                 setIsPro(true);
+                if ((subData as any).current_period_end) {
+                  setSubscriptionEndDate((subData as any).current_period_end);
+                }
               }
             });
         }
@@ -246,7 +254,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
     const supabase = createClient();
     const { data } = await supabase
       .from("subscriptions")
-      .select("status, plan")
+      .select("status, plan, current_period_end")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -260,6 +268,11 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       };
       setCurrentPlan(planMap[data.plan] || 'Free');
       setIsPro(true);
+      if ((data as any).current_period_end) {
+        setSubscriptionEndDate((data as any).current_period_end);
+      }
+    } else {
+      setSubscriptionEndDate(null);
     }
   };
 
@@ -322,6 +335,13 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
             const isPlusProTier = tier.name === '+ Pro';
             const isFree = tier.isFree;
             const isCurrentPlan = tier.name === currentPlan;
+            const hasActiveSubscription = isPro && currentPlan !== 'Free';
+            const isLocked = hasActiveSubscription && !isCurrentPlan && !isFree;
+
+            const formatDate = (dateStr: string) => {
+              const date = new Date(dateStr);
+              return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            };
 
             return (
               <div
@@ -382,20 +402,40 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   ))}
                 </ul>
                 <button
-                  onClick={() => !isFree && !isCurrentPlan && handleSubscribe(priceId)}
-                  disabled={subscribing || isCurrentPlan || isFree}
+                  onClick={() => !isFree && !isCurrentPlan && !isLocked && handleSubscribe(priceId)}
+                  disabled={subscribing || isCurrentPlan || isFree || isLocked}
                   className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:opacity-50 ${
                     isFree
                       ? 'bg-white/10 border border-white/20 text-white/50 cursor-not-allowed'
                       : isCurrentPlan
                       ? 'bg-green-600/20 border border-green-500/30 text-green-400 cursor-not-allowed'
+                      : isLocked
+                      ? 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
                       : isPlusProTier
                       ? 'bg-purple-600 text-white hover:bg-purple-500'
                       : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {isFree ? 'Current Plan' : isCurrentPlan ? 'Current Plan' : subscribing ? <Loader2 className="animate-spin" size={18} /> : <>Get Started <ArrowRight className="w-4 h-4" /></>}
+                  {isFree
+                    ? 'Current Plan'
+                    : isCurrentPlan
+                    ? 'Current Plan'
+                    : isLocked
+                    ? 'Locked'
+                    : subscribing
+                    ? <Loader2 className="animate-spin" size={18} />
+                    : <>Get Started <ArrowRight className="w-4 h-4" /></>}
                 </button>
+                {isLocked && subscriptionEndDate && (
+                  <p className="text-[11px] text-white/30 text-center mt-2">
+                    Available after {formatDate(subscriptionEndDate)}
+                  </p>
+                )}
+                {isCurrentPlan && subscriptionEndDate && (
+                  <p className="text-[11px] text-green-400/60 text-center mt-2">
+                    Renews on {formatDate(subscriptionEndDate)}
+                  </p>
+                )}
               </div>
             );
           })}
