@@ -25,7 +25,7 @@ const summaryQueue = new Map<string, SummaryQueueEntry>();
 // Processing thresholds
 const FREE_BATCH_SIZE = 5;    // Process every 5 messages for all plans
 const PRO_BATCH_SIZE = 10;    // (kept for compatibility)
-const UNIFIED_MAX_CHARS = 1000;  // Unified user summary max chars for all plans
+const UNIFIED_MAX_CHARS = 200;  // Unified user summary max chars for Free plan
 const MAX_QUEUE_AGE_MS = 5 * 60 * 1000; // Process if older than 5 min
 
 // ── Queue management ───────────────────────────────────────
@@ -160,7 +160,7 @@ async function generateUserSummary(
       messages: [
         {
           role: 'system',
-          content: `You are a user profile summarizer. Create a concise cross-chat summary of what this user cares about, works on, and prefers. Write in natural language like: "User is working on... They prefer... They frequently discuss..." Max ${maxChars} chars including spaces. Update the existing summary — keep valuable old info, add new insights, remove outdated details.`,
+          content: `You are a user profile summarizer. Create a concise summary of who the user is: their profession/field (programmer, doctor, engineer, etc.), active projects, and key preferences. Write in natural language like: "User is a React developer building a SaaS dashboard. Prefers TypeScript." Max ${maxChars} chars including spaces. Only capture user identity info — ignore one-off questions and small talk. Update the existing summary — keep valuable old info, add new insights, remove outdated details.`,
         },
         {
           role: 'user',

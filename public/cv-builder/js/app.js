@@ -3677,9 +3677,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Mobile preview toggle
-  document.getElementById('mobilePreviewToggle').addEventListener('click', () => {
-    document.getElementById('appContainer').classList.toggle('preview-hidden');
-  });
+  var previewToggleBtn = document.getElementById('mobilePreviewToggle');
+  if (previewToggleBtn) {
+    previewToggleBtn.addEventListener('click', function() {
+      var appContainer = document.getElementById('appContainer');
+      appContainer.classList.toggle('preview-mode');
+      var icon = previewToggleBtn.querySelector('i');
+      if (appContainer.classList.contains('preview-mode')) {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-pen');
+      } else {
+        icon.classList.remove('fa-pen');
+        icon.classList.add('fa-eye');
+      }
+    });
+  }
 });
 
 // ==================== INDUSTRY PRESET DROPDOWN ====================

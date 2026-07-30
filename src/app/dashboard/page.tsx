@@ -184,7 +184,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-12 sm:space-y-16 px-4 sm:px-6 pt-20 sm:pt-24">
       {/* ── Dashboard hero ──────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -197,17 +197,17 @@ export default function DashboardPage() {
             <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
           </div>
         </div>
-        <h1 className="text-3xl font-light text-white mb-2">Welcome back</h1>
-        <p className="text-sm text-white/30 mb-10">
+        <h1 className="text-2xl sm:text-3xl font-light text-white mb-2">Welcome back</h1>
+        <p className="text-xs sm:text-sm text-white/30 mb-8 sm:mb-10">
           Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
         </p>
 
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
           <Link href="/">
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all"
             >
               <Home className="w-4 h-4" />
               Home
@@ -217,7 +217,7 @@ export default function DashboardPage() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/[0.08] transition-all"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/[0.08] transition-all"
             >
               <MessageSquare className="w-4 h-4" />
               Chat
@@ -228,7 +228,7 @@ export default function DashboardPage() {
 
         <button
           onClick={async () => { await signOut(); router.push("/login"); }}
-          className="mt-8 flex items-center justify-center gap-2 mx-auto px-5 py-2.5 rounded-full text-white/20 hover:text-white/60 hover:bg-white/[0.03] transition-all text-sm"
+          className="mt-6 sm:mt-8 flex items-center justify-center gap-2 mx-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-white/20 hover:text-white/60 hover:bg-white/[0.03] transition-all text-xs sm:text-sm"
         >
           <LogOut className="w-4 h-4" />
           Sign out
@@ -236,7 +236,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ── Policy content ───────────────────────────────── */}
-      <div className="space-y-16">
+      <div className="space-y-10 sm:space-y-16">
         {sections.map((section, idx) => (
           <motion.div
             key={idx}
@@ -245,9 +245,9 @@ export default function DashboardPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
-            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5"
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10 transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5"
           >
-            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-3">
               {section.title}
             </h2>
             {section.subtitle && (
@@ -278,13 +278,13 @@ export default function DashboardPage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10"
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10"
         >
           <h3 className="text-xl font-semibold text-white flex items-center gap-2 mb-6">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Important Notes
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             {[
               { icon: "M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zM18 16l-4-4 4-4 1.5 1.5L17 12l2.5 2.5z", label: "Please read carefully" },
               { icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", label: "Legally binding agreement" },
@@ -308,7 +308,7 @@ export default function DashboardPage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
         >
           <div className="flex items-center gap-4">
             <svg className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="currentColor">

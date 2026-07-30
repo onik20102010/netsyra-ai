@@ -64,9 +64,13 @@ async function classifyTaskWithAI(
   secondarySubTypes?: SubType[];
 } | null> {
   const apiKey = process.env.GROQ_API_KEY_4;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn(`❌ Missing API key: GROQ_API_KEY_4 for NI router classifier (groq/compound-mini)`);
+    return null;
+  }
 
   try {
+    console.log(`🤖 Using model: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Endpoint: api.groq.com`);
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -100,13 +104,17 @@ async function classifyTaskWithAI(
       }),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`❌ LLM Error: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Provider: groq | Error: ${res.status}`);
+      return null;
+    }
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
+    console.log(`✅ LLM Response: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Provider: groq | Content length: ${content.length} chars`);
     return JSON.parse(content);
   } catch (error) {
-    console.error('AI classification failed:', error);
+    console.warn(`❌ LLM Error: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Provider: groq | Error: ${error}`);
     return null;
   }
 }

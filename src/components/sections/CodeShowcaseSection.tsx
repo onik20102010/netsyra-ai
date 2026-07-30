@@ -91,7 +91,7 @@ function ModelCard({
         visible: { opacity: 1, y: 0, transition: { duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] } },
       }}
       whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className="group relative rounded-2xl bg-gradient-to-br from-[#111215] to-[#0A0C10] border border-gray-800 p-6 shadow-2xl transition-all duration-300 hover:border-gray-700 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05)] select-none"
+      className="group relative rounded-2xl bg-gradient-to-br from-[#111215] to-[#0A0C10] border border-gray-800 p-4 sm:p-6 shadow-2xl transition-all duration-300 hover:border-gray-700 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05)] select-none"
       style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none" }}
     >
       {/* Animated gradient border on hover */}
@@ -121,11 +121,11 @@ function ModelCard({
         </div>
 
         <div className="mt-4">
-          <h3 className="text-2xl font-bold tracking-tight text-white">{title}</h3>
-          <p className="mt-1 text-sm font-medium text-gray-400">{subtitle}</p>
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">{title}</h3>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-gray-400">{subtitle}</p>
         </div>
 
-        <div className="mt-4 space-y-2 text-sm text-gray-300 leading-relaxed">
+        <div className="mt-4 space-y-2 text-xs sm:text-sm text-gray-300 leading-relaxed">
           {description.map((item, idx) => (
             <p key={idx}>{item}</p>
           ))}
@@ -193,39 +193,39 @@ export default function ModelsShowcase() {
   const [firstRow, thirdModel] = [models.slice(0, 2), models[2]];
 
   return (
-    <section className="min-h-screen bg-[#0A0C10] flex items-center justify-center px-4 py-16 select-none" style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none" }}>
+    <section className="min-h-screen bg-[#0A0C10] flex items-center justify-center px-4 sm:px-6 py-12 sm:py-16 select-none" style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none" }}>
       <div className="w-full max-w-6xl mx-auto">
         {/* react.dev style header – dark theme with gradient */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="text-center mb-16"
+          className="text-center mb-10 sm:mb-16"
         >
-          <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
             Models built for{" "}
             <span className="bg-gradient-to-r from-orange-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
               performance
             </span>
           </h2>
-          <p className="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-2xl mx-auto">
             From the creators of Netsyra – each model is known for it's best tone.
             <br />
-            <span className="inline-block mt-2 text-sm font-mono text-gray-500">
+            <span className="inline-block mt-2 text-xs sm:text-sm font-mono text-gray-500">
               choose the right intelligence for your use case
             </span>
           </p>
         </motion.div>
 
         {/* Two containers at the middle: N Fast + N Pro side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
           {firstRow.map((model, idx) => (
             <ModelCard key={model.title} {...model} index={idx} variant="default" />
           ))}
         </div>
 
         {/* One container below, centered: N Code */}
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center mt-8 sm:mt-10">
           <div className="w-full max-w-md">
             <ModelCard {...thirdModel} index={2} variant="center" />
           </div>
@@ -236,10 +236,10 @@ export default function ModelsShowcase() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.5 }}
-          className="mt-20 text-center text-xs text-gray-500 border-t border-gray-800/50 pt-6"
+          className="mt-12 sm:mt-20 text-center text-xs text-gray-500 border-t border-gray-800/50 pt-6"
         >
           <span className="font-mono">Netsyra AI · enterprise‑grade models with SLA guarantees</span>
-          <div className="flex justify-center gap-4 mt-3">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mt-3">
             <span className="inline-block w-1 h-1 rounded-full bg-gray-700" />
             <span>REST API</span>
             <span className="inline-block w-1 h-1 rounded-full bg-gray-700" />

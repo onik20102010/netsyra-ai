@@ -90,6 +90,14 @@ const NiIcon = () => (
   </svg>
 );
 
+/** Diamond – for N + Pro (Ultimate) */
+const PlusProIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+    <path d="M8 1L14 6L8 15L2 6Z" />
+    <line x1="2" y1="6" x2="14" y2="6" />
+  </svg>
+);
+
 /** Right arrow – for "More" */
 const ChevronRightIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -117,6 +125,7 @@ const advancedModels = [
   { id: "code", name: "N Code", icon: CodeIcon, desc: "Expert coding" },
   { id: "aai", name: "N AAI", icon: AaiIcon, desc: "Autonomous AI" },
   { id: "ni", name: "N NI", icon: NiIcon, desc: "Premium model" },
+  { id: "plus_pro", name: "N + Pro", icon: PlusProIcon, desc: "Ultimate AI" },
 ];
 
 // ── Component ──────────────────────────────────────
@@ -194,9 +203,6 @@ export default function ModelSelector({
   const displayBasicModels = filteredBasicModels;
   const displayAdvancedModels = filteredAdvancedModels;
 
-  // For Pro users, just show NI directly without section header
-  const showOnlyNi = isPro && displayAdvancedModels.length === 1 && displayAdvancedModels[0].id === "ni";
-
   const renderModelButton = (model: (typeof allModels)[0]) => {
     const status = modelStatuses[model.id];
     const isDisabled = status && !status.allowed;
@@ -258,55 +264,46 @@ export default function ModelSelector({
               }
             `}
           >
-            <p className="text-xs text-gray-400 px-3 py-1">Select Model</p>
-
-            {displayBasicModels.map(renderModelButton)}
-
-            {/* Show advanced models directly for Pro users, or under "Advanced"/"Premium" section for others */}
-            {isPro && displayAdvancedModels.length > 0 && (
+            {allModels.length === 1 ? (
+              // Single-model plan (Go Plus, Pro, + Pro) – just show the one model
+              allModels.map(renderModelButton)
+            ) : (
               <>
-                {showOnlyNi ? (
-                  // Show NI directly without section header for Pro users
-                  displayAdvancedModels.map(renderModelButton)
-                ) : (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 px-3 py-1">Premium</p>
-                    {displayAdvancedModels.map(renderModelButton)}
-                  </div>
+                <p className="text-xs text-gray-400 px-3 py-1">Select Model</p>
+                {displayBasicModels.map(renderModelButton)}
+
+                {displayAdvancedModels.length > 0 && (
+                  <>
+                    {isMobile ? (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <p className="text-xs text-gray-400 px-3 py-1">Advanced</p>
+                        {displayAdvancedModels.map(renderModelButton)}
+                      </div>
+                    ) : !showAdvanced ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvanced(true)}
+                        className="w-full mt-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium text-gray-500 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition"
+                      >
+                        <span>More</span>
+                        <ChevronRightIcon />
+                      </button>
+                    ) : (
+                      <div className="absolute left-full top-0 ml-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-2xl p-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvanced(false)}
+                          className="w-full flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 rounded-lg transition mb-1"
+                        >
+                          <ChevronLeftIcon />
+                          Back
+                        </button>
+                        {displayAdvancedModels.map(renderModelButton)}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
-            )}
-
-            {!isPro && isMobile && displayAdvancedModels.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 px-3 py-1">Advanced</p>
-                {displayAdvancedModels.map(renderModelButton)}
-              </div>
-            )}
-
-            {!isPro && !isMobile && !showAdvanced && displayAdvancedModels.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(true)}
-                className="w-full mt-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium text-gray-500 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition"
-              >
-                <span>More</span>
-                <ChevronRightIcon />
-              </button>
-            )}
-
-            {!isMobile && showAdvanced && (
-              <div className="absolute left-full top-0 ml-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-2xl p-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced(false)}
-                  className="w-full flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 rounded-lg transition mb-1"
-                >
-                  <ChevronLeftIcon />
-                  Back
-                </button>
-                {displayAdvancedModels.map(renderModelButton)}
-              </div>
             )}
           </motion.div>
         )}

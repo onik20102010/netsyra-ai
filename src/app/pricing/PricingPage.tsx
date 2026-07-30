@@ -160,11 +160,11 @@ export default function PricingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-16 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 sm:py-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
-          <p className="text-xl text-gray-600 mb-8">Start free, upgrade when you need more</p>
+        <div className="text-center mb-10 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">Start free, upgrade when you need more</p>
           
           {/* Billing Toggle */}
           <div className="inline-flex items-center bg-gray-200 rounded-full p-1">
@@ -195,21 +195,21 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {TIERS.map((tier) => {
             const price = getPrice(tier);
             return (
               <div
                 key={tier.name}
-                className="bg-white rounded-2xl shadow-lg p-8 flex flex-col hover:shadow-xl transition-shadow"
+                className="bg-white rounded-2xl shadow-lg p-5 sm:p-8 flex flex-col hover:shadow-xl transition-shadow"
               >
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{tier.name}</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{tier.name}</h3>
                   <p className="text-gray-600 mb-6">{tier.description}</p>
                   
                   {price ? (
                     <div className="mb-6">
-                      <div className="text-4xl font-bold text-gray-900">
+                      <div className="text-3xl sm:text-4xl font-bold text-gray-900">
                         {price.formattedPrice || price.unitPrice?.formatted || '--'}
                       </div>
                       <div className="text-gray-500">
@@ -218,7 +218,7 @@ export default function PricingPage() {
                     </div>
                   ) : (
                     <div className="mb-6">
-                      <div className="text-4xl font-bold text-gray-900">--</div>
+                      <div className="text-3xl sm:text-4xl font-bold text-gray-900">--</div>
                       <div className="text-gray-500">
                         {billingPeriod === 'month' ? 'per month' : 'per year'}
                       </div>

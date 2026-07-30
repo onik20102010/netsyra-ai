@@ -57,7 +57,7 @@ const models = [
 
 export default function CTASection() {
   return (
-    <section className="relative py-24 px-4 select-none">
+    <section className="relative py-16 sm:py-24 px-4 sm:px-6 select-none">
       {/* Soft radial glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[180px] pointer-events-none"
@@ -80,22 +80,22 @@ export default function CTASection() {
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               Choose Your AI Model
             </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white">
+            <h2 className="text-3xl sm:text-4xl sm:text-5xl font-bold text-white">
               Ready to start a conversation?
             </h2>
-            <p className="text-lg text-white/40 max-w-xl mx-auto">
+            <p className="text-base sm:text-lg text-white/40 max-w-xl mx-auto">
               Select a model below - each models is best for it's work.
             </p>
           </div>
 
           {/* Model cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-4 max-w-5xl mx-auto">
             {models.map((model) => (
               <motion.div
                 key={model.id}
                 whileHover={{ y: -4, scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-left hover:border-white/20 transition-all"
+                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 text-left hover:border-white/20 transition-all"
               >
                 {/* Inner glow */}
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

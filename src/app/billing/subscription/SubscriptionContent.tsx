@@ -26,7 +26,7 @@ const TIERS: Tier[] = [
   {
     name: 'Go Plus',
     description: 'Enhanced AI capabilities',
-    features: ['Gemini models access', 'Image generations', 'Image analyzing', 'Strong reasoning'],
+    features: ['DeepSeek-V4 Flash access', 'Strong reasoning', 'Web search (10/day)', '16K context window'],
     priceId: { month: 'pri_01kyf27thzh41n39q3cja2cphq', year: 'pri_01kyf2d4q3h41n39q3cja2cphq' },
   },
   {
@@ -288,15 +288,15 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       {/* Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent" />
-        <div className="relative max-w-7xl mx-auto px-6 py-20 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
           <div className="inline-flex items-center space-x-2 bg-white/[0.05] border border-white/[0.1] px-4 py-2 rounded-full mb-6">
             <Sparkles className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-medium text-white/80">Netsyra Premium</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold mb-4">
+          <h1 className="text-3xl sm:text-4xl sm:text-5xl lg:text-6xl font-semibold mb-4">
             Unlock the full potential
           </h1>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-white/50 max-w-2xl mx-auto">
             Get unlimited access to all model tiers, priority routing, and advanced features
           </p>
           {isSuccess && (
@@ -324,8 +324,8 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       </div>
 
       {/* Pricing Cards */}
-      <div className="max-w-7xl mx-auto px-6 pb-20">
-        <div className="grid md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
           {TIERS.map((tier) => {
             const priceId = (annual && tier.priceId.year && tier.priceId.year !== tier.priceId.month)
               ? tier.priceId.year
@@ -354,7 +354,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                     : isFree
                     ? 'bg-white/[0.03] border border-white/[0.08]'
                     : 'bg-white/[0.03] border border-white/[0.08]'
-                } rounded-2xl p-8 relative`}
+                } rounded-2xl p-5 sm:p-8 relative`}
               >
                 {isPlusProTier && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-xs font-medium px-3 py-1 rounded-full">
@@ -443,9 +443,9 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       </div>
 
       {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-6 py-20 border-t border-white/[0.08]">
-        <h2 className="text-3xl font-semibold text-center mb-12">Why upgrade?</h2>
-        <div className="grid md:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/[0.08]">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-10 sm:mb-12">Why upgrade?</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
           <div className="text-center">
             <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Zap className="w-6 h-6 text-blue-400" />

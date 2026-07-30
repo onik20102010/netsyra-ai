@@ -49,17 +49,17 @@ export default function HeroSection() {
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-16 lg:pt-36 lg:pb-28">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 lg:gap-12 items-center">
           
           {/* Left Column */}
-          <div className="space-y-10">
-            <div className="inline-flex items-center space-x-2 bg-white/[0.03] border border-white/[0.08] px-4 py-2 rounded-full backdrop-blur-sm">
+          <div className="space-y-6 sm:space-y-10">
+            <div className="inline-flex items-center space-x-2 bg-white/[0.03] border border-white/[0.08] px-3 sm:px-4 py-1.5 sm:py-2 rounded-full backdrop-blur-sm">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-sm font-medium text-white/80">Auto Routing System</span>
+              <span className="text-xs sm:text-sm font-medium text-white/80">Auto Routing System</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
               Multiple models 500+
               <br />
               <span className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-transparent">
@@ -67,46 +67,46 @@ export default function HeroSection() {
               </span>
             </h1>
 
-            <p className="text-lg text-white/50 leading-relaxed max-w-lg">
+            <p className="text-base sm:text-lg text-white/50 leading-relaxed max-w-lg">
               Feature extraction, weighted signal scoring, and hard overrides for user preferences. Netsyra routes every prompt to the optimal model tier.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/chat"
-                className="group inline-flex items-center justify-center space-x-2 bg-white text-black font-medium px-6 py-3 rounded-lg hover:bg-white/90 transition-all duration-200"
+                className="group inline-flex items-center justify-center space-x-2 bg-white text-black font-medium px-5 sm:px-6 py-3 rounded-lg hover:bg-white/90 transition-all duration-200"
               >
                 <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
                 href="/billing/subscription"
-                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-6 py-3 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all duration-200"
+                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-5 sm:px-6 py-3 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Subscribe</span>
               </Link>
               <Link
                 href="/about"
-                className="inline-flex items-center justify-center space-x-2 bg-white/[0.05] border border-white/[0.1] text-white font-medium px-6 py-3 rounded-lg hover:bg-white/[0.08] transition-all duration-200"
+                className="inline-flex items-center justify-center space-x-2 bg-white/[0.05] border border-white/[0.1] text-white font-medium px-5 sm:px-6 py-3 rounded-lg hover:bg-white/[0.08] transition-all duration-200"
               >
                 <span>See How It Works</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <div className="flex items-center space-x-8 pt-2">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-8 pt-2">
               <div className="flex items-center space-x-2">
                 <Zap className="w-4 h-4 text-white/40" />
-                <span className="text-sm text-white/40">Model Tiers</span>
+                <span className="text-xs sm:text-sm text-white/40">Model Tiers</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Globe className="w-4 h-4 text-white/40" />
-                <span className="text-sm text-white/40">Orchestrator AI</span>
+                <span className="text-xs sm:text-sm text-white/40">Orchestrator AI</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Bot className="w-4 h-4 text-white/40" />
-                <span className="text-sm text-white/40">Learning System</span>
+                <span className="text-xs sm:text-sm text-white/40">Learning System</span>
               </div>
             </div>
           </div>

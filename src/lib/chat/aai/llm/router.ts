@@ -34,10 +34,11 @@ export class LLMRouter {
         const apiKey = process.env[modelConfig.apiKeyEnv];
         
         if (!apiKey) {
-          console.warn(`Skipping model ${modelConfig.modelName}: missing API key env var ${modelConfig.apiKeyEnv}`);
+          console.warn(`❌ Missing API key: ${modelConfig.apiKeyEnv} for model ${modelConfig.modelName} (${modelConfig.modelKey})`);
           continue;
         }
 
+        console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Endpoint: ${modelConfig.endpoint}`);
         let response: string;
         if (modelConfig.provider === "openai") {
           response = await this.callOpenAICompatible(
@@ -62,9 +63,10 @@ export class LLMRouter {
           throw new Error(`Unsupported provider: ${modelConfig.provider}`);
         }
 
+        console.log(`✅ LLM Response: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Content length: ${response.length} chars`);
         return { response, modelUsed: modelConfig.modelName };
       } catch (error) {
-        console.error(`Model ${modelConfig.modelName} failed:`, error);
+        console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Error: ${error}`);
       }
     }
 

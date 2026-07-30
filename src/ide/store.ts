@@ -16,8 +16,8 @@ import { createFileOnDisk, createDirectoryOnDisk, saveFileToDisk } from './works
 // --- Default Editor Configuration ---
 export const defaultEditorConfig: EditorConfig = {
   fontSize: 14,
-  fontFamily: 'JetBrains Mono, Consolas, "Courier New", monospace',
-  lineHeight: 1.6,
+  fontFamily: 'var(--font-jetbrains), Consolas, "Courier New", monospace',
+  lineHeight: 22.4,
   tabSize: 2,
   wordWrap: 'off',
   minimap: true,

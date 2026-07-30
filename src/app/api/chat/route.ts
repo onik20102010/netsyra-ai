@@ -6,14 +6,12 @@ import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent } from "@/lib/intent-classifier";
 import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
-import { performDeepSearch, performMultiDeepSearch, performNLiveSearch, performTavilySearch, performWikipediaSearch, performSerperSearch } from "@/lib/chat/services/live-data";
+import { performNLiveSearch } from "@/lib/chat/services/live-data";
 import { canUseModel, getAllowedTiers } from "@/lib/plan-access";
 import { getRouterConfig } from "@/lib/routers/router-factory";
 import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
 import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
-import { cleanSearchQueries } from "@/lib/chat/services/query-cleaner";
-import { planSearch, type SearchPlan } from "@/lib/chat/services/search-planner";
 import { safeFetch } from "@/lib/safe-fetch";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
 import { buildMessageContext, generateConversationSummary } from "@/lib/chat/conversation-summary";
@@ -25,7 +23,7 @@ import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
 // import { queueMessage, shouldProcessQueue, processQueue, getDynamicWindowSize, detectQueryComplexity, detectTopicSwitch } from "@/lib/chat/unified-memory";
 import { getSystemPrompt } from "@/lib/chat/model-registry";
 // import { countTokensSync, calculateTokenBudget, selectEfficientModel } from "@/lib/chat/token-counter";
-import { AVAILABLE_TOOLS } from "@/lib/chat/tools/web-search";
+import { trimContextByTokens } from "@/lib/chat/token-counter";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
@@ -90,29 +88,6 @@ async function getUserTotalMessageCount(supabase: any, userId: string): Promise<
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   return error ? 0 : (count || 0);
-}
-
-// ── Tool execution helpers ──────────────────────────────
-async function executeToolCall(toolCall: any): Promise<string> {
-  const { name, arguments: args } = toolCall;
-  
-  switch (name) {
-    case "web_search":
-      return await executeWebSearch(args);
-    default:
-      return `Unknown tool: ${name}`;
-  }
-}
-
-function hasToolCalls(response: any): boolean {
-  if (response.choices && response.choices[0]?.message?.tool_calls) {
-    return response.choices[0].message.tool_calls.length > 0;
-  }
-  return false;
-}
-
-function extractToolCalls(response: any): any[] {
-  return response.choices?.[0]?.message?.tool_calls || [];
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -241,6 +216,7 @@ export async function POST(req: NextRequest) {
       conversationId,
       newConversation,
       diveDeep,
+      webSearch: webSearchEnabled = false,
     } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -248,12 +224,6 @@ export async function POST(req: NextRequest) {
     }
 
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
-    if (lastUserMsg && (lastUserMsg.content || "").length > 2000) {
-      return NextResponse.json(
-        { error: "Message exceeds 2000 characters. Please shorten it." },
-        { status: 400 }
-      );
-    }
 
     const lastMessage = messages[messages.length - 1];
     const userMessage = lastMessage.content;
@@ -290,6 +260,7 @@ export async function POST(req: NextRequest) {
           if (fallbackRes.ok) {
             const fallbackData = await fallbackRes.json();
             const fallbackTier = fallbackData.choices?.[0]?.message?.content?.trim().toLowerCase();
+            console.log(`✅ LLM Response (auto-router classifier): llama-3.1-8b-instant | API Key: GROQ_API_KEY | Provider: groq | Result: ${fallbackTier}`);
             if (fallbackTier && ["fast", "plus", "pro", "code", "aai"].includes(fallbackTier)) {
               console.log(`🔄 Tiny-model override: ${modelTier} → ${fallbackTier}`);
               modelTier = fallbackTier;
@@ -304,253 +275,6 @@ export async function POST(req: NextRequest) {
     // N Live activation conditions
     const isGreeting = /^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you|bye|goodbye)[\s!.]*$/i.test(userMessage.trim());
     const shouldUseNLive = diveDeep && !isGreeting;
-
-    // Detect if query needs web search (latest/current information)
-    function needsWebSearch(query: string): boolean {
-      const lowerQuery = query.toLowerCase();
-
-      // 0. Time/weather/date queries - use API, not web search
-      const timeWeatherDateKeywords = [
-        'what\'s the time', 'what is the time', 'current time', 'what time', 'time now',
-        'what\'s the date', 'what is the date', 'today\'s date', 'current date', 'what date',
-        'what\'s the weather', 'what is the weather', 'weather in', 'temperature in',
-        'forecast', 'clock', 'what is it time', 'what time is it', 'tell me the time',
-        'show me the time', 'tell me the date', 'show me the date', 'what day is it',
-        'what day today', 'what\'s today', 'what is today', 'current weather',
-        'weather today', 'temperature today', 'weather forecast', 'time in', 'date in',
-      ];
-      if (timeWeatherDateKeywords.some(kw => lowerQuery.includes(kw))) {
-        return false;
-      }
-
-      // 1. Current Information (time-sensitive data)
-      const currentInfoKeywords = [
-        'latest', 'new', 'recent', 'current', 'today', 'now', 'yesterday', 'tomorrow',
-        'news', 'breaking', 'headline', 'trending', 'viral', 'announcement',
-        'stock prices', 'crypto prices', 'exchange rates', 'market value',
-        'sports scores', 'live standings', 'rankings', 'election results',
-        'current president', 'current prime minister', 'current ceo', 'current statistics', 'current population',
-      ];
-      
-      // 2. Recent Events
-      const recentEventsKeywords = [
-        'this morning', 'this afternoon', 'tonight', 'this week', 'last week', 'this month',
-        'just announced', 'just released', 'new update', 'new feature', 'new version',
-        'what happened today', 'what changed', 'what\'s new',
-      ];
-      
-      // 3. Live Data
-      const liveDataKeywords = [
-        'flight status', 'train status', 'bus status', 'live traffic', 'road closures',
-        'internet outage', 'server status', 'website status', 'api status', 'cloud service status',
-        'electricity outage', 'gas prices', 'fuel prices', 'live rankings', 'live leaderboard',
-        'live score', 'shipping tracking', 'delivery tracking',
-      ];
-      
-      // 4. Product Research
-      const productResearchKeywords = [
-        'best laptop', 'best gaming pc', 'best smartphone', 'best monitor', 'best keyboard', 'best mouse',
-        'compare products', 'vs', 'versus', 'iphone vs samsung', 'macbook vs windows',
-        'reviews', 'ratings', 'customer opinions', 'specifications', 'benchmarks',
-        'battery life', 'price comparison', 'discounts', 'deals', 'availability', 'where to buy',
-      ];
-      
-      // 5. Company Information
-      const companyInfoKeywords = [
-        'company pricing', 'subscription plans', 'api pricing', 'company features', 'latest features',
-        'roadmap', 'careers', 'hiring', 'founders', 'ceo', 'investors', 'funding', 'acquisitions',
-        'official website', 'support page', 'documentation', 'security policy', 'privacy policy',
-      ];
-      
-      // 6. Official Documentation
-      const docsKeywords = [
-        'react docs', 'next.js docs', 'vue docs', 'angular docs', 'openai docs', 'anthropic docs',
-        'gemini docs', 'supabase docs', 'firebase docs', 'aws docs', 'azure docs', 'cloudflare docs',
-        'python docs', 'java docs', 'c# docs', 'rust docs', 'docker docs', 'kubernetes docs',
-        'linux documentation', 'official docs', 'documentation',
-      ];
-      
-      // 7. Programming Error Lookup
-      const errorKeywords = [
-        'stack trace', 'build error', 'compiler error', 'runtime error', 'package issue',
-        'npm error', 'pnpm error', 'yarn error', 'pip error', 'dependency conflict',
-        'api changed', 'deprecated feature', 'framework bug', 'github issue', 'known bug',
-        'error code lookup', 'unexpected behavior', 'fix error', 'solve error',
-      ];
-      
-      // 8. Package & Library Information
-      const packageKeywords = [
-        'npm package', 'pypi package', 'cargo crate', 'nuget package', 'maven package', 'gradle dependency',
-        'github repository', 'gitlab project', 'latest release', 'release notes', 'changelog',
-        'latest version', 'download link', 'installation guide', 'compatibility', 'maintenance status',
-      ];
-      
-      // 9. Location-Based Requests
-      const locationKeywords = [
-        'near me', 'around me', 'closest', 'nearest', 'restaurants', 'hotels', 'hospitals',
-        'pharmacies', 'coffee shops', 'shopping malls', 'grocery stores', 'banks', 'atms',
-        'gas stations', 'schools', 'universities', 'gyms', 'parks', 'museums', 'tourist attractions',
-        'opening hours', 'directions', 'nearby services',
-      ];
-      
-      // 10. Academic Research
-      const academicKeywords = [
-        'research papers', 'journal articles', 'ieee', 'acm', 'nature', 'science', 'pubmed',
-        'arxiv', 'google scholar', 'systematic review', 'meta-analysis', 'latest research',
-        'conference papers', 'citations', 'academic references',
-      ];
-      
-      // 11. Legal & Government Information
-      const legalKeywords = [
-        'visa rules', 'immigration', 'passport requirements', 'customs regulations', 'tax laws',
-        'labor laws', 'employment law', 'copyright law', 'privacy law', 'gdpr',
-        'government forms', 'official regulations', 'legal requirements', 'licensing', 'permits', 'court decisions',
-      ];
-      
-      // 12. Medical & Health Information
-      const medicalKeywords = [
-        'symptoms', 'disease', 'treatment', 'medications', 'side effects', 'dosage',
-        'drug recalls', 'vaccine guidance', 'cdc recommendations', 'who recommendations',
-        'fda announcements', 'public health alerts', 'medical research', 'clinical trials',
-      ];
-      
-      // 13. Financial Information
-      const financialKeywords = [
-        'stock market', 'company earnings', 'quarterly reports', 'annual reports', 'inflation',
-        'interest rates', 'exchange rates', 'investment performance', 'cryptocurrency',
-        'gold price', 'silver price', 'oil prices', 'market analysis', 'financial news',
-      ];
-      
-      // 14. Entertainment
-      const entertainmentKeywords = [
-        'movie release date', 'tv show schedule', 'streaming platforms', 'netflix', 'disney+',
-        'spotify', 'music release', 'celebrity news', 'actor information', 'game release',
-        'esports tournaments', 'awards', 'trailers',
-      ];
-      
-      // 15. Tutorials & Learning Resources
-      const tutorialKeywords = [
-        'official tutorial', 'getting started', 'beginner guide', 'advanced guide',
-        'examples', 'sample project', 'walkthrough', 'best practices', 'learning resources',
-        'certification guide', 'video tutorial', 'how to', 'learn',
-      ];
-      
-      // 16. User Explicitly Requests Web Search
-      const explicitSearchKeywords = [
-        'search the web', 'search online', 'browse the internet', 'browse the web',
-        'use the internet', 'look it up', 'google it', 'bing it', 'find online',
-        'check online', 'verify online', 'search for me',
-      ];
-      
-      // 17. Verification Required
-      const verificationKeywords = [
-        'verify this', 'fact check', 'confirm this', 'validate this', 'is this true',
-        'check this claim', 'confirm the source', 'verify the statistics', 'authenticate information',
-      ];
-      
-      // 18. Downloads & Resources
-      const downloadKeywords = [
-        'download software', 'official installer', 'latest iso', 'latest apk', 'latest release',
-        'drivers', 'firmware', 'manuals', 'pdf', 'templates', 'datasets',
-      ];
-      
-      // 19. Images, Videos & Media
-      const mediaKeywords = [
-        'images', 'photos', 'wallpapers', 'diagrams', 'screenshots', 'videos',
-        'youtube tutorial', 'livestream', 'infographics', 'illustrations',
-      ];
-      
-      // 20. Comparisons
-      const comparisonKeywords = [
-        'compare', 'versus', 'vs', 'difference between', 'pros and cons', 'which is better',
-        'alternatives', 'replacement', 'competitor comparison', 'benchmark comparison',
-      ];
-      
-      // 21. Reviews & Community Opinions
-      const reviewKeywords = [
-        'reddit opinions', 'user reviews', 'customer reviews', 'community feedback',
-        'experiences', 'testimonials', 'ratings', 'discussions', 'recommendations',
-      ];
-      
-      // 22. Events & Conferences
-      const eventKeywords = [
-        'conference', 'event schedule', 'keynote', 'meetup', 'webinar', 'workshop',
-        'hackathon', 'seminar', 'summit', 'registration',
-      ];
-      
-      // 23. Security & Vulnerabilities
-      const securityKeywords = [
-        'cve', 'security advisory', 'vulnerability', 'exploit', 'malware', 'ransomware',
-        'security update', 'patch', 'zero-day', 'threat intelligence',
-      ];
-      
-      // 24. APIs & Services
-      const apiKeywords = [
-        'api documentation', 'api pricing', 'api limits', 'authentication', 'sdk',
-        'webhook', 'endpoint', 'rate limits', 'service status', 'integration guide',
-      ];
-      
-      // Combine all keyword arrays
-      const allKeywords = [
-        ...currentInfoKeywords, ...recentEventsKeywords, ...liveDataKeywords,
-        ...productResearchKeywords, ...companyInfoKeywords, ...docsKeywords,
-        ...errorKeywords, ...packageKeywords, ...locationKeywords,
-        ...academicKeywords, ...legalKeywords, ...medicalKeywords,
-        ...financialKeywords, ...entertainmentKeywords, ...tutorialKeywords,
-        ...explicitSearchKeywords, ...verificationKeywords, ...downloadKeywords,
-        ...mediaKeywords, ...comparisonKeywords, ...reviewKeywords,
-        ...eventKeywords, ...securityKeywords, ...apiKeywords,
-      ];
-      
-      // Check for any keyword match
-      if (allKeywords.some(keyword => lowerQuery.includes(keyword))) {
-        return true;
-      }
-      
-      // Check for specific patterns
-      const patterns = [
-        /\d{4}/, // Years (2024, 2025, etc.)
-        /\$\d+/, // Prices
-        /how many/i,
-        /how much/i,
-        /where to buy/i,
-        /is it safe/i,
-        /is it legit/i,
-        /scam/i,
-        /easygetstore/i, // Specific example from user
-        /\.gov/i, // Government websites
-        /\.edu/i, // Educational websites
-        /\.org/i, // Organization websites
-      ];
-      
-      if (patterns.some(pattern => pattern.test(query))) {
-        return true;
-      }
-      
-      return false;
-    }
-
-    // Query needs current information — use intelligent search planner
-    // First check obvious keywords (fast path), then AI planner for entity understanding
-    const keywordSearchNeeded = needsWebSearch(userMessage);
-    let searchPlan: SearchPlan = { shouldSearch: keywordSearchNeeded, searchQuery: userMessage, reason: "Keyword match" };
-    
-    if (!keywordSearchNeeded) {
-      // No obvious keyword match — use AI planner for entity-based queries
-      searchPlan = await planSearch(userMessage);
-    }
-
-    const needsSearch = searchPlan.shouldSearch;
-    const enrichedQuery = searchPlan.searchQuery || userMessage;
-    
-    // Clean the query using multi‑query extraction for N Live
-    const queries = needsSearch ? await cleanSearchQueries(enrichedQuery) : [userMessage];
-    if (needsSearch && queries.length > 0) {
-      console.log(`🔍 Search plan: "${userMessage.slice(0, 50)}" → search=${needsSearch}, reason=${searchPlan.reason}`);
-      console.log(`🧹 Cleaned queries: "${enrichedQuery.slice(0, 50)}" → [${queries.join(", ")}]`);
-    }
-
-    const shouldSearch = needsSearch;
 
     // ── Check if user has active subscription ──
     const { data: sub } = await supabase
@@ -724,21 +448,36 @@ export async function POST(req: NextRequest) {
     // Use router config for max history length
     const dynamicWindow = routerConfig.maxHistoryLength;
 
-    let messagesForContext = messages.slice(-dynamicWindow);
+    // Paid tiers use token-based context windows (per-model), not fixed message count
+    const isTokenBasedTier = modelTier === "go_plus" || modelTier === "ni" || modelTier === "plus_pro";
+    let messagesForContext = isTokenBasedTier ? messages : messages.slice(-dynamicWindow);
 
-    // ── Fetch unified user summary (same for all plans) ──
+    // ── Fetch unified user summary (Free plan only) ──
     let userSummary = null;
     let shouldUseSummary = false;
     
-    userSummary = await getUserSummary(user.id);
-    shouldUseSummary = userSummary ? await shouldUseUserSummary(userMessage) : false;
+    if (!isTokenBasedTier) {
+      userSummary = await getUserSummary(user.id);
+      shouldUseSummary = userSummary ? await shouldUseUserSummary(userMessage) : false;
+    }
 
-    // ── NI tier requires active subscription ──
-    if (modelTier === "ni" && !isPaidUser) {
-      return NextResponse.json(
-        { error: "The NI model requires an active subscription. Please upgrade to Pro." },
-        { status: 402 }
-      );
+    // ── NI tier requires active Pro or Plus Pro subscription (strict enforcement) ──
+    if (modelTier === "ni") {
+      if (!isPaidUser || !["pro", "plus_pro"].includes(userPlan)) {
+        console.warn(`🚫 NI access denied: user=${user.id}, paid=${isPaidUser}, plan=${userPlan}`);
+        return NextResponse.json(
+          { error: "The NI model is exclusive to Pro and Plus Pro subscribers. Please upgrade to access this model." },
+          { status: 402 }
+        );
+      }
+      // Re-verify subscription status directly from DB
+      if (sub?.status !== "active") {
+        console.warn(`🚫 NI access denied: subscription status is "${sub?.status}" for user=${user.id}`);
+        return NextResponse.json(
+          { error: "Your subscription is not active. NI model requires an active Pro or Plus Pro subscription." },
+          { status: 402 }
+        );
+      }
     }
 
     // ── NI Router: Determine actual model for NI tier ──
@@ -821,136 +560,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Check Tavily usage before allowing Tavily search ──
-    const { data: tavilyUsage } = await supabase
-      .rpc('get_or_reset_tavily_usage', { p_user_id: user.id });
-
-    const tavilyDailyLimit = tavilyUsage?.[0]?.daily_limit;
-    const currentTavilyCount = tavilyUsage?.[0]?.search_count || 0;
-    const remainingTavilySearches = tavilyDailyLimit !== null ? tavilyDailyLimit - currentTavilyCount : Infinity;
-
     // Flag for response header
     let searchAttempted = false;
-
-    // ── NI Pro Web Search: Serper (paid) → Tavily (fallback) → Wikipedia (unlimited) → pass to model ──
-    let niSearchResults = "";
-    let niSearchSources: { title: string; url: string }[] = [];
-    if (modelTier === "ni" && shouldSearch) {
-      searchAttempted = true;
-
-      console.log(`🔍 NI Pro: Performing web search for query "${userMessage}"`);
-      console.log(`📊 User is paid: ${isPaidUser}`);
-
-      // Paid users: Try Serper first, then Tavily, then Wikipedia
-      // Free users: Try Tavily (limited), then Wikipedia (unlimited)
-      if (isPaidUser) {
-        console.log(`🔍 NI Pro (Paid): Using Serper search`);
-        // Try Serper first for paid users
-        if (queries.length > 1) {
-          console.log(`🔬 NI Pro Multi-query detected: ${queries.join(", ")}`);
-          const results = await Promise.all(queries.map(q => performSerperSearch(q)));
-          const validResults = results.filter(r => r.trim().length > 0);
-          if (validResults.length > 0) {
-            niSearchResults = validResults.join("\n\n");
-          }
-        } else {
-          const cleanQ = queries[0] || userMessage;
-          niSearchResults = await performSerperSearch(cleanQ);
-        }
-
-        // Fall back to Tavily if Serper fails
-        if (!niSearchResults || niSearchResults.trim().length === 0) {
-          console.log(`🔄 Serper failed, falling back to Tavily`);
-          if (queries.length > 1) {
-            const results = await Promise.all(queries.map(q => performTavilySearch(q)));
-            const validResults = results.filter(r => r.trim().length > 0);
-            if (validResults.length > 0) {
-              niSearchResults = validResults.join("\n\n");
-            }
-          } else {
-            const cleanQ = queries[0] || userMessage;
-            niSearchResults = await performTavilySearch(cleanQ);
-          }
-        }
-
-        // Fall back to Wikipedia if Tavily also fails
-        if (!niSearchResults || niSearchResults.trim().length === 0) {
-          console.log(`🔄 Tavily failed, falling back to Wikipedia`);
-          if (queries.length > 1) {
-            const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
-            const validResults = results.filter(r => r.trim().length > 0);
-            if (validResults.length > 0) {
-              niSearchResults = validResults.join("\n\n");
-            }
-          } else {
-            const cleanQ = queries[0] || userMessage;
-            niSearchResults = await performWikipediaSearch(cleanQ);
-          }
-        }
-
-        console.log(`✅ NI Pro search results obtained (${niSearchResults.length} chars)`);
-      } else {
-        // Free users: Tavily (limited) → Wikipedia (unlimited)
-        console.log(`📊 Tavily usage: ${currentTavilyCount}/${tavilyDailyLimit || 'unlimited'}`);
-
-        let usedTavily = false;
-        if (remainingTavilySearches > 0) {
-          if (queries.length > 1) {
-            console.log(`🔬 NI Pro Multi-query detected: ${queries.join(", ")}`);
-            const results = await Promise.all(queries.map(q => performTavilySearch(q)));
-            const validResults = results.filter(r => r.trim().length > 0);
-            if (validResults.length > 0) {
-              niSearchResults = validResults.join("\n\n");
-              usedTavily = true;
-            }
-          } else {
-            const cleanQ = queries[0] || userMessage;
-            niSearchResults = await performTavilySearch(cleanQ);
-            if (niSearchResults && niSearchResults.trim().length > 0) {
-              usedTavily = true;
-            }
-          }
-
-          // Increment Tavily usage if successful
-          if (usedTavily) {
-            const { data: incrementResult } = await supabase
-              .rpc('increment_tavily_usage', { p_user_id: user.id });
-
-            if (incrementResult === -1) {
-              console.warn("Tavily limit reached during increment");
-            }
-
-            console.log(`✅ NI Pro Tavily search results obtained (${niSearchResults.length} chars)`);
-          }
-        }
-
-        // Fall back to Wikipedia if Tavily failed or limit reached
-        if (!niSearchResults || niSearchResults.trim().length === 0) {
-          console.log(`🔄 Falling back to Wikipedia search`);
-          if (queries.length > 1) {
-            const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
-            const validResults = results.filter(r => r.trim().length > 0);
-            if (validResults.length > 0) {
-              niSearchResults = validResults.join("\n\n");
-            }
-          } else {
-            const cleanQ = queries[0] || userMessage;
-            niSearchResults = await performWikipediaSearch(cleanQ);
-          }
-          console.log(`✅ NI Pro Wikipedia search results obtained (${niSearchResults.length} chars)`);
-        }
-      }
-
-      // Extract sources from search results for display
-      if (niSearchResults && niSearchResults.trim().length > 0) {
-        const sourceMatches = niSearchResults.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g);
-        for (const match of sourceMatches) {
-          niSearchSources.push({ title: match[1], url: match[2] });
-        }
-      } else {
-        niSearchResults = "";
-      }
-    }
 
     // ── Fetch user profile (used by both branches) ──
     const { data: profile } = await supabase
@@ -1147,112 +758,41 @@ export async function POST(req: NextRequest) {
         const canUseWidgets = false; // AAI doesn't support widgets
 
         let liveData = "";
-        if (shouldSearch) {
-          searchAttempted = true;
 
-          // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
-          const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
-          const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
-          const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+        // Widget queries – use exact whole-question patterns to avoid false positives
+        const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+        const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
+        const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
 
-          const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+        const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
-          if (isWidgetQuery && canUseWidgets) {
-            if (isWeatherQuery) {
-              const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-              const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
-              if (weatherData) {
-                liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
-              }
-            } else if (isTimeQuery) {
-              liveData = await getCurrentTimeCard(undefined, userTimezone);
-            } else if (isDateQuery) {
-              liveData = await getCurrentCalendarCard(undefined, userTimezone);
+        if (isWidgetQuery) {
+          if (isWeatherQuery) {
+            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            if (weatherData) {
+              liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
             }
-          } else if (isWidgetQuery && !canUseWidgets) {
-            // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
-            if (isWeatherQuery) {
-              const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-              const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
-              if (weatherData) {
-                liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
-              }
-            } else if (isTimeQuery) {
-              const timeData = await getCurrentTimeAndLocation(null, userTimezone);
-              if (timeData) {
-                liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
-              }
-            } else if (isDateQuery) {
-              const now = new Date();
-              const dateStr = now.toLocaleDateString("en-US", {
-                timeZone: userTimezone || "UTC",
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              });
-              liveData = `📅 ${dateStr}`;
+          } else if (isTimeQuery) {
+            const timeData = await getCurrentTimeAndLocation(null, userTimezone);
+            if (timeData) {
+              liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
             }
-            if (!liveData) {
-              liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
-            }
-            console.log(`✅ API data obtained for non-Pro widget query (${liveData.length} chars)`);
-          } else {
-            // Universal web search – Tavily (limited) → Wikipedia (unlimited)
-            console.log(`📊 Tavily usage: ${currentTavilyCount}/${tavilyDailyLimit || 'unlimited'}`);
-
-            // Try Tavily first if within limits
-            let usedTavily = false;
-            if (remainingTavilySearches > 0) {
-              if (queries.length > 1) {
-                console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
-                const results = await Promise.all(queries.map(q => performTavilySearch(q)));
-                const validResults = results.filter(r => r.trim().length > 0);
-                if (validResults.length > 0) {
-                  liveData = validResults.join("\n\n");
-                  usedTavily = true;
-                }
-              } else {
-                const cleanQ = queries[0] || userMessage;
-                liveData = await performTavilySearch(cleanQ);
-                if (liveData && liveData.trim().length > 0) {
-                  usedTavily = true;
-                }
-              }
-
-              // Increment Tavily usage if successful
-              if (usedTavily) {
-                const { data: incrementResult } = await supabase
-                  .rpc('increment_tavily_usage', { p_user_id: user.id });
-
-                if (incrementResult === -1) {
-                  console.warn("Tavily limit reached during increment");
-                }
-
-                console.log(`✅ Tavily search results obtained (${liveData.length} chars)`);
-              }
-            }
-
-            // Fall back to Wikipedia if Tavily failed or limit reached
-            if (!liveData || liveData.trim().length === 0) {
-              console.log(`🔄 Falling back to Wikipedia search`);
-              if (queries.length > 1) {
-                const results = await Promise.all(queries.map(q => performWikipediaSearch(q)));
-                const validResults = results.filter(r => r.trim().length > 0);
-                if (validResults.length > 0) {
-                  liveData = validResults.join("\n\n");
-                }
-              } else {
-                const cleanQ = queries[0] || userMessage;
-                liveData = await performWikipediaSearch(cleanQ);
-              }
-              console.log(`✅ Wikipedia search results obtained (${liveData.length} chars)`);
-            }
-
-            if (!liveData) {
-              liveData = `\n\n--- SEARCH RESULT ---\nNo reliable information found. Please try again later.`;
-            }
+          } else if (isDateQuery) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-US", {
+              timeZone: userTimezone || "UTC",
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            liveData = `📅 ${dateStr}`;
           }
+          if (!liveData) {
+            liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
+          }
+          console.log(`✅ API data obtained for AAI widget query (${liveData.length} chars)`);
         }
 
         const widgetInstruction = canUseWidgets ? `\n\n[SYSTEM NOTE: When the user asks for time, weather, or date, search the web and output ONLY a widget marker. Do NOT output the data in plain text.
@@ -1294,9 +834,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         }
         await saveMessage(supabase, user.id, convId, "assistant", replyText);
 
-        // Trigger user summary generation (async, non-blocking)
-        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        // Trigger user summary generation (async, non-blocking, Free plan only)
+        if (!isTokenBasedTier) {
+          const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        }
 
         const encoder = new TextEncoder();
         const words = replyText.split(" ");
@@ -1349,9 +891,18 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
     }
 
     // ── Context compression: summarize older turns, keep recent verbatim ──
-    const { recent: recentMessages, summary: rollingSummary } = await compressHistory(
-      messagesForContext.map((m: any) => ({ role: m.role, content: m.content }))
-    );
+    // Paid tiers skip compression — they use token-based context windows per model
+    let recentMessages: Array<{ role: string; content: string }>;
+    let rollingSummary: string | null = null;
+    if (isTokenBasedTier) {
+      recentMessages = messagesForContext.map((m: any) => ({ role: m.role, content: m.content }));
+    } else {
+      const compressed = await compressHistory(
+        messagesForContext.map((m: any) => ({ role: m.role, content: m.content }))
+      );
+      recentMessages = compressed.recent;
+      rollingSummary = compressed.summary;
+    }
 
     // Build messages array with dynamic tiered system prompt (reduces token usage by 50-70%)
     const dynamicSystemPrompt = getSystemPrompt(modelTier, userMessage);
@@ -1397,111 +948,71 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       apiMessages[0].content += `\n\n--- BOT PERSONA NOTES ---\nYou must follow these behavioral instructions with every response:\n${personaNoteText}\nThese are permanent preferences from the user.`;
     }
 
-    // ── Inject NI Pro web search results ──
-    if (modelTier === "ni" && niSearchResults) {
-      apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS ---\n${niSearchResults}\n\nIMPORTANT: You have been provided with web search results above. Your job is to:\n1. Acknowledge the search results\n2. Explain and expand on the information\n3. Add your own insights and context\n4. Cover related aspects the user might find useful\n5. Make it comprehensive and helpful\nDo NOT repeat the search results verbatim. Instead, build upon them.`;
-    }
-
-    // ── AI‑routed live‑data injection ──
+    // ── Widget handling for time/weather/date queries ──
     let liveData = "";
     let searchSources: { title: string; url: string }[] = [];
-    let searchPlatform = "";
-    // Only N Pro can generate widgets
     const canUseWidgets = modelTier === "pro";
-    
-    // Non-N-Live search path: inject results into LLM prompt (N Live has its own pipeline below)
-    if (shouldSearch && !shouldUseNLive) {
-      searchAttempted = true;
 
-      // Widget queries – use exact whole-question patterns to avoid false positives (N Pro only)
+    {
       const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
       const isTimeQuery = /^(what( i|')?s the )?time|clock/i.test(userMessage.trim());
       const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
-
       const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
-      if (isWidgetQuery && canUseWidgets) {
-        // N Pro: Use widgets for time/weather/date, NO web search for pure widget queries
-        if (isWeatherQuery) {
-          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
-          if (weatherData) {
-            liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
-          }
-        } else if (isTimeQuery) {
-          liveData = await getCurrentTimeCard(undefined, userTimezone);
-        } else if (isDateQuery) {
-          liveData = await getCurrentCalendarCard(undefined, userTimezone);
-        }
-        // Skip web search for pure widget queries in N Pro - return early
-        if (liveData) {
-          console.log(`✅ N Pro widget data obtained (${liveData.length} chars)`);
-          return;
-        }
-      } else if (isWidgetQuery && !canUseWidgets) {
-        // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
-        if (isWeatherQuery) {
-          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
-          if (weatherData) {
-            liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
-          }
-        } else if (isTimeQuery) {
-          const timeData = await getCurrentTimeAndLocation(null, userTimezone);
-          if (timeData) {
-            liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
-          }
-        } else if (isDateQuery) {
-          const now = new Date();
-          const dateStr = now.toLocaleDateString("en-US", {
-            timeZone: userTimezone || "UTC",
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          });
-          liveData = `📅 ${dateStr}`;
-        }
-        if (!liveData) {
-          liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
-        }
-        console.log(`✅ API data obtained for non-Pro widget query (${liveData.length} chars)`);
-      } else {
-        // Universal web search – multi‑query or single
-        if (queries.length > 1) {
-          console.log(`🔬 Multi‑query detected: ${queries.join(", ")}`);
-          const results = await Promise.all(queries.map(q => performNLiveSearch(q)));
-          const validResults = results.filter(r => r.answer);
-          if (validResults.length > 0) {
-            liveData = validResults.map((r, i) => r.answer).join("\n\n");
-            searchSources = validResults.flatMap(r => r.sources);
-            searchPlatform = validResults[0].platform;
+      if (isWidgetQuery) {
+        if (canUseWidgets) {
+          if (isWeatherQuery) {
+            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            if (weatherData) {
+              liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
+            }
+          } else if (isTimeQuery) {
+            liveData = await getCurrentTimeCard(undefined, userTimezone);
+          } else if (isDateQuery) {
+            liveData = await getCurrentCalendarCard(undefined, userTimezone);
           }
         } else {
-          const cleanQ = queries[0] || userMessage;
-          const searchResult = await performNLiveSearch(cleanQ);
-          if (searchResult.answer) {
-            liveData = searchResult.answer;
-            searchSources = searchResult.sources;
-            searchPlatform = searchResult.platform;
+          if (isWeatherQuery) {
+            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
+            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            if (weatherData) {
+              liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
+            }
+          } else if (isTimeQuery) {
+            const timeData = await getCurrentTimeAndLocation(null, userTimezone);
+            if (timeData) {
+              liveData = `🕐 ${timeData.time} ${timeData.date} (${timeData.timezone})`;
+            }
+          } else if (isDateQuery) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-US", {
+              timeZone: userTimezone || "UTC",
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            liveData = `📅 ${dateStr}`;
+          }
+          if (!liveData) {
+            liveData = `\n\n--- DATA RESULT ---\nCould not fetch time/weather/date data. Please try again later.`;
           }
         }
-        if (!liveData) {
-          liveData = `No reliable information found. Please try again later.`;
+        if (liveData && canUseWidgets) {
+          console.log(`✅ Widget data obtained (${liveData.length} chars)`);
         }
-        console.log(`✅ Search results obtained (${liveData.length} chars) from ${searchPlatform}`);
       }
+    }
 
-      if (liveData) {
-        // For regular models, format search results as italic block and instruct LLM to expand
-        const italicSearch = `*${liveData}*`;
-        apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS (italic block below) ---\n${italicSearch}\n\nIMPORTANT: You have been provided with web search results above in an italic block. Your job is to:\n1. Acknowledge the search results\n2. Explain and expand on the information\n3. Add your own insights and context\n4. Cover related aspects the user might find useful\n5. Make it comprehensive and helpful\nDo NOT repeat the search results verbatim. Instead, build upon them.`;
-      }
+    // Inject widget data into LLM context for regular tiers
+    if (liveData) {
+      apiMessages[0].content += `\n\n--- REAL-TIME DATA ---\n${liveData}`;
     }
 
     // ── N Live Pipeline: Direct streaming without LLM ──
     let wikiSources: { title: string; url: string }[] = [];
-    if (shouldSearch && shouldUseNLive) {
+    if (shouldUseNLive) {
       searchAttempted = true;
 
       // Check for widget queries (N Pro only)
@@ -1512,7 +1023,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       const canUseWidgets = modelTier === "pro";
 
       let widgetData = "";
-      let searchQuery = queries[0] || userMessage;
+      let searchQuery = userMessage;
 
       // Handle mixed queries: extract non-widget part for search
       if (isWidgetQuery && canUseWidgets) {
@@ -1566,7 +1077,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       }
 
       // Perform N Live search
-      const cleanQ = searchQuery.length > 3 ? searchQuery : queries[0] || userMessage;
+      const cleanQ = searchQuery.length > 3 ? searchQuery : userMessage;
       const searchResult = await performNLiveSearch(cleanQ);
 
       if (searchResult.answer && !searchResult.useLLM) {
@@ -1590,8 +1101,10 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
         await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
 
-        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        if (!isTokenBasedTier) {
+          const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        }
 
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
@@ -1627,8 +1140,10 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
         await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
 
-        const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
-        generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        if (!isTokenBasedTier) {
+          const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
+          generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+        }
 
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
@@ -1640,6 +1155,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
         return new Response(stream, { headers });
       }
+    }
+
+    // Inject N Live Wikipedia fallback data into LLM context
+    if (liveData && shouldUseNLive) {
+      apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS ---\n${liveData}\n\nIMPORTANT: You have been provided with web search results above. Your job is to:\n1. Acknowledge the search results\n2. Explain and expand on the information\n3. Add your own insights and context\n4. Cover related aspects the user might find useful\n5. Make it comprehensive and helpful\nDo NOT repeat the search results verbatim. Instead, build upon them.`;
     }
 
     // ── Soft token target + upgrade hint (skip for live tier) ──
@@ -1674,33 +1194,56 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
     }
 
+    // ── User-triggered Web Search (button toggle) ──
+    // Injected AFTER system prompt trimming so search results are not cut off.
+    // N Live has its own search pipeline, so skip when shouldUseNLive is true.
+    if (webSearchEnabled && !shouldUseNLive && !isWidgetQuery) {
+      console.log(`🔍 Web search enabled by user — performing search for: "${userMessage.slice(0, 80)}"`);
+      try {
+        const { result: searchResult, sources: webSources } = await executeWebSearch({
+          query: userMessage,
+          userId: user.id,
+          limit: routerConfig.webSearchDailyLimit,
+          windowHours: routerConfig.webSearchLimitHours,
+          isPaidUser,
+        });
+
+        if (searchResult && !searchResult.includes("limit reached") && !searchResult.includes("Failed to perform") && searchResult !== "No search results found.") {
+          searchAttempted = true;
+          if (webSources.length > 0) {
+            searchSources = webSources;
+          }
+          apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS ---\n${searchResult}\n\nIMPORTANT: You have been provided with web search results above. Use this information to answer the user's question. Cite sources when relevant. Do NOT repeat the search results verbatim — synthesize and build upon them.`;
+          console.log(`✅ Web search results injected (${searchResult.length} chars, ${webSources.length} sources)`);
+        } else {
+          console.log(`⚠️ Web search skipped: ${searchResult?.slice(0, 100)}`);
+        }
+      } catch (searchError) {
+        console.warn(`⚠️ Web search failed:`, searchError);
+      }
+    }
+
     let lastError: string | null = null;
 
     for (const modelConfig of tier.models) {
-      console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey})`);
+      console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Endpoint: ${modelConfig.endpoint}`);
+
+      // ── Per-model token-based context trimming for paid tiers ──
+      const modelApiMessages = (modelConfig.contextWindowSize && isTokenBasedTier)
+        ? trimContextByTokens(apiMessages, modelConfig.contextWindowSize, tier.maxTokens)
+        : apiMessages;
+
       let apiKey = process.env[modelConfig.apiKeyEnv];
-
-      // Use different API key for paid users
-      const MESH_API_KEY = process.env.MESH_API_KEY;    // paid tier key
-      const GROQ_API_KEY = process.env.GROQ_API_KEY;    // free tier key
-
-      // Override the apiKey based on subscription
-      if (isPaidUser && MESH_API_KEY) {
-        // Paid users get Mesh API for Pro/Plus, still use Groq for fallback
-        if (modelTier === "pro" || modelTier === "plus") {
-          // Use Mesh endpoint and key
-          modelConfig.endpoint = "https://api.mesh.ai/v1/chat/completions";
-          apiKey = MESH_API_KEY;
-          modelConfig.modelName = "gpt-4o"; // Update with your actual Mesh model name
-        }
-      }
 
       // Use fallback key if primary is missing or we're on the fallback model
       if (!apiKey || modelConfig.modelKey === "live_fallback" || modelConfig.modelKey === "aai_fallback") {
+        const fallbackKeyEnv = process.env.GROQ_API_KEY_4 ? "GROQ_API_KEY_4" : modelConfig.apiKeyEnv;
+        console.log(`🔄 Using fallback API key: ${fallbackKeyEnv} for ${modelConfig.modelKey}`);
         apiKey = process.env.GROQ_API_KEY_4 || process.env[modelConfig.apiKeyEnv];
       }
       if (!apiKey) {
         lastError = `Missing API key for ${modelConfig.modelKey}`;
+        console.error(`❌ Missing API key: ${modelConfig.apiKeyEnv} for model ${modelConfig.modelName} (${modelConfig.modelKey})`);
         continue;
       }
 
@@ -1710,8 +1253,8 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
       // Token budget log only for non‑live tiers
       if (modelTier !== "live") {
-        const remainingTokens = tier.maxTokens - Math.ceil(apiMessages[0].content.length / 4);
-        console.log(`📊 Token budget: ${tier.maxTokens} total, ~${Math.ceil(apiMessages[0].content.length / 4)} for system, ${remainingTokens} remaining for reply`);
+        const remainingTokens = tier.maxTokens - Math.ceil(modelApiMessages[0].content.length / 4);
+        console.log(`📊 Token budget: ${tier.maxTokens} total, ~${Math.ceil(modelApiMessages[0].content.length / 4)} for system, ${remainingTokens} remaining for reply`);
       }
 
       try {
@@ -1719,8 +1262,8 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         if (modelConfig.provider === "gemini") {
           const streamEndpoint = modelConfig.endpoint.replace(":generateContent", ":streamGenerateContent");
           const geminiUrl = `${streamEndpoint}?alt=sse&key=${apiKey}`;
-          const systemMessages = apiMessages.filter(m => m.role === "system");
-          const otherMessages = apiMessages.filter(m => m.role !== "system");
+          const systemMessages = modelApiMessages.filter(m => m.role === "system");
+          const otherMessages = modelApiMessages.filter(m => m.role !== "system");
 
           const geminiBody: any = {
             contents: otherMessages.map(m => ({
@@ -1746,7 +1289,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
           if (!aiRes.ok || !aiRes.body) {
             const errorText = aiRes.body ? await aiRes.text() : `HTTP ${aiRes.status}`;
-            console.warn(`Gemini model ${modelConfig.modelName} failed:`, errorText);
+            console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: gemini | Error: ${errorText}`);
             lastError = errorText;
             continue;
           }
@@ -1778,7 +1321,6 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                       const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
                       if (text) {
                         fullContent += text;
-                        // Re-emit in OpenAI delta format the frontend expects.
                         const chunk = { choices: [{ delta: { content: text } }] };
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
                       }
@@ -1790,7 +1332,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
                 // Hard fallback – never send empty response
                 if (!fullContent.trim()) {
-                  fullContent = "I searched the web but couldn't retrieve the full information. Please try again.";
+                  fullContent = "I couldn't generate a response. Please try again.";
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fullContent } }] })}\n\n`));
                 }
 
@@ -1807,11 +1349,12 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 }
 
                 saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-                getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
-                  generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-                }).catch(console.error);
+                if (!isTokenBasedTier) {
+                  getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
+                    generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+                  }).catch(console.error);
+                }
 
-                // Cache the response if cacheable
                 if (canUseCache && finalContent.length > 20) {
                   setCachedReply(userMessage, finalContent);
                 }
@@ -1825,7 +1368,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             },
           });
 
-          console.log(`✅ Model succeeded: ${modelConfig.modelName} (${modelConfig.modelKey})`);
+          console.log(`✅ LLM Response: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Tier: ${modelTier} | Content length: ${fullContent.length} chars`);
           const headers: Record<string, string> = {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
@@ -1837,9 +1380,8 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             headers["x-search-performed"] = "true";
           }
           const geminiSources = searchSources.length > 0 ? searchSources : wikiSources;
-          const niSources = modelTier === "ni" ? niSearchSources : geminiSources;
-          if (niSources.length > 0) {
-            headers["x-sources"] = encodeURIComponent(JSON.stringify(niSources));
+          if (geminiSources.length > 0) {
+            headers["x-sources"] = encodeURIComponent(JSON.stringify(geminiSources));
           }
 
           return new Response(stream, { headers });
@@ -1854,18 +1396,16 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           },
           body: JSON.stringify({
             model: modelConfig.modelName,
-            messages: apiMessages,
+            messages: modelApiMessages,
             temperature: tier.temperature,
             max_tokens: hardCap,
             stream: true,
-            tools: AVAILABLE_TOOLS,
-            tool_choice: "auto",
           }),
         });
 
         if (!aiRes.ok) {
           const errorText = await aiRes.text();
-          console.warn(`Model ${modelConfig.modelName} failed:`, errorText);
+          console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Error: ${errorText}`);
           lastError = errorText;
           continue;
         }
@@ -1873,8 +1413,6 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
         let fullContent = "";
-        let toolCallsBuffer: any[] = [];
-        let pendingToolCall = false;
 
         const stream = new ReadableStream({
           async start(controller) {
@@ -1901,17 +1439,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
                   try {
                     const parsed = JSON.parse(data);
-                    const delta = parsed.choices?.[0]?.delta;
-                    
-                    // Check for tool calls
-                    if (delta?.tool_calls) {
-                      toolCallsBuffer.push(...delta.tool_calls);
-                      pendingToolCall = true;
-                      // Don't stream tool calls to client
-                      continue;
-                    }
-                    
-                    const content = delta?.content;
+                    const content = parsed.choices?.[0]?.delta?.content;
                     if (content) {
                       fullContent += content;
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
@@ -1922,79 +1450,9 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 }
               }
 
-              // Handle tool calls if present
-              if (pendingToolCall && toolCallsBuffer.length > 0) {
-                console.log("🔧 Tool calls detected, executing...");
-                
-                for (const toolCall of toolCallsBuffer) {
-                  const toolResult = await executeToolCall(toolCall);
-                  console.log(`🔧 Tool result: ${toolResult.slice(0, 100)}...`);
-                  
-                  // Add tool result to messages and call model again
-                  const toolMessage = {
-                    role: "tool" as const,
-                    tool_call_id: toolCall.id,
-                    content: toolResult,
-                  };
-                  
-                  const followUpMessages = [...apiMessages, {
-                    role: "assistant" as const,
-                    tool_calls: toolCallsBuffer,
-                  }, toolMessage];
-                  
-                  // Get final response from model
-                  const followUpRes = await fetch(modelConfig.endpoint, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${apiKey}`,
-                    },
-                    body: JSON.stringify({
-                      model: modelConfig.modelName,
-                      messages: followUpMessages,
-                      temperature: tier.temperature,
-                      max_tokens: hardCap,
-                      stream: true,
-                    }),
-                  });
-                  
-                  if (followUpRes.ok) {
-                    const followUpReader = followUpRes.body?.getReader();
-                    if (followUpReader) {
-                      let followUpBuffer = "";
-                      while (true) {
-                        const { done, value } = await followUpReader.read();
-                        if (done) break;
-                        
-                        followUpBuffer += decoder.decode(value, { stream: true });
-                        const followUpLines = followUpBuffer.split("\n");
-                        followUpBuffer = followUpLines.pop() || "";
-                        
-                        for (const followUpLine of followUpLines) {
-                          if (!followUpLine.startsWith("data: ")) continue;
-                          const followUpData = followUpLine.slice(6).trim();
-                          if (followUpData === "[DONE]") continue;
-                          
-                          try {
-                            const followUpParsed = JSON.parse(followUpData);
-                            const followUpContent = followUpParsed.choices?.[0]?.delta?.content;
-                            if (followUpContent) {
-                              fullContent += followUpContent;
-                              controller.enqueue(encoder.encode(`data: ${JSON.stringify(followUpParsed)}\n\n`));
-                            }
-                          } catch (e) {
-                            // skip invalid JSON
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-
               // Hard fallback – never send empty response
               if (!fullContent.trim()) {
-                const fallbackMsg = "I searched the web but couldn't retrieve the full information. Please try again.";
+                const fallbackMsg = "I couldn't generate a response. Please try again.";
                 fullContent = fallbackMsg;
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fallbackMsg } }] })}\n\n`));
               }
@@ -2013,10 +1471,12 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
               saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
 
-              // Trigger user summary generation (async, non-blocking)
-              getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
-                generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
-              }).catch(console.error);
+              // Trigger user summary generation (async, non-blocking, Free plan only)
+              if (!isTokenBasedTier) {
+                getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
+                  generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+                }).catch(console.error);
+              }
 
               // Cache the response if cacheable
               if (canUseCache && finalContent.length > 20) {
@@ -2032,7 +1492,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           },
         });
 
-        console.log(`✅ Model succeeded: ${modelConfig.modelName} (${modelConfig.modelKey})`);
+        console.log(`✅ LLM Response: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Tier: ${modelTier} | Content length: ${fullContent.length} chars`);
         const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
@@ -2045,14 +1505,14 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         }
         // Add sources header if available from search (regular or Wikipedia fallback)
         const openaiSources = searchSources.length > 0 ? searchSources : wikiSources;
-        const finalSources = modelTier === "ni" ? niSearchSources : openaiSources;
+        const finalSources = openaiSources;
         if (finalSources.length > 0) {
           headers["x-sources"] = encodeURIComponent(JSON.stringify(finalSources));
         }
 
         return new Response(stream, { headers });
       } catch (fetchError: any) {
-        console.warn(`Model ${modelConfig.modelName} threw an error:`, fetchError);
+        console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Error: ${fetchError.message || "Unknown fetch error"}`);
         lastError = fetchError.message || "Unknown fetch error";
       }
     }

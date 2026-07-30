@@ -13,6 +13,9 @@ export interface ToolResult {
 
 export interface WebSearchArgs {
   query: string;
+  userId?: string;
+  limit?: number;
+  windowHours?: number;
   isPaidUser?: boolean;
 }
 
@@ -57,3 +60,21 @@ When NOT to use web_search:
 };
 
 export const AVAILABLE_TOOLS = [WEB_SEARCH_TOOL];
+
+// Gemini-format tool definition (uses functionDeclarations instead of OpenAI function format)
+export const GEMINI_WEB_SEARCH_TOOLS = [{
+  functionDeclarations: [{
+    name: "web_search",
+    description: WEB_SEARCH_TOOL.function.description,
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        query: {
+          type: "STRING",
+          description: WEB_SEARCH_TOOL.function.parameters.properties.query.description,
+        },
+      },
+      required: ["query"],
+    },
+  }],
+}];

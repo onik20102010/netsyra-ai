@@ -17,6 +17,7 @@ import {
   Paperclip,
   Image as ImageIcon,
   XCircle,
+  Globe,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -213,7 +214,6 @@ export default function ChatInterface({
   const [editContent, setEditContent] = useState("");
   const [autoTiersUsed, setAutoTiersUsed] = useState<string[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [lineLimitReached, setLineLimitReached] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [partialReply, setPartialReply] = useState("");
 
@@ -223,6 +223,7 @@ export default function ChatInterface({
   const [searching, setSearching] = useState(false);
   const [attachedImages, setAttachedImages] = useState<{ id: string; file: File; url: string; name: string }[]>([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -237,7 +238,6 @@ export default function ChatInterface({
 
   const { refetch: refetchUsage } = useChatUsage();
 
-  const MAX_CHARS = 2000;
 
   const isSelfCreatedConv = useRef(false);
 
@@ -585,6 +585,7 @@ export default function ChatInterface({
           conversationId: conversationId || crypto.randomUUID(),
           newConversation: !conversationId,
           diveDeep,
+          webSearch: webSearchEnabled,
         }),
         signal: controller.signal,
       });
@@ -903,7 +904,7 @@ export default function ChatInterface({
     <div className="flex flex-col h-full bg-white">
       <div className="relative flex-1">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[440px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-4 pt-6 pb-0 space-y-6">
+          <div className="max-w-[420px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-0 space-y-4 sm:space-y-6">
             <AnimatePresence initial={false}>
               {messages.length === 0 && !isThinking && !isTyping && !showStream && !searching && (
                 <motion.div
@@ -920,8 +921,8 @@ export default function ChatInterface({
                       draggable={false}
                     />
                   </div>
-                  <p className="text-xl font-medium text-gray-600">How can I help you today?</p>
-                  <p className="text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
+                  <p className="text-lg sm:text-xl font-medium text-gray-600">How can I help you today?</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
                 </motion.div>
               )}
 
@@ -1182,7 +1183,7 @@ export default function ChatInterface({
       </div>
 
       <div className="sticky bottom-0">
-        <div className="w-full max-w-3xl mx-auto px-4 pt-2 pb-4">
+        <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pt-2 pb-3 sm:pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2 px-1">
               <Sparkles className="w-3 h-3 text-indigo-500" />
@@ -1213,13 +1214,13 @@ export default function ChatInterface({
               </div>
             )}
 
-            <div className="flex items-end gap-2 rounded-[28px] border border-gray-300 bg-white px-4 py-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              <div className="flex-shrink-0 flex items-end pb-1">
+            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] border border-gray-300 bg-white px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+              <div className="flex-shrink-0 flex items-end pb-1.5">
                 <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward isPro={isPro} allowedTiers={allowedTiers} />
               </div>
 
               {/* Attachment Button - only enabled when N Plus is selected */}
-              <div className="flex-shrink-0 flex items-end pb-1">
+              <div className="flex-shrink-0 flex items-end pb-1.5">
                 <input
                   type="file"
                   id="image-attachment"
@@ -1244,30 +1245,40 @@ export default function ChatInterface({
                 ref={mainInputRef}
                 value={input}
                 onChange={(e) => {
-                  if (e.target.value.length > MAX_CHARS) {
-                    setLineLimitReached(true);
-                    setInput(e.target.value.slice(0, MAX_CHARS));
-                    toast.error("Message is too long. Please reduce to 2000 characters or fewer.");
-                  } else {
-                    setLineLimitReached(false);
-                    setInput(e.target.value);
-                  }
+                  setInput(e.target.value);
                 }}
                 placeholder={attachedImages.length > 0 ? "Add a message about these images..." : "Message Netsyra..."}
-                rows={1}
-                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 text-sm max-h-[150px] overflow-y-auto"
+                rows={2}
+                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 pl-1 text-[15px] leading-relaxed max-h-[200px] overflow-y-auto"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (!lineLimitReached) handleSend();
+                    handleSend();
                   }
                 }}
               />
 
+              {/* Web Search Toggle Button */}
+              <div className="flex-shrink-0 flex items-end pb-1.5">
+                <button
+                  type="button"
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    webSearchEnabled
+                      ? "bg-black text-white shadow-sm border border-gray-600 hover:bg-gray-800"
+                      : "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+                  }`}
+                  title={webSearchEnabled ? "Web search is ON" : "Enable web search"}
+                >
+                  <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-gray-300" : "text-gray-400"}`} />
+                  <span className="hidden sm:inline">Web Search</span>
+                </button>
+              </div>
+
               <button
                 type="submit"
-                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || lineLimitReached || isProcessingImage}
-                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm mb-0.5"
+                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
+                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm mb-1.5"
                 aria-label="Send message"
               >
                 {isProcessingImage ? (
@@ -1278,18 +1289,10 @@ export default function ChatInterface({
               </button>
             </div>
 
-            <div className="text-xs text-gray-400 text-right pr-1 mt-1">
-              {input.length}/{MAX_CHARS} chars
-            </div>
-
-            {lineLimitReached && (
-              <p className="text-xs text-rose-500 mt-1">
-                Message is too long. Please reduce to 2000 characters or fewer.
-              </p>
-            )}
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">
               Netsyra may produce inaccurate information.
               {diveDeep && " 🌐 Dive Deep is ON"}
+              {webSearchEnabled && " 🔍 Web Search is ON"}
             </p>
           </form>
         </div>

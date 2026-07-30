@@ -1,10 +1,11 @@
 // app/goal/page.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
+import { Menu, X } from "lucide-react";
 
 // ── Animation variants ────────────────────────────────────
 const container = {
@@ -90,6 +91,7 @@ const differentiators = [
 
 export default function GoalPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Three.js Particle Nebula Background ──────────────
   useEffect(() => {
@@ -305,58 +307,55 @@ export default function GoalPage() {
       {/* ── Three.js background canvas ── */}
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
 
-      {/* ── Top Bar (no logo, centered) ── */}
-      <header className="fixed top-0 left-0 right-0 z-20 px-6 md:px-10 py-4 bg-black/60 backdrop-blur-md border-b border-white/5 flex items-center justify-center">
-        <div className="flex items-center gap-6 flex-wrap justify-center">
-          <Link
-            href="https://netsyraai.com/chat"
-            target="_blank"
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            Chat
-          </Link>
-          <Link
-            href="https://netsyraai.com/cv-builder/index.html"
-            target="_blank"
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            CV Builder
-          </Link>
-          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">
-            Legal
-          </Link>
-          <Link href="/goal" className="text-sm text-white font-medium">
-            Goal
-          </Link>
-          <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">
-            About
-          </Link>
-          <Link
-            href="#"
-            className="text-sm px-4 py-1.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition"
-          >
-            Contact
-          </Link>
+      {/* ── Top Bar (responsive with mobile hamburger) ── */}
+      <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 md:px-10 py-3 sm:py-4 bg-black/60 backdrop-blur-md border-b border-white/5 flex items-center justify-between">
+        <div className="hidden md:flex items-center gap-6 flex-wrap justify-center">
+          <Link href="https://netsyraai.com/chat" target="_blank" className="text-sm text-gray-400 hover:text-white transition">Chat</Link>
+          <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" className="text-sm text-gray-400 hover:text-white transition">CV Builder</Link>
+          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">Legal</Link>
+          <Link href="/goal" className="text-sm text-white font-medium">Goal</Link>
+          <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">About</Link>
+          <Link href="#" className="text-sm px-4 py-1.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition">Contact</Link>
         </div>
+        <div className="flex md:hidden items-center justify-between w-full">
+          <span className="text-sm font-bold text-white">Netsyra AI</span>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white" aria-label="Toggle menu">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="md:hidden absolute top-full left-0 right-0 mx-4 mt-1 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-lg overflow-hidden">
+              <div className="flex flex-col p-2 gap-1">
+                <Link href="https://netsyraai.com/chat" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Chat</Link>
+                <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">CV Builder</Link>
+                <Link href="/legal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Legal</Link>
+                <Link href="/goal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-white font-medium hover:bg-white/10 transition">Goal</Link>
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">About</Link>
+                <Link href="#" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Contact</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* ── Main Content ── */}
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-28 pb-20">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
         <motion.div
           variants={container}
           initial="hidden"
           animate="show"
-          className="space-y-20"
+          className="space-y-12 sm:space-y-20"
         >
           {/* ── Hero ── */}
           <motion.div variants={item} className="text-center space-y-6">
             <span className="inline-block text-xs tracking-[0.2em] uppercase text-gray-500 border border-white/5 px-4 py-1.5 rounded-full">
               ✦ The Next Generation
             </span>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-gray-400 bg-clip-text text-transparent leading-[1.1]">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-gray-400 bg-clip-text text-transparent leading-[1.1]">
               The Future of AI Orchestration
             </h1>
-            <p className="text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
+            <p className="text-gray-400 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
               We&apos;re building the standard layer for AI‑powered applications—where every prompt
               finds its perfect model, automatically.
             </p>
@@ -376,10 +375,10 @@ export default function GoalPage() {
           {/* ── Mission ── */}
           <motion.div
             variants={item}
-            className="text-center space-y-4 p-8 md:p-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
+            className="text-center space-y-4 p-5 sm:p-8 md:p-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
           >
             <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Our Mission</span>
-            <p className="text-gray-300 text-lg max-w-3xl mx-auto leading-relaxed">
+            <p className="text-gray-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
               To make AI accessible, affordable, and intelligent for everyone. We believe no single
               model is perfect for every task—so we built Netsyra to route each request to the
               best model automatically. We aim to become the definitive orchestration layer for
@@ -391,19 +390,19 @@ export default function GoalPage() {
           <motion.div variants={container} className="space-y-4">
             <motion.div variants={item} className="text-center">
               <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Why Netsyra</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-1">Intelligent by Design</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mt-1">Intelligent by Design</h2>
               <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
                 Every prompt is analyzed in real time. Complexity, cost, latency, and context determine
                 which model responds—no manual tuning required.
               </p>
             </motion.div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((f, i) => (
                 <motion.div
                   key={i}
                   variants={item}
-                  className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition group"
+                  className="p-4 sm:p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition group"
                 >
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#6c5ce7]/20 to-[#00b4d8]/10 flex items-center justify-center mb-4 group-hover:from-[#6c5ce7]/30 group-hover:to-[#00b4d8]/20 transition">
                     <svg className="w-5 h-5 text-[#00b4d8]" viewBox="0 0 24 24" fill="currentColor">
@@ -420,7 +419,7 @@ export default function GoalPage() {
           {/* ── Stats ── */}
           <motion.div
             variants={container}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
           >
             {stats.map((s, i) => (
               <motion.div key={i} variants={item} className="text-center">
@@ -435,11 +434,11 @@ export default function GoalPage() {
           {/* ── What Sets Us Apart ── */}
           <motion.div
             variants={container}
-            className="space-y-6 p-6 md:p-10 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
+            className="space-y-6 p-4 sm:p-6 md:p-10 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
           >
             <motion.div variants={item} className="text-center">
               <span className="text-xs tracking-[0.2em] uppercase text-gray-500">What Sets Us Apart</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-1">Beyond the Ordinary</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mt-1">Beyond the Ordinary</h2>
               <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
                 Four pillars that define our orchestration layer.
               </p>

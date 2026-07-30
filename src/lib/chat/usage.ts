@@ -4,7 +4,7 @@
 // function or RPC call that increments atomically.
 
 export const MODEL_LIMITS: Record<string, number> = {
-  fast: 15,
+  fast: 10,
   plus: 10,
   pro: 5,
   code: 5,

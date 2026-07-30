@@ -26,6 +26,7 @@ ${answer}
 Verified answer:`;
 
   try {
+    console.log(`🤖 Using model: llama-3.1-8b-instant (verifier) | API Key: GROQ_API_KEY | Endpoint: api.groq.com`);
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -40,9 +41,13 @@ Verified answer:`;
       }),
     });
 
-    if (!response.ok) return answer;
+    if (!response.ok) {
+      console.warn(`❌ LLM Error: llama-3.1-8b-instant (verifier) | API Key: GROQ_API_KEY | Provider: groq | Error: ${response.status}`);
+      return answer;
+    }
     const data = await response.json();
     const verified = data.choices[0].message.content.trim();
+    console.log(`✅ LLM Response: llama-3.1-8b-instant (verifier) | API Key: GROQ_API_KEY | Provider: groq | Content length: ${verified?.length || 0} chars`);
 
     // Use verified answer if it's not empty and not just the original
     if (verified && verified.length > 10 && verified !== answer) {

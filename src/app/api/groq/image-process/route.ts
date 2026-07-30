@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
       try {
+        console.log(`🤖 Using model: ${modelName} | API Key: GEMINI_API_KEY | Endpoint: generativelanguage.googleapis.com`);
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
           {
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.warn(`Gemini vision model ${modelName} failed: ${response.status} - ${errorText}`);
+          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${response.status} - ${errorText}`);
           lastError = `${response.status}: ${errorText}`;
           continue;
         }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
         description = description.trim();
 
         if (description) {
-          console.log(`Vision success: model=${modelName}`);
+          console.log(`✅ LLM Response: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Content length: ${description.length} chars`);
           return NextResponse.json(
             { description },
             { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
@@ -126,10 +127,10 @@ export async function POST(request: NextRequest) {
       } catch (err: any) {
         clearTimeout(timeout);
         if (err.name === 'AbortError') {
-          console.warn(`Gemini vision model ${modelName} timed out`);
+          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: timed out after ${TIMEOUT_MS}ms`);
           lastError = 'timeout';
         } else {
-          console.warn(`Gemini vision model ${modelName} error:`, err.message);
+          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${err.message}`);
           lastError = err.message;
         }
         continue;

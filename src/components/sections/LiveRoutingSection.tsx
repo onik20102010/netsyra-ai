@@ -46,7 +46,7 @@ const fadeInScale = {
 
 export default function LiveRoutingSection() {
   return (
-    <section className="relative py-24 px-4 select-none">
+    <section className="relative py-16 sm:py-24 px-4 sm:px-6 select-none">
       <AnimatedBackground />
       <div className="max-w-6xl mx-auto">
         <motion.div
@@ -55,15 +55,15 @@ export default function LiveRoutingSection() {
           viewport={{ once: true, margin: "-100px" }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             Intelligent Routing in Action
           </h2>
-          <p className="text-white/60 text-lg">
+          <p className="text-white/60 text-base sm:text-lg">
             Every prompt is analyzed and sent to the perfect model.
           </p>
         </motion.div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {routingExamples.map((item, index) => (
             <motion.div
               key={index}
@@ -74,13 +74,13 @@ export default function LiveRoutingSection() {
               transition={{ delay: index * 0.15 }}
               whileHover={{ y: -5 }}
             >
-              <Card className="relative overflow-hidden border-white/10 bg-white/5 backdrop-blur-xl p-6 flex flex-col items-center text-center h-full group hover:border-white/20 transition-all">
+              <Card className="relative overflow-hidden border-white/10 bg-white/5 backdrop-blur-xl p-4 sm:p-6 flex flex-col items-center text-center h-full group hover:border-white/20 transition-all">
                 {/* Glow on hover */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className={`flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r ${item.color} mb-4 shadow-lg`}>
                   <item.icon className="w-6 h-6 text-white" />
                 </div>
-                <p className="text-white/80 mb-2 text-sm font-medium">{item.prompt}</p>
+                <p className="text-white/80 mb-2 text-xs sm:text-sm font-medium">{item.prompt}</p>
                 <div className="flex flex-col items-center mt-4">
                   <ArrowDown className="w-5 h-5 text-indigo-400 mb-1" />
                   <span className="px-3 py-1 text-xs font-semibold rounded-full bg-white/10 text-white/80">

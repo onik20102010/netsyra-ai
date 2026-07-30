@@ -97,11 +97,11 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      <div className="flex-1 max-w-4xl mx-auto p-6">
+      <div className="flex-1 max-w-4xl mx-auto p-4 sm:p-6">
         <Link href="/chat" className="text-black hover:underline text-sm mb-4 inline-block">
           ← Back to Chat
         </Link>
-        <h1 className="text-3xl font-bold text-black mb-6">Your Conversations</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Your Conversations</h1>
         {conversations.length === 0 ? (
           <p className="text-black">No conversations yet.</p>
         ) : (

@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Only use server-side env variables, never accept client keys
     const groqApiKey = process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY;
+    const groqKeyEnv = process.env.GROQ_API_KEY_2 ? "GROQ_API_KEY_2" : "GROQ_API_KEY";
 
     if (!groqApiKey) {
       return NextResponse.json(
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
       try {
+        console.log(`🤖 Using model: ${model} | API Key: ${groqKeyEnv} | Endpoint: ${GROQ_API_URL}`);
         const response = await fetch(GROQ_API_URL, {
           method: 'POST',
           headers: {
@@ -87,13 +89,14 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.warn(`Model ${model} failed: ${response.status} - ${errorText}`);
+          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: ${response.status} - ${errorText}`);
           continue; // Try next model
         }
 
         const data = await response.json();
         const content = data.choices[0]?.message?.content;
         if (content) {
+          console.log(`✅ LLM Response: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Content length: ${content.length} chars`);
           return NextResponse.json(
             { content },
             { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
@@ -102,9 +105,9 @@ export async function POST(request: NextRequest) {
       } catch (err: any) {
         clearTimeout(timeout);
         if (err.name === 'AbortError') {
-          console.warn(`Model ${model} timed out after ${TIMEOUT_MS}ms`);
+          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: timed out after ${TIMEOUT_MS}ms`);
         } else {
-          console.warn(`Model ${model} threw error:`, err.message);
+          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: ${err.message}`);
         }
         continue;
       }

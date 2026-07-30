@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="google-site-verification" content="xgTIXVBokp3Lrny9cBdBGf20h1QzGWO9re0Oyx9uwc8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>CV Builder Pro</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/cv-builder/favicon_io/favicon.ico">
+    <link rel="apple-touch-icon" href="/cv-builder/favicon_io/apple-touch-icon.png">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -44,74 +49,81 @@
 
         <!-- Top Bar -->
         <div class="top-bar" id="topBar">
-            <span class="logo"><i class="fas fa-star"></i> CV Builder Pro</span>
-
-            <!-- Template Dropdown -->
-            <div class="template-dropdown">
-                <select id="templateSelect" onchange="setTemplate(this.value)">
-                    <option value="ats-professional">ATS Professional</option>
-                    <option value="modern-executive">Modern Executive</option>
-                    <option value="minimal-professional">Minimal Professional</option>
-                    <option value="corporate-blue">Corporate Blue</option>
-                    <option value="executive-elite">Executive Elite</option>
-                    <option value="tech-modern">Tech Modern</option>
-                    <option value="software-engineer-pro">Software Engineer Pro</option>
-                    <option value="creative-designer">Creative Designer</option>
-                    <option value="portfolio-showcase">Portfolio Showcase</option>
-                    <option value="startup-innovator">Startup Innovator</option>
-                    <option value="google-style">Google Style</option>
-                    <option value="microsoft-style">Microsoft Style</option>
-                    <option value="apple-minimal">Apple Minimal</option>
-                    <option value="research-scholar">Research Scholar</option>
-                    <option value="medical-professional">Medical Professional</option>
-                    <option value="healthcare-specialist">Healthcare Specialist</option>
-                    <option value="legal-professional">Legal Professional</option>
-                    <option value="classic">Classic</option>
-                    <option value="modern">Modern</option>
-                    <option value="creative">Creative</option>
-                    <option value="ats-classic">ATS Classic</option>
-                    <option value="executive">Executive</option>
-                    <option value="minimal">Minimal</option>
-                    <option value="tech">Tech</option>
-                    <option value="academic">Academic</option>
-                    <option value="infographic">Infographic</option>
-                    <option value="creative2">Creative 2</option>
-                </select>
+            <div class="top-bar-row">
+                <span class="logo"><i class="fas fa-star"></i> CV Builder Pro</span>
+                <button class="topbar-toggle" id="topbarToggle" aria-label="Toggle toolbar">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
 
-            <!-- Searchable Industry Preset -->
-            <div class="searchable-select" id="industrySearchWrapper">
-                <div class="search-input-wrap">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="industrySearchInput" placeholder="Search company or sector..." autocomplete="off">
-                    <i class="fas fa-chevron-down toggle-arrow" id="toggleDropdownBtn"></i>
+            <div class="top-bar-controls" id="topBarControls">
+                <!-- Template Dropdown -->
+                <div class="template-dropdown">
+                    <select id="templateSelect" onchange="setTemplate(this.value)">
+                        <option value="ats-professional">ATS Professional</option>
+                        <option value="modern-executive">Modern Executive</option>
+                        <option value="minimal-professional">Minimal Professional</option>
+                        <option value="corporate-blue">Corporate Blue</option>
+                        <option value="executive-elite">Executive Elite</option>
+                        <option value="tech-modern">Tech Modern</option>
+                        <option value="software-engineer-pro">Software Engineer Pro</option>
+                        <option value="creative-designer">Creative Designer</option>
+                        <option value="portfolio-showcase">Portfolio Showcase</option>
+                        <option value="startup-innovator">Startup Innovator</option>
+                        <option value="google-style">Google Style</option>
+                        <option value="microsoft-style">Microsoft Style</option>
+                        <option value="apple-minimal">Apple Minimal</option>
+                        <option value="research-scholar">Research Scholar</option>
+                        <option value="medical-professional">Medical Professional</option>
+                        <option value="healthcare-specialist">Healthcare Specialist</option>
+                        <option value="legal-professional">Legal Professional</option>
+                        <option value="classic">Classic</option>
+                        <option value="modern">Modern</option>
+                        <option value="creative">Creative</option>
+                        <option value="ats-classic">ATS Classic</option>
+                        <option value="executive">Executive</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="tech">Tech</option>
+                        <option value="academic">Academic</option>
+                        <option value="infographic">Infographic</option>
+                        <option value="creative2">Creative 2</option>
+                    </select>
                 </div>
-                <div class="search-dropdown" id="searchDropdown">
-                    <!-- Options are generated dynamically via JS -->
+
+                <!-- Searchable Industry Preset -->
+                <div class="searchable-select" id="industrySearchWrapper">
+                    <div class="search-input-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="industrySearchInput" placeholder="Search company or sector..." autocomplete="off">
+                        <i class="fas fa-chevron-down toggle-arrow" id="toggleDropdownBtn"></i>
+                    </div>
+                    <div class="search-dropdown" id="searchDropdown">
+                        <!-- Options are generated dynamically via JS -->
+                    </div>
+                    <!-- Hidden input to store the selected value -->
+                    <input type="hidden" id="industryPreset" value="">
                 </div>
-                <!-- Hidden input to store the selected value -->
-                <input type="hidden" id="industryPreset" value="">
+
+                <span class="badge badge-credits" id="creditBadge" onclick="openPaymentModal()">
+                    <i class="fas fa-coins"></i> <span id="creditCount">5</span> Export Credit(s)
+                </span>
+
+                <button class="btn btn-sm btn-primary" onclick="exportPDF()">
+                    <i class="fas fa-download"></i> <span class="btn-label">Export PDF</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="exportPNG()">
+                    <i class="fas fa-image"></i> <span class="btn-label">PNG</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="openDesignPanel()">
+                    <i class="fas fa-palette"></i> <span class="btn-label">Design</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="openSectionManager()">
+                    <i class="fas fa-list-check"></i> <span class="btn-label">Sections</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> <span class="btn-label">Logout</span>
+                </button>
             </div>
-
-            <span class="badge badge-credits" id="creditBadge" onclick="openPaymentModal()">
-                <i class="fas fa-coins"></i> <span id="creditCount">5</span> Export Credit(s)
-            </span>
-
-            <button class="btn btn-sm btn-primary" onclick="exportPDF()">
-                <i class="fas fa-download"></i> Export PDF
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="exportPNG()">
-                <i class="fas fa-image"></i> PNG
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="openDesignPanel()">
-                <i class="fas fa-palette"></i> Design
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="openSectionManager()">
-                <i class="fas fa-list-check"></i> Sections
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
         </div>
 
         <!-- Split Content -->
@@ -532,6 +544,27 @@
 
     <!-- html2canvas for PNG export -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <!-- Mobile top bar toggle -->
+    <script>
+      (function() {
+        var toggle = document.getElementById('topbarToggle');
+        var controls = document.getElementById('topBarControls');
+        if (toggle && controls) {
+          toggle.addEventListener('click', function() {
+            controls.classList.toggle('open');
+            var icon = toggle.querySelector('i');
+            if (controls.classList.contains('open')) {
+              icon.classList.remove('fa-bars');
+              icon.classList.add('fa-times');
+            } else {
+              icon.classList.remove('fa-times');
+              icon.classList.add('fa-bars');
+            }
+          });
+        }
+      })();
+    </script>
 
     <!-- Custom JavaScript -->
     <script src="/cv-builder/js/app.js"></script>

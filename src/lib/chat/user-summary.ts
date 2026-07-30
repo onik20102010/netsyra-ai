@@ -1,6 +1,6 @@
 // User Summary System for Free Plan
-// Creates and maintains a 500-character summary of user behavior across all chats
-// Updated based on interaction patterns and user activity
+// Creates and maintains a 200-character summary of user info across all chats
+// Stores only: profession, field, preferences, active projects
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -13,36 +13,28 @@ interface UserSummary {
   message_count_at_update: number;
 }
 
-const USER_SUMMARY_PROMPT = `You are a personal memory system, similar to how ChatGPT remembers users. Your job is to distill the user's conversation history into a concise, natural-sounding memory that captures who they are, what they like/dislike, and what matters to them.
+const USER_SUMMARY_PROMPT = `You are a personal memory system. Your job is to distill the user's conversation history into a very concise profile.
 
-## What to capture (in order of priority):
-1. **Identity & Context**: What the user does, their role, their current situation
-2. **Likes & Dislikes**: Things the user explicitly enjoys or prefers, and things they dislike or find frustrating
-3. **Interests**: Topics they show genuine enthusiasm about, areas they explore in depth
-4. **Recurring Themes**: Topics they bring up repeatedly across conversations
-5. **Preferences & Style**: How they like information presented, their communication style
-6. **Active Projects**: What they're currently working on or trying to accomplish
-7. **Explicit Requests**: Things they directly asked you to remember
+## What to capture (only user identity info):
+1. **Profession/Field**: What the user does — programmer, doctor, engineer, student, etc.
+2. **Active Projects**: What they're currently working on
+3. **Key Preferences**: What they prefer (tools, languages, approaches)
 
 ## What to ignore:
-- One-off questions or temporary queries
-- Greetings, small talk, or filler
+- One-off questions, greetings, small talk
 - Information already in their profile (name, goal, custom instructions)
-- Anything that won't be relevant in future conversations
+- Temporary or trivial details
 
 ## Writing style:
-- Write in natural, flowing sentences like a human would remember someone
-- Use the format: "User is [role/identity]. User likes [interests]. User dislikes [things]. User wants [goals]. User often discusses [topics]. User is working on [projects]."
-- Be specific, not generic. Instead of "User likes coding", say "User is a React developer building a SaaS dashboard"
-- Prioritize the most important 2-3 facts if space is tight
+- Write in natural, flowing sentences
+- Be specific: "User is a React developer building a SaaS dashboard" not "User likes coding"
 - Update incrementally: keep what's still true, drop what's outdated, add what's new
-- Track evolving interests: if user's interests change over time, update accordingly
 
 ## Hard rules:
-- Maximum 1000 characters including spaces and punctuation
+- Maximum 200 characters including spaces and punctuation
 - Never duplicate profile information (name, goal, custom instructions)
 - If the existing summary is good, only add genuinely new information
-- When at capacity, drop the least important/relevant fact to make room for new ones`;
+- When at capacity, drop the least important fact to make room for new ones`;
 
 export async function getUserSummary(userId: string): Promise<string | null> {
   const supabase = await createServerSupabaseClient();
@@ -111,7 +103,7 @@ Review the recent messages and update the memory. Follow the system prompt rules
 - Add new, genuinely important information about the user
 - Keep what's still accurate from the current memory
 - Remove anything that's become outdated or irrelevant
-- Stay under 1000 characters
+- Stay under 200 characters
 - Never duplicate profile info
 `;
 
@@ -154,8 +146,8 @@ Review the recent messages and update the memory. Follow the system prompt rules
       return;
     }
 
-    // Ensure summary is under 500 characters
-    const truncatedSummary = newSummary.length > 1000 ? newSummary.slice(0, 1000) : newSummary;
+    // Ensure summary is under 200 characters
+    const truncatedSummary = newSummary.length > 200 ? newSummary.slice(0, 200) : newSummary;
 
     // Update interaction counts based on conversation analysis
     const newInteractionCounts = { ...interactionCounts };

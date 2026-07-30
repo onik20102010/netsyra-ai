@@ -9,6 +9,7 @@ export interface ModelConfig {
   endpoint: string;
   modelName: string;
   modelKey?: string;
+  contextWindowSize?: number;
 }
 
 export interface TierConfig {
@@ -1033,10 +1034,11 @@ const aaiModels: ModelConfig[] = [
 const goPlusModels: ModelConfig[] = [
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_1",
     endpoint: "https://api.deepseek.com/v1/chat/completions",
     modelName: "deepseek-v4-flash",
     modelKey: "go_plus_1",
+    contextWindowSize: 1049000,
   },
 ];
 
@@ -1045,26 +1047,29 @@ const plusProModels: ModelConfig[] = [
   // Claude Opus 4.8 Coding (for debugging and very hard coding)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_3",
     endpoint: "https://api.anthropic.com/v1/messages",
     modelName: "claude-opus-4.8",
     modelKey: "plus_pro_opus",
+    contextWindowSize: 1000000,
   },
   // GPT-5.6 Luna (for general reasoning and very complex questions)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_3",
     endpoint: "https://api.openai.com/v1/chat/completions",
     modelName: "gpt-5.6-luna",
     modelKey: "plus_pro_luna",
+    contextWindowSize: 1050000,
   },
   // DeepSeek-V4-pro (for low to medium complexity, large documents/codes)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_3",
     endpoint: "https://api.deepseek.com/v1/chat/completions",
     modelName: "deepseek-v4-pro",
     modelKey: "plus_pro_deepseek",
+    contextWindowSize: 1050000,
   },
 ];
 
@@ -1073,50 +1078,56 @@ const niModels: ModelConfig[] = [
   // Claude Opus 4.6 (highest tier for complex tasks)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.anthropic.com/v1/messages",
     modelName: "claude-opus-4.6",
     modelKey: "ni_opus",
+    contextWindowSize: 1000000,
   },
   // Claude Sonnet 4.6 (high tier for coding/reasoning)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.anthropic.com/v1/messages",
     modelName: "claude-sonnet-4.6",
     modelKey: "ni_sonnet",
+    contextWindowSize: 1000000,
   },
   // GPT-5 (premium for reasoning/planning/creative)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.openai.com/v1/chat/completions",
     modelName: "gpt-5",
     modelKey: "ni_gpt5",
+    contextWindowSize: 1050000,
   },
   // GPT-5-mini (fallback for reasoning tasks)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.openai.com/v1/chat/completions",
     modelName: "gpt-5-mini",
     modelKey: "ni_gpt5_mini",
+    contextWindowSize: 131000,
   },
   // DeepSeek V4 Pro (fallback for coding tasks)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.deepseek.com/v1/chat/completions",
     modelName: "deepseek-v4-pro",
     modelKey: "ni_deepseek",
+    contextWindowSize: 1050000,
   },
   // DeepSeek V4 Flash (for easy tasks)
   {
     provider: "openai",
-    apiKeyEnv: "MESH_API_KEY",
+    apiKeyEnv: "MESH_API_KEY_2",
     endpoint: "https://api.deepseek.com/v1/chat/completions",
     modelName: "deepseek-v4-flash",
     modelKey: "ni_deepseek_flash",
+    contextWindowSize: 1049000,
   },
 ];
 

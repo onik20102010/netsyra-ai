@@ -11,19 +11,19 @@ export const modelLimits: Record<string, ModelLimit> = {
   fast: {
     modelId: "fast",
     label: "N Fast",
-    tokensPerDay: 1500,
-    messagesPerDay: 20,
+    tokensPerDay: 800,
+    messagesPerDay: 10,
   },
   plus: {
     modelId: "plus",
     label: "N Plus",
-    tokensPerDay: 1400,
+    tokensPerDay: 800,
     messagesPerDay: 10,
   },
   plus_fallback: {
     modelId: "plus",
     label: "N Plus (fallback)",
-    tokensPerDay: 1600,
+    tokensPerDay: 800,
     messagesPerDay: 10,
   },
   pro: {
@@ -35,37 +35,37 @@ export const modelLimits: Record<string, ModelLimit> = {
   pro_fallback: {
     modelId: "pro",
     label: "N Pro (fallback)",
-    tokensPerDay: 18000,
+    tokensPerDay: 2000,
     messagesPerDay: 5,
   },
   live: {
     modelId: "live",
     label: "N Live",
-    tokensPerDay: 800,
+    tokensPerDay: 400,
     messagesPerDay: 5,
   },
   live_fallback: {
     modelId: "live",
     label: "N Live (fallback)",
-    tokensPerDay: 800,
+    tokensPerDay: 400,
     messagesPerDay: 5,
   },
   code: {
     modelId: "code",
     label: "N Code",
-    tokensPerDay: 2500,
+    tokensPerDay: 1200,
     messagesPerDay: 5,
   },
   aai: {
     modelId: "aai",
     label: "N AAI",
-    tokensPerDay: 5000,
+    tokensPerDay: 1600,
     messagesPerDay: 5,
   },
   aai_fallback: {
     modelId: "aai",
     label: "N AAI (fallback)",
-    tokensPerDay: 5000,
+    tokensPerDay: 1600,
     messagesPerDay: 5,
   },
 };

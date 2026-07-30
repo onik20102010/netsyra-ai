@@ -9,7 +9,8 @@ async function loadTiktoken() {
   if (tiktokenModule) return tiktokenModule;
   try {
     // @ts-ignore — tiktoken is optional
-    tiktokenModule = await import('tiktoken');
+    // eval prevents Turbopack/webpack from statically resolving this optional dep
+    tiktokenModule = await (0, eval)('import("tiktoken")');
     return tiktokenModule;
   } catch {
     return null;
@@ -123,6 +124,54 @@ export interface TokenBudget {
   remaining: number;
   reserved: number;
   perRequest: { systemPrompt: number; context: number; response: number; total: number };
+}
+
+/**
+ * Trim conversation context messages to fit within a model's context window.
+ * System messages are always kept. Context messages are kept from most recent
+ * to oldest until the token budget is exhausted. Older messages that don't fit
+ * are dropped.
+ *
+ * @param apiMessages - Full message array (system + context messages)
+ * @param contextWindowSize - Model's total context window in tokens
+ * @param responseTokenBudget - Tokens reserved for the model's response
+ * @returns Trimmed message array that fits within the context window
+ */
+export function trimContextByTokens(
+  apiMessages: Array<{ role: string; content: string }>,
+  contextWindowSize: number,
+  responseTokenBudget: number
+): Array<{ role: string; content: string }> {
+  const systemMessages = apiMessages.filter(m => m.role === "system");
+  const contextMessages = apiMessages.filter(m => m.role !== "system");
+
+  const systemTokens = systemMessages.reduce((sum, m) => sum + countTokensSync(m.content), 0);
+  const availableForContext = contextWindowSize - systemTokens - responseTokenBudget;
+
+  if (availableForContext <= 0) {
+    console.log(`📏 Context trim: only system prompt fits (${systemTokens} tokens system, ${contextWindowSize} window, ${responseTokenBudget} reserved for response)`);
+    return systemMessages;
+  }
+
+  const selectedContext: Array<{ role: string; content: string }> = [];
+  let usedTokens = 0;
+  let droppedCount = 0;
+
+  for (let i = contextMessages.length - 1; i >= 0; i--) {
+    const msgTokens = countTokensSync(contextMessages[i].content);
+    if (usedTokens + msgTokens > availableForContext) {
+      droppedCount = i + 1;
+      break;
+    }
+    selectedContext.unshift(contextMessages[i]);
+    usedTokens += msgTokens;
+  }
+
+  if (droppedCount > 0) {
+    console.log(`📏 Context trim: kept ${selectedContext.length} messages (${usedTokens} tokens), dropped ${droppedCount} older messages (window: ${contextWindowSize}, system: ${systemTokens}, response budget: ${responseTokenBudget})`);
+  }
+
+  return [...systemMessages, ...selectedContext];
 }
 
 export function calculateTokenBudget(

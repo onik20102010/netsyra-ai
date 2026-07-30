@@ -56,7 +56,7 @@ const item = {
 
 export default function FeaturesSection() {
   return (
-    <section className="relative py-24 px-4">
+    <section className="relative py-16 sm:py-24 px-4 sm:px-6">
       <AnimatedBackground />
       <div className="max-w-6xl mx-auto">
         <motion.div
@@ -64,10 +64,10 @@ export default function FeaturesSection() {
           whileInView={{ opacity: 1 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">
             Everything You Need to Orchestrate AI
           </h2>
-          <p className="text-white/60 mt-4 text-lg max-w-2xl mx-auto">
+          <p className="text-white/60 mt-4 text-base sm:text-lg max-w-2xl mx-auto">
             Smart model selection that routes every prompt to the right tier.
           </p>
         </motion.div>
@@ -76,18 +76,18 @@ export default function FeaturesSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         >
           {features.map((feat) => (
             <motion.div key={feat.title} variants={item} whileHover={{ y: -5 }}>
-              <Card className="group relative border-white/10 bg-white/5 backdrop-blur-xl p-6 hover:border-purple-500/50 transition-all h-full">
+              <Card className="group relative border-white/10 bg-white/5 backdrop-blur-xl p-4 sm:p-6 hover:border-purple-500/50 transition-all h-full">
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-purple-500/0 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4 group-hover:animate-glow-pulse">
                     <feat.icon className="w-6 h-6 text-purple-400" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">{feat.title}</h3>
-                  <p className="text-white/60">{feat.desc}</p>
+                  <h3 className="text-lg sm:text-xl font-semibold mb-2">{feat.title}</h3>
+                  <p className="text-sm sm:text-base text-white/60">{feat.desc}</p>
                 </div>
               </Card>
             </motion.div>

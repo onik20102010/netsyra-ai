@@ -16,9 +16,9 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
 
     // Gutter
     lineNumbers: "on",
-    lineNumbersMinChars: 3,
+    lineNumbersMinChars: 5,
     glyphMargin: config.glyphMargin,
-    lineDecorationsWidth: 0,
+    lineDecorationsWidth: 10,
 
     // Folding
     folding: config.folding,

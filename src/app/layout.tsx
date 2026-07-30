@@ -26,8 +26,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://netsyraai.com"),
   title: {
-    default: "Netsyra AI – Advanced Multi-Model AI Assistant",
-    template: "%s | Netsyra AI",
+    default: "NetsyraAI",
+    template: "%s | NetsyraAI",
   },
   description:
     "Netsyra AI is an intelligent AI orchestration layer that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.",
@@ -120,7 +120,7 @@ export default function RootLayout({
           content="
             default-src 'self';
             script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:;
-            style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com;
+            style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://sandbox-cdn.paddle.com https://cdn.paddle.com;
             connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://sandbox-api.paddle.com https://cdn.paddle.com;
             frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com;
             img-src 'self' data: https:;

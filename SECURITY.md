@@ -100,7 +100,7 @@ CREATE POLICY "Members can see their group memberships" ON group_members
 - `next.config.ts` adds security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
 - `middleware.ts` now protects `/ide`, `/profile`, `/usage`, `/cv-builder`, `/admin`, and `/chat`.
 - `chat` API route uses a safe SSRF-aware fetch that blocks private IP ranges and local hostnames.
-- `/api/search`, `/api/widget`, `/api/groups/chat`, `/api/user/preferences`, and `/api/chat` now enforce authentication and input validation.
+- `/api/search`, `/api/widget`, `/api/user/preferences`, and `/api/chat` now enforce authentication and input validation.
 - The IDE API routes (`/ide/api/agent`, `/ide/api/runtime`, `/ide/api/stream`, `/ide/api/workspace`) require a valid Supabase session by default. Set `REQUIRE_AUTH=false` only for local development.
 
 ## Server-side workspace fallback
@@ -111,7 +111,7 @@ The `/ide/api/workspace` route provides a server-side fallback for the IDE works
 
 Netsyra IDE and Netsyra Chat are fully separated at the database layer:
 
-- Chat data lives in the `chat` schema: `chat.conversations`, `chat.messages`, `chat.group_chats`, `chat.group_members`, `chat.chat_usage`, `chat.user_preferences`, `chat.user_model_usage`, `chat.bot_persona_notes`, `chat.chat_summaries`, `chat.memories`, `chat.episodic_memories`, `chat.retrieval_logs`.
+- Chat data lives in the `chat` schema: `chat.conversations`, `chat.messages`, `chat.chat_usage`, `chat.user_preferences`, `chat.user_model_usage`, `chat.bot_persona_notes`, `chat.chat_summaries`, `chat.memories`, `chat.episodic_memories`, `chat.retrieval_logs`.
 - IDE data lives in the `ide` schema: `ide.ide_token_usage`, `ide.ide_files`, `ide.ide_file_chunks`, `ide.project_memory`, `ide.user_folder_structure`.
 - Shared auth/profile data remains in the `public` schema: `public.profiles`, `auth.users`.
 - The Supabase client helpers `createChatClient`, `createChatServerClient`, `createIdeClient`, and `createIdeServerClient` target the correct schema for each product.
@@ -119,7 +119,7 @@ Netsyra IDE and Netsyra Chat are fully separated at the database layer:
 
 ## Still recommended
 
-- Add Upstash/Redis rate limiting for the chat API and group chat API.
+- Add Upstash/Redis rate limiting for the chat API.
 - Replace hardcoded `ADMIN_EMAIL` with role-based checks via a `user_roles` table.
 - Use `supabase.rpc` or Postgres advisory locks for the `chat_usage` and `user_model_usage` counters to avoid race conditions.
 - Add `zod` validation for all public API request bodies.

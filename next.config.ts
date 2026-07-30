@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:",
-  "style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com",
+  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://sandbox-cdn.paddle.com https://cdn.paddle.com",
   "img-src 'self' data: https:",
   "font-src 'self' data: https://cdn.jsdelivr.net https://cdn.paddle.com",
   "connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://sandbox-api.paddle.com https://cdn.paddle.com",

@@ -13,6 +13,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-inter)", ...fontFamily.sans],
+        mono: ["var(--font-jetbrains)", ...fontFamily.mono],
       },
       colors: {
         border: "hsl(var(--border))",

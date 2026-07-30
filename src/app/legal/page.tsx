@@ -1,10 +1,11 @@
 // app/legal-notice/page.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
+import { Menu, X } from "lucide-react";
 
 // ── Animation variants ────────────────────────────────────
 const container = {
@@ -69,6 +70,7 @@ const sections = [
 
 export default function LegalNoticePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Three.js Particle Nebula Background ──────────────
   useEffect(() => {
@@ -284,52 +286,46 @@ export default function LegalNoticePage() {
       {/* ── Three.js background canvas ── */}
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
 
-      {/* ── Top Bar (no logo, centered) ── */}
-      <header className="fixed top-0 left-0 right-0 z-20 px-6 md:px-10 py-4 bg-black/60 backdrop-blur-md border-b border-white/5 flex items-center justify-center">
-        <div className="flex items-center gap-6 flex-wrap justify-center">
-          <Link
-            href="https://netsyraai.com/chat"
-            target="_blank"
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            Chat
-          </Link>
-          <Link
-            href="https://netsyraai.com/cv-builder/index.html"
-            target="_blank"
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            CV Builder
-          </Link>
-          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">
-            Legal
-          </Link>
-          <Link href="/goal" className="text-sm text-gray-400 hover:text-white transition">
-            Goal
-          </Link>
-          <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">
-            About
-          </Link>
-          <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition">
-            Privacy
-          </Link>
-          <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition">
-            Terms
-          </Link>
-          <Link href="/legal-notice" className="text-sm text-white font-medium">
-            Legal Notice
-          </Link>
-          <Link
-            href="#"
-            className="text-sm px-4 py-1.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition"
-          >
-            Contact
-          </Link>
+      {/* ── Top Bar (responsive with mobile hamburger) ── */}
+      <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 md:px-10 py-3 sm:py-4 bg-black/60 backdrop-blur-md border-b border-white/5 flex items-center justify-between">
+        <div className="hidden md:flex items-center gap-6 flex-wrap justify-center">
+          <Link href="https://netsyraai.com/chat" target="_blank" className="text-sm text-gray-400 hover:text-white transition">Chat</Link>
+          <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" className="text-sm text-gray-400 hover:text-white transition">CV Builder</Link>
+          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">Legal</Link>
+          <Link href="/goal" className="text-sm text-gray-400 hover:text-white transition">Goal</Link>
+          <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">About</Link>
+          <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition">Privacy</Link>
+          <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition">Terms</Link>
+          <Link href="/legal-notice" className="text-sm text-white font-medium">Legal Notice</Link>
+          <Link href="#" className="text-sm px-4 py-1.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition">Contact</Link>
         </div>
+        <div className="flex md:hidden items-center justify-between w-full">
+          <span className="text-sm font-bold text-white">Netsyra AI</span>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white" aria-label="Toggle menu">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="md:hidden absolute top-full left-0 right-0 mx-4 mt-1 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-lg overflow-hidden">
+              <div className="flex flex-col p-2 gap-1">
+                <Link href="https://netsyraai.com/chat" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Chat</Link>
+                <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">CV Builder</Link>
+                <Link href="/legal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Legal</Link>
+                <Link href="/goal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Goal</Link>
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">About</Link>
+                <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Privacy</Link>
+                <Link href="/terms" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Terms</Link>
+                <Link href="/legal-notice" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-white font-medium hover:bg-white/10 transition">Legal Notice</Link>
+                <Link href="#" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Contact</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* ── Main Content ── */}
-      <main className="relative z-10 max-w-4xl mx-auto px-6 pt-28 pb-20">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
         <motion.div
           variants={container}
           initial="hidden"
@@ -338,7 +334,7 @@ export default function LegalNoticePage() {
         >
           {/* ── Header ── */}
           <motion.div variants={item} className="text-center space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-[#6c5ce7] bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-[#6c5ce7] bg-clip-text text-transparent">
               Legal Notice
             </h1>
             <div className="w-16 h-1 mx-auto rounded-full bg-gradient-to-r from-[#6c5ce7] to-[#00b4d8]" />
@@ -349,7 +345,7 @@ export default function LegalNoticePage() {
             <motion.div
               key={idx}
               variants={item}
-              className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
+              className="p-4 sm:p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
             >
               <h2 className="text-xl md:text-2xl font-semibold text-white">
                 {section.title}

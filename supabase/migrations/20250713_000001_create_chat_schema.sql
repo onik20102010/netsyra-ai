@@ -1,5 +1,5 @@
 -- Separate chat schema for Netsyra Chat
--- All chat history, group chats, usage, preferences, and chat memory live here.
+-- All chat history, usage, preferences, and chat memory live here.
 -- The IDE does NOT use this schema.
 
 create schema if not exists chat;
@@ -23,7 +23,6 @@ create table if not exists chat.conversations (
   folder text default '',
   pinned boolean default false,
   archived boolean default false,
-  group_id uuid references chat.group_chats on delete cascade,
   created_at timestamp with time zone default now()
 );
 
@@ -35,30 +34,6 @@ create table if not exists chat.messages (
   content text not null,
   created_at timestamp with time zone default now()
 );
-
--- =============================================
--- GROUP CHAT TABLES
--- =============================================
-
-create table if not exists chat.group_chats (
-  id uuid default gen_random_uuid() primary key,
-  name text not null,
-  invite_code text unique not null,
-  created_by uuid references auth.users not null,
-  created_at timestamp with time zone default now()
-);
-
-create table if not exists chat.group_members (
-  id uuid default gen_random_uuid() primary key,
-  group_id uuid references chat.group_chats on delete cascade not null,
-  user_id uuid references auth.users not null,
-  joined_at timestamp with time zone default now(),
-  unique (group_id, user_id)
-);
-
--- Add self-referencing group_id after tables exist
-alter table chat.conversations
-  add column if not exists group_id uuid references chat.group_chats on delete cascade;
 
 -- =============================================
 -- CHAT USAGE & PREFERENCES
@@ -145,11 +120,8 @@ create table if not exists chat.retrieval_logs (
 -- =============================================
 
 create index if not exists idx_conversations_user_created on chat.conversations (user_id, created_at);
-create index if not exists idx_conversations_group on chat.conversations (group_id);
 create index if not exists idx_messages_conv_created on chat.messages (conversation_id, created_at);
 create index if not exists idx_messages_user on chat.messages (user_id);
-create index if not exists idx_group_members_group on chat.group_members (group_id);
-create index if not exists idx_group_members_user on chat.group_members (user_id);
 create index if not exists idx_chat_usage_user_tier on chat.chat_usage (user_id, model_tier);
 create index if not exists idx_user_model_usage_user_model on chat.user_model_usage (user_id, model_id);
 create index if not exists idx_chat_summaries_conversation_id on chat.chat_summaries (conversation_id);
@@ -162,35 +134,6 @@ create index if not exists idx_retrieval_logs_user_created on chat.retrieval_log
 -- =============================================
 -- SECURITY DEFINER HELPERS
 -- =============================================
-
-create or replace function chat.is_member_of_group(p_group_id uuid)
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select exists (
-    select 1 from chat.group_members
-    where group_id = p_group_id
-      and user_id = auth.uid()
-  );
-$$;
-
-create or replace function chat.lookup_group_by_code(p_code text)
-returns table (
-  id uuid,
-  name text,
-  invite_code text,
-  created_by uuid
-)
-language sql
-security definer
-as $$
-  select id, name, invite_code, created_by
-  from chat.group_chats
-  where invite_code = p_code
-  limit 1;
-$$;
 
 create or replace function chat.match_memories(
   query_embedding vector(768),
@@ -240,8 +183,6 @@ create trigger update_chat_summaries_updated_at_trigger
 
 alter table chat.conversations enable row level security;
 alter table chat.messages enable row level security;
-alter table chat.group_chats enable row level security;
-alter table chat.group_members enable row level security;
 alter table chat.chat_usage enable row level security;
 alter table chat.user_preferences enable row level security;
 alter table chat.user_model_usage enable row level security;
@@ -256,16 +197,6 @@ alter table chat.retrieval_logs enable row level security;
 -- =============================================
 
 -- Drop existing policies for safe re-run
-drop policy if exists "Anyone can create a group" on chat.group_chats;
-drop policy if exists "Members can read their groups" on chat.group_chats;
-drop policy if exists "Members can see member list" on chat.group_members;
-drop policy if exists "Anyone can join a group" on chat.group_members;
-drop policy if exists "Group members can read conversation" on chat.conversations;
-drop policy if exists "Group members can insert conversation" on chat.conversations;
-drop policy if exists "Group members can update conversation" on chat.conversations;
-drop policy if exists "Group members can delete conversation" on chat.conversations;
-drop policy if exists "Group members can read messages" on chat.messages;
-drop policy if exists "Group members can insert messages" on chat.messages;
 drop policy if exists "Users can read own chat usage" on chat.chat_usage;
 drop policy if exists "Users can insert own chat usage" on chat.chat_usage;
 drop policy if exists "Users can update own chat usage" on chat.chat_usage;
@@ -288,104 +219,6 @@ drop policy if exists "Users can read own episodic memories" on chat.episodic_me
 drop policy if exists "Users can insert own episodic memories" on chat.episodic_memories;
 drop policy if exists "Users can read own retrieval logs" on chat.retrieval_logs;
 drop policy if exists "Users can insert own retrieval logs" on chat.retrieval_logs;
-
--- group_chats
-create policy "Anyone can create a group"
-  on chat.group_chats for insert to authenticated
-  with check (true);
-
-create policy "Members can read their groups"
-  on chat.group_chats for select to authenticated
-  using (
-    created_by = auth.uid()
-    or chat.is_member_of_group(id)
-  );
-
--- group_members
-create policy "Members can see member list"
-  on chat.group_members for select to authenticated
-  using (chat.is_member_of_group(group_id));
-
-create policy "Anyone can join a group"
-  on chat.group_members for insert to authenticated
-  with check (true);
-
--- conversations
-create policy "Group members can read conversation"
-  on chat.conversations for select to authenticated
-  using (
-    user_id = auth.uid()
-    or (
-      group_id is not null
-      and chat.is_member_of_group(group_id)
-    )
-  );
-
-create policy "Group members can insert conversation"
-  on chat.conversations for insert to authenticated
-  with check (
-    user_id = auth.uid()
-    or (
-      group_id is not null
-      and chat.is_member_of_group(group_id)
-    )
-  );
-
-create policy "Group members can update conversation"
-  on chat.conversations for update to authenticated
-  using (
-    user_id = auth.uid()
-    or (
-      group_id is not null
-      and chat.is_member_of_group(group_id)
-    )
-  )
-  with check (
-    user_id = auth.uid()
-    or (
-      group_id is not null
-      and chat.is_member_of_group(group_id)
-    )
-  );
-
-create policy "Group members can delete conversation"
-  on chat.conversations for delete to authenticated
-  using (
-    user_id = auth.uid()
-    or (
-      group_id is not null
-      and chat.is_member_of_group(group_id)
-    )
-  );
-
--- messages
-create policy "Group members can read messages"
-  on chat.messages for select to authenticated
-  using (
-    conversation_id in (
-      select id
-      from chat.conversations
-      where user_id = auth.uid()
-        or (
-          group_id is not null
-          and chat.is_member_of_group(group_id)
-        )
-    )
-  );
-
-create policy "Group members can insert messages"
-  on chat.messages for insert to authenticated
-  with check (
-    conversation_id in (
-      select id
-      from chat.conversations
-      where user_id = auth.uid()
-        or (
-          group_id is not null
-          and chat.is_member_of_group(group_id)
-        )
-    )
-  );
 
 -- chat_usage
 create policy "Users can read own chat usage"
@@ -454,13 +287,7 @@ create policy "Users can view their own chat summaries"
     exists (
       select 1 from chat.conversations
       where id = chat_summaries.conversation_id
-        and (
-          user_id = auth.uid()
-          or (
-            group_id is not null
-            and chat.is_member_of_group(group_id)
-          )
-        )
+        and user_id = auth.uid()
     )
   );
 
@@ -470,13 +297,7 @@ create policy "Users can insert their own chat summaries"
     exists (
       select 1 from chat.conversations
       where id = chat_summaries.conversation_id
-        and (
-          user_id = auth.uid()
-          or (
-            group_id is not null
-            and chat.is_member_of_group(group_id)
-          )
-        )
+        and user_id = auth.uid()
     )
   );
 
@@ -486,13 +307,7 @@ create policy "Users can update their own chat summaries"
     exists (
       select 1 from chat.conversations
       where id = chat_summaries.conversation_id
-        and (
-          user_id = auth.uid()
-          or (
-            group_id is not null
-            and chat.is_member_of_group(group_id)
-          )
-        )
+        and user_id = auth.uid()
     )
   );
 

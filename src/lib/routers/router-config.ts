@@ -23,6 +23,7 @@ export interface RouterConfig {
   // Web search configuration
   webSearchEnabled: boolean;
   webSearchDailyLimit: number;
+  webSearchLimitHours: number; // Time window in hours for web search limit
   webSearchProviders: ('serper' | 'tavily' | 'wikipedia')[];
 
   // Whether image generation is enabled
@@ -36,12 +37,13 @@ export const routerConfigs: Record<string, RouterConfig> = {
   // Router 1: Free Plan
   free: {
     allowedModelKeys: ['fast', 'plus', 'pro', 'code', 'live', 'aai'],
-    dailyTokenLimit: 100000,
-    monthlyTokenLimit: 3000000,
+    dailyTokenLimit: 6800,
+    monthlyTokenLimit: 204000,
     maxHistoryLength: 5,
     maxTokensPerRequest: 2000,
     webSearchEnabled: true,
     webSearchDailyLimit: 3,
+    webSearchLimitHours: 24,
     webSearchProviders: ['tavily', 'wikipedia'],
     imageGenerationEnabled: false,
     contextWindowSize: 8000,
@@ -55,7 +57,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     maxHistoryLength: 40,
     maxTokensPerRequest: 3000,
     webSearchEnabled: true,
-    webSearchDailyLimit: 10,
+    webSearchDailyLimit: 100,
+    webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: false,
     contextWindowSize: 16000,
@@ -69,7 +72,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     maxHistoryLength: 40,
     maxTokensPerRequest: 3000,
     webSearchEnabled: true,
-    webSearchDailyLimit: 50,
+    webSearchDailyLimit: 200,
+    webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: false,
     contextWindowSize: 32000,
@@ -88,7 +92,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     maxHistoryLength: 40,
     maxTokensPerRequest: 4000,
     webSearchEnabled: true,
-    webSearchDailyLimit: 100,
+    webSearchDailyLimit: 250,
+    webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: true,
     contextWindowSize: 32000,

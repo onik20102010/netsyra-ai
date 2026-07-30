@@ -18,7 +18,7 @@ export default function AuthCard({
       transition={{ duration: 0.5 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="relative border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl shadow-purple-500/20 p-8 space-y-6">
+      <Card className="relative border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl shadow-purple-500/20 p-5 sm:p-8 space-y-5 sm:space-y-6">
         {/* Glow effect */}
         <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-purple-500/10 to-transparent opacity-60 pointer-events-none" />
         <div className="relative space-y-4 text-center">
@@ -33,7 +33,7 @@ export default function AuthCard({
             </div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               {title}
             </h2>
             <p className="text-white/60">{subtitle}</p>
