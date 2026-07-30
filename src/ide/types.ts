@@ -68,3 +68,18 @@ export type BottomPanelView = 'terminal' | 'output' | 'problems' | 'debug';
  * Available views for the right panel (AI chat).
  */
 export type RightPanelView = 'ai-chat' | null;
+
+export interface Problem {
+  fileId: string;
+  line: number;
+  column: number;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+  source: string;
+  endLine?: number;
+  endColumn?: number;
+  fix?: {
+    range: [number, number];
+    text: string;
+  };
+}

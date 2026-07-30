@@ -9,7 +9,8 @@ import {
   EditorConfig, 
   SidebarView, 
   BottomPanelView,
-  RightPanelView
+  RightPanelView,
+  Problem
 } from './types';
 import { createFileOnDisk, createDirectoryOnDisk, saveFileToDisk } from './workspace';
 
@@ -58,6 +59,12 @@ interface IdeStore {
   rightPanelView: RightPanelView;
   isRightPanelOpen: boolean;
   editorConfig: EditorConfig;
+
+  // Problems (diagnostics)
+  problems: Record<string, Problem[]>;
+  setProblems: (fileId: string, problems: Problem[]) => void;
+  mergeProblems: (fileId: string, problems: Problem[], source: string) => void;
+  clearProblems: (fileId: string) => void;
   
   // Actions: Workspace
   openWorkspace: (name: string, files: FileItem[]) => void;
@@ -105,6 +112,7 @@ export const useIdeStore = create<IdeStore>()(
       rightPanelView: null,
       isRightPanelOpen: false,
       editorConfig: defaultEditorConfig,
+      problems: {},
 
       // ---- Actions ----
       
@@ -317,6 +325,23 @@ export const useIdeStore = create<IdeStore>()(
       updateEditorConfig: (config) => set((s) => ({ 
         editorConfig: { ...s.editorConfig, ...config } 
       })),
+
+      // 5. Problems Actions
+      setProblems: (fileId, problems) => set((s) => ({
+        problems: { ...s.problems, [fileId]: problems }
+      })),
+      mergeProblems: (fileId, newProblems, source) => set((s) => {
+        const existing = s.problems[fileId] || [];
+        const filtered = existing.filter(p => p.source !== source && !p.source.startsWith(source));
+        return {
+          problems: { ...s.problems, [fileId]: [...filtered, ...newProblems] }
+        };
+      }),
+      clearProblems: (fileId) => set((s) => {
+        const newProblems = { ...s.problems };
+        delete newProblems[fileId];
+        return { problems: newProblems };
+      }),
     }),
     {
       name: 'netsyra-ide-storage', // Persists open tabs/layout to localStorage

@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const TIMEOUT_MS = 30000; // 30 seconds
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const TIMEOUT_MS = 30000;
 const MAX_MESSAGES = 50;
 const MAX_CONTENT_LENGTH = 8000;
-
-const GROQ_MODELS = [
-  'llama-3.3-70b-versatile',
-  'openai/gpt-oss-120b',
-  'qwen/qwen3.6-27b',
-  'qwen/qwen3-32b',
-  'groq/compound',
-  'groq/compound-mini',
-  'llama-3.1-8b-instant',
-  'openai/gpt-oss-20b',
-];
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant']);
 
@@ -23,13 +13,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { messages } = body;
 
-    // SECURITY: Only use server-side env variables, never accept client keys
-    const groqApiKey = process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY;
-    const groqKeyEnv = process.env.GROQ_API_KEY_2 ? "GROQ_API_KEY_2" : "GROQ_API_KEY";
+    // SECURITY: Only use GROQ_API_KEY_2 from server-side env, no fallbacks
+    const groqApiKey = process.env.GROQ_API_KEY_2;
 
     if (!groqApiKey) {
       return NextResponse.json(
-        { error: 'Server API key not configured.' },
+        { error: 'GROQ_API_KEY_2 is not configured in .env.local' },
         { status: 500 }
       );
     }
@@ -64,59 +53,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try each model
-    for (const model of GROQ_MODELS) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    // Single model, single key — no fallback chain
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-      try {
-        console.log(`🤖 Using model: ${model} | API Key: ${groqKeyEnv} | Endpoint: ${GROQ_API_URL}`);
-        const response = await fetch(GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqApiKey}`,
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: sanitizedMessages,
-            max_tokens: 4096,
-            temperature: 0.7,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+    try {
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqApiKey}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: sanitizedMessages,
+          max_tokens: 4096,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: ${response.status} - ${errorText}`);
-          continue; // Try next model
-        }
-
-        const data = await response.json();
-        const content = data.choices[0]?.message?.content;
-        if (content) {
-          console.log(`✅ LLM Response: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Content length: ${content.length} chars`);
-          return NextResponse.json(
-            { content },
-            { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
-          );
-        }
-      } catch (err: any) {
-        clearTimeout(timeout);
-        if (err.name === 'AbortError') {
-          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: timed out after ${TIMEOUT_MS}ms`);
-        } else {
-          console.warn(`❌ LLM Error: ${model} | API Key: ${groqKeyEnv} | Provider: groq | Error: ${err.message}`);
-        }
-        continue;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Groq API error: ${response.status} - ${errorText}`);
+        return NextResponse.json(
+          { error: `AI request failed (${response.status}). Please try again.` },
+          { status: response.status }
+        );
       }
-    }
 
-    return NextResponse.json(
-      { error: 'All AI models failed. Please try again later.' },
-      { status: 500 }
-    );
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content;
+      if (content) {
+        return NextResponse.json(
+          { content },
+          { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
+        );
+      }
+
+      return NextResponse.json(
+        { error: 'AI returned an empty response.' },
+        { status: 500 }
+      );
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        return NextResponse.json(
+          { error: `AI timed out after ${TIMEOUT_MS}ms.` },
+          { status: 504 }
+        );
+      }
+      throw err;
+    }
   } catch (error) {
     console.error('Groq route error:', error);
     return NextResponse.json(

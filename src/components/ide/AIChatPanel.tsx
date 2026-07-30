@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useIdeStore } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder } from "lucide-react";
-import { callGroqAPI, getSystemPrompt } from "@/ide/grok-api";
-import { getActiveFileContext, getWorkspaceStructure } from "@/ide/agent";
+import { useIdeStore, getDB } from "@/ide";
+import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle } from "lucide-react";
+import { AgentOrchestrator, type ChatMessage, type PendingEdit } from "@/agents/AgentOrchestrator";
+import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -28,6 +28,12 @@ export function AIChatPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [draggedFiles, setDraggedFiles] = useState<Array<{ path: string; name: string; id: string }>>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const agentRef = useRef<AgentOrchestrator | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isRightPanelOpen = useIdeStore((s) => s.isRightPanelOpen);
   const toggleRightPanel = useIdeStore((s) => s.toggleRightPanel);
@@ -36,6 +42,9 @@ export function AIChatPanel() {
   const activeFileId = useIdeStore((s) => s.activeFileId);
 
   const activeFile = openFiles.find(f => f.id === activeFileId);
+  const { user } = useAuth();
+  const userId = user?.id || 'local';
+  const db = getDB(userId);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -53,73 +62,112 @@ export function AIChatPanel() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput('');
     setDraggedFiles([]);
     setIsLoading(true);
 
     try {
-      // Get context about the current workspace and active file
-      const fileContext = getActiveFileContext();
-      const workspaceStructure = getWorkspaceStructure();
+      // Build chat history for conversation memory
+      const chatHistory: ChatMessage[] = messages
+        .filter(m => m.role !== 'system')
+        .slice(-10)
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-      // Get content of dragged files for context
-      const draggedFilesContext = draggedFiles.map(file => {
-        const fileContent = useIdeStore.getState().openFiles.find(f => f.path === file.path)?.content;
-        return {
-          path: file.path,
-          name: file.name,
-          content: fileContent ? fileContent.substring(0, 3000) : 'Content not available'
-        };
-      });
+      // Start streaming display
+      setStreamingText('');
+      setIsStreaming(true);
 
-      // Build context for the AI
-      const contextInfo = `
-Current Workspace: ${workspace?.name || 'None'}
-Active File: ${fileContext.path || 'None'}
-File Language: ${fileContext.language || 'None'}
+      // Unified agent: handles both questions and code actions
+      const agent = new AgentOrchestrator(
+        db,
+        (status) => setAgentStatus(status),
+        (token, fullText) => {
+          setStreamingText(fullText);
+        }
+      );
+      agentRef.current = agent;
 
-Workspace Structure:
-${workspaceStructure}
+      const result = await agent.run(currentInput, chatHistory);
 
-${fileContext.content ? `Active File Content:\n${fileContext.content.substring(0, 2000)}...` : ''}
+      setIsStreaming(false);
+      setAgentStatus(null);
+      setStreamingText('');
 
-${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f => `File: ${f.name} (${f.path})\nContent:\n${f.content}\n`).join('\n')}` : ''}
-`;
+      // Build response text with action summary
+      let responseText = result.message;
 
-      // Get system prompt
-      const systemPrompt = await getSystemPrompt();
+      if (result.filesRead.length > 0 && result.pendingEdits.length === 0) {
+        responseText += '\n\n**Files examined:** ' + result.filesRead.map(f => `\`${f}\``).join(', ');
+      }
 
-      // Prepare messages for Groq API
-      const apiMessages: Message[] = [
-        { role: 'system', content: systemPrompt + '\n\n' + contextInfo, timestamp: Date.now() },
-        ...messages.filter(m => m.role !== 'system').map(m => ({
-          role: m.role,
-          content: m.content,
-          timestamp: m.timestamp,
-          attachedFiles: m.attachedFiles
-        })),
-        userMessage
-      ];
+      // Show action trace if tools were used
+      if (result.actions.length > 1) {
+        const toolActions = result.actions.filter(a => a.tool !== 'answer');
+        if (toolActions.length > 0) {
+          responseText += '\n\n<details>\n<summary>Agent actions</summary>\n\n';
+          toolActions.forEach(a => {
+            const icon = a.tool === 'edit_file' ? '✏️' : a.tool === 'create_file' ? '📝' : a.tool === 'read_file' ? '📖' : a.tool === 'search_code' ? '🔍' : '📋';
+            responseText += `${icon} **${a.tool}**: ${a.args.path || a.args.query || ''}\n`;
+          });
+          responseText += '\n</details>';
+        }
+      }
 
-      // Call Groq API via secure backend route
-      const response = await callGroqAPI(apiMessages);
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: response,
-        timestamp: Date.now()
-      };
+      // Show pending edits for user approval
+      if (result.pendingEdits.length > 0) {
+        setPendingEdits(result.pendingEdits);
+        responseText += `\n\n**${result.pendingEdits.length} change${result.pendingEdits.length > 1 ? 's' : ''} ready for review.** Apply or dismiss below.`;
+      }
 
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
+      if (result.canUndo) {
+        setCanUndo(true);
+      }
+
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your Groq API key in .env.local.`,
+        content: responseText,
+        timestamp: Date.now()
+      }]);
+    } catch (error) {
+      setIsStreaming(false);
+      setAgentStatus(null);
+      setStreamingText('');
+      console.error('Agent error:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         timestamp: Date.now()
       }]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleApplyEdits = () => {
+    if (agentRef.current) {
+      agentRef.current.applyPendingEdits();
+      setPendingEdits([]);
+    }
+  };
+
+  const handleDismissEdits = () => {
+    if (agentRef.current) {
+      agentRef.current.dismissPendingEdits();
+    }
+    setPendingEdits([]);
+  };
+
+  const handleUndo = () => {
+    if (agentRef.current) {
+      agentRef.current.undo();
+      setCanUndo(false);
+      setPendingEdits([]);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Changes have been reverted. The files are back to their state before my last run.',
+        timestamp: Date.now()
+      }]);
     }
   };
 
@@ -172,13 +220,25 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
           <Bot size={16} className="text-zinc-400" />
           <span className="text-[12px] font-bold uppercase tracking-wider text-zinc-400">IDE Chat</span>
         </div>
-        <button
-          onClick={toggleRightPanel}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
-          title="Close Panel"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          {canUndo && (
+            <button
+              onClick={handleUndo}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-600 rounded transition-colors"
+              title="Undo all changes from last agent run"
+            >
+              <Undo2 size={12} />
+              Undo
+            </button>
+          )}
+          <button
+            onClick={toggleRightPanel}
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
+            title="Close Panel"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Context Info */}
@@ -245,9 +305,95 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-2 text-zinc-500 text-[13px]">
-                <Bot size={16} className="text-zinc-400" />
-                <span>Thinking...</span>
+              <div className="max-w-full">
+                {isStreaming && streamingText ? (
+                  <div className="text-[15px] leading-7 text-zinc-300 break-words">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        pre: ({node, ...props}) => (
+                          <div className="bg-zinc-800/80 p-4 rounded-2xl border border-zinc-700/50 my-4 overflow-x-auto" {...props as any} />
+                        ),
+                        code: ({node, ...props}) => (
+                          <code className="text-sm text-zinc-200 font-mono" {...props as any} />
+                        )
+                      }}
+                    >
+                      {streamingText}
+                    </ReactMarkdown>
+                    <span className="inline-block w-2 h-4 bg-zinc-400 animate-pulse ml-0.5 align-middle" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-zinc-500 text-[13px]">
+                    <Bot size={16} className="text-zinc-400" />
+                    {agentStatus ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 size={12} className="animate-spin" />
+                        {agentStatus}
+                      </span>
+                    ) : (
+                      <span>Thinking...</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {pendingEdits.length > 0 && (
+            <div className="flex justify-start">
+              <div className="bg-zinc-800/80 border border-amber-500/30 rounded-lg p-3 max-w-full w-full">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-amber-400 text-[12px]">
+                    <Eye size={14} />
+                    <span>{pendingEdits.length} change{pendingEdits.length > 1 ? 's' : ''} ready for review</span>
+                  </div>
+                  {canUndo && (
+                    <button
+                      onClick={handleUndo}
+                      className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-600 rounded transition-colors"
+                      title="Undo all changes from last agent run"
+                    >
+                      <Undo2 size={11} />
+                      Undo
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2 mb-3">
+                  {pendingEdits.map((edit) => (
+                    <div key={edit.id} className="bg-zinc-900/60 border border-zinc-700/50 rounded p-2">
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-300 mb-1">
+                        {edit.action === 'create_file' ? (
+                          <span className="text-green-400">📝 New file</span>
+                        ) : (
+                          <span className="text-blue-400">✏️ Edit</span>
+                        )}
+                        <span className="font-mono text-zinc-400 truncate">{edit.filePath}</span>
+                      </div>
+                      <div className="text-[11px] text-zinc-500">{edit.description}</div>
+                      {edit.action === 'edit_file' && edit.startLine && (
+                        <div className="mt-1 text-[10px] text-zinc-600 font-mono">
+                          Lines {edit.startLine}-{edit.endLine}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleApplyEdits}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-[12px] rounded transition-colors"
+                  >
+                    <Check size={13} />
+                    Apply all
+                  </button>
+                  <button
+                    onClick={handleDismissEdits}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-[12px] rounded transition-colors"
+                  >
+                    <XCircle size={13} />
+                    Dismiss
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -285,21 +431,35 @@ ${draggedFiles.length > 0 ? `Dragged Files Context:\n${draggedFilesContext.map(f
 
           {/* Input Field + Send Button */}
           <div className="flex items-end gap-2">
-            <textarea
-              id="chat-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onInput={(e) => {
-                const target = e.currentTarget;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-              }}
-              placeholder={draggedFiles.length > 0 ? "Ask about these files..." : "Ask me anything about your code..."}
-              disabled={isLoading}
-              rows={1}
-              className="flex-1 w-full bg-transparent resize-none outline-none text-zinc-200 placeholder-zinc-500 text-[15px] min-h-[40px] max-h-[120px] overflow-hidden whitespace-pre-wrap break-words disabled:opacity-50"
-            />
+            <div className="flex-1 flex flex-col gap-1.5">
+              {/* Agent capability indicator */}
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border text-amber-400 bg-amber-500/10 border-amber-500/30">
+                  <Zap size={11} />
+                  Agent
+                </span>
+                <span className="text-[10px] text-zinc-500">
+                  Can answer questions, read & edit files, search code
+                </span>
+              </div>
+
+              <textarea
+                id="chat-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onInput={(e) => {
+                  const target = e.currentTarget;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+                }}
+                placeholder={draggedFiles.length > 0 ? "Ask about these files, or ask me to fix/edit them..." : "Ask me anything, or tell me what to fix or build..."}
+                disabled={isLoading}
+                rows={1}
+                className="flex-1 w-full bg-transparent resize-none outline-none text-zinc-200 placeholder-zinc-500 text-[15px] min-h-[40px] max-h-[120px] overflow-hidden whitespace-pre-wrap break-words disabled:opacity-50"
+              />
+            </div>
+
             <button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}

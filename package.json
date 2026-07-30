@@ -6,7 +6,8 @@
     "dev": "set NODE_OPTIONS=--max-old-space-size=8192 && next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "bundle:worker": "node scripts/bundle-eslint-worker.mjs"
   },
   "dependencies": {
     "@mendable/firecrawl-js": "^4.29.1",
@@ -22,6 +23,7 @@
     "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dexie": "^4.4.4",
     "framer-motion": "^12.40.0",
     "idb-keyval": "^6.2.5",
     "lucide-react": "^1.16.0",
@@ -41,13 +43,17 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/three": "^0.184.1",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",

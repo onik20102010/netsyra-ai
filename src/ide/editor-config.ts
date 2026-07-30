@@ -12,7 +12,7 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
     lineHeight: config.lineHeight,
     letterSpacing: 0,
     fontLigatures: true,
-    automaticLayout: true, // CRITICAL FIX: Prevents overlapping/cut-off text in flex layouts
+    automaticLayout: false, // Use ResizeObserver in EditorArea instead — prevents null 'left' crash
 
     // Gutter
     lineNumbers: "on",

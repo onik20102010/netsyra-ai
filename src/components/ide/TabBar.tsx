@@ -11,6 +11,7 @@ export function TabBar() {
   const setActiveTab = useIdeStore((s) => s.setActiveTab);
   const closeFile = useIdeStore((s) => s.closeFile);
   const saveFile = useIdeStore((s) => s.saveFile);
+  const problems = useIdeStore((s) => s.problems);
   
   // Auto-scroll to active tab
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +70,22 @@ export function TabBar() {
               <span className="text-[13px] truncate flex-1 text-center min-w-[40px]">
                 {filename}
               </span>
+
+              {/* Problem indicator dot */}
+              {(() => {
+                const fileProblems = problems[file.id] || [];
+                const hasError = fileProblems.some(p => p.severity === 'error');
+                const hasWarning = fileProblems.some(p => p.severity === 'warning');
+                if (hasError || hasWarning) {
+                  return (
+                    <span
+                      className={`shrink-0 w-[7px] h-[7px] rounded-full ${hasError ? 'bg-red-500' : 'bg-yellow-500'}`}
+                      title={hasError ? `${fileProblems.filter(p => p.severity === 'error').length} error(s)` : `${fileProblems.filter(p => p.severity === 'warning').length} warning(s)`}
+                    />
+                  );
+                }
+                return null;
+              })()}
 
               {/* Dirty Indicator / Close Button */}
               <div className="flex items-center justify-center shrink-0 w-[16px] h-[16px] rounded hover:bg-[#4a4a4a] transition-colors"

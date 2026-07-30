@@ -4,10 +4,14 @@
 import React from "react";
 import { useIdeStore, BottomPanelView } from "@/ide";
 import { Terminal, FileOutput, AlertCircle, Bug, X } from "lucide-react";
+import { ProblemsPanel } from "./ProblemsPanel";
 
 export function BottomPanel() {
   const bottomPanelView = useIdeStore((s) => s.bottomPanelView);
   const toggleBottomPanel = useIdeStore((s) => s.toggleBottomPanel);
+  const problems = useIdeStore((s) => s.problems);
+
+  const problemCount = Object.values(problems).flat().filter(p => p.severity === 'error' || p.severity === 'warning').length;
 
   // Available tabs
   const tabs: { id: BottomPanelView; label: string; icon: React.ReactNode }[] = [
@@ -51,16 +55,7 @@ export function BottomPanel() {
           </div>
         );
       case "problems":
-        return (
-          <div className="font-mono text-[13px] p-3 overflow-auto h-full bg-[#1e1e1e]">
-            <div className="text-[#ce9178] flex gap-2 items-center mb-1">
-              <AlertCircle size={14} /> <span>Error: 'module' is not defined at line 12:8</span>
-            </div>
-            <div className="text-[#f9e06a] flex gap-2 items-center">
-              <AlertCircle size={14} /> <span>Warning: 'useState' is deprecated in this version.</span>
-            </div>
-          </div>
-        );
+        return <ProblemsPanel />;
       case "debug":
         return (
           <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
@@ -94,6 +89,11 @@ export function BottomPanel() {
               >
                 {tab.icon}
                 <span>{tab.label}</span>
+                {tab.id === "problems" && problemCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#5a1d1d] text-red-400 text-[10px] font-medium leading-none">
+                    {problemCount}
+                  </span>
+                )}
               </button>
             );
           })}

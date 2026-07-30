@@ -19,3 +19,9 @@ export * from './workspace';
 // --- AI Agent & API ---
 export * from './agent';
 export * from './grok-api';
+
+// --- Database (IndexedDB via Dexie) ---
+export * from './db';
+
+// --- Symbol Graph Query Engine ---
+export * from './graph-query';
