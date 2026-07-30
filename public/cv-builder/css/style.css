@@ -402,6 +402,49 @@ label {
   -webkit-text-fill-color: transparent;
 }
 
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-to-netsyra {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+}
+.back-to-netsyra:hover {
+  color: var(--text-primary);
+  background: rgba(124, 108, 240, 0.15);
+  border-color: rgba(124, 108, 240, 0.3);
+}
+.back-to-netsyra i {
+  font-size: 0.7rem;
+  transition: transform 0.25s ease;
+}
+.back-to-netsyra:hover i {
+  transform: translateX(-3px);
+}
+
+@media (max-width: 768px) {
+  .back-to-netsyra span {
+    display: none;
+  }
+  .back-to-netsyra {
+    padding: 0.35rem 0.55rem;
+  }
+}
+
 .industry-select {
   width: auto;
   min-width: 200px;

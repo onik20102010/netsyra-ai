@@ -242,7 +242,7 @@ export default function ChatSidebar({
           </div>
 
           {/* Nav */}
-          <div className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <div className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
             <button
               onClick={onNewChat}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"

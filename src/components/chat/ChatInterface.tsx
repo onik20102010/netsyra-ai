@@ -998,7 +998,8 @@ export default function ChatInterface({
       return data.description || "";
     } catch (error) {
       console.error('Error processing images:', error);
-      toast.error('Failed to process images');
+      const errMsg = error instanceof Error ? error.message : 'Failed to process images';
+      toast.error(errMsg);
       return "";
     } finally {
       setIsProcessingImage(false);
