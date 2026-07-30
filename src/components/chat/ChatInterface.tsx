@@ -48,12 +48,16 @@ type Message = {
 
 // Friendly display names for the model tiers (used to show what Auto picked).
 const MODEL_LABELS: Record<string, string> = {
+  auto: "Auto",
   fast: "N Fast",
   plus: "N Plus",
   pro: "N Pro",
   code: "N Code",
   live: "N Live",
   aai: "N AAI",
+  go_plus: "N Go Plus",
+  ni: "N NI",
+  plus_pro: "N + Pro",
 };
 
 interface ChatInterfaceProps {
@@ -273,6 +277,7 @@ export default function ChatInterface({
       setIsTyping(false);
       setShowStream(false);
       setStreamingMessageId(null);
+      setAutoTiersUsed([]);
     }
   }, [conversationId]);
 
@@ -629,6 +634,14 @@ export default function ChatInterface({
 
       // Which model the router actually used (relevant when selector is "Auto").
       const modelUsed = res.headers.get("x-model-used") || undefined;
+
+      // Track which model auto-routing picked (shown above the input bar)
+      if (selectedModel === "auto" && modelUsed) {
+        const friendlyName = MODEL_LABELS[modelUsed] || modelUsed;
+        setAutoTiersUsed(prev =>
+          prev.includes(friendlyName) ? prev : [...prev, friendlyName]
+        );
+      }
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
@@ -1401,6 +1414,11 @@ export default function ChatInterface({
               <span>Auto‑routed via {autoTiersUsed.join(", ")}</span>
             </div>
           )}
+          {selectedModel !== "auto" && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 px-1">
+              <span>Using {MODEL_LABELS[selectedModel] || selectedModel}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSend} className="relative">
             {/* Attached Images Preview */}
@@ -1425,13 +1443,13 @@ export default function ChatInterface({
               </div>
             )}
 
-            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] border border-gray-300 bg-white px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
-              <div className="flex-shrink-0 flex items-end pb-1.5">
-                <ModelSelector selected={selectedModel} onSelect={setSelectedModel} upward isPro={isPro} allowedTiers={allowedTiers} />
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] border border-gray-300 bg-white px-3 sm:px-4 py-3 sm:py-4 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+              <div className="flex-shrink-0 flex items-center">
+                <ModelSelector selected={selectedModel} onSelect={(id) => { setSelectedModel(id); setAutoTiersUsed([]); }} upward isPro={isPro} allowedTiers={allowedTiers} />
               </div>
 
               {/* Attachment Button - only enabled when N Plus is selected */}
-              <div className="flex-shrink-0 flex items-end pb-1.5">
+              <div className="flex-shrink-0 flex items-center">
                 <input
                   type="file"
                   id="image-attachment"
@@ -1460,8 +1478,8 @@ export default function ChatInterface({
                 }}
                 onPaste={handlePaste}
                 placeholder={attachedImages.length > 0 ? "Add a message about these images..." : "Message Netsyra..."}
-                rows={2}
-                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 pl-1 text-[15px] leading-relaxed max-h-[200px] overflow-y-auto"
+                rows={1}
+                className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1.5 pl-1 text-[15px] leading-relaxed max-h-[200px] overflow-y-auto"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -1471,7 +1489,7 @@ export default function ChatInterface({
               />
 
               {/* Web Search Toggle Button */}
-              <div className="flex-shrink-0 flex items-end pb-1.5">
+              <div className="flex-shrink-0 flex items-center">
                 <button
                   type="button"
                   onClick={() => setWebSearchEnabled(!webSearchEnabled)}
@@ -1490,7 +1508,7 @@ export default function ChatInterface({
               <button
                 type="submit"
                 disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
-                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm mb-1.5"
+                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
                 aria-label="Send message"
               >
                 {isProcessingImage ? (

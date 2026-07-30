@@ -35,8 +35,8 @@ export interface RouterConfig {
   imageAnalysisDailyLimit: number; // Max images per day
   imageAnalysisMonthlyTokenLimit: number; // Max tokens per month for image analysis
 
-  // Context window size (in tokens)
-  contextWindowSize: number;
+  // Context window size (in tokens) — optional, only for paid plans
+  contextWindowSize?: number;
 }
 
 export const routerConfigs: Record<string, RouterConfig> = {
@@ -56,7 +56,6 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageAnalysisModel: 'gemini-2.5-flash-lite',
     imageAnalysisDailyLimit: 10,
     imageAnalysisMonthlyTokenLimit: 0, // Free plan: no monthly token limit, just daily image count
-    contextWindowSize: 8000,
   },
 
   // Router 2: Go Plus Plan

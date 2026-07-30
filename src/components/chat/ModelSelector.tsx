@@ -188,9 +188,11 @@ export default function ModelSelector({
     setShowAdvanced(false);
   };
 
-  // Filter models based on allowed tiers
+  // Filter models based on allowed tiers — 'auto' is available for multi-tier plans (free)
   const filteredBasicModels = allowedTiers
-    ? basicModels.filter(m => allowedTiers.includes(m.id))
+    ? basicModels.filter(m =>
+        m.id === "auto" ? allowedTiers.length > 1 : allowedTiers.includes(m.id)
+      )
     : basicModels;
   const filteredAdvancedModels = allowedTiers
     ? advancedModels.filter(m => allowedTiers.includes(m.id))
