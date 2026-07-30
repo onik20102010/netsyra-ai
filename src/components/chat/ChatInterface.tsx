@@ -744,7 +744,12 @@ export default function ChatInterface({
       setInput("");
       setAttachedImages([]);
 
-      const contextMessages = [...messages, userMessage];
+      // For API: use apiContent (includes [Image Analysis: ...]) instead of display content
+      const apiMessage: Message = {
+        ...userMessage,
+        content: apiContent || "",
+      };
+      const contextMessages = [...messages, apiMessage];
       await sendMessage(apiContent, contextMessages);
       return;
     }
@@ -827,6 +832,8 @@ export default function ChatInterface({
   const handleDislike = () => toast.success("Thanks, we'll improve!");
 
   const isImageAttachEnabled = selectedModel === "plus" || selectedModel === "go_plus" || selectedModel === "ni" || selectedModel === "plus_pro";
+  const isPaidPlan = selectedModel === "go_plus" || selectedModel === "ni" || selectedModel === "plus_pro";
+  const maxImagesPerMessage = isPaidPlan ? 10 : 2;
 
   // Clear attached images when switching away from N Plus
   useEffect(() => {
@@ -852,8 +859,8 @@ export default function ChatInterface({
       name: file.name
     }));
 
-    if (attachedImages.length + newImages.length > 2) {
-      toast.error("You can only attach up to 2 images at a time");
+    if (attachedImages.length + newImages.length > maxImagesPerMessage) {
+      toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
       return;
     }
 
@@ -868,6 +875,89 @@ export default function ChatInterface({
       }
       return prev.filter(img => img.id !== id);
     });
+  };
+
+  // ── Handle paste: detect image files and image URLs ──
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    if (!isImageAttachEnabled) return;
+
+    // Check for pasted image files
+    const items = e.clipboardData.items;
+    const imageItems: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) imageItems.push(file);
+      }
+    }
+
+    if (imageItems.length > 0) {
+      e.preventDefault();
+      const newImages = imageItems.slice(0, maxImagesPerMessage - attachedImages.length).map((file, idx) => {
+        // Give pasted images a clean name
+        const ext = file.type.split('/')[1] || 'png';
+        const cleanName = file.name && file.name !== 'image.png'
+          ? file.name
+          : `pasted-image-${idx + 1}.${ext}`;
+        return {
+          id: crypto.randomUUID(),
+          file: new File([file], cleanName, { type: file.type }),
+          url: URL.createObjectURL(file),
+          name: cleanName
+        };
+      });
+      if (attachedImages.length + newImages.length > maxImagesPerMessage) {
+        toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
+        return;
+      }
+      setAttachedImages(prev => [...prev, ...newImages]);
+      return;
+    }
+
+    // Check for pasted image URLs
+    const pastedText = e.clipboardData.getData('text');
+    if (pastedText && isImageUrl(pastedText.trim())) {
+      e.preventDefault();
+      await fetchImageFromUrl(pastedText.trim());
+    }
+  };
+
+  // Check if a string looks like an image URL
+  const isImageUrl = (url: string): boolean => {
+    return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+  };
+
+  // Fetch image from URL and add to attached images
+  const fetchImageFromUrl = async (url: string) => {
+    if (!isImageAttachEnabled) return;
+    if (attachedImages.length >= maxImagesPerMessage) {
+      toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        toast.error("Failed to fetch image from URL");
+        return;
+      }
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) {
+        toast.error("The URL does not point to an image");
+        return;
+      }
+      const file = new File([blob], url.split('/').pop() || 'image-from-url.png', { type: blob.type });
+      const newImage = {
+        id: crypto.randomUUID(),
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name
+      };
+      setAttachedImages(prev => [...prev, newImage]);
+      toast.success("Image loaded from URL");
+    } catch {
+      toast.error("Failed to load image from URL");
+    }
   };
 
   const processImagesWithGroq = async (images: { id: string; file: File; url: string; name: string }[]) => {
@@ -939,8 +1029,25 @@ export default function ChatInterface({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+                    className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}
                   >
+                    {/* User images rendered OUTSIDE and ABOVE the bubble, starting from right, expanding left */}
+                    {isUser && msg.images && msg.images.length > 0 && (
+                      <div className="flex flex-wrap-reverse gap-2 mb-1 self-stretch justify-end">
+                        {msg.images.map((img) => (
+                          <img
+                            key={img.id}
+                            src={img.url}
+                            alt={img.name}
+                            className="h-32 w-32 object-cover rounded-2xl border border-gray-200 shadow-sm flex-shrink-0"
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Text bubble — only show if there's text content */}
+                    {isUser && msg.content ? (
+                    <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
                     {!isUser && (
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                         <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
@@ -984,18 +1091,6 @@ export default function ChatInterface({
                         </div>
                       ) : isUser ? (
                         <div>
-                          {msg.images && msg.images.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {msg.images.map((img) => (
-                                <img
-                                  key={img.id}
-                                  src={img.url}
-                                  alt={img.name}
-                                  className="h-32 w-32 object-cover rounded-lg border border-white/20"
-                                />
-                              ))}
-                            </div>
-                          )}
                           {msg.content && <p>{msg.content}</p>}
                         </div>
                       ) : (
@@ -1066,6 +1161,120 @@ export default function ChatInterface({
                         </div>
                       )}
                     </div>
+                    </div>
+                    ) : !isUser ? (
+                    <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
+                    {!isUser && (
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                        <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
+                      </div>
+                    )}
+
+                    <div
+                      className={cn(
+                        msg.role === "user"
+                          ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
+                          : cn(
+                              "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2",
+                              msg.modelUsed === "plus" ? "overflow-visible h-auto" : ""
+                            )
+                      )}
+                    >
+                      {isEditing ? (
+                        <div className="flex items-start gap-2">
+                          <textarea
+                            ref={editInputRef}
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
+                            rows={4}
+                          />
+                          <button
+                            onClick={() => saveEdit(msg)}
+                            className="text-indigo-600 hover:text-indigo-800 transition p-1"
+                            title="Save edit"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-400 hover:text-gray-600 transition p-1"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <MarkdownRenderer content={msg.content} modelTier={msg.modelUsed} />
+                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
+                            <span className="inline-block text-xs text-amber-500 ml-2">
+                              ⚠️ Low confidence
+                            </span>
+                          )}
+                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
+                          {msg.wikiLink && (
+                            <a
+                              href={msg.wikiLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View from there
+                            </a>
+                          )}
+                        </>
+                      )}
+                      {!isEditing && (
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 mt-1 px-1",
+                            isUser ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {isUser ? (
+                            <>
+                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleRefresh(msg.id)}
+                                disabled={isLoading}
+                                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+                                title="Regenerate"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                              </button>
+                              {msg.sources && msg.sources.length > 0 && <SourcesPanel sources={msg.sources} />}
+                              {msg.modelUsed && MODEL_LABELS[msg.modelUsed] && (
+                                <span className="ml-1 text-[10px] text-gray-400 select-none" title="Model used for this response">
+                                  {MODEL_LABELS[msg.modelUsed]}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    </div>
+                    ) : null}
                   </motion.div>
                 );
               })}
@@ -1196,18 +1405,18 @@ export default function ChatInterface({
           <form onSubmit={handleSend} className="relative">
             {/* Attached Images Preview */}
             {attachedImages.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 px-1">
+              <div className="flex flex-wrap gap-2 mb-3 px-1">
                 {attachedImages.map((img) => (
                   <div key={img.id} className="relative group">
                     <img
                       src={img.url}
                       alt={img.name}
-                      className="h-16 w-16 object-cover rounded-lg border border-gray-200"
+                      className="h-20 w-20 object-cover rounded-xl border border-gray-200 shadow-sm"
                     />
                     <button
                       type="button"
                       onClick={() => removeAttachedImage(img.id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                     >
                       <XCircle className="w-3 h-3" />
                     </button>
@@ -1230,13 +1439,13 @@ export default function ChatInterface({
                   multiple
                   onChange={handleImageSelect}
                   className="hidden"
-                  disabled={!isImageAttachEnabled || attachedImages.length >= 2 || isLoading}
+                  disabled={!isImageAttachEnabled || attachedImages.length >= maxImagesPerMessage || isLoading}
                 />
                 <label
                   htmlFor={isImageAttachEnabled ? "image-attachment" : undefined}
                   aria-label="Attach images"
                   role="button"
-                  className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isImageAttachEnabled ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed'} ${!isImageAttachEnabled || attachedImages.length >= 2 || isLoading ? 'opacity-30' : ''}`}
+                  className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isImageAttachEnabled ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed'} ${!isImageAttachEnabled || attachedImages.length >= maxImagesPerMessage || isLoading ? 'opacity-30' : ''}`}
                   title={isImageAttachEnabled ? "Attach images (N Plus, Go Plus, Pro, + Pro)" : "Image analysis requires N Plus, Go Plus, Pro, or + Pro model"}
                 >
                   <Paperclip className={`w-4 h-4 ${isImageAttachEnabled ? 'text-gray-500' : 'text-gray-300'}`} />
@@ -1249,6 +1458,7 @@ export default function ChatInterface({
                 onChange={(e) => {
                   setInput(e.target.value);
                 }}
+                onPaste={handlePaste}
                 placeholder={attachedImages.length > 0 ? "Add a message about these images..." : "Message Netsyra..."}
                 rows={2}
                 className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1 pl-1 text-[15px] leading-relaxed max-h-[200px] overflow-y-auto"

@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No images provided' }, { status: 400 });
     }
 
-    if (images.length > 2) {
-      return NextResponse.json({ error: 'Maximum 2 images allowed' }, { status: 400 });
+    const maxImages = userPlan === 'free' ? 2 : 10;
+    if (images.length > maxImages) {
+      return NextResponse.json({ error: `Maximum ${maxImages} images allowed per message` }, { status: 400 });
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -70,20 +71,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Convert images to base64 ──
+    // ── Convert images to base64 (with compression via sharp if available) ──
     const imageContents = await Promise.all(
       images.map(async (image) => {
         const bytes = await image.arrayBuffer();
-        const base64 = Buffer.from(bytes).toString('base64');
+        const buffer = Buffer.from(bytes);
         const mimeType = image.type || 'image/png';
-        return { base64, mimeType };
+
+        // Compress image to max 768px to reduce token cost
+        try {
+          const sharp = (await import('sharp')).default;
+          const compressed = await sharp(buffer)
+            .resize(768, 768, { fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+          return {
+            base64: compressed.toString('base64'),
+            mimeType: 'image/jpeg',
+          };
+        } catch {
+          // sharp not available, use original
+          return { base64: buffer.toString('base64'), mimeType };
+        }
       })
     );
 
     // ── Build Gemini request body ──
     const parts: any[] = [
       {
-        text: 'Describe what you see in this image concisely. Include: main subjects, text content, colors, and context. Keep it under 10 lines.',
+        text: 'Describe this image: who/what is in it, visible text/names, setting, and key details for identification. Be concise.',
       },
       ...imageContents.map((img) => ({
         inline_data: {
@@ -108,7 +124,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             contents: [{ parts }],
             generationConfig: {
-              temperature: 0.7,
+              temperature: 0.4,
               maxOutputTokens: 1024,
             },
           }),

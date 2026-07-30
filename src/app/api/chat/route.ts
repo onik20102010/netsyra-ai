@@ -236,10 +236,10 @@ export async function POST(req: NextRequest) {
     // ── Auto-router: resolve "auto" to a concrete tier (manual tiers pass through) ──
     let modelTier: string = requestedTier;
     
-    // Override to use gemini-2.5-flash for image analysis
+    // Override to use plus tier for image analysis (gemini-2.5-flash, non-streaming)
     if (useGeminiVision) {
-      modelTier = 'plus'; // Use plus tier as base for image analysis
-      console.log(`🖼️ Image analysis detected, using gemini-2.5-flash`);
+      modelTier = 'plus';
+      console.log(`🖼️ Image analysis detected, using plus tier (non-streaming)`);
     }
     if (requestedTier === "auto") {
       const routed = routeModel(userMessage, { historyLength: messages.length });
@@ -1199,7 +1199,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     }
 
     // ── Force minimum token allocation for reply (all tiers except live) ──
-    if (modelTier !== "live") {
+    if (modelTier !== "live" && !useGeminiVision) {
       const HARD_RESPONSE_TOKENS = 300;
       const systemTokens = Math.ceil(apiMessages[0].content.length / 4);
       const availableTokens = tier.maxTokens - systemTokens;
@@ -1273,6 +1273,111 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
 
       try {
+        // ── Gemini branch for image analysis (non-streaming, more reliable) ────
+        if (modelConfig.provider === "gemini" && useGeminiVision) {
+          const geminiUrl = `${modelConfig.endpoint}?key=${apiKey}`;
+          const systemMessages = modelApiMessages.filter(m => m.role === "system");
+          const otherMessages = modelApiMessages.filter(m => m.role !== "system");
+
+          const geminiBody: any = {
+            contents: otherMessages.map(m => ({
+              role: m.role === "assistant" ? "model" : "user",
+              parts: [{ text: m.content }],
+            })),
+            generationConfig: {
+              temperature: tier.temperature,
+              maxOutputTokens: hardCap,
+            },
+          };
+          if (systemMessages.length > 0) {
+            geminiBody.system_instruction = {
+              parts: [{ text: systemMessages.map(m => m.content).join("\n") }],
+            };
+          }
+
+          console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Endpoint: ${modelConfig.endpoint} | Mode: non-streaming (image analysis)`);
+          const aiRes = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(geminiBody),
+          });
+
+          if (!aiRes.ok) {
+            const errorText = await aiRes.text();
+            console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: gemini | Error: ${errorText}`);
+            lastError = errorText;
+            continue;
+          }
+
+          const data = await aiRes.json();
+          let fullContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+          // Log promptFeedback if blocked
+          if (data?.promptFeedback?.blockReason) {
+            console.warn(`⚠️ Gemini promptFeedback: ${JSON.stringify(data.promptFeedback)}`);
+          }
+
+          console.log(`✅ LLM Response: ${modelConfig.modelName} (${modelConfig.modelKey}) | Content length: ${fullContent.length} chars`);
+
+          if (!fullContent.trim()) {
+            fullContent = "I couldn't generate a response about this image. Please try again.";
+          }
+
+          // Verify answer if search was used
+          let finalContent = fullContent;
+          if (searchAttempted && !shouldUseNLive && searchSources.length > 0) {
+            const sourceUrls = searchSources.map(s => s.url);
+            try {
+              finalContent = await verifyAnswer(fullContent, sourceUrls, userMessage);
+            } catch (err) {
+              console.warn("Verification failed, using original answer:", err);
+            }
+          }
+
+          saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
+          if (!isTokenBasedTier) {
+            getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
+              generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
+            }).catch(console.error);
+          }
+
+          if (canUseCache && finalContent.length > 20) {
+            setCachedReply(userMessage, finalContent);
+          }
+
+          // Convert to SSE stream for client
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            async start(controller) {
+              // Send content in word chunks for typing effect
+              const words = finalContent.split(/(\s+)/);
+              for (const word of words) {
+                const chunk = { choices: [{ delta: { content: word } }] };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              }
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            },
+          });
+
+          const headers: Record<string, string> = {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "x-conversation-id": convId,
+            "x-model-used": modelTier,
+          };
+          if (searchAttempted) {
+            headers["x-search-performed"] = "true";
+          }
+          const geminiSources = searchSources.length > 0 ? searchSources : wikiSources;
+          if (geminiSources.length > 0) {
+            headers["x-sources"] = encodeURIComponent(JSON.stringify(geminiSources));
+          }
+
+          return new Response(stream, { headers });
+        }
+
         // ── Gemini branch (true SSE streaming) ────
         if (modelConfig.provider === "gemini") {
           const streamEndpoint = modelConfig.endpoint.replace(":generateContent", ":streamGenerateContent");
@@ -1318,6 +1423,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
               try {
                 const reader = aiRes.body!.getReader();
                 let buffer = "";
+                let chunkCount = 0;
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;
@@ -1336,14 +1442,21 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                       const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
                       if (text) {
                         fullContent += text;
+                        chunkCount++;
                         const chunk = { choices: [{ delta: { content: text } }] };
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+                      }
+                      // Log prompt feedback / block reasons
+                      if (parsed?.promptFeedback?.blockReason && chunkCount === 0) {
+                        console.warn(`⚠️ Gemini promptFeedback: ${JSON.stringify(parsed.promptFeedback)}`);
                       }
                     } catch {
                       // skip invalid JSON
                     }
                   }
                 }
+
+                console.log(`📊 Stream finished: ${chunkCount} chunks, ${fullContent.length} chars for ${modelConfig.modelName}`);
 
                 // Hard fallback – never send empty response
                 if (!fullContent.trim()) {
@@ -1383,7 +1496,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             },
           });
 
-          console.log(`✅ LLM Response: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Tier: ${modelTier} | Content length: ${fullContent.length} chars`);
+          console.log(`✅ LLM Stream started: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Provider: ${modelConfig.provider} | Tier: ${modelTier}`);
           const headers: Record<string, string> = {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",

@@ -53,8 +53,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchProviders: ['tavily', 'wikipedia'],
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
-    imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 3,
+    imageAnalysisModel: 'gemini-2.5-flash-lite',
+    imageAnalysisDailyLimit: 10,
     imageAnalysisMonthlyTokenLimit: 0, // Free plan: no monthly token limit, just daily image count
     contextWindowSize: 8000,
   },
@@ -73,8 +73,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 12,
-    imageAnalysisMonthlyTokenLimit: 495000,
+    imageAnalysisDailyLimit: 100,
+    imageAnalysisMonthlyTokenLimit: 0, // Unlimited monthly tokens for image analysis
     contextWindowSize: 16000,
   },
 
@@ -92,8 +92,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 12,
-    imageAnalysisMonthlyTokenLimit: 495000,
+    imageAnalysisDailyLimit: 100,
+    imageAnalysisMonthlyTokenLimit: 0,
     contextWindowSize: 32000,
   },
 
@@ -116,8 +116,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: true,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 12,
-    imageAnalysisMonthlyTokenLimit: 495000,
+    imageAnalysisDailyLimit: 100,
+    imageAnalysisMonthlyTokenLimit: 0,
     contextWindowSize: 32000,
   },
 };

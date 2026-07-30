@@ -898,6 +898,13 @@ const plusModels: ModelConfig[] = [
     apiKeyEnv: "GEMINI_API_KEY",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
     modelName: "gemini-2.5-flash",
+    modelKey: "plus_0",
+  },
+  {
+    provider: "gemini",
+    apiKeyEnv: "GEMINI_API_KEY",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+    modelName: "gemini-2.5-flash-lite",
     modelKey: "plus_1",
   },
   {
@@ -1143,7 +1150,7 @@ export const tiers: Record<"fast" | "plus" | "pro" | "live" | "code" | "aai" | "
     models: plusModels,
     systemPrompt: buildPrompt('plus', 'casual'),
     temperature: 0.5,
-    maxTokens: 600,
+    maxTokens: 2048,
   },
   pro: {
     models: proModels,
