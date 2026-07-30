@@ -1,39 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
-import { checkImageAnalysisLimitsExhausted, deductImageAnalysisCredit } from '@/lib/chat/ni-router';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getRouterConfig } from '@/lib/routers/router-factory';
+import { checkImageAnalysisLimit, incrementImageAnalysisUsage } from '@/lib/chat/image-analysis-limiter';
 
 const TIMEOUT_MS = 45000;
 
-// Gemini vision models (Groq has no vision models available with current keys)
-const GEMINI_VISION_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-2.5-flash-lite',
-];
-
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Check if image analysis limits are exhausted
-    const isExhausted = await checkImageAnalysisLimitsExhausted(user.id, supabase);
-    if (isExhausted) {
+    // ── Get user's plan and router config ──
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('plan, status')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    const userPlan = sub?.plan || 'free';
+    const routerConfig = getRouterConfig(userPlan);
+
+    if (!routerConfig.imageAnalysisEnabled) {
       return NextResponse.json(
-        { error: 'Your image analysis limits have been exhausted. Daily limit: 30 images, Monthly limit: 600 images.' },
-        { status: 429 }
+        { error: 'Image analysis is not available on your plan.' },
+        { status: 403 }
       );
     }
 
-    // Deduct credit before processing
-    const creditResult = await deductImageAnalysisCredit(user.id, supabase);
-    if (!creditResult.success) {
+    // ── Check image analysis limits ──
+    const limitCheck = await checkImageAnalysisLimit(
+      user.id,
+      routerConfig.imageAnalysisDailyLimit,
+      routerConfig.imageAnalysisMonthlyTokenLimit
+    );
+
+    if (!limitCheck.allowed) {
       return NextResponse.json(
-        { error: creditResult.error || 'Failed to deduct image analysis credit' },
+        { error: limitCheck.reason || 'Image analysis limit reached.' },
         { status: 429 }
       );
     }
@@ -50,15 +58,19 @@ export async function POST(request: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
+    const meshApiKey = process.env.MESH_API_KEY_2; // For paid plans
 
-    if (!geminiApiKey) {
+    // Free plan uses Gemini API key, paid plans use Mesh API key
+    const apiKey = userPlan === 'free' ? geminiApiKey : meshApiKey;
+
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'No Gemini API key configured for vision processing' },
+        { error: `No ${userPlan === 'free' ? 'Gemini' : 'Mesh'} API key configured for vision processing` },
         { status: 500 }
       );
     }
 
-    // Convert images to base64
+    // ── Convert images to base64 ──
     const imageContents = await Promise.all(
       images.map(async (image) => {
         const bytes = await image.arrayBuffer();
@@ -68,7 +80,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Build Gemini request body
+    // ── Build Gemini request body ──
     const parts: any[] = [
       {
         text: 'Describe what you see in this image concisely. Include: main subjects, text content, colors, and context. Keep it under 10 lines.',
@@ -81,67 +93,75 @@ export async function POST(request: NextRequest) {
       })),
     ];
 
-    let lastError = '';
+    // ── Use plan-specific model ──
+    const modelName = routerConfig.imageAnalysisModel;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    for (const modelName of GEMINI_VISION_MODELS) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      console.log(`🤖 Using model: ${modelName} | API Key: ${userPlan === 'free' ? 'GEMINI_API_KEY' : 'MESH_API_KEY_2'} | Endpoint: generativelanguage.googleapis.com | Plan: ${userPlan}`);
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeout);
 
-      try {
-        console.log(`🤖 Using model: ${modelName} | API Key: GEMINI_API_KEY | Endpoint: generativelanguage.googleapis.com`);
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 1024,
-              },
-            }),
-            signal: controller.signal,
-          }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${response.status} - ${errorText}`);
+        return NextResponse.json(
+          { error: `Failed to process image: ${response.status} - ${errorText}` },
+          { status: 503 }
         );
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${response.status} - ${errorText}`);
-          lastError = `${response.status}: ${errorText}`;
-          continue;
-        }
-
-        const data = await response.json();
-        let description = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        description = description.trim();
-
-        if (description) {
-          console.log(`✅ LLM Response: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Content length: ${description.length} chars`);
-          return NextResponse.json(
-            { description },
-            { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
-          );
-        }
-      } catch (err: any) {
-        clearTimeout(timeout);
-        if (err.name === 'AbortError') {
-          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: timed out after ${TIMEOUT_MS}ms`);
-          lastError = 'timeout';
-        } else {
-          console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${err.message}`);
-          lastError = err.message;
-        }
-        continue;
       }
-    }
 
-    console.error('All vision model attempts failed. Last error:', lastError);
-    return NextResponse.json(
-      { error: 'Failed to process images. All vision models unavailable.' },
-      { status: 503 }
-    );
+      const data = await response.json();
+      let description = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      description = description.trim();
+
+      if (description) {
+        console.log(`✅ LLM Response: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Content length: ${description.length} chars`);
+
+        // ── Increment usage (estimate tokens: description length / 4) ──
+        const tokensUsed = Math.ceil(description.length / 4);
+        await incrementImageAnalysisUsage(user.id, tokensUsed);
+
+        return NextResponse.json(
+          { description },
+          { headers: { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } }
+        );
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to process image: No description returned.' },
+        { status: 503 }
+      );
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: timed out after ${TIMEOUT_MS}ms`);
+        return NextResponse.json(
+          { error: 'Image processing timed out.' },
+          { status: 504 }
+        );
+      }
+      console.warn(`❌ LLM Error: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Error: ${err.message}`);
+      return NextResponse.json(
+        { error: `Failed to process image: ${err.message}` },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Image processing error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

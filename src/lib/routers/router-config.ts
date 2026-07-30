@@ -29,6 +29,12 @@ export interface RouterConfig {
   // Whether image generation is enabled
   imageGenerationEnabled: boolean;
 
+  // Image analysis configuration
+  imageAnalysisEnabled: boolean;
+  imageAnalysisModel: string; // Gemini model name for vision
+  imageAnalysisDailyLimit: number; // Max images per day
+  imageAnalysisMonthlyTokenLimit: number; // Max tokens per month for image analysis
+
   // Context window size (in tokens)
   contextWindowSize: number;
 }
@@ -46,6 +52,10 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchLimitHours: 24,
     webSearchProviders: ['tavily', 'wikipedia'],
     imageGenerationEnabled: false,
+    imageAnalysisEnabled: true,
+    imageAnalysisModel: 'gemini-2.5-flash',
+    imageAnalysisDailyLimit: 3,
+    imageAnalysisMonthlyTokenLimit: 0, // Free plan: no monthly token limit, just daily image count
     contextWindowSize: 8000,
   },
 
@@ -61,6 +71,10 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: false,
+    imageAnalysisEnabled: true,
+    imageAnalysisModel: 'gemini-2.5-flash',
+    imageAnalysisDailyLimit: 12,
+    imageAnalysisMonthlyTokenLimit: 495000,
     contextWindowSize: 16000,
   },
 
@@ -76,6 +90,10 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: false,
+    imageAnalysisEnabled: true,
+    imageAnalysisModel: 'gemini-2.5-flash',
+    imageAnalysisDailyLimit: 12,
+    imageAnalysisMonthlyTokenLimit: 495000,
     contextWindowSize: 32000,
   },
 
@@ -96,6 +114,10 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
     imageGenerationEnabled: true,
+    imageAnalysisEnabled: true,
+    imageAnalysisModel: 'gemini-2.5-flash',
+    imageAnalysisDailyLimit: 12,
+    imageAnalysisMonthlyTokenLimit: 495000,
     contextWindowSize: 32000,
   },
 };

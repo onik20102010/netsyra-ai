@@ -229,8 +229,18 @@ export async function POST(req: NextRequest) {
     const userMessage = lastMessage.content;
     const convId = conversationId || crypto.randomUUID();
 
+    // ── Detect if message contains image analysis ──
+    const hasImageAnalysis = userMessage.includes('[Image Analysis:');
+    const useGeminiVision = hasImageAnalysis;
+
     // ── Auto-router: resolve "auto" to a concrete tier (manual tiers pass through) ──
     let modelTier: string = requestedTier;
+    
+    // Override to use gemini-2.5-flash for image analysis
+    if (useGeminiVision) {
+      modelTier = 'plus'; // Use plus tier as base for image analysis
+      console.log(`🖼️ Image analysis detected, using gemini-2.5-flash`);
+    }
     if (requestedTier === "auto") {
       const routed = routeModel(userMessage, { historyLength: messages.length });
       modelTier = routed.tier;
@@ -910,6 +920,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       { role: "system", content: dynamicSystemPrompt },
       ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
     ];
+
+    // ── Inject image analysis context ──
+    if (useGeminiVision) {
+      apiMessages[0].content += `\n\n--- IMAGE ANALYSIS CONTEXT ---\nThe user has attached an image and the image has been analyzed. The image description is included in the user's message prefixed with [Image Analysis:]. You MUST use this image analysis information to answer the user's question about the image. Do not say you cannot see images — the image has already been described for you. Use the description to provide a detailed and helpful response about what the user asked.`;
+    }
 
     // ── Inject rolling summary of earlier turns (context compression) ──
     if (rollingSummary) {

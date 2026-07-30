@@ -826,7 +826,7 @@ export default function ChatInterface({
   const handleLike = () => toast.success("Thanks for your feedback!");
   const handleDislike = () => toast.success("Thanks, we'll improve!");
 
-  const isImageAttachEnabled = selectedModel === "plus";
+  const isImageAttachEnabled = selectedModel === "plus" || selectedModel === "go_plus" || selectedModel === "ni" || selectedModel === "plus_pro";
 
   // Clear attached images when switching away from N Plus
   useEffect(() => {
@@ -841,7 +841,7 @@ export default function ChatInterface({
     if (!files) return;
 
     if (!isImageAttachEnabled) {
-      toast.error("Image analysis is only available with N Plus model");
+      toast.error("Image analysis is available with N Plus, Go Plus, Pro, and + Pro models");
       return;
     }
 
@@ -886,7 +886,9 @@ export default function ChatInterface({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to process images');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || `Failed to process images (${response.status})`;
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
@@ -1235,7 +1237,7 @@ export default function ChatInterface({
                   aria-label="Attach images"
                   role="button"
                   className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isImageAttachEnabled ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed'} ${!isImageAttachEnabled || attachedImages.length >= 2 || isLoading ? 'opacity-30' : ''}`}
-                  title={isImageAttachEnabled ? "Attach images (N Plus)" : "Image analysis requires N Plus model"}
+                  title={isImageAttachEnabled ? "Attach images (N Plus, Go Plus, Pro, + Pro)" : "Image analysis requires N Plus, Go Plus, Pro, or + Pro model"}
                 >
                   <Paperclip className={`w-4 h-4 ${isImageAttachEnabled ? 'text-gray-500' : 'text-gray-300'}`} />
                 </label>
