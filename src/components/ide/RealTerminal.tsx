@@ -87,7 +87,38 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
 
     // --- Try to connect to the local bridge ---
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let connectTimeout: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
+
+    const showInstructionsInTerm = () => {
+      const isHTTPS = typeof window !== "undefined" && window.location.protocol === "https:";
+      term.writeln("\x1b[33mNetsyra Local Bridge not detected.\x1b[0m");
+      term.writeln("");
+      term.writeln("To use a real terminal connected to YOUR machine:");
+      term.writeln("");
+      term.writeln("  1. Download netsyra-bridge.js (link below)");
+      term.writeln("     It saves to your Downloads folder");
+      term.writeln("");
+      term.writeln("  2. Open PowerShell or CMD and run:");
+      if (isHTTPS) {
+        term.writeln("     \x1b[36mcd %USERPROFILE%\\Downloads\x1b[0m");
+        term.writeln("     \x1b[32mnpm install ws selfsigned\x1b[0m");
+        term.writeln("     \x1b[32mnode netsyra-bridge.js --https\x1b[0m");
+        term.writeln("");
+        term.writeln("  3. Open \x1b[36mhttps://localhost:19823\x1b[0m in browser");
+        term.writeln("     and accept the certificate warning");
+      } else {
+        term.writeln("     \x1b[36mcd %USERPROFILE%\\Downloads\x1b[0m");
+        term.writeln("     \x1b[32mnpm install ws\x1b[0m");
+        term.writeln("     \x1b[32mnode netsyra-bridge.js\x1b[0m");
+      }
+      term.writeln("");
+      term.writeln("  4. Click Reconnect below");
+      term.writeln("");
+      term.writeln("Or use \x1b[36mSimulated\x1b[0m mode for in-browser commands.");
+    };
 
     const connect = () => {
       if (disposed) return;
@@ -98,37 +129,28 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
       } catch {
         setError("Cannot connect to local bridge");
         setShowInstructions(true);
-        term.writeln("\x1b[33mNetsyra Local Bridge not detected.\x1b[0m");
-        term.writeln("");
-        term.writeln("To use a real terminal connected to YOUR machine:");
-        term.writeln("");
-        term.writeln("  1. Download netsyra-bridge.js (link below)");
-        term.writeln("     It saves to your Downloads folder");
-        term.writeln("");
-        term.writeln("  2. Open PowerShell or CMD and run:");
-        if (typeof window !== "undefined" && window.location.protocol === "https:") {
-          term.writeln("     \x1b[36mcd %USERPROFILE%\\Downloads\x1b[0m");
-          term.writeln("     \x1b[32mnpm install ws selfsigned\x1b[0m");
-          term.writeln("     \x1b[32mnode netsyra-bridge.js --https\x1b[0m");
-          term.writeln("");
-          term.writeln("  3. Open \x1b[36mhttps://localhost:19823\x1b[0m in browser");
-          term.writeln("     and accept the certificate warning");
-        } else {
-          term.writeln("     \x1b[36mcd %USERPROFILE%\\Downloads\x1b[0m");
-          term.writeln("     \x1b[32mnpm install ws\x1b[0m");
-          term.writeln("     \x1b[32mnode netsyra-bridge.js\x1b[0m");
-        }
-        term.writeln("");
-        term.writeln("  4. Click Reconnect below");
-        term.writeln("");
-        term.writeln("Or use \x1b[36mSimulated\x1b[0m mode for in-browser commands.");
+        showInstructionsInTerm();
         return;
       }
 
       wsRef.current = ws;
 
+      // Timeout: if no connection in 5 seconds, give up and show instructions
+      connectTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          try { ws.close(); } catch {}
+          if (retryCount >= MAX_RETRIES) {
+            setError("Cannot connect to local bridge");
+            setShowInstructions(true);
+            showInstructionsInTerm();
+          }
+        }
+      }, 5000);
+
       ws.onopen = () => {
         if (disposed) return;
+        if (connectTimeout) clearTimeout(connectTimeout);
+        retryCount = 0;
         setError(null);
         setShowInstructions(false);
         setReady(true);
@@ -148,23 +170,30 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
             term.writeln(`\r\n\x1b[33m[Process exited with code ${msg.code}]\x1b[0m`);
           }
         } catch {
-          // If not JSON, write raw data
           term.write(event.data);
         }
       };
 
       ws.onerror = () => {
         if (disposed) return;
-        setError("Local bridge connection failed");
-        setShowInstructions(true);
+        if (connectTimeout) clearTimeout(connectTimeout);
         setReady(false);
       };
 
       ws.onclose = () => {
         if (disposed) return;
+        if (connectTimeout) clearTimeout(connectTimeout);
         setReady(false);
-        // Try to reconnect after 3 seconds
-        reconnectTimer = setTimeout(connect, 3000);
+        retryCount++;
+        if (retryCount <= MAX_RETRIES) {
+          // Try again after 2 seconds
+          reconnectTimer = setTimeout(connect, 2000);
+        } else {
+          // Exhausted retries — show instructions
+          setError("Cannot connect to local bridge");
+          setShowInstructions(true);
+          showInstructionsInTerm();
+        }
       };
     };
 
@@ -177,6 +206,15 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
 
     connect();
 
+    // --- Listen for manual reconnect requests ---
+    const onReconnect = () => {
+      retryCount = 0;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (connectTimeout) clearTimeout(connectTimeout);
+      connect();
+    };
+    window.addEventListener("netsyra-reconnect", onReconnect);
+
     // --- Resize handling ---
     const resizeObserver = new ResizeObserver(() => {
       try { fitRef.current?.fit(); } catch {}
@@ -187,7 +225,9 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
       disposed = true;
       inputDisposable.dispose();
       resizeObserver.disconnect();
+      window.removeEventListener("netsyra-reconnect", onReconnect);
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (connectTimeout) clearTimeout(connectTimeout);
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.close();
@@ -213,10 +253,14 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
       termRef.current.clear();
       termRef.current.writeln("\x1b[36mReconnecting to local bridge...\x1b[0m");
     }
-    // Trigger reconnect by reloading
+    // Close existing connection and trigger reconnect via onclose
     if (wsRef.current) {
+      wsRef.current.onclose = null;
       wsRef.current.close();
     }
+    // Manually trigger a new connection attempt
+    // by dispatching a custom event the useEffect listens to
+    window.dispatchEvent(new CustomEvent("netsyra-reconnect"));
   };
 
   if (showInstructions) {
