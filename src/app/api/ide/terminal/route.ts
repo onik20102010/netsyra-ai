@@ -37,19 +37,34 @@ setInterval(cleanupIdleSessions, 5 * 60 * 1000);
 function createSession(cwd: string): string {
   const id = `term-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const isWindows = process.platform === "win32";
-  const shellCmd = isWindows ? "cmd.exe" : "bash";
+  const shellCmd = isWindows ? "cmd.exe" : "/bin/bash";
   const args = isWindows ? ["/k"] : ["-i"];
 
-  const shell = spawn(shellCmd, args, {
-    cwd,
-    env: {
-      ...process.env,
-      TERM: "xterm-256color",
-      FORCE_COLOR: "1",
-      COLORTERM: "truecolor",
-    },
-    shell: false,
-  });
+  let shell: ChildProcessWithoutNullStreams;
+  try {
+    shell = spawn(shellCmd, args, {
+      cwd,
+      env: {
+        ...process.env,
+        TERM: "xterm-256color",
+        FORCE_COLOR: "1",
+        COLORTERM: "truecolor",
+      },
+      shell: false,
+    });
+  } catch {
+    // Fallback to sh if bash is not available
+    shell = spawn("sh", ["-i"], {
+      cwd,
+      env: {
+        ...process.env,
+        TERM: "xterm-256color",
+        FORCE_COLOR: "1",
+        COLORTERM: "truecolor",
+      },
+      shell: false,
+    });
+  }
 
   const session: TerminalSession = {
     id,

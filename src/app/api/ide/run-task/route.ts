@@ -79,11 +79,18 @@ export async function POST(request: NextRequest) {
             env: { ...process.env, FORCE_COLOR: "0" },
             shell: false,
           });
+        } else if (cmd === "npm" || cmd === "npx") {
+          // On Linux (Vercel), resolve npm/npx to their actual paths
+          child = spawn(cmd, cmdArgs, {
+            cwd: workDir,
+            env: { ...process.env, FORCE_COLOR: "0" },
+            shell: false,
+          });
         } else {
           child = spawn(cmd, cmdArgs, {
             cwd: workDir,
             env: { ...process.env, FORCE_COLOR: "0" },
-            shell: true,
+            shell: false,
           });
         }
       } catch (err: unknown) {

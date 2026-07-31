@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
             child = spawn(cmd, cmdArgs, {
               cwd: workDir,
               env: { ...process.env, ...env, FORCE_COLOR: "0" },
-              shell: true,
+              shell: false,
             });
           }
         } catch (err: unknown) {
