@@ -210,10 +210,18 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
           <br />
           No commands run on the Netsyra server — everything runs locally on your computer.
         </div>
-        <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[12px] text-[#8b949e] font-mono max-w-md">
-          <div className="text-[#6e7681] mb-1"># Download and run the bridge:</div>
-          <div className="text-[#34e8bb]">npx netsyra-bridge</div>
-          <div className="text-[#6e7681] mt-1"># or</div>
+        <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[12px] text-[#8b949e] font-mono max-w-md space-y-1">
+          <div className="text-[#6e7681]"># 1. Download the bridge script:</div>
+          <a
+            href="/netsyra-bridge.js"
+            download
+            className="text-[#34e8bb] underline hover:text-[#2dd4a8] block"
+          >
+            Click here to download netsyra-bridge.js
+          </a>
+          <div className="text-[#6e7681] mt-2"># 2. Install the dependency:</div>
+          <div className="text-[#34e8bb]">npm install ws</div>
+          <div className="text-[#6e7681] mt-2"># 3. Run the bridge:</div>
           <div className="text-[#34e8bb]">node netsyra-bridge.js</div>
         </div>
         <button
