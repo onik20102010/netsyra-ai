@@ -37,6 +37,7 @@ export interface AgentResult {
   pendingEdits: PendingEdit[];
   canUndo: boolean;
   success: boolean;
+  hitLimit?: boolean;
 }
 
 export type AgentStatusCallback = (status: string) => void;
@@ -356,11 +357,12 @@ export class AgentOrchestrator {
     const finalAnswer = finalActions.find(a => a.tool === 'answer');
 
     if (finalAnswer) {
-      return this.makeResult(finalAnswer.args.content || finalResponse!, true);
+      return this.makeResult(finalAnswer.args.content || finalResponse!, true, true);
     }
 
     return this.makeResult(
       finalResponse || 'I reached the maximum number of actions. Here is what I accomplished so far.',
+      true,
       true
     );
   }
@@ -875,7 +877,7 @@ export class AgentOrchestrator {
   }
 
   // --- Build Result ---
-  private makeResult(message: string, success: boolean): AgentResult {
+  private makeResult(message: string, success: boolean, hitLimit = false): AgentResult {
     return {
       message,
       filesChanged: [...this.filesChanged],
@@ -884,6 +886,7 @@ export class AgentOrchestrator {
       pendingEdits: this.pendingEdits,
       canUndo: this.snapshots.size > 0,
       success,
+      hitLimit,
     };
   }
 }

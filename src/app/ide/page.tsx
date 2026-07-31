@@ -13,7 +13,7 @@ export const metadata = createMetadata({
 export default function IDEPage() {
   return (
     // Outer container locks to the viewport, preventing the "cut-off text" issues.
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#1e1e1e] text-[#cccccc] font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0d1117] text-[#e6edf3] font-sans">
       {/* Top Menu Bar (File, Edit, Selection, etc.) */}
       <TitleBar />
       

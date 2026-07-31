@@ -15,7 +15,7 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
     automaticLayout: false, // Use ResizeObserver in EditorArea instead — prevents null 'left' crash
 
     // Gutter
-    lineNumbers: "on",
+    lineNumbers: config.lineNumbers ? "on" : "off",
     lineNumbersMinChars: 5,
     glyphMargin: config.glyphMargin,
     lineDecorationsWidth: 10,
@@ -78,7 +78,7 @@ export function buildEditorOptions(config: EditorConfig): editor.IStandaloneEdit
     },
 
     // Features
-    bracketPairColorization: { enabled: true },
+    bracketPairColorization: { enabled: config.bracketPairColorization },
     stickyScroll: { enabled: true },
     contextmenu: true,
     fixedOverflowWidgets: true,

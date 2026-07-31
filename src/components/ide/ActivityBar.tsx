@@ -33,96 +33,128 @@ export function ActivityBar() {
   };
 
   return (
-    <div className="hidden md:flex flex-col w-[50px] bg-[#333333] h-full items-center shrink-0 border-r border-[#2d2d2d]">
+    <div
+      className="hidden md:flex flex-col w-[50px] bg-[#0d1117] h-full items-center shrink-0 border-r border-[#1f2428]"
+      role="toolbar"
+      aria-label="Activity Bar"
+      aria-orientation="vertical"
+    >
       {/* Top Activity Icons */}
-      <div className="flex flex-col gap-2 pt-2 w-full items-center">
+      <div className="flex flex-col gap-1 pt-2 w-full items-center">
         {/* Explorer */}
         <button
           onClick={() => handleViewClick("explorer")}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] group ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "explorer" && isSidebarOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="Explorer (Ctrl+Shift+E)"
+          aria-label="Explorer"
+          aria-pressed={sidebarView === "explorer" && isSidebarOpen}
         >
-          <Files size={24} />
+          <Files size={22} />
           {sidebarView === "explorer" && isSidebarOpen && (
-            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
         </button>
 
         {/* Search */}
         <button
           onClick={() => handleViewClick("search")}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] group ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "search" && isSidebarOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="Search (Ctrl+Shift+F)"
+          aria-label="Search"
+          aria-pressed={sidebarView === "search" && isSidebarOpen}
         >
-          <Search size={24} />
+          <Search size={22} />
+          {sidebarView === "search" && isSidebarOpen && (
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
+          )}
         </button>
 
         {/* Extensions */}
         <button
           onClick={() => handleViewClick("extensions")}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] group ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "extensions" && isSidebarOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="Extensions (Ctrl+Shift+X)"
+          aria-label="Extensions"
+          aria-pressed={sidebarView === "extensions" && isSidebarOpen}
         >
-          <Puzzle size={24} />
+          <Puzzle size={22} />
+          {sidebarView === "extensions" && isSidebarOpen && (
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
+          )}
         </button>
 
         {/* AI Assistant */}
         <button
           onClick={() => handleViewClick("ai-chat")}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] group ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             isRightPanelOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="AI Assistant (Ctrl+Shift+A)"
+          aria-label="AI Assistant"
+          aria-pressed={isRightPanelOpen}
         >
-          <Bot size={24} />
+          <Bot size={22} />
+          {isRightPanelOpen && (
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
+          )}
         </button>
       </div>
 
       {/* Bottom Activity Icons (Spaced to bottom) */}
-      <div className="flex-1" /> {/* Spacer */}
-      
-      <div className="flex flex-col gap-2 pb-2 w-full items-center">
+      <div className="flex-1" />
+
+      <div className="flex flex-col gap-1 pb-2 w-full items-center">
         {/* Terminal Toggle */}
         <button
           onClick={() => {
             setBottomPanelView("terminal");
             if (!isBottomPanelOpen) toggleBottomPanel();
           }}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] ${
             isBottomPanelOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="Toggle Terminal (Ctrl+`)"
+          aria-label="Toggle Terminal"
+          aria-pressed={isBottomPanelOpen}
         >
-          <TerminalSquare size={24} />
+          <TerminalSquare size={22} />
+          {isBottomPanelOpen && (
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
+          )}
         </button>
 
         {/* Settings */}
         <button
           onClick={() => handleViewClick("settings")}
-          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] group ${
+          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "settings" && isSidebarOpen
-              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
-              : "text-[#858585] border-l-2 border-transparent"
+              ? "text-[#34e8bb] bg-[#161b22]"
+              : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
           title="Settings (Ctrl+,)"
+          aria-label="Settings"
+          aria-pressed={sidebarView === "settings" && isSidebarOpen}
         >
-          <Settings size={24} />
+          <Settings size={22} />
+          {sidebarView === "settings" && isSidebarOpen && (
+            <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
+          )}
         </button>
       </div>
     </div>

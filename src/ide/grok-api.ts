@@ -1,4 +1,4 @@
-// d:\netsyra\src\ide\grok-api.ts
+// d:\netsyra\src\ide\groq-api.ts
 
 export interface GroqMessage {
   role: 'system' | 'user' | 'assistant';

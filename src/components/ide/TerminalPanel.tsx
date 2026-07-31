@@ -3,14 +3,20 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useIdeStore } from "@/ide";
 import type { FileItem } from "@/ide/types";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Terminal as TerminalIcon, Globe } from "lucide-react";
+import { RealTerminal } from "./RealTerminal";
 
 interface TerminalLine {
   type: "input" | "output" | "error" | "system" | "success" | "path" | "dim";
   content: string;
 }
 
+type TerminalMode = "real" | "mock";
+
 export function TerminalPanel() {
+  // "real" = xterm.js + server shell bridge; "mock" = in-browser simulated terminal
+  const [mode, setMode] = useState<TerminalMode>("real");
+
   const workspace = useIdeStore((s) => s.workspace);
   const openFiles = useIdeStore((s) => s.openFiles);
   const openFile = useIdeStore((s) => s.openFile);
@@ -595,29 +601,93 @@ export function TerminalPanel() {
   const lineColor = (type: TerminalLine["type"]) => {
     switch (type) {
       case "input":
-        return "text-[#cccccc]";
+        return "text-[#e6edf3]";
       case "output":
-        return "text-[#cccccc]";
+        return "text-[#8b949e]";
       case "error":
-        return "text-[#f48771]";
+        return "text-[#f85149]";
       case "system":
-        return "text-[#569cd6]";
+        return "text-[#58a6ff]";
       case "success":
-        return "text-[#89e051]";
+        return "text-[#3fb950]";
       case "path":
-        return "text-[#4ec9b0]";
+        return "text-[#34e8bb]";
       case "dim":
-        return "text-[#6a6a6a]";
+        return "text-[#484f58]";
       default:
-        return "text-[#cccccc]";
+        return "text-[#8b949e]";
     }
   };
 
+  // --- Real terminal mode: render xterm.js backed terminal ---
+  if (mode === "real") {
+    const isReal = mode === "real";
+    return (
+      <div className="flex flex-col h-full bg-[#0d1117] relative">
+        {/* Mode toggle */}
+        <div className="flex items-center gap-1 px-2 py-0.5 border-b border-[#1f2428] bg-[#161b22] shrink-0">
+          <button
+            onClick={() => setMode("real")}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
+              isReal ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
+            }`}
+            title="Real terminal (server shell bridge)"
+          >
+            <TerminalIcon size={11} />
+            Real
+          </button>
+          <button
+            onClick={() => setMode("mock")}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
+              !isReal ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
+            }`}
+            title="Simulated terminal (in-browser)"
+          >
+            <Globe size={11} />
+            Simulated
+          </button>
+          <span className="text-[10px] text-[#484f58] ml-2">
+            Connected to server shell (D:\netsyra)
+          </span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <RealTerminal sessionId={null} />
+        </div>
+      </div>
+    );
+  }
+
+  // --- Mock terminal mode (original simulated terminal) ---
+  const isMock = mode === "mock";
   return (
     <div
-      className="flex flex-col h-full bg-[#1e1e1e] font-mono text-[13px] cursor-text relative"
+      className="flex flex-col h-full bg-[#0d1117] font-mono text-[13px] cursor-text relative"
       onClick={focusInput}
     >
+      {/* Mode toggle */}
+      <div className="flex items-center gap-1 px-2 py-0.5 border-b border-[#1f2428] bg-[#161b22] shrink-0">
+        <button
+          onClick={() => setMode("real")}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
+            !isMock ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
+          }`}
+          title="Real terminal (server shell bridge)"
+        >
+          <TerminalIcon size={11} />
+          Real
+        </button>
+        <button
+          onClick={() => setMode("mock")}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
+            isMock ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
+          }`}
+          title="Simulated terminal (in-browser)"
+        >
+          <Globe size={11} />
+          Simulated
+        </button>
+      </div>
+
       {/* Terminal Output */}
       <div
         ref={scrollRef}
@@ -633,22 +703,22 @@ export function TerminalPanel() {
         {/* Active Input Line */}
         {isExecuting ? (
           <div className="flex items-center mt-0.5">
-            <span className="text-[#89e051] shrink-0">{cwd}</span>
-            <span className="text-white shrink-0 ml-1">$</span>
-            <span className="ml-2 text-[#6a6a6a] text-[12px]">running...</span>
-            <span className="inline-block w-2 h-4 bg-[#cccccc] animate-pulse ml-1.5 align-middle" />
+            <span className="text-[#34e8bb] shrink-0">{cwd}</span>
+            <span className="text-[#e6edf3] shrink-0 ml-1">$</span>
+            <span className="ml-2 text-[#484f58] text-[12px]">running...</span>
+            <span className="inline-block w-2 h-4 bg-[#34e8bb] animate-pulse ml-1.5 align-middle" />
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="flex items-center mt-0.5">
-          <span className="text-[#89e051] shrink-0">{cwd}</span>
-          <span className="text-white shrink-0 ml-1">$</span>
+          <span className="text-[#34e8bb] shrink-0">{cwd}</span>
+          <span className="text-[#e6edf3] shrink-0 ml-1">$</span>
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent outline-none text-[#cccccc] ml-2 font-mono text-[13px] border-none"
+            className="flex-1 bg-transparent outline-none text-[#e6edf3] ml-2 font-mono text-[13px] border-none"
             spellCheck={false}
             autoComplete="off"
             autoCapitalize="off"
@@ -662,7 +732,7 @@ export function TerminalPanel() {
       {!isAtBottom && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-2 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-[#0c4d7c] hover:bg-[#0e639c] text-white shadow-lg transition-colors"
+          className="absolute bottom-2 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-[#161b22] hover:bg-[#1f2428] text-[#34e8bb] border border-[#30363d] shadow-lg transition-colors"
           title="Scroll to bottom"
         >
           <ChevronDown size={16} />

@@ -222,6 +222,108 @@ async function getDirectoryHandleFromPath(path: string): Promise<FileSystemDirec
 }
 
 /**
+ * Renames a file or directory on disk using the File System Access API.
+ * For files: reads content, creates new file with new name, writes content, deletes old.
+ * For directories: creates new directory, moves all children, deletes old (best-effort).
+ */
+export async function renameItemOnDisk(oldPath: string, newName: string): Promise<void> {
+  if (!rootDirectoryHandle) {
+    console.warn('No workspace opened. Cannot rename on disk.');
+    return;
+  }
+
+  const parentPath = oldPath.includes('/') ? oldPath.substring(0, oldPath.lastIndexOf('/')) : '';
+  const oldName = oldPath.split('/').pop() || '';
+  const newPath = `${parentPath}/${newName}`.replace('//', '/');
+
+  try {
+    const parentHandle = await getDirectoryHandleFromPath(parentPath);
+
+    // Check if it's a file (in cache) or directory
+    const fileHandle = fileHandleCache.get(oldPath);
+    if (fileHandle) {
+      // It's a file — read content, create new, write, delete old
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      const newFileHandle = await parentHandle.getFileHandle(newName, { create: true });
+      const writable = await newFileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      // Delete old file
+      await parentHandle.removeEntry(oldName);
+      // Update cache
+      fileHandleCache.delete(oldPath);
+      fileHandleCache.set(newPath, newFileHandle);
+      console.log(`Renamed file: ${oldPath} -> ${newPath}`);
+    } else {
+      // It's a directory — recursively copy then delete
+      const oldDirHandle = await parentHandle.getDirectoryHandle(oldName);
+      const newDirHandle = await parentHandle.getDirectoryHandle(newName, { create: true });
+      await copyDirectoryContents(oldDirHandle, newDirHandle, newPath);
+      await parentHandle.removeEntry(oldName, { recursive: true });
+      console.log(`Renamed directory: ${oldPath} -> ${newPath}`);
+    }
+  } catch (error) {
+    console.error(`Failed to rename ${oldPath} to ${newName}:`, error);
+    throw error;
+  }
+}
+
+/** Recursively copies all entries from one directory handle to another. */
+async function copyDirectoryContents(
+  src: FileSystemDirectoryHandle,
+  dst: FileSystemDirectoryHandle,
+  dstPath: string,
+): Promise<void> {
+  for await (const entry of src.values()) {
+    if (entry.kind === 'file') {
+      const srcFile = entry as FileSystemFileHandle;
+      const file = await srcFile.getFile();
+      const content = await file.text();
+      const newFileHandle = await dst.getFileHandle(entry.name, { create: true });
+      const writable = await newFileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      fileHandleCache.set(`${dstPath}/${entry.name}`, newFileHandle);
+    } else {
+      const srcDir = entry as FileSystemDirectoryHandle;
+      const newDir = await dst.getDirectoryHandle(entry.name, { create: true });
+      await copyDirectoryContents(srcDir, newDir, `${dstPath}/${entry.name}`);
+    }
+  }
+}
+
+/**
+ * Deletes a file or directory from disk using the File System Access API.
+ */
+export async function deleteItemOnDisk(itemPath: string): Promise<void> {
+  if (!rootDirectoryHandle) {
+    console.warn('No workspace opened. Cannot delete on disk.');
+    return;
+  }
+
+  const parentPath = itemPath.includes('/') ? itemPath.substring(0, itemPath.lastIndexOf('/')) : '';
+  const name = itemPath.split('/').pop() || '';
+
+  try {
+    const parentHandle = await getDirectoryHandleFromPath(parentPath);
+    await parentHandle.removeEntry(name, { recursive: true });
+
+    // Clean up file handle cache for this path and any children
+    for (const cachedPath of fileHandleCache.keys()) {
+      if (cachedPath === itemPath || cachedPath.startsWith(itemPath + '/')) {
+        fileHandleCache.delete(cachedPath);
+      }
+    }
+
+    console.log(`Deleted: ${itemPath}`);
+  } catch (error) {
+    console.error(`Failed to delete ${itemPath}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Closes the current workspace and revokes all file system permissions (clears cache).
  */
 export function closeWorkspaceFromDisk(): void {

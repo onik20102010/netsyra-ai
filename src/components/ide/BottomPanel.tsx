@@ -6,6 +6,8 @@ import { useIdeStore, BottomPanelView } from "@/ide";
 import { Terminal, FileOutput, AlertCircle, Bug, X } from "lucide-react";
 import { ProblemsPanel } from "./ProblemsPanel";
 import { TerminalPanel } from "./TerminalPanel";
+import { OutputPanel } from "./OutputPanel";
+import { DebugPanel } from "./DebugPanel";
 
 export function BottomPanel() {
   const bottomPanelView = useIdeStore((s) => s.bottomPanelView);
@@ -28,33 +30,20 @@ export function BottomPanel() {
       case "terminal":
         return <TerminalPanel />;
       case "output":
-        return (
-          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
-            <div className="text-[#858585]">[12:00:00] ⏺️ Output panel ready.</div>
-            <div className="text-[#858585]">[12:00:01] 📁 Workspace loaded successfully.</div>
-            <div className="text-[#569cd6]">[12:00:02] ℹ️  Build process started...</div>
-            <div className="text-[#89e051]">[12:00:03] ✅ Build completed in 1.2s.</div>
-          </div>
-        );
+        return <OutputPanel />;
       case "problems":
         return <ProblemsPanel />;
       case "debug":
-        return (
-          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
-            <div className="text-[#569cd6]">🔍 Debug console ready.</div>
-            <div className="text-[#858585]">Breakpoint at main.ts:15.</div>
-            <div className="text-[#858585]">Variables: {`{ count: 0, status: "idle" }`}</div>
-          </div>
-        );
+        return <DebugPanel />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] text-[#cccccc] select-none">
+    <div className="flex flex-col h-full bg-[#0d1117] text-[#e6edf3] select-none">
       {/* Panel Header / Tabs */}
-      <div className="flex items-center h-[30px] bg-[#252526] border-b border-[#2d2d2d] shrink-0 px-2">
+      <div className="flex items-center h-[30px] bg-[#161b22] border-b border-[#1f2428] shrink-0 px-2">
         {/* Tab Buttons */}
         <div className="flex-1 flex items-center gap-1">
           {tabs.map((tab) => {
@@ -65,14 +54,14 @@ export function BottomPanel() {
                 onClick={() => useIdeStore.getState().setBottomPanelView(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 text-[12px] rounded transition-colors ${
                   isActive
-                    ? "bg-[#37373d] text-white"
-                    : "text-[#858585] hover:bg-[#2a2d2e] hover:text-[#cccccc]"
+                    ? "bg-[#1f2428] text-[#34e8bb]"
+                    : "text-[#6e7681] hover:bg-[#1f2428] hover:text-[#e6edf3]"
                 }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
                 {tab.id === "problems" && problemCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#5a1d1d] text-red-400 text-[10px] font-medium leading-none">
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#f85149]/20 text-[#f85149] text-[10px] font-medium leading-none">
                     {problemCount}
                   </span>
                 )}
@@ -84,7 +73,7 @@ export function BottomPanel() {
         {/* Panel Close Button */}
         <button
           onClick={toggleBottomPanel}
-          className="p-1 rounded hover:bg-[#2a2d2e] text-[#858585] hover:text-white transition-colors ml-2"
+          className="p-1 rounded hover:bg-[#1f2428] text-[#6e7681] hover:text-[#e6edf3] transition-colors ml-2"
           title="Close Panel"
         >
           <X size={16} />

@@ -12,7 +12,7 @@ import {
   RightPanelView,
   Problem
 } from './types';
-import { createFileOnDisk, createDirectoryOnDisk, saveFileToDisk } from './workspace';
+import { createFileOnDisk, createDirectoryOnDisk, saveFileToDisk, renameItemOnDisk, deleteItemOnDisk } from './workspace';
 
 // --- Default Editor Configuration ---
 export const defaultEditorConfig: EditorConfig = {
@@ -25,6 +25,9 @@ export const defaultEditorConfig: EditorConfig = {
   lineNumbers: true,
   folding: true,
   glyphMargin: false,
+  autoSave: false,
+  formatOnSave: false,
+  bracketPairColorization: true,
 };
 
 // --- Helper to generate unique IDs for file items ---
@@ -50,7 +53,11 @@ interface IdeStore {
   // Open Tabs & Active State
   openFiles: OpenFile[];
   activeFileId: string | null;
-  
+
+  // Split Editor
+  splitEditorFileId: string | null; // null = no split; otherwise the file shown in the right pane
+  splitEditorOrientation: 'horizontal' | 'vertical';
+
   // Layout & UI
   sidebarView: SidebarView;
   isSidebarOpen: boolean;
@@ -94,6 +101,11 @@ interface IdeStore {
   toggleRightPanel: () => void;
   updateEditorConfig: (config: Partial<EditorConfig>) => void;
   setCursor: (fileId: string, lineNumber: number, column: number) => void;
+
+  // Split Editor Actions
+  splitEditor: (fileId: string) => void; // open file in split (right) pane
+  closeSplitEditor: () => void;
+  setSplitOrientation: (orientation: 'horizontal' | 'vertical') => void;
 }
 
 // --- Zustand Store Implementation ---
@@ -105,6 +117,8 @@ export const useIdeStore = create<IdeStore>()(
       isLoading: false,
       openFiles: [],
       activeFileId: null,
+      splitEditorFileId: null,
+      splitEditorOrientation: 'horizontal',
       sidebarView: 'explorer',
       isSidebarOpen: true,
       bottomPanelView: 'terminal',
@@ -174,17 +188,136 @@ export const useIdeStore = create<IdeStore>()(
       },
       
       renameItem: (id, newName) => {
-        // Implementation to rename in the tree
-        // (Omitted brevity, but will traverse similar to createFile)
-        console.log(`Rename ${id} to ${newName}`);
+        const state = get();
+        if (!state.workspace) return;
+
+        // Find the item being renamed and its parent path
+        let foundItem: FileItem | null = null;
+        const findItem = (items: FileItem[]): FileItem | null => {
+          for (const item of items) {
+            if (item.id === id) return item;
+            if (item.isDirectory && item.children) {
+              const found = findItem(item.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        foundItem = findItem(state.workspace.files);
+        if (!foundItem) return;
+
+        const oldPath = foundItem.path;
+        const parentPath = oldPath.includes('/') ? oldPath.substring(0, oldPath.lastIndexOf('/')) : '';
+        const newPath = `${parentPath}/${newName}`.replace('//', '/');
+
+        // Rename on disk
+        renameItemOnDisk(oldPath, newName).catch(console.error);
+
+        // Update tree: rename the item and all children paths
+        const updateTree = (items: FileItem[]): FileItem[] => {
+          return items.map(item => {
+            if (item.id === id) {
+              return {
+                ...item,
+                name: newName,
+                path: newPath,
+                language: item.isDirectory ? item.language : getLanguageFromPath(newName),
+              };
+            }
+            // Update children paths if this is a directory being renamed
+            if (item.isDirectory && item.children) {
+              // Check if this item is inside the renamed directory
+              if (item.path.startsWith(oldPath + '/')) {
+                const newChildPath = newPath + item.path.substring(oldPath.length);
+                return {
+                  ...item,
+                  path: newChildPath,
+                  children: updateTree(item.children),
+                };
+              }
+              return { ...item, children: updateTree(item.children) };
+            }
+            // Update file paths inside renamed directory
+            if (item.path.startsWith(oldPath + '/')) {
+              return {
+                ...item,
+                path: newPath + item.path.substring(oldPath.length),
+              };
+            }
+            return item;
+          });
+        };
+
+        set((s) => ({
+          workspace: s.workspace ? {
+            ...s.workspace,
+            files: updateTree(s.workspace.files)
+          } : null,
+          // Update open files paths and language
+          openFiles: s.openFiles.map(f => {
+            if (f.id === id) {
+              return { ...f, path: newPath, language: getLanguageFromPath(newName) };
+            }
+            if (f.path.startsWith(oldPath + '/')) {
+              return { ...f, path: newPath + f.path.substring(oldPath.length) };
+            }
+            return f;
+          }),
+        }));
       },
       
       deleteItem: (id) => {
-        // Implementation to delete from tree and close tab if open
-        // (Omitted brevity)
+        const state = get();
+        if (!state.workspace) return;
+
+        // Find the item to delete
+        let foundItem: FileItem | null = null;
+        const findItem = (items: FileItem[]): FileItem | null => {
+          for (const item of items) {
+            if (item.id === id) return item;
+            if (item.isDirectory && item.children) {
+              const found = findItem(item.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        foundItem = findItem(state.workspace.files);
+        if (!foundItem) return;
+
+        // Delete from disk
+        deleteItemOnDisk(foundItem.path).catch(console.error);
+
+        // Collect all descendant IDs (for closing tabs)
+        const idsToClose = new Set<string>();
+        const collectIds = (item: FileItem) => {
+          idsToClose.add(item.id);
+          if (item.children) item.children.forEach(collectIds);
+        };
+        collectIds(foundItem);
+
+        // Remove from tree
+        const removeFromTree = (items: FileItem[]): FileItem[] => {
+          return items.filter(item => item.id !== id).map(item => {
+            if (item.isDirectory && item.children) {
+              return { ...item, children: removeFromTree(item.children) };
+            }
+            return item;
+          });
+        };
+
         set((s) => ({
-          openFiles: s.openFiles.filter(f => f.id !== id),
-          activeFileId: s.activeFileId === id ? null : s.activeFileId
+          workspace: s.workspace ? {
+            ...s.workspace,
+            files: removeFromTree(s.workspace.files)
+          } : null,
+          openFiles: s.openFiles.filter(f => !idsToClose.has(f.id)),
+          activeFileId: idsToClose.has(s.activeFileId || '') ? null : s.activeFileId,
+          splitEditorFileId: idsToClose.has(s.splitEditorFileId || '') ? null : s.splitEditorFileId,
+          // Clean up problems for deleted files
+          problems: Object.fromEntries(
+            Object.entries(s.problems).filter(([fileId]) => !idsToClose.has(fileId))
+          ),
         }));
       },
 
@@ -285,13 +418,13 @@ export const useIdeStore = create<IdeStore>()(
         if (file) {
           // Save to disk using File System Access API
           saveFileToDisk(file.path, file.content).catch(console.error);
+          // Mark file as no longer dirty
+          set((s) => ({
+            openFiles: s.openFiles.map(f =>
+              f.id === fileId ? { ...f, isDirty: false } : f
+            )
+          }));
         }
-        // Keep isDirty true to maintain VS Code-like behavior (file still shows as modified)
-        // set((s) => ({
-        //   openFiles: s.openFiles.map(f => 
-        //     f.id === fileId ? { ...f, isDirty: false } : f
-        //   )
-        // }));
       },
       
       saveAllFiles: () => {
@@ -322,9 +455,19 @@ export const useIdeStore = create<IdeStore>()(
       toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
       toggleBottomPanel: () => set((s) => ({ isBottomPanelOpen: !s.isBottomPanelOpen })),
       toggleRightPanel: () => set((s) => ({ isRightPanelOpen: !s.isRightPanelOpen })),
-      updateEditorConfig: (config) => set((s) => ({ 
-        editorConfig: { ...s.editorConfig, ...config } 
+      updateEditorConfig: (config) => set((s) => ({
+        editorConfig: { ...s.editorConfig, ...config }
       })),
+
+      // Split Editor Actions
+      splitEditor: (fileId) => {
+        // Don't split if same as active file (no point)
+        const state = get();
+        if (state.activeFileId === fileId) return;
+        set({ splitEditorFileId: fileId });
+      },
+      closeSplitEditor: () => set({ splitEditorFileId: null }),
+      setSplitOrientation: (orientation) => set({ splitEditorOrientation: orientation }),
 
       // 5. Problems Actions
       setProblems: (fileId, problems) => set((s) => ({

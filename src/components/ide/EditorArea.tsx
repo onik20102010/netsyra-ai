@@ -4,6 +4,7 @@ import React, { useRef, useCallback, useEffect } from "react";
 import Editor, { type Monaco, loader } from "@monaco-editor/react";
 import { ChevronRight } from "lucide-react";
 import { TabBar } from "./TabBar";
+import { SplitEditor } from "./SplitEditor";
 import { 
   useIdeStore, 
   defineNetsyraTheme, 
@@ -20,14 +21,14 @@ import { useAuth } from "@/hooks/useAuth";
 function Breadcrumbs({ path }: { path: string }) {
   const parts = path.split("/");
   return (
-    <div className="h-[22px] px-3 flex items-center gap-0.5 bg-zinc-900 border-b border-zinc-800 overflow-hidden shrink-0 select-none">
+    <div className="h-[22px] px-3 flex items-center gap-0.5 bg-[#161b22] border-b border-[#1f2428] overflow-hidden shrink-0 select-none">
       {parts.map((part, i) => (
         <React.Fragment key={i}>
-          <span className="text-[12px] text-[#cccccc] truncate px-1 hover:bg-white/10 rounded cursor-pointer transition-colors">
+          <span className="text-[12px] text-[#8b949e] truncate px-1 hover:bg-[#1f2428] rounded cursor-pointer transition-colors">
             {part}
           </span>
           {i < parts.length - 1 && (
-            <ChevronRight size={12} className="text-[#858585] shrink-0" />
+            <ChevronRight size={12} className="text-[#484f58] shrink-0" />
           )}
         </React.Fragment>
       ))}
@@ -38,11 +39,14 @@ function Breadcrumbs({ path }: { path: string }) {
 // --- Empty Editor Placeholder ---
 function EmptyEditor() {
   return (
-    <div className="flex-1 flex items-center justify-center bg-[#1e1e1e] select-none">
-      <div className="text-center space-y-2 text-[#858585]">
-        <div className="text-[16px] font-medium tracking-wide">Netsyra IDE</div>
+    <div className="flex-1 flex items-center justify-center bg-[#0d1117] select-none">
+      <div className="text-center space-y-2 text-[#6e7681]">
+        <div className="text-[16px] font-medium tracking-wide text-[#34e8bb]">Netsyra IDE</div>
         <div className="text-[13px]">
           Open a file from the Explorer to start editing
+        </div>
+        <div className="text-[11px] text-[#484f58] mt-3">
+          Press <kbd className="px-1.5 py-0.5 bg-[#161b22] border border-[#30363d] rounded text-[10px]">Ctrl+P</kbd> to quick-open a file
         </div>
       </div>
     </div>
@@ -99,6 +103,11 @@ export function EditorArea() {
   const setProblems = useIdeStore((s) => s.setProblems);
   const mergeProblems = useIdeStore((s) => s.mergeProblems);
   const workspace = useIdeStore((s) => s.workspace);
+
+  const splitEditorFileId = useIdeStore((s) => s.splitEditorFileId);
+  const splitEditorOrientation = useIdeStore((s) => s.splitEditorOrientation);
+  const splitEditor = useIdeStore((s) => s.splitEditor);
+  const closeSplitEditor = useIdeStore((s) => s.closeSplitEditor);
 
   const activeFile = openFiles.find((f) => f.id === activeFileId) ?? null;
 
@@ -379,6 +388,13 @@ export function EditorArea() {
       // 4. Focus the editor on load
       editor.focus();
 
+      // 4b. Auto-save on blur if autoSave is enabled
+      editor.onDidBlurEditorText(() => {
+        if (editorConfig.autoSave && activeFileId) {
+          saveFile(activeFileId);
+        }
+      });
+
       // 5. Force layout to ensure editor stretches to container height
       editor.layout();
 
@@ -395,7 +411,7 @@ export function EditorArea() {
       // 7. Run TS diagnostics after mount
       setTimeout(() => runTypeScriptDiagnostics(), 500);
     },
-    [setCursor, saveFile, activeFileId, runTypeScriptDiagnostics]
+    [setCursor, saveFile, activeFileId, runTypeScriptDiagnostics, editorConfig.autoSave]
   );
 
   // --- Editor Change Handler (with debounced linting) ---
@@ -456,7 +472,7 @@ export function EditorArea() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full bg-[#0d1117]">
       {/* Tabs */}
       <TabBar />
 
@@ -464,20 +480,40 @@ export function EditorArea() {
         <>
           {/* Breadcrumbs */}
           <Breadcrumbs path={activeFile.path} />
-          
-          {/* Monaco Editor Container - CRITICAL: min-h-0 prevents layout squash */}
-          <div ref={containerRef} className="flex-1 overflow-hidden min-h-0 relative">
-            <Editor
-              height="100%"
-              path={activeFile.path}
-              language={activeFile.language}
-              value={activeFile.content}
-              theme={NETSYRA_THEME}
-              beforeMount={defineNetsyraTheme}
-              onMount={handleMount}
-              onChange={handleChange}
-              options={buildEditorOptions(editorConfig)}
-            />
+
+          {/* Editor + Split container — CRITICAL: min-h-0 prevents layout squash */}
+          <div
+            className={`flex-1 flex overflow-hidden min-h-0 ${
+              splitEditorOrientation === 'vertical' ? 'flex-col' : 'flex-row'
+            }`}
+          >
+            {/* Primary editor */}
+            <div ref={containerRef} className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
+              <Editor
+                height="100%"
+                path={activeFile.path}
+                language={activeFile.language}
+                value={activeFile.content}
+                theme={NETSYRA_THEME}
+                beforeMount={defineNetsyraTheme}
+                onMount={handleMount}
+                onChange={handleChange}
+                options={buildEditorOptions(editorConfig)}
+              />
+            </div>
+
+            {/* Split editor (right or bottom) */}
+            {splitEditorFileId && (
+              <div
+                className={`overflow-hidden min-h-0 min-w-0 ${
+                  splitEditorOrientation === 'vertical'
+                    ? 'w-full flex-1 border-t border-[#1f2428]'
+                    : 'h-full w-1/2 border-l border-[#1f2428]'
+                }`}
+              >
+                <SplitEditor />
+              </div>
+            )}
           </div>
         </>
       ) : (

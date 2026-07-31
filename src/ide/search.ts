@@ -275,6 +275,92 @@ export function searchFileNames(query: string, limit = 20): FileItem[] {
   return out;
 }
 
+// --- Replace-in-files ---
+
+export interface ReplaceResult {
+  /** Number of files modified */
+  filesChanged: number;
+  /** Total number of individual replacements made */
+  replacements: number;
+  /** File paths that were modified */
+  changedFiles: string[];
+}
+
+/**
+ * Replace all occurrences of `query` with `replaceValue` across the
+ * entire workspace (or a single file if `singleFilePath` is provided).
+ *
+ * This updates both the in-memory tree content AND any open tabs so
+ * the editor immediately reflects the change. Disk persistence happens
+ * when the user saves the file (or via auto-save).
+ */
+export function replaceInWorkspace(
+  query: string,
+  replaceValue: string,
+  options: Partial<SearchOptions> = {},
+  singleFileId?: string,
+): ReplaceResult {
+  const opts = { ...DEFAULT_SEARCH_OPTIONS, ...options };
+  const trimmed = query.trim();
+  const empty: ReplaceResult = { filesChanged: 0, replacements: 0, changedFiles: [] };
+
+  if (!trimmed) return empty;
+
+  const state = useIdeStore.getState();
+  const workspace = state.workspace;
+  if (!workspace) return empty;
+
+  const matcher = buildMatcher(trimmed, opts);
+  if (!matcher) return empty; // invalid regex
+
+  // Collect all files to process
+  const allFiles = collectAllFiles(workspace.files);
+  const filesToProcess = singleFileId
+    ? allFiles.filter(f => f.id === singleFileId)
+    : allFiles;
+
+  let totalReplacements = 0;
+  const changedFileIds: string[] = [];
+  const changedFilePaths: string[] = [];
+
+  for (const file of filesToProcess) {
+    const ext = getExt(file.name);
+    if (opts.excludeExtensions.includes(ext)) continue;
+    if (opts.includeExtensions.length > 0 && !opts.includeExtensions.includes(ext)) continue;
+
+    // Use freshest content (open tab > tree)
+    const openTab = state.openFiles.find(f => f.path === file.path);
+    const content = openTab?.content ?? file.content ?? '';
+    if (!content) continue;
+
+    // Perform replacement
+    matcher.lastIndex = 0;
+    const newContent = content.replace(matcher, () => {
+      totalReplacements++;
+      return replaceValue;
+    });
+
+    if (newContent !== content) {
+      changedFileIds.push(file.id);
+      changedFilePaths.push(file.path);
+
+      // Update open tab if it exists
+      if (openTab) {
+        useIdeStore.getState().setFileContent(file.id, newContent);
+      } else {
+        // Update tree content directly
+        useIdeStore.getState().updateFileContent(file.id, newContent);
+      }
+    }
+  }
+
+  return {
+    filesChanged: changedFileIds.length,
+    replacements: totalReplacements,
+    changedFiles: changedFilePaths,
+  };
+}
+
 /**
  * Format a SearchResult into a compact, agent-friendly text block.
  * The agent uses this to decide which `read_file path#Lstart-Lend`

@@ -3,7 +3,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { useIdeStore, getFileIconDetails } from "@/ide";
-import { X, File, FileCode, FileJson, FileText, Image, Check } from "lucide-react";
+import { X, File, FileCode, FileJson, FileText, Image, Check, SplitSquareHorizontal } from "lucide-react";
 
 export function TabBar() {
   const openFiles = useIdeStore((s) => s.openFiles);
@@ -12,6 +12,9 @@ export function TabBar() {
   const closeFile = useIdeStore((s) => s.closeFile);
   const saveFile = useIdeStore((s) => s.saveFile);
   const problems = useIdeStore((s) => s.problems);
+  const splitEditorFileId = useIdeStore((s) => s.splitEditorFileId);
+  const splitEditor = useIdeStore((s) => s.splitEditor);
+  const closeSplitEditor = useIdeStore((s) => s.closeSplitEditor);
   
   // Auto-scroll to active tab
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +43,7 @@ export function TabBar() {
   };
 
   return (
-    <div className="flex h-[35px] bg-zinc-900 border-b border-[#2d2d2d] overflow-x-auto shrink-0 items-stretch select-none no-scrollbar">
+    <div className="flex h-[35px] bg-[#161b22] border-b border-[#1f2428] overflow-x-auto shrink-0 items-stretch select-none no-scrollbar">
       {/* Scrollable Tab Container */}
       <div 
         ref={scrollContainerRef}
@@ -54,13 +57,14 @@ export function TabBar() {
             <div
               key={file.id}
               data-fileid={file.id}
-              className={`group flex items-center h-full px-3 gap-1.5 border-r border-[#2d2d2d] cursor-pointer min-w-[80px] max-w-[200px] transition-colors relative ${
+              className={`group flex items-center h-full px-3 gap-1.5 border-r border-[#1f2428] cursor-pointer min-w-[80px] max-w-[200px] transition-colors relative ${
                 isActive 
-                  ? "bg-[#1e1e1e] text-white" 
-                  : "bg-[#2d2d2d] text-[#969696] hover:bg-[#2a2d2e] hover:text-[#cccccc]"
+                  ? "bg-[#0d1117] text-[#e6edf3]" 
+                  : "bg-[#161b22] text-[#6e7681] hover:bg-[#1f2428] hover:text-[#8b949e]"
               }`}
               onClick={() => setActiveTab(file.id)}
             >
+              {isActive && <span className="absolute top-0 left-0 right-0 h-[2px] bg-[#34e8bb]" />}
               {/* Tab Icon */}
               <span className="shrink-0 flex items-center justify-center">
                 {getTabIcon(file.path)}
@@ -79,7 +83,7 @@ export function TabBar() {
                 if (hasError || hasWarning) {
                   return (
                     <span
-                      className={`shrink-0 w-[7px] h-[7px] rounded-full ${hasError ? 'bg-red-500' : 'bg-yellow-500'}`}
+                      className={`shrink-0 w-[7px] h-[7px] rounded-full ${hasError ? 'bg-[#f85149]' : 'bg-[#d29922]'}`}
                       title={hasError ? `${fileProblems.filter(p => p.severity === 'error').length} error(s)` : `${fileProblems.filter(p => p.severity === 'warning').length} warning(s)`}
                     />
                   );
@@ -88,7 +92,7 @@ export function TabBar() {
               })()}
 
               {/* Dirty Indicator / Close Button */}
-              <div className="flex items-center justify-center shrink-0 w-[16px] h-[16px] rounded hover:bg-[#4a4a4a] transition-colors"
+              <div className="flex items-center justify-center shrink-0 w-[16px] h-[16px] rounded hover:bg-[#30363d] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (file.isDirty) {
@@ -99,17 +103,15 @@ export function TabBar() {
                 }}
               >
                 {file.isDirty ? (
-                  // Dirty state: Show a small dot instead of the close button (VS Code behavior)
-                  <span className="w-[8px] h-[8px] rounded-full bg-[#cccccc] group-hover:hidden" />
+                  <span className="w-[8px] h-[8px] rounded-full bg-[#34e8bb] group-hover:hidden" />
                 ) : (
-                  // Clean state: Show the close button
-                  <span className="hidden group-hover:flex text-[#cccccc] hover:text-white">
+                  <span className="hidden group-hover:flex text-[#8b949e] hover:text-[#e6edf3]">
                     <X size={12} />
                   </span>
                 )}
                 
                 {/* Fallback: Always show X if hovering over the tab, regardless of dirty state */}
-                <span className={`hidden ${isActive ? 'flex' : 'group-hover:hidden'} group-hover:flex text-[#cccccc] hover:text-white`}>
+                <span className={`hidden ${isActive ? 'flex' : 'group-hover:hidden'} group-hover:flex text-[#8b949e] hover:text-[#e6edf3]`}>
                   <X size={12} />
                 </span>
               </div>
@@ -118,19 +120,45 @@ export function TabBar() {
         })}
       </div>
 
-      {/* Right side contextual actions (just like VS Code) */}
-      {openFiles.some(f => f.isDirty) && (
-        <button
-          onClick={() => {
-            openFiles.forEach(f => { if (f.isDirty) saveFile(f.id); });
-          }}
-          className="px-3 h-full bg-zinc-900 text-[#969696] hover:text-white hover:bg-[#2a2d2e] transition-colors border-l border-[#2d2d2d] flex items-center gap-1.5 text-[12px] whitespace-nowrap"
-          title="Save All"
-        >
-          <Check size={14} />
-          <span className="hidden sm:inline">Save All</span>
-        </button>
-      )}
+      {/* Right side contextual actions */}
+      <div className="flex items-center shrink-0">
+        {/* Split editor toggle */}
+        {activeFileId && (
+          <button
+            onClick={() => {
+              if (splitEditorFileId) {
+                closeSplitEditor();
+              } else if (activeFileId) {
+                // Split with the most recently opened other file, or just open the active one in split
+                const otherFile = openFiles.find(f => f.id !== activeFileId);
+                if (otherFile) {
+                  splitEditor(otherFile.id);
+                }
+              }
+            }}
+            className={`px-2.5 h-full transition-colors border-l border-[#1f2428] flex items-center ${
+              splitEditorFileId
+                ? 'text-[#34e8bb] bg-[#1f2428]'
+                : 'text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428]'
+            }`}
+            title={splitEditorFileId ? 'Close split editor' : 'Split editor'}
+          >
+            <SplitSquareHorizontal size={14} />
+          </button>
+        )}
+        {openFiles.some(f => f.isDirty) && (
+          <button
+            onClick={() => {
+              openFiles.forEach(f => { if (f.isDirty) saveFile(f.id); });
+            }}
+            className="px-3 h-full bg-[#161b22] text-[#6e7681] hover:text-[#34e8bb] hover:bg-[#1f2428] transition-colors border-l border-[#1f2428] flex items-center gap-1.5 text-[12px] whitespace-nowrap"
+            title="Save All"
+          >
+            <Check size={14} />
+            <span className="hidden sm:inline">Save All</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

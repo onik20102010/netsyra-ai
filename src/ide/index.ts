@@ -6,6 +6,9 @@ export * from './types';
 // --- State Management ---
 export * from './store';
 
+// --- Output Panel Store ---
+export * from './output-store';
+
 // --- Theme & Editor Configuration ---
 export * from './theme';
 export * from './editor-config';

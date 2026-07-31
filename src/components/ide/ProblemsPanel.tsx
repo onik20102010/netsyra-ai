@@ -118,21 +118,21 @@ export function ProblemsPanel() {
 
   const severityIcon = (severity: string, size: number = 14) => {
     if (severity === "error")
-      return <AlertCircle size={size} className="text-red-500 shrink-0" />;
+      return <AlertCircle size={size} className="text-[#f85149] shrink-0" />;
     if (severity === "warning")
-      return <AlertTriangle size={size} className="text-yellow-500 shrink-0" />;
-    return <Info size={size} className="text-blue-500 shrink-0" />;
+      return <AlertTriangle size={size} className="text-[#d29922] shrink-0" />;
+    return <Info size={size} className="text-[#58a6ff] shrink-0" />;
   };
 
   // --- Empty State ---
   if (allProblems.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] select-none gap-3">
-        <CheckCircle2 size={32} className="text-green-600" />
-        <div className="text-[13px] text-[#858585]">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d1117] select-none gap-3">
+        <CheckCircle2 size={32} className="text-[#3fb950]" />
+        <div className="text-[13px] text-[#6e7681]">
           No problems have been detected in the workspace.
         </div>
-        <div className="text-[11px] text-[#6a6a6a]">
+        <div className="text-[11px] text-[#484f58]">
           Errors and warnings from ESLint and TypeScript will appear here.
         </div>
       </div>
@@ -142,7 +142,7 @@ export function ProblemsPanel() {
   // --- Filtered-out State ---
   if (filteredProblems.length === 0 && allProblems.length > 0) {
     return (
-      <div className="flex-1 flex flex-col bg-[#1e1e1e] select-none">
+      <div className="flex-1 flex flex-col bg-[#0d1117] select-none">
         <FilterBar
           errorCount={errorCount}
           warningCount={warningCount}
@@ -151,7 +151,7 @@ export function ProblemsPanel() {
           toggleFilter={toggleFilter}
           onClearAll={handleClearAll}
         />
-        <div className="flex-1 flex items-center justify-center text-[#858585] text-[13px]">
+        <div className="flex-1 flex items-center justify-center text-[#6e7681] text-[13px]">
           No problems match the current filter.
         </div>
       </div>
@@ -159,7 +159,7 @@ export function ProblemsPanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#1e1e1e] select-none">
+    <div className="flex-1 flex flex-col bg-[#0d1117] select-none">
       {/* Filter Bar */}
       <FilterBar
         errorCount={errorCount}
@@ -178,37 +178,37 @@ export function ProblemsPanel() {
             <div key={group.fileId}>
               {/* File Header */}
               <div
-                className="flex items-center gap-1.5 px-2 py-1 hover:bg-[#2a2d2e] cursor-pointer transition-colors group"
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-[#161b22] cursor-pointer transition-colors group"
                 onClick={() => toggleFileCollapse(group.fileId)}
               >
                 {isCollapsed ? (
-                  <ChevronRight size={14} className="text-[#858585] shrink-0" />
+                  <ChevronRight size={14} className="text-[#6e7681] shrink-0" />
                 ) : (
-                  <ChevronDown size={14} className="text-[#858585] shrink-0" />
+                  <ChevronDown size={14} className="text-[#6e7681] shrink-0" />
                 )}
-                <FileText size={13} className="text-[#519aba] shrink-0" />
-                <span className="text-[12px] text-[#cccccc] truncate flex-1 min-w-0">
+                <FileText size={13} className="text-[#58a6ff] shrink-0" />
+                <span className="text-[12px] text-[#e6edf3] truncate flex-1 min-w-0">
                   {group.fileName}
                 </span>
-                <span className="text-[11px] text-[#6a6a6a] truncate hidden sm:inline">
+                <span className="text-[11px] text-[#484f58] truncate hidden sm:inline">
                   {group.filePath}
                 </span>
                 {/* Per-file severity badges */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {group.errorCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-[11px] text-red-400">
+                    <span className="flex items-center gap-0.5 text-[11px] text-[#f85149]">
                       <AlertCircle size={11} />
                       {group.errorCount}
                     </span>
                   )}
                   {group.warningCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-[11px] text-yellow-400">
+                    <span className="flex items-center gap-0.5 text-[11px] text-[#d29922]">
                       <AlertTriangle size={11} />
                       {group.warningCount}
                     </span>
                   )}
                   {group.infoCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-[11px] text-blue-400">
+                    <span className="flex items-center gap-0.5 text-[11px] text-[#58a6ff]">
                       <Info size={11} />
                       {group.infoCount}
                     </span>
@@ -222,27 +222,27 @@ export function ProblemsPanel() {
                   {group.problems.map((p, idx) => (
                     <div
                       key={idx}
-                      className="flex items-start gap-2 pl-7 pr-3 py-[3px] hover:bg-[#2a2d2e] cursor-pointer transition-colors"
+                      className="flex items-start gap-2 pl-7 pr-3 py-[3px] hover:bg-[#161b22] cursor-pointer transition-colors"
                       onClick={() => handleJump(p.fileId, p.line, p.column)}
                     >
                       <div className="mt-0.5 shrink-0">
                         {severityIcon(p.severity, 13)}
                       </div>
                       <div className="flex flex-col overflow-hidden flex-1 min-w-0 gap-0.5">
-                        <span className="text-[12.5px] text-[#cccccc] leading-tight">
+                        <span className="text-[12.5px] text-[#e6edf3] leading-tight">
                           {p.message}
                         </span>
-                        <div className="flex items-center gap-2 text-[11px] text-[#858585]">
+                        <div className="flex items-center gap-2 text-[11px] text-[#6e7681]">
                           <span className="shrink-0">
                             Ln {p.line}, Col {p.column}
                           </span>
                           {p.source && (
-                            <span className="px-1.5 py-0.5 rounded bg-[#3c3c3c] text-[10px] text-[#9d9d9d] font-mono shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-[#1f2428] text-[10px] text-[#8b949e] font-mono shrink-0">
                               {p.source}
                             </span>
                           )}
                           {p.fix && (
-                            <span className="text-[10px] text-green-500 shrink-0">
+                            <span className="text-[10px] text-[#3fb950] shrink-0">
                               fixable
                             </span>
                           )}
@@ -289,28 +289,28 @@ function FilterBar({
       type: "error",
       count: errorCount,
       icon: <AlertCircle size={12} />,
-      activeColor: "text-red-400 bg-red-500/10 border-red-500/30",
-      inactiveColor: "text-[#5a5a5a] border-[#3c3c3c] opacity-50",
+      activeColor: "text-[#f85149] bg-[#f85149]/10 border-[#f85149]/30",
+      inactiveColor: "text-[#484f58] border-[#30363d] opacity-50",
     },
     {
       type: "warning",
       count: warningCount,
       icon: <AlertTriangle size={12} />,
-      activeColor: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
-      inactiveColor: "text-[#5a5a5a] border-[#3c3c3c] opacity-50",
+      activeColor: "text-[#d29922] bg-[#d29922]/10 border-[#d29922]/30",
+      inactiveColor: "text-[#484f58] border-[#30363d] opacity-50",
     },
     {
       type: "info",
       count: infoCount,
       icon: <Info size={12} />,
-      activeColor: "text-blue-400 bg-blue-500/10 border-blue-500/30",
-      inactiveColor: "text-[#5a5a5a] border-[#3c3c3c] opacity-50",
+      activeColor: "text-[#58a6ff] bg-[#58a6ff]/10 border-[#58a6ff]/30",
+      inactiveColor: "text-[#484f58] border-[#30363d] opacity-50",
     },
   ];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#2d2d2d] shrink-0">
-      <Filter size={12} className="text-[#6a6a6a] shrink-0" />
+    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1f2428] shrink-0 bg-[#161b22]">
+      <Filter size={12} className="text-[#6e7681] shrink-0" />
 
       {/* Severity filter buttons */}
       <div className="flex items-center gap-1.5">
@@ -337,7 +337,7 @@ function FilterBar({
       {/* Clear all */}
       <button
         onClick={onClearAll}
-        className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-[#6a6a6a] hover:text-[#cccccc] hover:bg-[#2a2d2e] transition-colors shrink-0"
+        className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428] transition-colors shrink-0"
         title="Clear all problems"
       >
         <X size={12} />

@@ -43,6 +43,9 @@ export type EditorConfig = {
   lineNumbers: boolean;
   folding: boolean;
   glyphMargin: boolean;
+  autoSave: boolean;
+  formatOnSave: boolean;
+  bracketPairColorization: boolean;
 };
 
 /**
