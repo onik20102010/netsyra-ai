@@ -5,6 +5,7 @@ import React from "react";
 import { useIdeStore, BottomPanelView } from "@/ide";
 import { Terminal, FileOutput, AlertCircle, Bug, X } from "lucide-react";
 import { ProblemsPanel } from "./ProblemsPanel";
+import { TerminalPanel } from "./TerminalPanel";
 
 export function BottomPanel() {
   const bottomPanelView = useIdeStore((s) => s.bottomPanelView);
@@ -25,26 +26,7 @@ export function BottomPanel() {
   const renderContent = () => {
     switch (bottomPanelView) {
       case "terminal":
-        return (
-          <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">
-            <div className="flex gap-2 items-center text-[#89e051] mb-1">
-              <span>➜</span>
-              <span className="text-[#569cd6]">~/workspace</span>
-              <span className="text-white">$</span>
-              <span className="text-[#ce9178]">_</span>
-            </div>
-            <div className="text-[#cccccc]">Netsyra Web IDE Terminal (Mock)</div>
-            <div className="text-[#858585] text-[12px] mt-1">
-              Type `npm start` or `python app.py` to simulate a command...
-            </div>
-            <div className="mt-4 flex gap-2 items-center text-[#89e051]">
-              <span>➜</span>
-              <span className="text-[#569cd6]">~/workspace</span>
-              <span className="text-white">$</span>
-              <span className="animate-pulse text-white">|</span>
-            </div>
-          </div>
-        );
+        return <TerminalPanel />;
       case "output":
         return (
           <div className="font-mono text-[13px] text-[#cccccc] p-3 overflow-auto h-full bg-[#1e1e1e]">

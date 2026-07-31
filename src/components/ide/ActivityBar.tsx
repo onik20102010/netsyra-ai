@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useIdeStore, SidebarView } from "@/ide";
-import { Files, Search, Puzzle, Settings, Bot } from "lucide-react";
+import { Files, Search, Puzzle, Settings, Bot, TerminalSquare } from "lucide-react";
 
 export function ActivityBar() {
   const sidebarView = useIdeStore((s) => s.sidebarView);
@@ -12,6 +12,9 @@ export function ActivityBar() {
   const toggleSidebar = useIdeStore((s) => s.toggleSidebar);
   const isRightPanelOpen = useIdeStore((s) => s.isRightPanelOpen);
   const toggleRightPanel = useIdeStore((s) => s.toggleRightPanel);
+  const isBottomPanelOpen = useIdeStore((s) => s.isBottomPanelOpen);
+  const toggleBottomPanel = useIdeStore((s) => s.toggleBottomPanel);
+  const setBottomPanelView = useIdeStore((s) => s.setBottomPanelView);
 
   // Helper to toggle or switch views to match VS Code behavior
   const handleViewClick = (view: SidebarView) => {
@@ -93,6 +96,22 @@ export function ActivityBar() {
       <div className="flex-1" /> {/* Spacer */}
       
       <div className="flex flex-col gap-2 pb-2 w-full items-center">
+        {/* Terminal Toggle */}
+        <button
+          onClick={() => {
+            setBottomPanelView("terminal");
+            if (!isBottomPanelOpen) toggleBottomPanel();
+          }}
+          className={`relative w-full h-[48px] flex items-center justify-center transition-colors hover:bg-[#2a2d2e] ${
+            isBottomPanelOpen
+              ? "text-white border-l-2 border-[#007acc] bg-[#2a2d2e]"
+              : "text-[#858585] border-l-2 border-transparent"
+          }`}
+          title="Toggle Terminal (Ctrl+`)"
+        >
+          <TerminalSquare size={24} />
+        </button>
+
         {/* Settings */}
         <button
           onClick={() => handleViewClick("settings")}

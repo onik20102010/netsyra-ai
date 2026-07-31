@@ -16,6 +16,8 @@ export function IdeShell() {
   const isRightPanelOpen = useIdeStore((s) => s.isRightPanelOpen);
   const toggleSidebar = useIdeStore((s) => s.toggleSidebar);
   const toggleRightPanel = useIdeStore((s) => s.toggleRightPanel);
+  const toggleBottomPanel = useIdeStore((s) => s.toggleBottomPanel);
+  const setBottomPanelView = useIdeStore((s) => s.setBottomPanelView);
 
   // Auto-collapse panels on small screens
   useEffect(() => {
@@ -32,6 +34,19 @@ export function IdeShell() {
     return () => window.removeEventListener("resize", handleResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keyboard shortcut: Ctrl+` to toggle terminal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault();
+        setBottomPanelView("terminal");
+        toggleBottomPanel();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleBottomPanel, setBottomPanelView]);
 
   return (
     <div className="flex flex-col h-dvh w-screen bg-zinc-950 overflow-hidden select-none">
