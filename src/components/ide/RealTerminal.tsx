@@ -37,7 +37,7 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
   const wsRef = useRef<WebSocket | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
