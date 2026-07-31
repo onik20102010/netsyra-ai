@@ -38,7 +38,7 @@ const USE_HTTPS = process.argv.includes("--https") || process.argv.includes("-s"
 
 let wss;
 
-function startWSS() {
+async function startWSS() {
   const certDir = path.join(__dirname, ".cert");
   const keyPath = path.join(certDir, "key.pem");
   const certPath = path.join(certDir, "cert.pem");
@@ -52,12 +52,23 @@ function startWSS() {
     console.log("\n  Generating self-signed certificate for WSS...");
     try {
       const selfsigned = require("selfsigned");
-      const pems = selfsigned.generate(
+      const pems = await selfsigned.generate(
         [{ name: "commonName", value: "localhost" }],
         {
           keySize: 2048,
-          days: 365,
           algorithm: "sha256",
+          extensions: [
+            { name: "basicConstraints", cA: false },
+            { name: "keyUsage", digitalSignature: true, keyEncipherment: true },
+            { name: "extKeyUsage", serverAuth: true },
+            {
+              name: "subjectAltName",
+              altNames: [
+                { type: 2, value: "localhost" },
+                { type: 7, ip: "127.0.0.1" },
+              ],
+            },
+          ],
         }
       );
       fs.writeFileSync(keyPath, pems.private);
@@ -108,13 +119,20 @@ function startWS() {
 }
 
 if (USE_HTTPS) {
-  if (!startWSS()) {
-    startWS();
-  }
+  startWSS().then((ok) => {
+    if (!ok) {
+      startWS();
+      setupConnectionHandler();
+    } else {
+      setupConnectionHandler();
+    }
+  });
 } else {
   startWS();
+  setupConnectionHandler();
 }
 
+function setupConnectionHandler() {
 wss.on("connection", (ws) => {
   const isWindows = os.platform() === "win32";
   const shellCmd = isWindows ? "cmd.exe" : process.env.SHELL || "/bin/bash";
@@ -190,6 +208,7 @@ wss.on("error", (err) => {
   }
   process.exit(1);
 });
+}
 
 process.on("SIGINT", () => {
   console.log("\n  Shutting down Netsyra Bridge...");
