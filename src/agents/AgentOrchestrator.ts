@@ -2,6 +2,7 @@ import type { NetsyraDB } from '@/ide/db';
 import { useIdeStore } from '@/ide/store';
 import { getSymbolContext, searchSymbols } from '@/ide/graph-query';
 import { getActiveFileContext, getWorkspaceStructure, searchFiles, findFileByPath } from '@/ide/agent';
+import { searchWorkspace, formatSearchResultForAgent } from '@/ide/search';
 
 // --- Types ---
 
@@ -72,10 +73,10 @@ You can use multiple tools in a single response:
 <tool>{"tool": "read_file", "args": {"path": "src/utils.ts"}}</tool>
 
 Available tools:
-- read_file: Read a file's content. Args: { "path": "src/path/File.ts" }
+- read_file: Read a file's content. Args: { "path": "src/path/File.ts" }. Optional line range: { "path": "...", "startLine": 160, "endLine": 190 } — use this after search_code to read ONLY the relevant lines and save tokens.
 - edit_file: Replace lines in a file. Args: { "path": "src/path/File.ts", "startLine": 10, "endLine": 15, "newText": "replacement code" }
 - create_file: Create a new file. Args: { "path": "src/path/NewFile.ts", "content": "file content" }
-- search_code: Search for symbols/files by name. Args: { "query": "fetchUsers" }
+- search_code: Search for code across ALL workspace files by keyword. Args: { "query": "login" }. Returns file paths + line numbers + a snippet of each matching line. Use this to LOCATE relevant code before reading it.
 - list_files: List all open files and workspace structure. Args: {}
 - get_problems: Get all IDE diagnostics (errors, warnings) with file name, line number, and message. Use this to find bugs without reading entire files. Args: { "severity": "error" } (optional: "error", "warning", "info", or omit for all)
 - answer: Respond to the user with text. Args: { "content": "your response text" }
@@ -104,6 +105,20 @@ The get_problems tool returns a compact list of all diagnostics with file path, 
 - Quickly identify which files have errors and on which lines
 - Read only the specific line ranges that have problems (use read_file with line numbers)
 - Fix multiple errors across files efficiently without reading hundreds of lines
+
+## Using search_code + read_file with line ranges (IMPORTANT)
+You do NOT know where code lives ahead of time. Use search_code to find it first, then read only the relevant lines. This saves huge numbers of tokens.
+
+Workflow:
+1. search_code({ "query": "login" }) → returns matches like 'auth.ts L45: function login(...)'
+2. read_file({ "path": "auth.ts", "startLine": 35, "endLine": 70 }) → read ONLY the ~35 lines around the match, not the whole file
+3. edit_file or answer as needed
+
+Rules:
+- ALWAYS search before reading if you don't know the exact file/line.
+- When a search result points to line N, read a window around it (e.g. startLine=N-10, endLine=N+15) to see context.
+- Never read an entire 1000+ line file when a 30-line slice is enough.
+- You can run multiple search_code calls in parallel for different keywords (e.g. "login" + "JWT" + "session").
 
 ## Thinking Workflow
 When working on a task, follow this structured approach:
@@ -467,7 +482,7 @@ export class AgentOrchestrator {
   private async executeTool(action: AgentAction): Promise<string> {
     switch (action.tool) {
       case 'read_file':
-        return this.toolReadFile(action.args.path);
+        return this.toolReadFile(action.args.path, action.args.startLine, action.args.endLine);
       case 'edit_file':
         return this.toolEditFile(
           action.args.path,
@@ -491,7 +506,7 @@ export class AgentOrchestrator {
   }
 
   // --- Tool: Read File ---
-  private toolReadFile(path: string): string {
+  private toolReadFile(path: string, startLine?: number, endLine?: number): string {
     const store = useIdeStore.getState();
 
     // Try open files first
@@ -500,24 +515,42 @@ export class AgentOrchestrator {
       file = store.openFiles.find(f => f.path.endsWith(path) || path.endsWith(f.path));
     }
 
+    let content: string | null = null;
+    let resolvedPath = path;
+
     if (file) {
-      this.filesRead.add(file.path);
-      const lines = file.content.split('\n');
-      const numbered = lines.map((line, i) => `${i + 1}: ${line}`).join('\n');
-      return `File: ${file.path} (${lines.length} lines)\n${numbered}`;
+      content = file.content;
+      resolvedPath = file.path;
+    } else {
+      // Try workspace file tree
+      const treeFile = findFileByPath(path);
+      if (treeFile?.content) {
+        content = treeFile.content;
+        resolvedPath = treeFile.path;
+      }
     }
 
-    // Try workspace file tree
-    const treeFile = findFileByPath(path);
-    if (treeFile?.content) {
-      this.filesRead.add(treeFile.path);
-      const lines = treeFile.content.split('\n');
-      const numbered = lines.map((line, i) => `${i + 1}: ${line}`).join('\n');
-      return `File: ${treeFile.path} (${lines.length} lines)\n${numbered}`;
+    if (!content) {
+      return `File not found: ${path}. Use list_files to see available files, or search_code to find relevant files.`;
     }
 
-    // Try IndexedDB
-    return `File not found: ${path}. Use list_files to see available files, or search_code to find relevant files.`;
+    this.filesRead.add(resolvedPath);
+    const allLines = content.split('\n');
+
+    // If line range is specified, return only that slice (saves tokens).
+    if (startLine != null || endLine != null) {
+      const start = Math.max(1, startLine ?? 1);
+      const end = Math.min(allLines.length, endLine ?? allLines.length);
+      if (start > end || start > allLines.length) {
+        return `File: ${resolvedPath} (${allLines.length} lines)\nRequested range L${start}-L${end} is out of bounds.`;
+      }
+      const slice = allLines.slice(start - 1, end);
+      const numbered = slice.map((line, i) => `${start + i}: ${line}`).join('\n');
+      return `File: ${resolvedPath} (lines ${start}-${end} of ${allLines.length})\n${numbered}`;
+    }
+
+    const numbered = allLines.map((line, i) => `${i + 1}: ${line}`).join('\n');
+    return `File: ${resolvedPath} (${allLines.length} lines)\n${numbered}`;
   }
 
   // --- Tool: Edit File (stores as pending, does NOT apply immediately) ---
@@ -607,7 +640,7 @@ export class AgentOrchestrator {
 
     const results: string[] = [];
 
-    // 1. Search workspace files by name
+    // 1. Search workspace files by name (fast path)
     const fileResults = searchFiles(query);
     if (fileResults.length > 0) {
       results.push('Files matching:');
@@ -616,7 +649,7 @@ export class AgentOrchestrator {
       });
     }
 
-    // 2. Search symbol graph in IndexedDB
+    // 2. Search symbol graph in IndexedDB (AST-indexed symbols)
     try {
       const symbolResults = await searchSymbols(this.db, query, 10);
       if (symbolResults.length > 0) {
@@ -629,23 +662,17 @@ export class AgentOrchestrator {
       // skip
     }
 
-    // 3. Search open file contents
-    const store = useIdeStore.getState();
-    const contentMatches: string[] = [];
-    for (const f of store.openFiles) {
-      if (!f.content) continue;
-      const lines = f.content.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].toLowerCase().includes(query.toLowerCase())) {
-          contentMatches.push(`  ${f.path}:${i + 1}: ${lines[i].trim()}`);
-          if (contentMatches.length >= 15) break;
-        }
-      }
-      if (contentMatches.length >= 15) break;
-    }
-    if (contentMatches.length > 0) {
+    // 3. Full content search across ALL workspace files (not just open tabs).
+    //    Returns line-level matches the agent can feed straight into read_file.
+    const contentResult = searchWorkspace(query, {
+      matchCase: false,
+      matchWholeWord: false,
+      useRegex: false,
+      maxResults: 50,
+    });
+    if (contentResult.matches.length > 0) {
       results.push('Content matches:');
-      results.push(...contentMatches);
+      results.push(formatSearchResultForAgent(contentResult));
     }
 
     if (results.length === 0) {

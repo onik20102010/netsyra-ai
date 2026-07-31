@@ -25,3 +25,6 @@ export * from './db';
 
 // --- Symbol Graph Query Engine ---
 export * from './graph-query';
+
+// --- Code Search Engine ---
+export * from './search';
