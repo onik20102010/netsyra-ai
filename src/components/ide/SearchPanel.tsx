@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, X, ChevronDown, ChevronRight, Replace, File, Loader2, CheckAll, FileEdit } from "lucide-react";
+import { Search, X, ChevronDown, ChevronRight, Replace, File, Loader2, Check, FileEdit } from "lucide-react";
 import { useIdeStore, searchWorkspace, replaceInWorkspace, type SearchResult, type SearchMatch } from "@/ide";
 
 export function SearchPanel() {
@@ -173,7 +173,7 @@ export function SearchPanel() {
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1f2428] hover:bg-[#30363d] text-[#e6edf3] text-[12px] font-medium rounded border border-[#30363d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Replace All in all files"
               >
-                <CheckAll size={13} className="text-[#34e8bb]" />
+                <Check size={13} className="text-[#34e8bb]" />
                 Replace All
               </button>
             </div>
@@ -228,7 +228,7 @@ export function SearchPanel() {
       {/* --- Replace feedback banner --- */}
       {replaceFeedback && (
         <div className="mb-2 px-2 py-1.5 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 text-[11px] text-[#3fb950] flex items-center gap-1.5">
-          <CheckAll size={12} />
+          <Check size={12} />
           {replaceFeedback}
         </div>
       )}
