@@ -11,6 +11,9 @@
  * - No commands run on any remote server
  * - You have full control — kill this process anytime to disconnect
  *
+ * Prerequisites:
+ *   npm install ws
+ *
  * Usage:
  *   node netsyra-bridge.js
  *

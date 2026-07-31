@@ -2,11 +2,11 @@
 
 import type { Monaco } from "@monaco-editor/react";
 
-export const NETSYRA_THEME = "netsyra-dark-plus";
+export const NETSYRA_THEME = "netsyra-dark";
 
 /**
- * Defines and registers the VS Code Dark+ theme for the Monaco editor.
- * Colors are pulled directly from VS Code's default dark theme tokens.
+ * Defines and registers the Netsyra dark theme for the Monaco editor.
+ * Colors are inspired by popular dark editor themes.
  */
 export function defineNetsyraTheme(monaco: Monaco) {
   monaco.editor.defineTheme(NETSYRA_THEME, {
@@ -86,7 +86,7 @@ export function defineNetsyraTheme(monaco: Monaco) {
       { token: "jsx.string", foreground: "ce9178" },
     ],
     colors: {
-      // --- Editor Backgrounds & Borders (unified Windsurf palette) ---
+      // --- Editor Backgrounds & Borders (Netsyra palette) ---
       "editor.background": "#0d1117",
       "editor.foreground": "#e6edf3",
       "editorLineNumber.foreground": "#484f58",

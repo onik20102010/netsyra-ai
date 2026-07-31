@@ -43,7 +43,7 @@ export function AIChatPanel() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m Cascade, your AI coding assistant. I can help you understand your code, make changes, and implement features. What would you like to work on?',
+      content: 'Hello! I\'m Netsyra Agent, your AI coding assistant. I can help you understand your code, make changes, and implement features. What would you like to work on?',
       timestamp: Date.now()
     }
   ]);
@@ -377,11 +377,11 @@ export function AIChatPanel() {
 
   return (
     <div className="flex flex-col h-full bg-[#0d1117] text-[#e6edf3]">
-      {/* Header — Windsurf Cascade style */}
+      {/* Header — Netsyra Agent style */}
       <div className="flex items-center justify-between h-[40px] px-3 border-b border-[#1f2428] shrink-0">
         <div className="flex items-center gap-2">
           <Bot size={15} className="text-[#34e8bb]" />
-          <span className="text-[13px] font-semibold text-[#e6edf3]">Cascade</span>
+          <span className="text-[13px] font-semibold text-[#e6edf3]">Netsyra Agent</span>
           <span className="text-[10px] text-[#6e7681] font-medium uppercase tracking-wider ml-1">Agent</span>
         </div>
         <div className="flex items-center gap-1">
