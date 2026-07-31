@@ -212,14 +212,14 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
 
   if (showInstructions) {
     return (
-      <div className="flex flex-col h-full bg-[#0d1117] items-center justify-center text-[13px] gap-3 p-6">
-        <div className="text-[#d29922] font-medium">Local Bridge Required</div>
+      <div className="flex flex-col h-full bg-[#0d1117] items-center justify-start text-[13px] gap-3 p-4 overflow-y-auto max-h-screen">
+        <div className="text-[#d29922] font-medium mt-2">Local Bridge Required</div>
         <div className="text-[#8b949e] text-center max-w-md text-[12px] leading-relaxed">
           The real terminal connects to <span className="text-[#34e8bb]">your own machine</span> via a local bridge.
           <br />
           No commands run on the Netsyra server — everything runs locally on your computer.
         </div>
-        <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[12px] text-[#8b949e] font-mono max-w-md space-y-1">
+        <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[12px] text-[#8b949e] font-mono w-full max-w-md space-y-1">
           <div className="text-[#6e7681]"># 1. Download the bridge script:</div>
           <a
             href="/netsyra-bridge.js"
@@ -244,7 +244,7 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
         </div>
         <button
           onClick={handleReconnect}
-          className="px-3 py-1.5 bg-[#34e8bb]/10 text-[#34e8bb] hover:bg-[#34e8bb]/20 border border-[#34e8bb]/30 rounded text-[12px] transition-colors"
+          className="px-3 py-1.5 bg-[#34e8bb]/10 text-[#34e8bb] hover:bg-[#34e8bb]/20 border border-[#34e8bb]/30 rounded text-[12px] transition-colors mb-2"
         >
           Reconnect
         </button>
