@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useIdeStore, getDB } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle } from "lucide-react";
+import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle } from "lucide-react";
 import { AgentOrchestrator, type ChatMessage, type PendingEdit } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from 'react-markdown';
@@ -40,6 +40,11 @@ export function AIChatPanel() {
   const workspace = useIdeStore((s) => s.workspace);
   const openFiles = useIdeStore((s) => s.openFiles);
   const activeFileId = useIdeStore((s) => s.activeFileId);
+  const problems = useIdeStore((s) => s.problems);
+
+  const allProblems = Object.values(problems).flat();
+  const errorCount = allProblems.filter(p => p.severity === 'error').length;
+  const warningCount = allProblems.filter(p => p.severity === 'warning').length;
 
   const activeFile = openFiles.find(f => f.id === activeFileId);
   const { user } = useAuth();
@@ -107,7 +112,7 @@ export function AIChatPanel() {
         if (toolActions.length > 0) {
           responseText += '\n\n<details>\n<summary>Agent actions</summary>\n\n';
           toolActions.forEach(a => {
-            const icon = a.tool === 'edit_file' ? '✏️' : a.tool === 'create_file' ? '📝' : a.tool === 'read_file' ? '📖' : a.tool === 'search_code' ? '🔍' : '📋';
+            const icon = a.tool === 'edit_file' ? '✏️' : a.tool === 'create_file' ? '📝' : a.tool === 'read_file' ? '📖' : a.tool === 'search_code' ? '🔍' : a.tool === 'get_problems' ? '⚠️' : '📋';
             responseText += `${icon} **${a.tool}**: ${a.args.path || a.args.query || ''}\n`;
           });
           responseText += '\n</details>';
@@ -169,6 +174,13 @@ export function AIChatPanel() {
         timestamp: Date.now()
       }]);
     }
+  };
+
+  const handleFixErrors = () => {
+    if (errorCount === 0 && warningCount === 0) return;
+    const severity = errorCount > 0 ? 'errors' : 'warnings';
+    setInput(`Please fix all ${severity} in my code. Use the get_problems tool to see them, then read only the relevant lines and fix each one.`);
+    setTimeout(() => handleSend(), 100);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -433,13 +445,24 @@ export function AIChatPanel() {
           <div className="flex items-end gap-2">
             <div className="flex-1 flex flex-col gap-1.5">
               {/* Agent capability indicator */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border text-amber-400 bg-amber-500/10 border-amber-500/30">
                   <Zap size={11} />
                   Agent
                 </span>
+                {(errorCount > 0 || warningCount > 0) && (
+                  <button
+                    onClick={handleFixErrors}
+                    disabled={isLoading}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border text-red-400 bg-red-500/10 border-red-500/30 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    title={`${errorCount} error(s), ${warningCount} warning(s) — Click to auto-fix`}
+                  >
+                    <AlertCircle size={11} />
+                    {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
+                  </button>
+                )}
                 <span className="text-[10px] text-zinc-500">
-                  Can answer questions, read & edit files, search code
+                  Can answer, read & edit files, search code, fix problems
                 </span>
               </div>
 

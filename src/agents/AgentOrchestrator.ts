@@ -11,7 +11,7 @@ export interface ChatMessage {
 }
 
 export interface AgentAction {
-  tool: 'read_file' | 'edit_file' | 'create_file' | 'search_code' | 'list_files' | 'answer';
+  tool: 'read_file' | 'edit_file' | 'create_file' | 'search_code' | 'list_files' | 'get_problems' | 'answer';
   args: Record<string, any>;
   content?: string;
 }
@@ -67,6 +67,7 @@ Available tools:
 - create_file: Create a new file. Args: { "path": "src/path/NewFile.ts", "content": "file content" }
 - search_code: Search for symbols/files by name. Args: { "query": "fetchUsers" }
 - list_files: List all open files and workspace structure. Args: {}
+- get_problems: Get all IDE diagnostics (errors, warnings) with file name, line number, and message. Use this to find bugs without reading entire files. Args: { "severity": "error" } (optional: "error", "warning", "info", or omit for all)
 - answer: Respond to the user with text. Args: { "content": "your response text" }
 
 ## Rules
@@ -83,9 +84,16 @@ Available tools:
 ## When to Answer vs Act
 - "What does this function do?" → answer
 - "Explain how X works" → answer
-- "Fix the bug in login" → read_file → edit_file → answer
+- "Fix the bug in login" → get_problems → read_file (only relevant lines) → edit_file → answer
 - "Create a new component called Header" → create_file → answer
-- "Add a logout button" → read_file → edit_file → answer`;
+- "Add a logout button" → read_file → edit_file → answer
+- "Fix all errors" → get_problems → read_file (only error lines) → edit_file → answer
+
+## Using get_problems for Efficiency
+The get_problems tool returns a compact list of all diagnostics with file path, line number, severity, and message. This is MUCH cheaper than reading entire files. Use it to:
+- Quickly identify which files have errors and on which lines
+- Read only the specific line ranges that have problems (use read_file with line numbers)
+- Fix multiple errors across files efficiently without reading hundreds of lines`;
 
 // --- File Snapshot for Undo ---
 
@@ -412,6 +420,8 @@ export class AgentOrchestrator {
         return this.toolSearchCode(action.args.query);
       case 'list_files':
         return this.toolListFiles();
+      case 'get_problems':
+        return this.toolGetProblems(action.args.severity);
       case 'answer':
         return action.args.content || 'OK';
       default:
@@ -596,6 +606,59 @@ export class AgentOrchestrator {
     return `${structure}${openFilesList}`;
   }
 
+  // --- Tool: Get Problems (IDE diagnostics) ---
+  private toolGetProblems(severityFilter?: string): string {
+    const store = useIdeStore.getState();
+    const problems = store.problems;
+    const openFiles = store.openFiles;
+
+    const allProblems = Object.values(problems).flat();
+
+    if (allProblems.length === 0) {
+      return 'No problems detected in the workspace.';
+    }
+
+    // Filter by severity if specified
+    const filtered = severityFilter
+      ? allProblems.filter(p => p.severity === severityFilter)
+      : allProblems;
+
+    if (filtered.length === 0) {
+      return `No ${severityFilter || 'problems'} detected in the workspace.`;
+    }
+
+    // Build a compact summary: file:line - [severity] message
+    const lines: string[] = [];
+    const errorCount = filtered.filter(p => p.severity === 'error').length;
+    const warningCount = filtered.filter(p => p.severity === 'warning').length;
+    const infoCount = filtered.filter(p => p.severity === 'info').length;
+
+    lines.push(`Problems: ${errorCount} error(s), ${warningCount} warning(s), ${infoCount} info`);
+    lines.push('');
+
+    // Group by file for compact output
+    const byFile = new Map<string, { path: string; problems: typeof filtered }>();
+    for (const p of filtered) {
+      const file = openFiles.find(f => f.id === p.fileId);
+      const path = file?.path || 'unknown';
+      if (!byFile.has(p.fileId)) {
+        byFile.set(p.fileId, { path, problems: [] });
+      }
+      byFile.get(p.fileId)!.problems.push(p);
+    }
+
+    for (const [, group] of byFile) {
+      lines.push(`${group.path}:`);
+      for (const p of group.problems) {
+        const sev = p.severity === 'error' ? 'ERROR' : p.severity === 'warning' ? 'WARN' : 'INFO';
+        lines.push(`  L${p.line}:${p.column} [${sev}] ${p.message}${p.source ? ` (${p.source})` : ''}`);
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
   // --- Build Workspace Context ---
   private buildWorkspaceContext(): string {
     const store = useIdeStore.getState();
@@ -606,6 +669,29 @@ export class AgentOrchestrator {
     ctx += `Open files: ${store.openFiles.map(f => f.path).join(', ') || 'none'}\n`;
     ctx += `Active file: ${fileContext.path || 'none'}\n`;
     ctx += `\nWorkspace structure:\n${structure}`;
+
+    // Include compact problems summary if any exist
+    const allProblems = Object.values(store.problems).flat();
+    const errorCount = allProblems.filter(p => p.severity === 'error').length;
+    const warningCount = allProblems.filter(p => p.severity === 'warning').length;
+    if (errorCount > 0 || warningCount > 0) {
+      ctx += `\n\nCurrent problems (${errorCount} error(s), ${warningCount} warning(s)):`;
+      const byFile = new Map<string, string[]>();
+      for (const p of allProblems) {
+        if (p.severity !== 'error' && p.severity !== 'warning') continue;
+        const file = store.openFiles.find(f => f.id === p.fileId);
+        const path = file?.path || 'unknown';
+        const sev = p.severity === 'error' ? 'ERROR' : 'WARN';
+        const entry = `  ${path}:${p.line} [${sev}] ${p.message}`;
+        if (!byFile.has(path)) byFile.set(path, []);
+        byFile.get(path)!.push(entry);
+      }
+      for (const [path, entries] of byFile) {
+        ctx += `\n${path}:`;
+        ctx += `\n${entries.join('\n')}`;
+      }
+      ctx += `\n(Use get_problems tool for full details including column and source)`;
+    }
 
     if (fileContext.content) {
       const lines = fileContext.content.split('\n');

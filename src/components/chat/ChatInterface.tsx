@@ -1132,41 +1132,41 @@ export default function ChatInterface({
                       {!isEditing && (
                         <div
                           className={cn(
-                            "flex items-center gap-2 mt-1 px-1",
+                            "flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5",
                             isUser ? "justify-end" : "justify-start"
                           )}
                         >
                           {isUser ? (
                             <>
-                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
+                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleRefresh(msg.id)}
                                 disabled={isLoading}
-                                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+                                className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
                                 title="Regenerate"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
+                              <button onClick={handleLike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Like">
                                 <ThumbsUp className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
+                              <button onClick={handleDislike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Dislike">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                               </button>
                               {msg.sources && msg.sources.length > 0 && <SourcesPanel sources={msg.sources} />}
                               {msg.modelUsed && MODEL_LABELS[msg.modelUsed] && (
-                                <span className="ml-1 text-[10px] text-gray-400 select-none" title="Model used for this response">
+                                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-gray-100 text-[10px] text-gray-500 select-none whitespace-nowrap shrink-0" title="Model used for this response">
                                   {MODEL_LABELS[msg.modelUsed]}
                                 </span>
                               )}
@@ -1244,41 +1244,41 @@ export default function ChatInterface({
                       {!isEditing && (
                         <div
                           className={cn(
-                            "flex items-center gap-2 mt-1 px-1",
+                            "flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5",
                             isUser ? "justify-end" : "justify-start"
                           )}
                         >
                           {isUser ? (
                             <>
-                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => startEditing(msg)} className="text-gray-400 hover:text-gray-600 transition" title="Edit">
+                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => handleCopy(msg.content)} className="text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleRefresh(msg.id)}
                                 disabled={isLoading}
-                                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+                                className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
                                 title="Regenerate"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={handleLike} className="text-gray-400 hover:text-gray-600 transition" title="Like">
+                              <button onClick={handleLike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Like">
                                 <ThumbsUp className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={handleDislike} className="text-gray-400 hover:text-gray-600 transition" title="Dislike">
+                              <button onClick={handleDislike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Dislike">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                               </button>
                               {msg.sources && msg.sources.length > 0 && <SourcesPanel sources={msg.sources} />}
                               {msg.modelUsed && MODEL_LABELS[msg.modelUsed] && (
-                                <span className="ml-1 text-[10px] text-gray-400 select-none" title="Model used for this response">
+                                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-gray-100 text-[10px] text-gray-500 select-none whitespace-nowrap shrink-0" title="Model used for this response">
                                   {MODEL_LABELS[msg.modelUsed]}
                                 </span>
                               )}

@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useIdeStore } from "@/ide";
-import { GitBranch, Wifi, Circle } from "lucide-react";
+import { GitBranch, Wifi, Circle, AlertCircle, AlertTriangle } from "lucide-react";
 
 export function StatusBar() {
   const openFiles = useIdeStore((s) => s.openFiles);
@@ -11,15 +11,28 @@ export function StatusBar() {
 
   // Find the currently active file to extract cursor position and language
   const activeFile = openFiles.find((f) => f.id === activeFileId);
+  const problems = useIdeStore((s) => s.problems);
+  const setBottomPanelView = useIdeStore((s) => s.setBottomPanelView);
+  const toggleBottomPanel = useIdeStore((s) => s.toggleBottomPanel);
+  const isBottomPanelOpen = useIdeStore((s) => s.isBottomPanelOpen);
 
   const line = activeFile?.cursorPosition?.lineNumber || 1;
   const column = activeFile?.cursorPosition?.column || 1;
   const language = activeFile?.language || "Plain Text";
 
+  const allProblems = Object.values(problems).flat();
+  const errorCount = allProblems.filter((p) => p.severity === "error").length;
+  const warningCount = allProblems.filter((p) => p.severity === "warning").length;
+
+  const handleProblemsClick = () => {
+    if (!isBottomPanelOpen) toggleBottomPanel();
+    setBottomPanelView("problems");
+  };
+
   return (
     <div className="flex items-center justify-between h-full px-3 text-[12px] text-white bg-[#007acc] select-none">
       
-      {/* LEFT SIDE: Git & Connection Info */}
+      {/* LEFT SIDE: Git, Connection & Problems */}
       <div className="flex items-center gap-3">
         {/* Git Branch */}
         <div className="flex items-center gap-1.5 hover:bg-white/10 px-1.5 py-0.5 rounded cursor-pointer transition-colors">
@@ -31,6 +44,22 @@ export function StatusBar() {
         <div className="flex items-center gap-1.5 hover:bg-white/10 px-1.5 py-0.5 rounded cursor-pointer transition-colors opacity-80 hover:opacity-100">
           <Wifi size={14} />
           <span className="hidden sm:inline">Connected</span>
+        </div>
+
+        {/* Problems Count */}
+        <div
+          className="flex items-center gap-1.5 hover:bg-white/10 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+          onClick={handleProblemsClick}
+          title={`${errorCount} error(s), ${warningCount} warning(s)`}
+        >
+          <span className="flex items-center gap-1">
+            <AlertCircle size={13} className={errorCount > 0 ? "text-red-300" : "opacity-50"} />
+            <span>{errorCount}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <AlertTriangle size={13} className={warningCount > 0 ? "text-yellow-300" : "opacity-50"} />
+            <span>{warningCount}</span>
+          </span>
         </div>
       </div>
 
