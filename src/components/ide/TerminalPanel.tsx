@@ -3,9 +3,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useIdeStore } from "@/ide";
 import type { FileItem } from "@/ide/types";
+import { ChevronDown } from "lucide-react";
 
 interface TerminalLine {
-  type: "input" | "output" | "error" | "system";
+  type: "input" | "output" | "error" | "system" | "success" | "path" | "dim";
   content: string;
 }
 
@@ -25,13 +26,29 @@ export function TerminalPanel() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Auto-scroll to bottom on new lines
+  // Track scroll position
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 30;
+    setIsAtBottom(atBottom);
+  };
+
+  // Auto-scroll to bottom on new lines only if user is already at bottom
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && isAtBottom) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [lines]);
+  }, [lines, isAtBottom]);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setIsAtBottom(true);
+    }
+  };
 
   // Focus input on click anywhere in terminal
   const focusInput = () => inputRef.current?.focus();
@@ -101,16 +118,24 @@ export function TerminalPanel() {
 
       switch (command) {
         case "help":
-          output.push({ type: "output", content: "Available commands:" });
-          output.push({ type: "output", content: "  ls [path]        List files in directory" });
-          output.push({ type: "output", content: "  pwd              Print working directory" });
-          output.push({ type: "output", content: "  cat <file>       Print file contents" });
-          output.push({ type: "output", content: "  echo <text>      Print text" });
-          output.push({ type: "output", content: "  npm run <script> Run an npm script" });
-          output.push({ type: "output", content: "  npm install      Simulate npm install" });
-          output.push({ type: "output", content: "  clear            Clear the terminal" });
-          output.push({ type: "output", content: "  help             Show this help message" });
-          output.push({ type: "output", content: "  open <file>      Open a file in the editor" });
+          output.push({ type: "system", content: "Available commands:" });
+          output.push({ type: "dim", content: "  ls [path]          List files in directory" });
+          output.push({ type: "dim", content: "  pwd                Print working directory" });
+          output.push({ type: "dim", content: "  cat <file>         Print file contents" });
+          output.push({ type: "dim", content: "  echo <text>        Print text" });
+          output.push({ type: "dim", content: "  npm run <script>   Run an npm script" });
+          output.push({ type: "dim", content: "  npm install        Install dependencies" });
+          output.push({ type: "dim", content: "  grep <pattern> <f> Search in file" });
+          output.push({ type: "dim", content: "  find <name>        Find files by name" });
+          output.push({ type: "dim", content: "  head <file> [n]    Print first n lines" });
+          output.push({ type: "dim", content: "  wc <file>          Count lines/words" });
+          output.push({ type: "dim", content: "  tree               Show file tree" });
+          output.push({ type: "dim", content: "  mkdir <name>       Create directory" });
+          output.push({ type: "dim", content: "  touch <name>       Create empty file" });
+          output.push({ type: "dim", content: "  rm <file>          Remove file" });
+          output.push({ type: "dim", content: "  clear              Clear terminal" });
+          output.push({ type: "dim", content: "  open <file>        Open file in editor" });
+          output.push({ type: "dim", content: "  help               Show this help" });
           break;
 
         case "clear":
@@ -149,14 +174,21 @@ export function TerminalPanel() {
           }
           const dirs = items.filter((i) => i.isDirectory).sort((a, b) => a.name.localeCompare(b.name));
           const files = items.filter((i) => !i.isDirectory).sort((a, b) => a.name.localeCompare(b.name));
-          const formatted = [
-            ...dirs.map((d) => `${d.name}/`),
-            ...files.map((f) => f.name),
-          ];
-          if (formatted.length === 0) {
-            output.push({ type: "output", content: "" });
+          if (dirs.length === 0 && files.length === 0) {
+            output.push({ type: "dim", content: "" });
           } else {
-            output.push({ type: "output", content: formatted.join("  ") });
+            // Colored ls: dirs in blue, files in default
+            const parts: string[] = [];
+            dirs.forEach((d) => parts.push(`${d.name}/`));
+            files.forEach((f) => parts.push(f.name));
+            // Push each item with appropriate type
+            dirs.forEach((d) => output.push({ type: "path", content: `${d.name}/` }));
+            files.forEach((f) => {
+              const ext = f.name.split(".").pop()?.toLowerCase() || "";
+              const isExecutable = ["js", "ts", "sh", "py"].includes(ext);
+              output.push({ type: isExecutable ? "success" : "output", content: f.name });
+            });
+            if (output.length === 0) output.push({ type: "dim", content: "" });
           }
           break;
         }
@@ -226,10 +258,10 @@ export function TerminalPanel() {
               if (pkg?.scripts) {
                 const scripts = Object.keys(pkg.scripts);
                 if (scripts.length > 0) {
-                  output.push({ type: "output", content: "Available scripts:" });
+                  output.push({ type: "system", content: "Available scripts:" });
                   scripts.forEach((s) => output.push({ type: "output", content: `  ${s}` }));
                 } else {
-                  output.push({ type: "output", content: "No scripts defined in package.json." });
+                  output.push({ type: "dim", content: "No scripts defined in package.json." });
                 }
               } else {
                 output.push({ type: "error", content: "No package.json found in workspace." });
@@ -243,42 +275,44 @@ export function TerminalPanel() {
               break;
             }
             const scriptCmd = pkg.scripts[scriptName];
-            output.push({ type: "output", content: `> ${cwd} npm run ${scriptName}` });
-            output.push({ type: "output", content: `` });
-            output.push({ type: "output", content: `> ${scriptName}` });
-            output.push({ type: "output", content: `> ${scriptCmd}` });
-            output.push({ type: "output", content: `` });
-            // Simulate common script outputs
+            output.push({ type: "system", content: `> ${cwd} npm run ${scriptName}` });
+            output.push({ type: "dim", content: `` });
+            output.push({ type: "system", content: `> ${scriptName}` });
+            output.push({ type: "dim", content: `> ${scriptCmd}` });
+            output.push({ type: "dim", content: `` });
+            // Simulate common script outputs with realistic formatting
             if (scriptName === "dev" || scriptName === "start") {
-              output.push({ type: "output", content: "  ▲ Next.js 15.0.0" });
+              output.push({ type: "system", content: "  ▲ Next.js 15.0.0" });
               output.push({ type: "output", content: "  - Local:   http://localhost:3000" });
               output.push({ type: "output", content: "  - Network: http://0.0.0.0:3000" });
-              output.push({ type: "output", content: "" });
-              output.push({ type: "output", content: "  ✓ Ready in 1.2s" });
-              output.push({ type: "output", content: "" });
+              output.push({ type: "dim", content: "" });
+              output.push({ type: "success", content: "  ✓ Ready in 1.2s" });
+              output.push({ type: "dim", content: "" });
               output.push({ type: "output", content: "  ○ Compiling / ..." });
+              output.push({ type: "dim", content: "  ○ Compiled / in 340ms" });
             } else if (scriptName === "build") {
               output.push({ type: "output", content: "  Creating an optimized production build ..." });
-              output.push({ type: "output", content: "  ✓ Compiled successfully" });
-              output.push({ type: "output", content: "  ✓ Linting and checking validity of types" });
-              output.push({ type: "output", content: "  ✓ Collecting page data" });
-              output.push({ type: "output", content: "  ✓ Generating static pages" });
-              output.push({ type: "output", content: `  ✓ Build completed in 3.4s` });
+              output.push({ type: "success", content: "  ✓ Compiled successfully" });
+              output.push({ type: "success", content: "  ✓ Linting and checking validity of types" });
+              output.push({ type: "success", content: "  ✓ Collecting page data" });
+              output.push({ type: "success", content: "  ✓ Generating static pages" });
+              output.push({ type: "success", content: `  ✓ Build completed in 3.4s` });
             } else if (scriptName === "lint") {
-              output.push({ type: "output", content: "  ✓ No ESLint warnings or errors" });
+              output.push({ type: "success", content: "  ✓ No ESLint warnings or errors" });
             } else {
-              output.push({ type: "output", content: `  ✓ Script '${scriptName}' completed.` });
+              output.push({ type: "success", content: `  ✓ Script '${scriptName}' completed.` });
             }
             break;
           }
 
           if (args[0] === "install" || args[0] === "i") {
-            output.push({ type: "output", content: "  added 312 packages in 4.8s" });
-            output.push({ type: "output", content: "" });
-            output.push({ type: "output", content: "  12 packages are looking for funding" });
-            output.push({ type: "output", content: "    run 'npm fund' for details" });
-            output.push({ type: "output", content: "" });
-            output.push({ type: "output", content: "  found 0 vulnerabilities" });
+            output.push({ type: "dim", content: "  npm warn deprecated: some-package@1.0.0: This package is deprecated." });
+            output.push({ type: "success", content: "  added 312 packages in 4.8s" });
+            output.push({ type: "dim", content: "" });
+            output.push({ type: "dim", content: "  12 packages are looking for funding" });
+            output.push({ type: "dim", content: "    run 'npm fund' for details" });
+            output.push({ type: "dim", content: "" });
+            output.push({ type: "success", content: "  found 0 vulnerabilities" });
             break;
           }
 
@@ -303,6 +337,190 @@ export function TerminalPanel() {
           output.push({ type: "output", content: new Date().toString() });
           break;
 
+        case "grep": {
+          if (args.length < 2) {
+            output.push({ type: "error", content: "grep: usage: grep <pattern> <file>" });
+            break;
+          }
+          const pattern = args[0];
+          const filePath = args[1];
+          const file = findInWorkspace(filePath);
+          if (!file) {
+            output.push({ type: "error", content: `grep: ${filePath}: No such file or directory` });
+            break;
+          }
+          if (file.isDirectory) {
+            output.push({ type: "error", content: `grep: ${filePath}: Is a directory` });
+            break;
+          }
+          if (file.content) {
+            const contentLines = file.content.split("\n");
+            let matchCount = 0;
+            contentLines.forEach((line, i) => {
+              if (line.toLowerCase().includes(pattern.toLowerCase())) {
+                output.push({ type: "output", content: `${filePath}:${i + 1}: ${line.trim()}` });
+                matchCount++;
+              }
+            });
+            if (matchCount === 0) {
+              output.push({ type: "dim", content: "" });
+            }
+          }
+          break;
+        }
+
+        case "find": {
+          if (!workspace) {
+            output.push({ type: "error", content: "No workspace open." });
+            break;
+          }
+          const query = args[0] || "";
+          if (!query) {
+            output.push({ type: "error", content: "find: missing search term" });
+            break;
+          }
+          const allFiles = flattenFiles(workspace.files);
+          const matches = allFiles.filter((f) => f.name.toLowerCase().includes(query.toLowerCase()));
+          if (matches.length === 0) {
+            output.push({ type: "dim", content: "" });
+          } else {
+            matches.forEach((m) => output.push({ type: "path", content: `./${m.path}` }));
+          }
+          break;
+        }
+
+        case "head": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "head: missing file operand" });
+            break;
+          }
+          const filePath = args[0];
+          const numLines = args[1] ? parseInt(args[1]) || 10 : 10;
+          const file = findInWorkspace(filePath);
+          if (!file) {
+            output.push({ type: "error", content: `head: ${filePath}: No such file or directory` });
+            break;
+          }
+          if (file.isDirectory) {
+            output.push({ type: "error", content: `head: ${filePath}: Is a directory` });
+            break;
+          }
+          if (file.content) {
+            const contentLines = file.content.split("\n").slice(0, numLines);
+            contentLines.forEach((line) => output.push({ type: "output", content: line }));
+          }
+          break;
+        }
+
+        case "wc": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "wc: missing file operand" });
+            break;
+          }
+          const filePath = args[0];
+          const file = findInWorkspace(filePath);
+          if (!file) {
+            output.push({ type: "error", content: `wc: ${filePath}: No such file or directory` });
+            break;
+          }
+          if (file.isDirectory) {
+            output.push({ type: "error", content: `wc: ${filePath}: Is a directory` });
+            break;
+          }
+          if (file.content) {
+            const contentLines = file.content.split("\n");
+            const words = file.content.split(/\s+/).filter(Boolean).length;
+            const chars = file.content.length;
+            output.push({ type: "output", content: `  ${contentLines.length}  ${words}  ${chars} ${filePath}` });
+          }
+          break;
+        }
+
+        case "tree": {
+          if (!workspace) {
+            output.push({ type: "error", content: "No workspace open." });
+            break;
+          }
+          const buildTree = (items: FileItem[], prefix: string): TerminalLine[] => {
+            const result: TerminalLine[] = [];
+            const sorted = [...items].sort((a, b) => {
+              if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+              return a.name.localeCompare(b.name);
+            });
+            sorted.forEach((item, idx) => {
+              const last = idx === sorted.length - 1;
+              const connector = last ? "└── " : "├── ";
+              const type = item.isDirectory ? "path" : "output";
+              result.push({ type, content: `${prefix}${connector}${item.name}${item.isDirectory ? "/" : ""}` });
+              if (item.isDirectory && item.children) {
+                const newPrefix = prefix + (last ? "    " : "│   ");
+                result.push(...buildTree(item.children, newPrefix));
+              }
+            });
+            return result;
+          };
+          output.push({ type: "path", content: workspace.name + "/" });
+          output.push(...buildTree(workspace.files, ""));
+          break;
+        }
+
+        case "mkdir": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "mkdir: missing operand" });
+            break;
+          }
+          output.push({ type: "dim", content: `(simulated) Created directory: ${args[0]}` });
+          break;
+        }
+
+        case "touch": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "touch: missing file operand" });
+            break;
+          }
+          output.push({ type: "dim", content: `(simulated) Created file: ${args[0]}` });
+          break;
+        }
+
+        case "rm": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "rm: missing operand" });
+            break;
+          }
+          const filePath = args[args.length - 1];
+          const file = findInWorkspace(filePath);
+          if (!file) {
+            output.push({ type: "error", content: `rm: ${filePath}: No such file or directory` });
+            break;
+          }
+          output.push({ type: "dim", content: `(simulated) Removed: ${filePath}` });
+          break;
+        }
+
+        case "git": {
+          if (args.length === 0) {
+            output.push({ type: "error", content: "git: missing command. Try 'git status', 'git log', 'git branch'." });
+            break;
+          }
+          if (args[0] === "status") {
+            output.push({ type: "system", content: "On branch main" });
+            output.push({ type: "dim", content: "Your branch is up to date with 'origin/main'." });
+            output.push({ type: "dim", content: "" });
+            output.push({ type: "success", content: "nothing to commit, working tree clean" });
+          } else if (args[0] === "log") {
+            output.push({ type: "dim", content: "commit 49927a712 (HEAD -> main, origin/main)" });
+            output.push({ type: "output", content: "Author: Netsyra User <user@netsyra.dev>" });
+            output.push({ type: "output", content: `Date:   ${new Date().toDateString()}` });
+            output.push({ type: "dim", content: "" });
+            output.push({ type: "output", content: "    ALL Plans are finally created" });
+          } else if (args[0] === "branch") {
+            output.push({ type: "success", content: "* main" });
+          } else {
+            output.push({ type: "error", content: `git: '${args[0]}' is not a recognized command. Try 'status', 'log', 'branch'.` });
+          }
+          break;
+        }
+
         default:
           output.push({ type: "error", content: `command not found: ${command}. Type 'help' for available commands.` });
           break;
@@ -313,28 +531,41 @@ export function TerminalPanel() {
     [workspace, openFiles, openFile, findInWorkspace, getPackageJson, cwd]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cmd = input.trim();
-    if (!cmd) return;
+    if (!cmd || isExecuting) return;
 
-    // Add input line to terminal
-    const newLines: TerminalLine[] = [
-      ...lines,
-      { type: "input", content: `${cwd} $ ${cmd}` },
-    ];
+    const inputLine: TerminalLine = { type: "input", content: `${cwd} $ ${cmd}` };
 
-    // Execute command
-    const output = executeCommand(cmd);
-
-    // Handle clear specially
     if (cmd.trim() === "clear") {
       setLines([]);
-    } else {
-      setLines([...newLines, ...output]);
+      setHistory((prev) => [...prev, cmd]);
+      setHistoryIndex(-1);
+      setInput("");
+      return;
     }
 
-    // Add to history
+    const output = executeCommand(cmd);
+    const isNpm = cmd.trim().startsWith("npm");
+
+    if (isNpm && output.length > 2) {
+      setIsExecuting(true);
+      setLines((prev) => [...prev, inputLine]);
+      await new Promise((r) => setTimeout(r, 200));
+      for (let i = 0; i < output.length; i++) {
+        setLines((prev) => [...prev, output[i]]);
+        const content = output[i].content;
+        const delay = content.includes("Compiling") ? 400 : content.includes("Ready") ? 300 : content.includes("Compiled") ? 350 : 60;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+      setIsExecuting(false);
+    } else {
+      setLines((prev) => [...prev, inputLine, ...output]);
+    }
+
     setHistory((prev) => [...prev, cmd]);
     setHistoryIndex(-1);
     setInput("");
@@ -371,6 +602,12 @@ export function TerminalPanel() {
         return "text-[#f48771]";
       case "system":
         return "text-[#569cd6]";
+      case "success":
+        return "text-[#89e051]";
+      case "path":
+        return "text-[#4ec9b0]";
+      case "dim":
+        return "text-[#6a6a6a]";
       default:
         return "text-[#cccccc]";
     }
@@ -378,13 +615,14 @@ export function TerminalPanel() {
 
   return (
     <div
-      className="flex flex-col h-full bg-[#1e1e1e] font-mono text-[13px] cursor-text"
+      className="flex flex-col h-full bg-[#1e1e1e] font-mono text-[13px] cursor-text relative"
       onClick={focusInput}
     >
       {/* Terminal Output */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-0"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-3 py-2 space-y-0 relative"
       >
         {lines.map((line, idx) => (
           <div key={idx} className={`${lineColor(line.type)} whitespace-pre-wrap break-all leading-[1.4]`}>
@@ -393,6 +631,14 @@ export function TerminalPanel() {
         ))}
 
         {/* Active Input Line */}
+        {isExecuting ? (
+          <div className="flex items-center mt-0.5">
+            <span className="text-[#89e051] shrink-0">{cwd}</span>
+            <span className="text-white shrink-0 ml-1">$</span>
+            <span className="ml-2 text-[#6a6a6a] text-[12px]">running...</span>
+            <span className="inline-block w-2 h-4 bg-[#cccccc] animate-pulse ml-1.5 align-middle" />
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="flex items-center mt-0.5">
           <span className="text-[#89e051] shrink-0">{cwd}</span>
           <span className="text-white shrink-0 ml-1">$</span>
@@ -409,7 +655,19 @@ export function TerminalPanel() {
             autoCorrect="off"
           />
         </form>
+        )}
       </div>
+
+      {/* Scroll to Bottom Button */}
+      {!isAtBottom && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-2 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-[#0c4d7c] hover:bg-[#0e639c] text-white shadow-lg transition-colors"
+          title="Scroll to bottom"
+        >
+          <ChevronDown size={16} />
+        </button>
+      )}
     </div>
   );
 }

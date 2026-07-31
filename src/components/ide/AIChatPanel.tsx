@@ -3,8 +3,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useIdeStore, getDB } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle } from "lucide-react";
-import { AgentOrchestrator, type ChatMessage, type PendingEdit } from "@/agents/AgentOrchestrator";
+import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, FileCode, Wrench, Lightbulb, CheckCircle2, ChevronRight } from "lucide-react";
+import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,6 +31,7 @@ export function AIChatPanel() {
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [thoughts, setThoughts] = useState<AgentThought[]>([]);
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const agentRef = useRef<AgentOrchestrator | null>(null);
@@ -89,6 +90,9 @@ export function AIChatPanel() {
         (status) => setAgentStatus(status),
         (token, fullText) => {
           setStreamingText(fullText);
+        },
+        (thought) => {
+          setThoughts(prev => [...prev, thought]);
         }
       );
       agentRef.current = agent;
@@ -98,6 +102,7 @@ export function AIChatPanel() {
       setIsStreaming(false);
       setAgentStatus(null);
       setStreamingText('');
+      setThoughts([]);
 
       // Build response text with action summary
       let responseText = result.message;
@@ -138,6 +143,7 @@ export function AIChatPanel() {
       setIsStreaming(false);
       setAgentStatus(null);
       setStreamingText('');
+      setThoughts([]);
       console.error('Agent error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -317,9 +323,18 @@ export function AIChatPanel() {
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="max-w-full">
+              <div className="max-w-full w-full">
+                {/* Live Agent Activity Panel */}
+                {thoughts.length > 0 && !isStreaming && (
+                  <AgentActivityPanel thoughts={thoughts} status={agentStatus} />
+                )}
+
+                {/* Streaming text response */}
                 {isStreaming && streamingText ? (
                   <div className="text-[15px] leading-7 text-zinc-300 break-words">
+                    {thoughts.length > 0 && (
+                      <AgentActivityPanel thoughts={thoughts} status={agentStatus} collapsed />
+                    )}
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -335,7 +350,7 @@ export function AIChatPanel() {
                     </ReactMarkdown>
                     <span className="inline-block w-2 h-4 bg-zinc-400 animate-pulse ml-0.5 align-middle" />
                   </div>
-                ) : (
+                ) : !isStreaming ? (
                   <div className="flex items-center gap-2 text-zinc-500 text-[13px]">
                     <Bot size={16} className="text-zinc-400" />
                     {agentStatus ? (
@@ -347,7 +362,7 @@ export function AIChatPanel() {
                       <span>Thinking...</span>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -497,6 +512,122 @@ export function AIChatPanel() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- Agent Activity Panel (live thoughts during agent run) ---
+
+const thoughtIcons: Record<AgentThought['type'], React.ReactNode> = {
+  thinking: <Brain size={13} className="text-purple-400" />,
+  plan: <Lightbulb size={13} className="text-yellow-400" />,
+  action: <Wrench size={13} className="text-blue-400" />,
+  observation: <Search size={13} className="text-cyan-400" />,
+  result: <CheckCircle2 size={13} className="text-green-400" />,
+};
+
+const thoughtLabels: Record<AgentThought['type'], string> = {
+  thinking: 'Thinking',
+  plan: 'Planning',
+  action: 'Acting',
+  observation: 'Observing',
+  result: 'Done',
+};
+
+function AgentActivityPanel({
+  thoughts,
+  status,
+  collapsed,
+}: {
+  thoughts: AgentThought[];
+  status: string | null;
+  collapsed?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(!collapsed);
+  const [showAll, setShowAll] = useState(false);
+  const visibleThoughts = showAll ? thoughts : thoughts.slice(-6);
+  const hasMore = thoughts.length > 6;
+
+  return (
+    <div className="mb-3 rounded-lg border border-zinc-700/50 bg-zinc-800/40 overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/60 transition-colors"
+      >
+        <ChevronRight
+          size={14}
+          className={`text-zinc-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
+        <Brain size={13} className="text-purple-400" />
+        <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+          Agent Activity
+        </span>
+        <span className="text-[10px] text-zinc-600">
+          {thoughts.length} step{thoughts.length !== 1 ? 's' : ''}
+        </span>
+        <div className="flex-1" />
+        {status && !expanded && (
+          <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+            <Loader2 size={10} className="animate-spin" />
+            {status}
+          </span>
+        )}
+      </button>
+
+      {/* Thought List */}
+      {expanded && (
+        <div className="px-3 pb-2 space-y-1 max-h-[200px] overflow-y-auto">
+          {hasMore && !showAll && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors py-0.5"
+            >
+              Show all {thoughts.length} steps...
+            </button>
+          )}
+          {visibleThoughts.map((thought, idx) => {
+            const isLast = idx === visibleThoughts.length - 1 && thought.type !== 'result';
+            return (
+              <div
+                key={idx}
+                className={`flex items-start gap-2 py-0.5 ${thought.type === 'result' ? 'pt-1 border-t border-zinc-700/30 mt-1' : ''}`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {isLast ? (
+                    <span className="relative flex">
+                      {thoughtIcons[thought.type]}
+                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
+                    </span>
+                  ) : (
+                    thoughtIcons[thought.type]
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-[12px] text-zinc-300 leading-tight">
+                    {thought.title}
+                  </span>
+                  {thought.detail && (
+                    <span className="text-[11px] text-zinc-500 leading-tight mt-0.5 truncate">
+                      {thought.detail}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] text-zinc-600 shrink-0 mt-0.5 uppercase tracking-wider">
+                  {thoughtLabels[thought.type]}
+                </span>
+              </div>
+            );
+          })}
+          {/* Live status indicator */}
+          {status && thoughts[thoughts.length - 1]?.type !== 'result' && (
+            <div className="flex items-center gap-2 py-0.5 pt-1">
+              <Loader2 size={12} className="text-zinc-500 animate-spin shrink-0" />
+              <span className="text-[11px] text-zinc-500">{status}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

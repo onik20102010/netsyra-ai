@@ -40,6 +40,16 @@ export interface AgentResult {
 
 export type AgentStatusCallback = (status: string) => void;
 export type StreamTokenCallback = (token: string, fullText: string) => void;
+export type AgentThoughtCallback = (thought: AgentThought) => void;
+
+export interface AgentThought {
+  type: 'plan' | 'action' | 'observation' | 'thinking' | 'result';
+  title: string;
+  detail?: string;
+  tool?: string;
+  toolArgs?: Record<string, any>;
+  timestamp: number;
+}
 
 const MAX_TOOL_ROUNDS = 6;
 
@@ -93,7 +103,27 @@ Available tools:
 The get_problems tool returns a compact list of all diagnostics with file path, line number, severity, and message. This is MUCH cheaper than reading entire files. Use it to:
 - Quickly identify which files have errors and on which lines
 - Read only the specific line ranges that have problems (use read_file with line numbers)
-- Fix multiple errors across files efficiently without reading hundreds of lines`;
+- Fix multiple errors across files efficiently without reading hundreds of lines
+
+## Thinking Workflow
+When working on a task, follow this structured approach:
+1. **Assess**: If the workspace context shows problems, note them. If the user asks to fix something, start with get_problems to see what's wrong.
+2. **Plan**: Decide which files to read and in what order. Prefer reading only relevant line ranges over entire files.
+3. **Act**: Execute tools one step at a time. After each tool result, evaluate whether you need more information or are ready to make changes.
+4. **Verify**: After making edits, consider calling get_problems again to check if your changes introduced new issues.
+5. **Summarize**: Use the answer tool to explain what you did, what changed, and any remaining issues.
+
+## Proactive Problem Solving
+- If the workspace context shows errors/warnings, mention them in your answer even if the user didn't ask about them specifically.
+- When editing code, always check if there might be related problems in the same file.
+- If a user asks to "fix" something vague, use get_problems first to identify concrete issues.
+- After edits, suggest the user check the Problems panel for any new diagnostics.
+
+## Response Style
+- Be concise but informative. Show that you understand the codebase.
+- When explaining changes, reference specific file names and line numbers.
+- If you're unsure about something, say so rather than guessing.
+- Celebrate fixes: "Fixed 3 errors in App.tsx" not just "Done."`;
 
 // --- File Snapshot for Undo ---
 
@@ -109,6 +139,7 @@ export class AgentOrchestrator {
   private db: NetsyraDB;
   private onStatus: AgentStatusCallback;
   private onToken: StreamTokenCallback | null;
+  private onThought: AgentThoughtCallback | null;
   private conversationHistory: ChatMessage[] = [];
   private filesChanged: Set<string> = new Set();
   private filesRead: Set<string> = new Set();
@@ -117,10 +148,17 @@ export class AgentOrchestrator {
   private snapshots: Map<string, FileSnapshot> = new Map();
   private editIdCounter = 0;
 
-  constructor(db: NetsyraDB, onStatus?: AgentStatusCallback, onToken?: StreamTokenCallback) {
+  constructor(db: NetsyraDB, onStatus?: AgentStatusCallback, onToken?: StreamTokenCallback, onThought?: AgentThoughtCallback) {
     this.db = db;
     this.onStatus = onStatus || (() => {});
     this.onToken = onToken || null;
+    this.onThought = onThought || null;
+  }
+
+  private emitThought(thought: Omit<AgentThought, 'timestamp'>) {
+    if (this.onThought) {
+      this.onThought({ ...thought, timestamp: Date.now() });
+    }
   }
 
   // --- Snapshot files for undo ---
@@ -193,6 +231,7 @@ export class AgentOrchestrator {
     this.snapshotFiles();
 
     // Build initial context
+    this.emitThought({ type: 'thinking', title: 'Analyzing your request', detail: userPrompt });
     const workspaceCtx = this.buildWorkspaceContext();
     const graphCtx = await this.buildGraphContext(userPrompt);
 
@@ -208,6 +247,9 @@ export class AgentOrchestrator {
     // Tool-use loop
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       this.onStatus(this.getStatusMessage(round));
+      if (round === 0) {
+        this.emitThought({ type: 'plan', title: 'Planning my approach', detail: 'Understanding the workspace and deciding what tools to use first.' });
+      }
 
       const response = await this.callLLMStream(this.conversationHistory);
 
@@ -238,6 +280,12 @@ export class AgentOrchestrator {
       if (nonAnswerActions.length > 0) {
         for (const action of nonAnswerActions) {
           this.actions.push(action);
+          this.emitThought({
+            type: 'action',
+            title: this.getToolStatus(action),
+            tool: action.tool,
+            toolArgs: action.args,
+          });
         }
 
         if (nonAnswerActions.length === 1) {
@@ -249,6 +297,18 @@ export class AgentOrchestrator {
         const results = await Promise.all(
           nonAnswerActions.map(action => this.executeTool(action))
         );
+
+        // Emit observations from tool results
+        nonAnswerActions.forEach((action, i) => {
+          const result = results[i];
+          const summary = result.length > 120 ? result.substring(0, 120) + '...' : result;
+          this.emitThought({
+            type: 'observation',
+            title: `Result from ${action.tool}`,
+            detail: summary,
+            tool: action.tool,
+          });
+        });
 
         // Feed all tool results back to the LLM
         const resultSummary = nonAnswerActions
@@ -264,6 +324,7 @@ export class AgentOrchestrator {
       // If there was an answer action, we're done
       if (answerAction) {
         const answerText = answerAction.args.content || response;
+        this.emitThought({ type: 'result', title: 'Response ready', detail: answerText.substring(0, 100) + (answerText.length > 100 ? '...' : '') });
         return this.makeResult(answerText, true);
       }
     }
@@ -762,17 +823,25 @@ export class AgentOrchestrator {
 
   // --- Status Messages ---
   private getStatusMessage(round: number): string {
-    if (round === 0) return 'Thinking...';
-    return `Working... (step ${round + 1})`;
+    const phases = [
+      'Thinking...',
+      'Analyzing context...',
+      'Planning next steps...',
+      'Working on it...',
+      'Refining approach...',
+      'Almost there...',
+    ];
+    return phases[Math.min(round, phases.length - 1)];
   }
 
   private getToolStatus(action: AgentAction): string {
     switch (action.tool) {
       case 'read_file': return `Reading ${action.args.path}...`;
-      case 'edit_file': return `Editing ${action.args.path}...`;
+      case 'edit_file': return `Editing ${action.args.path} lines ${action.args.startLine}-${action.args.endLine}...`;
       case 'create_file': return `Creating ${action.args.path}...`;
       case 'search_code': return `Searching for "${action.args.query}"...`;
       case 'list_files': return 'Listing files...';
+      case 'get_problems': return action.args.severity ? `Checking for ${action.args.severity}s...` : 'Checking problems...';
       case 'answer': return 'Composing response...';
       default: return 'Working...';
     }
