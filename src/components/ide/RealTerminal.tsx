@@ -103,14 +103,16 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
         term.writeln("To use a real terminal connected to YOUR machine:");
         term.writeln("");
         term.writeln("  1. Download netsyra-bridge.js (link below)");
-        term.writeln("  2. Install dependency:  \x1b[32mnpm install ws\x1b[0m");
         if (typeof window !== "undefined" && window.location.protocol === "https:") {
+          term.writeln("  2. Install deps:  \x1b[32mnpm install ws selfsigned\x1b[0m");
           term.writeln("  3. Run with HTTPS:  \x1b[32mnode netsyra-bridge.js --https\x1b[0m");
-          term.writeln("     (Accept the certificate warning in your browser)");
+          term.writeln("  4. Open \x1b[36mhttps://localhost:19823\x1b[0m in browser");
+          term.writeln("     and accept the certificate warning");
         } else {
+          term.writeln("  2. Install dependency:  \x1b[32mnpm install ws\x1b[0m");
           term.writeln("  3. Run it:  \x1b[32mnode netsyra-bridge.js\x1b[0m");
         }
-        term.writeln("  4. Click Reconnect below");
+        term.writeln("  5. Click Reconnect below");
         term.writeln("");
         term.writeln("Or use \x1b[36mSimulated\x1b[0m mode for in-browser commands.");
         return;
@@ -228,8 +230,12 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
           >
             Click here to download netsyra-bridge.js
           </a>
-          <div className="text-[#6e7681] mt-2"># 2. Install the dependency:</div>
-          <div className="text-[#34e8bb]">npm install ws</div>
+          <div className="text-[#6e7681] mt-2"># 2. Install dependencies:</div>
+          {typeof window !== "undefined" && window.location.protocol === "https:" ? (
+            <div className="text-[#34e8bb]">npm install ws selfsigned</div>
+          ) : (
+            <div className="text-[#34e8bb]">npm install ws</div>
+          )}
           <div className="text-[#6e7681] mt-2"># 3. Run the bridge:</div>
           {typeof window !== "undefined" && window.location.protocol === "https:" ? (
             <>

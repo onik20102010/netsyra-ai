@@ -12,12 +12,15 @@
  * - You have full control — kill this process anytime to disconnect
  *
  * Prerequisites:
- *   npm install ws
+ *   npm install ws selfsigned
  *
- * Usage:
+ * Usage (for HTTP IDE pages):
  *   node netsyra-bridge.js
  *
- * Then open https://www.netsyraai.com/ide and switch to the "Local" terminal tab.
+ * Usage (for HTTPS IDE pages — e.g. https://www.netsyraai.com):
+ *   node netsyra-bridge.js --https
+ *
+ * Then open the Netsyra IDE and switch to the "Local" terminal tab.
  */
 
 const { WebSocketServer } = require("ws");
@@ -34,8 +37,8 @@ const HOST = "127.0.0.1";
 const USE_HTTPS = process.argv.includes("--https") || process.argv.includes("-s");
 
 let wss;
-if (USE_HTTPS) {
-  // Generate self-signed certificate if not exists
+
+function startWSS() {
   const certDir = path.join(__dirname, ".cert");
   const keyPath = path.join(certDir, "key.pem");
   const certPath = path.join(certDir, "cert.pem");
@@ -44,55 +47,72 @@ if (USE_HTTPS) {
     fs.mkdirSync(certDir, { recursive: true });
   }
 
+  // Generate self-signed cert if not exists (pure JS, works on all platforms)
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
     console.log("\n  Generating self-signed certificate for WSS...");
-    const { execSync } = require("child_process");
     try {
-      execSync(`openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days 365 -nodes -subj "/CN=localhost"`, { stdio: "inherit" });
+      const selfsigned = require("selfsigned");
+      const pems = selfsigned.generate(
+        [{ name: "commonName", value: "localhost" }],
+        {
+          keySize: 2048,
+          days: 365,
+          algorithm: "sha256",
+        }
+      );
+      fs.writeFileSync(keyPath, pems.private);
+      fs.writeFileSync(certPath, pems.cert);
       console.log("  Certificate generated.\n");
     } catch (e) {
-      console.error("  Failed to generate certificate. OpenSSL not found or error occurred.");
+      console.error("  Failed to generate certificate: " + e.message);
+      console.log("  Make sure you ran: npm install selfsigned");
       console.log("  Falling back to WS (unencrypted)...\n");
-      wss = new WebSocketServer({ host: HOST, port: PORT });
+      return false;
     }
   }
 
-  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    const server = https.createServer({
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    });
-    wss = new WebSocketServer({ server });
-    server.listen(PORT, HOST, () => {
-      console.log(`\n  ╔═══════════════════════════════════════════════╗`);
-      console.log(`  ║  Netsyra Local Bridge (WSS/HTTPS)           ║`);
-      console.log(`  ║  Listening on wss://${HOST}:${PORT}            ║`);
-      console.log(`  ║                                               ║`);
-      console.log(`  ║  Open https://www.netsyraai.com/ide            ║`);
-      console.log(`  ║  and use the "Local" terminal tab.             ║`);
-      console.log(`  ║                                               ║`);
-      console.log(`  ║  Note: Your browser may show a security       ║`);
-      console.log(`  ║  warning for the self-signed certificate.     ║`);
-      console.log(`  ║  This is normal — proceed anyway.              ║`);
-      console.log(`  ║                                               ║`);
-      console.log(`  ║  Press Ctrl+C to stop.                         ║`);
-      console.log(`  ╚═══════════════════════════════════════════════╝\n`);
-    });
+  const server = https.createServer({
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  });
+  wss = new WebSocketServer({ server });
+  server.listen(PORT, HOST, () => {
+    console.log(`\n  +-----------------------------------------------+`);
+    console.log(`  |  Netsyra Local Bridge (WSS / Secure)         |`);
+    console.log(`  |  Listening on wss://${HOST}:${PORT}            |`);
+    console.log(`  |                                               |`);
+    console.log(`  |  Open the Netsyra IDE and use the             |`);
+    console.log(`  |  "Local" terminal tab.                        |`);
+    console.log(`  |                                               |`);
+    console.log(`  |  NOTE: First time? Open this URL in your      |`);
+    console.log(`  |  browser and accept the certificate:          |`);
+    console.log(`  |  https://localhost:19823                      |`);
+    console.log(`  |                                               |`);
+    console.log(`  |  Press Ctrl+C to stop.                        |`);
+    console.log(`  +-----------------------------------------------+\n`);
+  });
+  return true;
+}
+
+function startWS() {
+  wss = new WebSocketServer({ host: HOST, port: PORT });
+  console.log(`\n  +-----------------------------------------------+`);
+  console.log(`  |  Netsyra Local Bridge (WS)                    |`);
+  console.log(`  |  Listening on ws://${HOST}:${PORT}              |`);
+  console.log(`  |                                               |`);
+  console.log(`  |  If the IDE is on HTTPS, stop and run:        |`);
+  console.log(`  |  node netsyra-bridge.js --https               |`);
+  console.log(`  |                                               |`);
+  console.log(`  |  Press Ctrl+C to stop.                        |`);
+  console.log(`  +-----------------------------------------------+\n`);
+}
+
+if (USE_HTTPS) {
+  if (!startWSS()) {
+    startWS();
   }
 } else {
-  wss = new WebSocketServer({ host: HOST, port: PORT });
-  console.log(`\n  ╔═══════════════════════════════════════════════╗`);
-  console.log(`  ║  Netsyra Local Bridge (WS)                    ║`);
-  console.log(`  ║  Listening on ws://${HOST}:${PORT}              ║`);
-  console.log(`  ║                                               ║`);
-  console.log(`  ║  IMPORTANT: If the IDE is on HTTPS, run with:  ║`);
-  console.log(`  ║  node netsyra-bridge.js --https                ║`);
-  console.log(`  ║                                               ║`);
-  console.log(`  ║  Or access the IDE via http://localhost        ║`);
-  console.log(`  ║  instead of https://www.netsyraai.com          ║`);
-  console.log(`  ║                                               ║`);
-  console.log(`  ║  Press Ctrl+C to stop.                         ║`);
-  console.log(`  ╚═══════════════════════════════════════════════╝\n`);
+  startWS();
 }
 
 wss.on("connection", (ws) => {
