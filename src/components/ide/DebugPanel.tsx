@@ -42,20 +42,13 @@ export function DebugPanel() {
   const abortRef = useRef<AbortController | null>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
 
-  // --- Load available debug configs on mount ---
+  // --- Static debug configs (no server call) ---
   useEffect(() => {
-    fetch("/api/ide/debug?action=configs")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.configs) {
-          setConfigs(data.configs);
-          if (data.configs.length > 0 && !data.configs.find((c: { name: string }) => c.name === selectedConfig)) {
-            setSelectedConfig(data.configs[0].name);
-          }
-        }
-      })
-      .catch(() => {});
-  }, [selectedConfig]);
+    setConfigs([
+      { name: "Next.js: Dev Server", type: "next" },
+      { name: "Node: Current File", type: "node" },
+    ]);
+  }, []);
 
   // --- Auto-scroll console ---
   useEffect(() => {
@@ -75,104 +68,19 @@ export function DebugPanel() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // --- Start debugging ---
+  // --- Start debugging (shows message — debugging runs on user's machine) ---
   const startDebug = useCallback(async () => {
     const config = configs.find((c) => c.name === selectedConfig);
     if (!config) return;
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setStatus("running");
     addConsoleEntry({ level: "info", content: `Starting debug session: ${config.name}` });
-
-    // Determine program
-    let program: string | undefined;
-    if (config.type === "node") {
-      // Use the active file if open, otherwise default
-      const activeFile = openFiles.find((f) => f.id === activeFileId);
-      program = activeFile?.path?.replace(/^\//, "");
-    } else if (config.type === "script") {
-      program = config.program;
-    }
-
-    try {
-      const res = await fetch("/api/ide/debug?action=start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: config.type,
-          program,
-          cwd: "D:\\netsyra",
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok || !res.body) {
-        addConsoleEntry({ level: "error", content: `Failed to start: HTTP ${res.status}` });
-        setStatus("error");
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const raw of lines) {
-          if (!raw.trim()) continue;
-          try {
-            const msg = JSON.parse(raw);
-            if (msg.type === "status") {
-              setStatus(msg.status === "terminated" ? "terminated" : msg.status);
-              if (msg.status === "terminated") {
-                addConsoleEntry({ level: "info", content: `Debug session ended (exit code ${msg.exitCode ?? "?"})` });
-              }
-            } else if (msg.type === "stdout") {
-              addConsoleEntry({ level: "log", content: msg.line });
-            } else if (msg.type === "stderr") {
-              // Parse stack trace from stderr
-              const text = msg.text;
-              if (text.includes("at ")) {
-                const frameMatch = text.match(/at (.+?) \((.+?):(\d+):(\d+)\)/);
-                if (frameMatch) {
-                  const [, fnName, filePath, line, col] = frameMatch;
-                  setCallStack([
-                    {
-                      id: Math.random().toString(36).slice(2),
-                      functionName: fnName,
-                      location: `${filePath}:${line}:${col}`,
-                      filePath,
-                      line: parseInt(line),
-                      column: parseInt(col),
-                    },
-                  ]);
-                }
-              }
-              addConsoleEntry({ level: "error", content: text.replace(/\n$/, "") });
-            } else if (msg.type === "debuggerAttached") {
-              addConsoleEntry({ level: "info", content: msg.message });
-            } else if (msg.type === "debuggerReady") {
-              addConsoleEntry({ level: "info", content: msg.message });
-            } else if (msg.type === "error") {
-              addConsoleEntry({ level: "error", content: msg.message });
-            }
-          } catch {}
-        }
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        addConsoleEntry({ level: "error", content: `Debug error: ${err.message}` });
-        setStatus("error");
-      }
-    }
-  }, [configs, selectedConfig, openFiles, activeFileId, setStatus, addConsoleEntry, setCallStack]);
+    addConsoleEntry({ level: "warn", content: "Server-side debugging is disabled for security." });
+    addConsoleEntry({ level: "info", content: "To debug on your own machine, use the Local terminal with the Netsyra Bridge:" });
+    addConsoleEntry({ level: "info", content: `  node --inspect-brk ${config.type === "next" ? "node_modules/next/dist/bin/next" : "your-script.js"}` });
+    addConsoleEntry({ level: "info", content: "Then open chrome://inspect in your browser to attach the debugger." });
+    setStatus("terminated");
+  }, [configs, selectedConfig, setStatus, addConsoleEntry]);
 
   // --- Stop debugging ---
   const stopDebug = useCallback(() => {

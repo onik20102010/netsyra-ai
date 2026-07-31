@@ -14,8 +14,8 @@ interface TerminalLine {
 type TerminalMode = "real" | "mock";
 
 export function TerminalPanel() {
-  // "real" = xterm.js + server shell bridge; "mock" = in-browser simulated terminal
-  const [mode, setMode] = useState<TerminalMode>("real");
+  // "real" = xterm.js + local bridge (user's machine); "mock" = in-browser simulated terminal
+  const [mode, setMode] = useState<TerminalMode>("mock");
 
   const workspace = useIdeStore((s) => s.workspace);
   const openFiles = useIdeStore((s) => s.openFiles);
@@ -631,10 +631,10 @@ export function TerminalPanel() {
             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
               isReal ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
             }`}
-            title="Real terminal (server shell bridge)"
+            title="Real terminal (your local machine via bridge)"
           >
             <TerminalIcon size={11} />
-            Real
+            Local
           </button>
           <button
             onClick={() => setMode("mock")}
@@ -647,7 +647,7 @@ export function TerminalPanel() {
             Simulated
           </button>
           <span className="text-[10px] text-[#484f58] ml-2">
-            Connected to server shell (D:\netsyra)
+            Connects to your machine via local bridge
           </span>
         </div>
         <div className="flex-1 min-h-0">
@@ -671,10 +671,10 @@ export function TerminalPanel() {
           className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors ${
             !isMock ? "bg-[#1f2428] text-[#34e8bb]" : "text-[#6e7681] hover:text-[#e6edf3]"
           }`}
-          title="Real terminal (server shell bridge)"
+          title="Real terminal (your local machine via bridge)"
         >
           <TerminalIcon size={11} />
-          Real
+          Local
         </button>
         <button
           onClick={() => setMode("mock")}

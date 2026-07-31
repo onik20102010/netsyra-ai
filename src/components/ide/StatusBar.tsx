@@ -1,7 +1,7 @@
 // d:\netsyra\src\components\ide\StatusBar.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useIdeStore } from "@/ide";
 import { GitBranch, Wifi, Circle, AlertCircle, AlertTriangle, ArrowUp, ArrowDown } from "lucide-react";
 
@@ -35,29 +35,8 @@ export function StatusBar() {
   const errorCount = allProblems.filter((p) => p.severity === "error").length;
   const warningCount = allProblems.filter((p) => p.severity === "warning").length;
 
-  // --- Fetch real git info from the server ---
-  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchGit = async () => {
-      try {
-        const res = await fetch("/api/ide/git", { cache: "no-store" });
-        if (!res.ok) return;
-        const data: GitInfo = await res.json();
-        if (!cancelled) setGitInfo(data);
-      } catch {
-        // Silently fail — not all environments have git
-      }
-    };
-    fetchGit();
-    // Poll every 10 seconds for git status updates
-    const interval = setInterval(fetchGit, 10000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [workspace?.name]);
+  // --- Git info (local only, no server polling) ---
+  const [gitInfo] = useState<GitInfo | null>(null);
 
   const handleProblemsClick = () => {
     if (!isBottomPanelOpen) toggleBottomPanel();

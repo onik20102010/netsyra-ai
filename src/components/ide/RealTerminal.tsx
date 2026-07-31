@@ -12,25 +12,32 @@ interface RealTerminalProps {
   onReady?: () => void;
 }
 
+const BRIDGE_PORT = 19823;
+const BRIDGE_URL = `ws://localhost:${BRIDGE_PORT}`;
+
 /**
- * A real interactive terminal backed by xterm.js on the client and a
- * persistent shell process on the server (via /api/ide/terminal).
+ * A real interactive terminal backed by xterm.js on the client.
+ *
+ * SECURITY: This terminal connects to a LOCAL WebSocket bridge running on
+ * the USER'S OWN MACHINE (ws://localhost:19823). No shell processes run on
+ * the Netsyra server. The user must run the `netsyra-bridge` script locally
+ * to enable this terminal.
  *
  * Flow:
- *   1. On mount, POST to /api/ide/terminal?action=create to spawn a shell.
- *   2. Open a streaming GET connection to receive stdout/stderr.
- *   3. Pipe xterm user input to POST /api/ide/terminal?action=input.
+ *   1. On mount, try to connect to ws://localhost:19823
+ *   2. If connected, pipe xterm input → WebSocket → user's shell
+ *   3. Pipe user's shell output → WebSocket → xterm display
+ *   4. If connection fails, show instructions to start the bridge
  */
 export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
-  const sessionRef = useRef<string | null>(externalSessionId || null);
-  const streamAbortRef = useRef<AbortController | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
 
-  // --- Initialize xterm + session ---
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -75,85 +82,82 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
     termRef.current = term;
     fitRef.current = fit;
 
-    // --- Create or attach to a session ---
-    const initSession = async () => {
+    // --- Try to connect to the local bridge ---
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
+
+    const connect = () => {
+      if (disposed) return;
+
+      let ws: WebSocket;
       try {
-        let id = sessionRef.current;
-        if (!id) {
-          const res = await fetch("/api/ide/terminal?action=create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cwd: "D:\\netsyra" }),
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          id = data.id;
-          sessionRef.current = id;
-        }
-
-        // --- Pipe user input to the shell ---
-        const inputDisposable = term.onData((data) => {
-          fetch("/api/ide/terminal?action=input", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id, data }),
-          }).catch((e) => console.error("terminal input error:", e));
-        });
-
-        // --- Stream output from the shell ---
-        const controller = new AbortController();
-        streamAbortRef.current = controller;
-        const streamRes = await fetch(`/api/ide/terminal?id=${id}`, {
-          method: "GET",
-          signal: controller.signal,
-        });
-        if (!streamRes.ok || !streamRes.body) throw new Error(`Stream HTTP ${streamRes.status}`);
-
-        const reader = streamRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        const pump = async () => {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-            for (const raw of lines) {
-              if (!raw.trim()) continue;
-              try {
-                const msg = JSON.parse(raw);
-                if (msg.type === "data") {
-                  term.write(msg.data);
-                }
-              } catch {
-                // ignore parse errors
-              }
-            }
-          }
-        };
-        pump().catch((e) => {
-          if (e.name !== "AbortError") console.error("terminal stream error:", e);
-        });
-
-        setReady(true);
-        term.focus();
-
-        // Cleanup on unmount
-        return () => {
-          inputDisposable.dispose();
-          controller.abort();
-        };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(message);
-        term.writeln(`\r\n\x1b[31mFailed to initialize terminal: ${message}\x1b[0m`);
+        ws = new WebSocket(BRIDGE_URL);
+      } catch {
+        setError("Cannot connect to local bridge");
+        setShowInstructions(true);
+        term.writeln("\x1b[33mNetsyra Local Bridge not detected.\x1b[0m");
+        term.writeln("");
+        term.writeln("To use a real terminal connected to YOUR machine:");
+        term.writeln("");
+        term.writeln("  1. Download netsyra-bridge.js from the settings panel");
+        term.writeln("  2. Run it in your terminal:  \x1b[32mnode netsyra-bridge.js\x1b[0m");
+        term.writeln("  3. Click the terminal area to reconnect");
+        term.writeln("");
+        term.writeln("Or use \x1b[36mSimulated\x1b[0m mode for in-browser commands.");
+        return;
       }
+
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (disposed) return;
+        setError(null);
+        setShowInstructions(false);
+        setReady(true);
+        term.clear();
+        term.writeln("\x1b[32m✓ Connected to your local machine via Netsyra Bridge\x1b[0m");
+        term.writeln("");
+        term.focus();
+      };
+
+      ws.onmessage = (event) => {
+        if (disposed) return;
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "data") {
+            term.write(msg.data);
+          } else if (msg.type === "exit") {
+            term.writeln(`\r\n\x1b[33m[Process exited with code ${msg.code}]\x1b[0m`);
+          }
+        } catch {
+          // If not JSON, write raw data
+          term.write(event.data);
+        }
+      };
+
+      ws.onerror = () => {
+        if (disposed) return;
+        setError("Local bridge connection failed");
+        setShowInstructions(true);
+        setReady(false);
+      };
+
+      ws.onclose = () => {
+        if (disposed) return;
+        setReady(false);
+        // Try to reconnect after 3 seconds
+        reconnectTimer = setTimeout(connect, 3000);
+      };
     };
 
-    let cleanup: (() => void) | undefined;
-    initSession().then((c) => { cleanup = c; });
+    // --- Pipe user input to the local bridge ---
+    const inputDisposable = term.onData((data) => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "input", data }));
+      }
+    });
+
+    connect();
 
     // --- Resize handling ---
     const resizeObserver = new ResizeObserver(() => {
@@ -162,15 +166,15 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
     resizeObserver.observe(containerRef.current);
 
     return () => {
-      cleanup?.();
+      disposed = true;
+      inputDisposable.dispose();
       resizeObserver.disconnect();
-      streamAbortRef.current?.abort();
-      term.dispose();
-      // Kill the session on unmount
-      const id = sessionRef.current;
-      if (id) {
-        fetch(`/api/ide/terminal?id=${id}`, { method: "DELETE" }).catch(() => {});
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
       }
+      term.dispose();
     };
   }, []);
 
@@ -183,11 +187,41 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  if (error) {
+  // --- Reconnect button ---
+  const handleReconnect = () => {
+    setError(null);
+    setShowInstructions(false);
+    if (termRef.current) {
+      termRef.current.clear();
+      termRef.current.writeln("\x1b[36mReconnecting to local bridge...\x1b[0m");
+    }
+    // Trigger reconnect by reloading
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+  };
+
+  if (showInstructions) {
     return (
-      <div className="flex flex-col h-full bg-[#0d1117] items-center justify-center text-[13px] text-[#f85149] gap-2 p-4">
-        <div>Terminal error: {error}</div>
-        <div className="text-[11px] text-[#6e7681]">The server-side shell bridge may not be available.</div>
+      <div className="flex flex-col h-full bg-[#0d1117] items-center justify-center text-[13px] gap-3 p-6">
+        <div className="text-[#d29922] font-medium">Local Bridge Required</div>
+        <div className="text-[#8b949e] text-center max-w-md text-[12px] leading-relaxed">
+          The real terminal connects to <span className="text-[#34e8bb]">your own machine</span> via a local bridge.
+          <br />
+          No commands run on the Netsyra server — everything runs locally on your computer.
+        </div>
+        <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[12px] text-[#8b949e] font-mono max-w-md">
+          <div className="text-[#6e7681] mb-1"># Download and run the bridge:</div>
+          <div className="text-[#34e8bb]">npx netsyra-bridge</div>
+          <div className="text-[#6e7681] mt-1"># or</div>
+          <div className="text-[#34e8bb]">node netsyra-bridge.js</div>
+        </div>
+        <button
+          onClick={handleReconnect}
+          className="px-3 py-1.5 bg-[#34e8bb]/10 text-[#34e8bb] hover:bg-[#34e8bb]/20 border border-[#34e8bb]/30 rounded text-[12px] transition-colors"
+        >
+          Reconnect
+        </button>
       </div>
     );
   }
@@ -195,9 +229,9 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
   return (
     <div className="flex flex-col h-full bg-[#0d1117]">
       <div ref={containerRef} className="flex-1 overflow-hidden min-h-0 px-1 py-1" />
-      {!ready && (
+      {!ready && !error && (
         <div className="absolute inset-0 flex items-center justify-center text-[12px] text-[#6e7681] pointer-events-none">
-          Initializing terminal...
+          Connecting to local bridge...
         </div>
       )}
     </div>

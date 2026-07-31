@@ -53,105 +53,25 @@ export function OutputPanel() {
     };
   }, []);
 
-  // --- Run a task via the API ---
+  // --- Run a task — shows message that tasks run on user's machine ---
   const runTask = useCallback(async (channelId: string) => {
-    // Abort any existing run for this channel
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     startChannel(channelId);
     appendLine(channelId, {
       level: "command",
       content: `$ ${getTaskLabel(channelId)}`,
       source: channelId,
     });
-
-    try {
-      const res = await fetch("/api/ide/run-task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task: channelId }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok || !res.body) {
-        appendLine(channelId, {
-          level: "error",
-          content: `Failed to start task: HTTP ${res.status}`,
-          source: channelId,
-        });
-        finishChannel(channelId, "failed");
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const linesArr = buffer.split("\n");
-        buffer = linesArr.pop() || "";
-        for (const raw of linesArr) {
-          if (!raw.trim()) continue;
-          try {
-            const msg = JSON.parse(raw);
-            if (msg.type === "stdout") {
-              // Split multi-line stdout into separate log lines
-              const textLines = String(msg.text).split("\n");
-              for (const tl of textLines) {
-                if (tl.trim()) {
-                  const level: OutputLevel = /error|Error|ERR!/i.test(tl) ? "error"
-                    : /warn|Warning/i.test(tl) ? "warning"
-                    : "info";
-                  appendLine(channelId, { level, content: tl, source: channelId });
-                }
-              }
-            } else if (msg.type === "stderr") {
-              const textLines = String(msg.text).split("\n");
-              for (const tl of textLines) {
-                if (tl.trim()) {
-                  appendLine(channelId, { level: "error", content: tl, source: channelId });
-                }
-              }
-            } else if (msg.type === "error") {
-              appendLine(channelId, { level: "error", content: `Error: ${msg.message}`, source: channelId });
-            } else if (msg.type === "done") {
-              const code = msg.exitCode as number;
-              if (code === 0) {
-                appendLine(channelId, {
-                  level: "success",
-                  content: `Process exited with code ${code}`,
-                  source: channelId,
-                });
-                finishChannel(channelId, "success");
-              } else {
-                appendLine(channelId, {
-                  level: "error",
-                  content: `Process exited with code ${code}`,
-                  source: channelId,
-                });
-                finishChannel(channelId, "failed");
-              }
-            }
-          } catch {
-            // ignore parse errors
-          }
-        }
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (err instanceof Error && err.name === "AbortError") {
-        appendLine(channelId, { level: "warning", content: "Task cancelled.", source: channelId });
-        finishChannel(channelId, "cancelled");
-      } else {
-        appendLine(channelId, { level: "error", content: `Request failed: ${message}`, source: channelId });
-        finishChannel(channelId, "failed");
-      }
-    }
+    appendLine(channelId, {
+      level: "warning",
+      content: "Server-side task execution is disabled for security. Run this command on your own machine via the Local terminal.",
+      source: channelId,
+    });
+    appendLine(channelId, {
+      level: "info",
+      content: "Switch to the Local terminal tab and run the command there after starting the Netsyra Bridge.",
+      source: channelId,
+    });
+    finishChannel(channelId, "failed");
   }, [appendLine, startChannel, finishChannel]);
 
   const stopTask = useCallback(() => {
