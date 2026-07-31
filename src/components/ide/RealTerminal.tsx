@@ -48,6 +48,8 @@ export function RealTerminal({ sessionId: externalSessionId }: RealTerminalProps
       cursorBlink: true,
       cursorStyle: "bar",
       allowProposedApi: true,
+      scrollback: 5000,
+      convertEol: true,
       theme: {
         background: "#0d1117",
         foreground: "#e6edf3",
