@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const TIMEOUT_MS = 30000;
-const MAX_CONTENT_LENGTH = 16000;
+const MAX_CONTENT_LENGTH = 12000;
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY = 2000;
 
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const requestBody: Record<string, any> = {
       model: GROQ_MODEL,
       messages: sanitizedMessages,
-      max_tokens: 8192,
+      max_tokens: 4096,
       temperature: typeof temperature === 'number' ? temperature : 0.1,
     };
 
@@ -113,7 +113,11 @@ export async function POST(request: NextRequest) {
 
           if (!groqResponse.ok) {
             const errorText = await groqResponse.text();
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `Agent request failed (${groqResponse.status})` })}\n\n`));
+            console.error(`Agent Groq API error: ${groqResponse.status} - ${errorText}`);
+            const errorDetail = errorText.includes('"message"')
+              ? JSON.parse(errorText).error?.message || errorText.substring(0, 200)
+              : `Agent request failed (${groqResponse.status})`;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorDetail })}\n\n`));
             controller.close();
             return;
           }

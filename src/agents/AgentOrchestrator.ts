@@ -197,6 +197,7 @@ export class AgentOrchestrator {
   private pendingEdits: PendingEdit[] = [];
   private snapshots: Map<string, FileSnapshot> = new Map();
   private editIdCounter = 0;
+  private lastError: string | null = null;
 
   constructor(db: NetsyraDB, onStatus?: AgentStatusCallback, onToken?: StreamTokenCallback, onThought?: AgentThoughtCallback) {
     this.db = db;
@@ -279,6 +280,7 @@ export class AgentOrchestrator {
   ): Promise<AgentResult> {
     // Snapshot files before running (for undo)
     this.snapshotFiles();
+    this.lastError = null;
 
     // Build initial context
     this.emitThought({ type: 'thinking', title: 'Analyzing your request', detail: userPrompt });
@@ -307,8 +309,9 @@ export class AgentOrchestrator {
       const response = await this.callLLMStream(this.conversationHistory);
 
       if (!response) {
+        const errDetail = this.lastError ? `: ${this.lastError}` : '';
         return this.makeResult(
-          'I encountered an error communicating with the AI. Please try again.',
+          `I encountered an error communicating with the AI${errDetail}. Please try again.`,
           false
         );
       }
@@ -501,12 +504,19 @@ export class AgentOrchestrator {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        console.error('Agent LLM error:', errorData);
+        const errMsg = errorData.error || `HTTP ${res.status}`;
+        console.error('Agent LLM error:', errMsg);
+        this.lastError = errMsg;
         return null;
       }
 
       if (!res.body) {
         const data = await res.json();
+        if (data.error) {
+          console.error('Agent LLM error:', data.error);
+          this.lastError = data.error;
+          return null;
+        }
         return data.content || null;
       }
 
@@ -532,6 +542,7 @@ export class AgentOrchestrator {
               const parsed = JSON.parse(data);
               if (parsed.error) {
                 console.error('Agent stream error:', parsed.error);
+                this.lastError = parsed.error;
                 return null;
               }
               const delta = parsed.choices?.[0]?.delta?.content;
