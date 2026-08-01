@@ -26,6 +26,7 @@ let cvData = loadFromStorage() || {
 let currentPageIndex = 0;
 let selectedTemplate = null;
 let isPreviewMode = false;
+let currentMode = 'preview'; // 'preview' | 'custom' | 'selfmade'
 
 // ==================== PAGE ORDER ====================
 const pageOrder = [
@@ -213,8 +214,14 @@ function showPreview() {
         <button class="btn btn-secondary" onclick="changeTemplate()">
           <i class="fas fa-palette"></i> Change Template
         </button>
+        <button class="btn btn-secondary" onclick="openCustomTemplate()">
+          <i class="fas fa-sliders"></i> Custom Template
+        </button>
+        <button class="btn btn-secondary" onclick="openSelfMade()">
+          <i class="fas fa-pen-ruler"></i> Create Self Made
+        </button>
       </div>
-      <div class="cv-page">${html}</div>
+      <div class="cv-page" id="cvPageRender">${html}</div>
     </div>
   `;
 
@@ -273,6 +280,32 @@ function val(id) {
 function setVal(id, v) {
   const el = document.getElementById(id);
   if (el && v != null) el.value = v;
+}
+
+// ==================== CUSTOM TEMPLATE & SELF MADE ====================
+function openCustomTemplate() {
+  currentMode = 'custom';
+  if (typeof CustomTemplateEditor !== 'undefined' && CustomTemplateEditor.open) {
+    CustomTemplateEditor.open(selectedTemplate, cvData);
+  }
+}
+
+function openSelfMade() {
+  currentMode = 'selfmade';
+  if (typeof SelfMadeEditor !== 'undefined' && SelfMadeEditor.open) {
+    SelfMadeEditor.open(cvData);
+  }
+}
+
+function backToPreview() {
+  currentMode = 'preview';
+  if (typeof CustomTemplateEditor !== 'undefined' && CustomTemplateEditor.close) {
+    CustomTemplateEditor.close();
+  }
+  if (typeof SelfMadeEditor !== 'undefined' && SelfMadeEditor.close) {
+    SelfMadeEditor.close();
+  }
+  showPreview();
 }
 
 // ==================== INIT ====================
