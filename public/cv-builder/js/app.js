@@ -220,9 +220,6 @@ function showPreview() {
         <button class="btn btn-secondary" onclick="openSelfMade()">
           <i class="fas fa-pen-ruler"></i> Create Self Made
         </button>
-        <button class="btn btn-ai" onclick="openAISuggestions()">
-          <i class="fas fa-wand-magic-sparkles"></i> AI Suggestions
-        </button>
         <button class="btn btn-secondary" onclick="exportDOCX()">
           <i class="fas fa-file-word"></i> DOCX Export
         </button>
@@ -318,14 +315,6 @@ function backToPreview() {
     SelfMadeEditor.close();
   }
   showPreview();
-}
-
-// ==================== AI SUGGESTIONS ====================
-function openAISuggestions() {
-  currentMode = 'ai';
-  if (typeof AISuggestions !== 'undefined' && AISuggestions.open) {
-    AISuggestions.open(cvData);
-  }
 }
 
 // ==================== DOCX EXPORT ====================

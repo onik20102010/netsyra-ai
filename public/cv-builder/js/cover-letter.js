@@ -82,9 +82,6 @@ const CoverLetter = (function () {
                 <label>Letter Body</label>
                 <textarea id="clBody" rows="14" oninput="CoverLetter.update()" placeholder="Write your cover letter here...">${escAttr(letterData.body)}</textarea>
               </div>
-              <button class="btn btn-ai btn-sm" onclick="CoverLetter.generateAI()" id="clAIBtn">
-                <i class="fas fa-wand-magic-sparkles"></i> Generate with AI
-              </button>
             </div>
 
             <div class="coverletter-form-section">
@@ -158,57 +155,6 @@ const CoverLetter = (function () {
     `;
   }
 
-  async function generateAI() {
-    const btn = document.getElementById("clAIBtn");
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-    }
-
-    try {
-      const toneMap = {
-        professional: "professional and polished",
-        warm: "warm and friendly",
-        confident: "confident and direct",
-        creative: "creative and engaging"
-      };
-      const tone = toneMap[letterData.tone] || "professional";
-
-      const prompt = `Write a cover letter for this person. The letter should be ${tone} in tone. They are applying for the position of "${letterData.position || "a role"}" at "${letterData.company || "a company"}". Address it to "${letterData.recipientName || "Hiring Manager"}". 
-
-Base the letter on their CV data — their experience, skills, and background. Make it sound like a real human wrote it, not a template. Keep it to 3-4 paragraphs. Do NOT use buzzwords like "passionate", "results-driven", "team player". Use specific details from their actual experience.
-
-Format: Start with "Dear [Name],", then the body paragraphs, then "Sincerely," followed by their name. Do not include the date or address block.`;
-
-      const res = await fetch("/api/cv-builder/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, cvData }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "AI request failed");
-      }
-
-      const data = await res.json();
-      const content = data.content;
-
-      letterData.body = content;
-      const bodyEl = document.getElementById("clBody");
-      if (bodyEl) bodyEl.value = content;
-      updatePreview();
-      toast("Cover letter generated");
-    } catch (err) {
-      toast("AI error: " + err.message);
-    }
-
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate with AI';
-    }
-  }
-
   function exportPDF() {
     // Hide everything except the cover letter preview for printing
     const style = document.createElement("style");
@@ -251,6 +197,6 @@ Format: Start with "Dear [Name],", then the body paragraphs, then "Sincerely," f
   }
 
   return {
-    open, close, update, generateAI, exportPDF
+    open, close, update, exportPDF
   };
 })();
