@@ -377,6 +377,21 @@ Rules:
 - Do NOT use square brackets inside node labels.
 - If a diagram would NOT add clarity, skip it.
 
+For simple tree/flow diagrams, system topology, or pipeline overviews, use \`\`\`ascii code blocks
+with plain-text ASCII art using box-drawing characters (│ ├ └ ─ ┌ ┐ └ ┘). Example:
+
+\`\`\`ascii
+Internet
+   │
+Cloudflare
+   │
+Frontend
+   │
+Backend
+\`\`\`
+
+Keep ASCII diagrams clean and aligned. Prefer Mermaid for complex flows; use ASCII for simple hierarchies/topologies.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOOL USAGE (Priority 6 – External Capabilities)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

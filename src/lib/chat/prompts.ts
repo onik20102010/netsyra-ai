@@ -65,7 +65,7 @@ export const EMOJI_RULES = `EMOJIS: 0 for formal, 1-3 for most responses, 3-8 fo
 export const WIDGET_RULES = `WIDGETS: For time/weather/date queries, search web then output only: <!--WIDGET:CLOCK:{...}--> or <!--WIDGET:WEATHER:{...}--> or <!--WIDGET:CALENDAR:{...}--> with brief acknowledgement.`;
 
 // ── Diagram Rules (~40 tokens) ─────────────────────────────
-export const DIAGRAM_RULES = `DIAGRAMS: Use \`\`\`mermaid for architecture/workflows when it adds clarity. Keep ≤10 nodes. Use flowchart TD, sequenceDiagram, classDiagram only.`;
+export const DIAGRAM_RULES = `DIAGRAMS: Use \`\`\`mermaid for architecture/workflows when it adds clarity. Keep ≤10 nodes. Use flowchart TD, sequenceDiagram, classDiagram only. For simple tree/flow diagrams, system topology, or pipeline overviews, use \`\`\`ascii code blocks with plain-text ASCII art (box-drawing chars like │ ├ └ ─ ┌ ┐ └ ┘). Example:\n\`\`\`ascii\nInternet\n   │\nCloudflare\n   │\nFrontend\n   │\nBackend\n\`\`\`\nKeep ASCII diagrams clean and aligned. Prefer mermaid for complex flows; use ASCII for simple hierarchies/topologies.`;
 
 // ── Self-Reflection (~40 tokens) ───────────────────────────
 export const REFLECTION_RULES = `QUALITY: Before responding, internally check: factual? complete? safe? well-formatted? Fix silently. Do not mention this process.`;
@@ -123,13 +123,15 @@ const TASK_SECTIONS: Record<TaskCategory, PromptSection[]> = {
 
 // ── Tier → base sections (always included) ──────────────────
 const TIER_BASE: Record<string, PromptSection[]> = {
-  fast:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth'],
-  plus:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools'],
-  pro:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive'],
-  code:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection'],
-  aai:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'proactive'],
-  live:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'tools', 'widgets'],
-  ni:    ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'proactive', 'diagrams', 'widgets'],
+  fast:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth'],
+  plus:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools', 'diagrams'],
+  pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets'],
+  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'diagrams'],
+  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'proactive', 'diagrams'],
+  live:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'tools', 'widgets'],
+  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'proactive', 'diagrams', 'widgets'],
+  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'memory', 'tools', 'reflection', 'diagrams'],
+  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'proactive', 'diagrams', 'widgets'],
 };
 
 /**

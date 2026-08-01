@@ -429,6 +429,16 @@ export default function ChatInterface({
                     );
                   }
 
+                  if (!inline && match && match[1] === "ascii") {
+                    return (
+                      <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-x-auto">
+                        <pre className="p-4 text-sm leading-relaxed text-gray-800 font-mono whitespace-pre">
+                          {codeString}
+                        </pre>
+                      </div>
+                    );
+                  }
+
                   if (!inline && match) {
                     return (
                       <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
