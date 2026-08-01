@@ -309,9 +309,8 @@ export class AgentOrchestrator {
       const response = await this.callLLMStream(this.conversationHistory);
 
       if (!response) {
-        const errDetail = this.lastError ? `: ${this.lastError}` : '';
         return this.makeResult(
-          `I encountered an error communicating with the AI${errDetail}. Please try again.`,
+          'The server is currently under high load. Please try again in a moment.',
           false
         );
       }

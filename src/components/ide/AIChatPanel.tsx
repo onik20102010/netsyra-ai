@@ -612,18 +612,22 @@ export function AIChatPanel() {
                     <span className="inline-block w-1.5 h-3.5 bg-[#34e8bb] animate-pulse ml-0.5 align-middle rounded-sm" />
                   </div>
                 ) : !isStreaming ? (
-                  <div className="flex items-center gap-2 text-[#6e7681] text-[13px] py-1">
-                    <Bot size={15} className="text-[#34e8bb]" />
-                    {agentStatus ? (
-                      <span className="flex items-center gap-1.5">
-                        <Loader2 size={12} className="animate-spin text-[#34e8bb]" />
-                        {agentStatus}
-                      </span>
-                    ) : (
-                      <span>Thinking...</span>
-                    )}
-                  </div>
-                ) : null}
+                  /* Animated agent indicator — shows thinking/planning/tool-calling/typing states */
+                  <AgentIndicator
+                    status={agentStatus}
+                    isStreaming={isStreaming}
+                    hasStreamingText={!!streamingText}
+                    thoughts={thoughts}
+                  />
+                ) : (
+                  /* Streaming but no text yet (waiting for first token) — show indicator */
+                  <AgentIndicator
+                    status={agentStatus}
+                    isStreaming={isStreaming}
+                    hasStreamingText={!!streamingText}
+                    thoughts={thoughts}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1253,6 +1257,68 @@ function ToolCallCards({ toolCalls }: { toolCalls: AgentThought[] }) {
 }
 
 // --- Agent Activity Panel (live thoughts during agent run) ---
+
+// --- Animated Agent Status Indicator ---
+function AgentIndicator({ status, isStreaming, hasStreamingText, thoughts }: {
+  status: string | null;
+  isStreaming: boolean;
+  hasStreamingText: boolean;
+  thoughts: AgentThought[];
+}) {
+  // Determine current agent phase
+  let phase: 'thinking' | 'planning' | 'tool_calling' | 'typing' | 'working';
+  let icon: React.ReactNode;
+  let label: string;
+
+  if (isStreaming && hasStreamingText) {
+    phase = 'typing';
+    icon = <span className="flex gap-[2px] items-end h-[14px]">
+      <span className="w-[2px] h-[6px] bg-[#34e8bb] rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '0.6s' }} />
+      <span className="w-[2px] h-[10px] bg-[#34e8bb] rounded-full animate-bounce" style={{ animationDelay: '150ms', animationDuration: '0.6s' }} />
+      <span className="w-[2px] h-[4px] bg-[#34e8bb] rounded-full animate-bounce" style={{ animationDelay: '300ms', animationDuration: '0.6s' }} />
+    </span>;
+    label = 'Typing...';
+  } else if (thoughts.some(t => t.type === 'action')) {
+    phase = 'tool_calling';
+    icon = <Wrench size={14} className="text-[#58a6ff] animate-pulse" />;
+    label = status || 'Calling tools...';
+  } else if (thoughts.some(t => t.type === 'plan')) {
+    phase = 'planning';
+    icon = <Lightbulb size={14} className="text-[#d29922] animate-pulse" />;
+    label = status || 'Planning approach...';
+  } else if (thoughts.some(t => t.type === 'observation')) {
+    phase = 'tool_calling';
+    icon = <Search size={14} className="text-[#34e8bb] animate-pulse" />;
+    label = status || 'Analyzing results...';
+  } else if (thoughts.length > 0) {
+    phase = 'working';
+    icon = <Loader2 size={14} className="text-[#34e8bb] animate-spin" />;
+    label = status || 'Working...';
+  } else {
+    phase = 'thinking';
+    icon = <span className="flex gap-1 items-center">
+      <span className="w-[5px] h-[5px] bg-[#34e8bb] rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+      <span className="w-[5px] h-[5px] bg-[#34e8bb] rounded-full animate-pulse opacity-60" style={{ animationDelay: '200ms' }} />
+      <span className="w-[5px] h-[5px] bg-[#34e8bb] rounded-full animate-pulse opacity-30" style={{ animationDelay: '400ms' }} />
+    </span>;
+    label = status || 'Thinking...';
+  }
+
+  return (
+    <div className="flex items-center gap-2 py-1.5 px-1 text-[13px] text-[#8b949e]">
+      <span className="shrink-0 flex items-center justify-center w-[20px] h-[20px]">
+        {icon}
+      </span>
+      <span className="text-[#8b949e]">{label}</span>
+      {/* Animated progress dots */}
+      <span className="flex gap-[3px] ml-1">
+        <span className={`w-[3px] h-[3px] rounded-full ${phase === 'thinking' ? 'bg-[#a371f7]' : phase === 'planning' ? 'bg-[#d29922]' : phase === 'tool_calling' ? 'bg-[#58a6ff]' : phase === 'typing' ? 'bg-[#34e8bb]' : 'bg-[#34e8bb]'} animate-pulse`} style={{ animationDelay: '0ms' }} />
+        <span className={`w-[3px] h-[3px] rounded-full ${phase === 'thinking' ? 'bg-[#a371f7]' : phase === 'planning' ? 'bg-[#d29922]' : phase === 'tool_calling' ? 'bg-[#58a6ff]' : phase === 'typing' ? 'bg-[#34e8bb]' : 'bg-[#34e8bb]'} animate-pulse`} style={{ animationDelay: '200ms' }} />
+        <span className={`w-[3px] h-[3px] rounded-full ${phase === 'thinking' ? 'bg-[#a371f7]' : phase === 'planning' ? 'bg-[#d29922]' : phase === 'tool_calling' ? 'bg-[#58a6ff]' : phase === 'typing' ? 'bg-[#34e8bb]' : 'bg-[#34e8bb]'} animate-pulse`} style={{ animationDelay: '400ms' }} />
+      </span>
+    </div>
+  );
+}
 
 const thoughtIcons: Record<AgentThought['type'], React.ReactNode> = {
   thinking: <Brain size={13} className="text-[#a371f7]" />,
