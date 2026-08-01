@@ -24,7 +24,7 @@ window.CVTemplates.modern = {
     const s = data.summary || {};
     const accent = '#4a6b8a';
     return `
-      <div style="font-family:'Inter',sans-serif;color:#333;line-height:1.6;display:flex;min-height:600px;">
+      <div style="font-family:'Inter',sans-serif;color:#333;line-height:1.6;display:flex;min-height:600px;word-break:break-word;overflow-wrap:break-word;">
         <div style="width:35%;background:${accent};color:#fff;padding:30px 20px;">
           ${p.photo && !p.photo.includes('svg') ? `<img src="${p.photo}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid rgba(255,255,255,0.3);">` : ''}
           <h1 style="font-size:20px;margin:0 0 2px;">${escapeHTML(p.fullName)}</h1>
@@ -40,8 +40,10 @@ window.CVTemplates.modern = {
           ${modMainSection('Work Experience', data.experience, exp => `
             <div style="margin-bottom:10px;">
               <strong style="color:${accent};">${escapeHTML(exp.jobTitle)}</strong> at ${escapeHTML(exp.company)}
+              ${exp.employmentType ? `<span style="font-size:10px;color:#888;"> (${escapeHTML(exp.employmentType)})</span>` : ''}
               <span style="color:#888;font-size:11px;"> — ${formatDate(exp.startDate)} to ${exp.currentlyWorking?'Present':formatDate(exp.endDate)}</span>
-              ${exp.description ? `<p style="font-size:12px;margin:3px 0;">${escapeHTML(exp.description)}</p>` : ''}
+              ${exp.location ? `<br><span style="font-size:11px;color:#888;">${escapeHTML(exp.location)}</span>` : ''}
+              ${exp.description ? `<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.description)}</p>` : ''}
               ${exp.achievements ? `<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.achievements)}</p>` : ''}
             </div>
           `)}
@@ -50,45 +52,59 @@ window.CVTemplates.modern = {
               <strong style="color:${accent};">${escapeHTML(edu.degree)}</strong>${edu.fieldOfStudy?', '+escapeHTML(edu.fieldOfStudy):''}
               <br>${escapeHTML(edu.school)} <span style="color:#888;font-size:11px;">— ${formatDate(edu.startDate)} to ${formatDate(edu.endDate)}</span>
               ${edu.gpa?`<br><span style="font-size:11px;">GPA: ${escapeHTML(edu.gpa)}</span>`:''}
+              ${edu.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(edu.description)}</p>`:''}
             </div>
           `)}
           ${modMainSection('Projects', data.projects, proj => `
             <div style="margin-bottom:8px;">
               <strong style="color:${accent};">${escapeHTML(proj.name)}</strong>
+              ${(proj.startDate||proj.endDate)?`<span style="color:#888;font-size:11px;"> — ${formatDate(proj.startDate)} to ${formatDate(proj.endDate)}</span>`:''}
               ${proj.technologies?`<br><span style="font-size:11px;color:#666;">${escapeHTML(proj.technologies)}</span>`:''}
-              ${proj.description?`<p style="font-size:12px;margin:2px 0;">${escapeHTML(proj.description)}</p>`:''}
+              ${proj.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(proj.description)}</p>`:''}
+              ${(proj.github||proj.liveUrl)?`<p style="font-size:11px;color:${accent};word-break:break-all;">${[proj.github,proj.liveUrl].filter(Boolean).map(escapeHTML).join(' | ')}</p>`:''}
             </div>
           `)}
           ${modMainSection('Certifications', data.certifications, c => `
             <div style="margin-bottom:6px;">
-              <strong style="color:${accent};">${escapeHTML(c.name)}</strong> — ${escapeHTML(c.organization)} <span style="color:#888;font-size:11px;">(${formatDate(c.issueDate)})</span>
+              <strong style="color:${accent};">${escapeHTML(c.name)}</strong> — ${escapeHTML(c.organization)} <span style="color:#888;font-size:11px;">(${formatDate(c.issueDate)}${c.expiryDate?' – '+formatDate(c.expiryDate):''})</span>
+              ${c.credentialId?`<br><span style="font-size:11px;">ID: ${escapeHTML(c.credentialId)}</span>`:''}
+              ${c.credentialUrl?`<br><span style="font-size:11px;word-break:break-all;">${escapeHTML(c.credentialUrl)}</span>`:''}
             </div>
           `)}
           ${modMainSection('Awards', data.awards, a => `
             <div style="margin-bottom:6px;">
               <strong style="color:${accent};">${escapeHTML(a.title)}</strong> — ${escapeHTML(a.issuer)} <span style="color:#888;font-size:11px;">(${formatDate(a.date)})</span>
+              ${a.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(a.description)}</p>`:''}
             </div>
           `)}
           ${modMainSection('Volunteer', data.volunteer, v => `
             <div style="margin-bottom:8px;">
               <strong style="color:${accent};">${escapeHTML(v.role)}</strong> at ${escapeHTML(v.organization)}
-              ${v.description?`<p style="font-size:12px;margin:2px 0;">${escapeHTML(v.description)}</p>`:''}
+              <span style="color:#888;font-size:11px;"> — ${formatDate(v.startDate)} to ${formatDate(v.endDate)}</span>
+              ${v.location?`<br><span style="font-size:11px;color:#888;">${escapeHTML(v.location)}</span>`:''}
+              ${v.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(v.description)}</p>`:''}
             </div>
           `)}
           ${modMainSection('Internships', data.internships, it => `
             <div style="margin-bottom:8px;">
               <strong style="color:${accent};">${escapeHTML(it.jobTitle)}</strong> at ${escapeHTML(it.company)}
-              ${it.description?`<p style="font-size:12px;margin:2px 0;">${escapeHTML(it.description)}</p>`:''}
+              <span style="color:#888;font-size:11px;"> — ${formatDate(it.startDate)} to ${formatDate(it.endDate)}</span>
+              ${it.location?`<br><span style="font-size:11px;color:#888;">${escapeHTML(it.location)}</span>`:''}
+              ${it.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(it.description)}</p>`:''}
             </div>
           `)}
           ${modMainSection('Publications', data.publications, pub => `
             <div style="margin-bottom:6px;">
               <strong style="color:${accent};">${escapeHTML(pub.title)}</strong> — ${escapeHTML(pub.publisher)} <span style="color:#888;font-size:11px;">(${formatDate(pub.date)})</span>
+              ${pub.doi?`<br><span style="font-size:11px;">DOI: ${escapeHTML(pub.doi)}</span>`:''}
+              ${pub.url?`<br><span style="font-size:11px;word-break:break-all;">${escapeHTML(pub.url)}</span>`:''}
             </div>
           `)}
           ${modMainSection('Conferences', data.conferences, c => `
             <div style="margin-bottom:6px;">
               <strong style="color:${accent};">${escapeHTML(c.name)}</strong> — ${escapeHTML(c.role)} <span style="color:#888;font-size:11px;">(${formatDate(c.date)})</span>
+              ${c.location?`<br><span style="font-size:11px;color:#888;">${escapeHTML(c.location)}</span>`:''}
+              ${c.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(c.description)}</p>`:''}
             </div>
           `)}
           ${modRefs(data.references, accent)}
@@ -133,7 +149,8 @@ function modRefs(refs, accent) {
   return modMainSection('References', refs.list, r => `
     <div style="margin-bottom:6px;">
       <strong style="color:${accent};">${escapeHTML(r.name)}</strong> — ${escapeHTML(r.title)}, ${escapeHTML(r.company)}
-      ${r.email?`<br><span style="font-size:11px;">${escapeHTML(r.email)}</span>`:''}
+      ${r.email?`<br><span style="font-size:11px;word-break:break-all;">${escapeHTML(r.email)}</span>`:''}
+      ${r.phone?`<br><span style="font-size:11px;">${escapeHTML(r.phone)}</span>`:''}
     </div>
   `);
 }
@@ -144,6 +161,6 @@ function modCustom(custom, accent) {
     if (!sec.sectionName) return '';
     const items = (sec.items||[]).filter(i => i.title || i.description);
     if (items.length === 0) return '';
-    return `<div style="margin-bottom:18px;"><h2 style="font-size:15px;color:${accent};text-transform:uppercase;margin:0 0 8px;">${escapeHTML(sec.sectionName)}</h2>${items.map(item => `<div style="margin-bottom:6px;"><strong style="color:${accent};">${escapeHTML(item.title)}</strong>${item.description?`<p style="font-size:12px;margin:2px 0;">${escapeHTML(item.description)}</p>`:''}</div>`).join('')}</div>`;
+    return `<div style="margin-bottom:18px;"><h2 style="font-size:15px;color:${accent};text-transform:uppercase;margin:0 0 8px;">${escapeHTML(sec.sectionName)}</h2>${items.map(item => `<div style="margin-bottom:6px;"><strong style="color:${accent};">${escapeHTML(item.title)}</strong>${item.description?`<p style="font-size:12px;margin:2px 0;white-space:pre-line;">${escapeHTML(item.description)}</p>`:''}</div>`).join('')}</div>`;
   }).join('');
 }

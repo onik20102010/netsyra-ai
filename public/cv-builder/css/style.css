@@ -489,7 +489,9 @@ body {
   box-shadow: var(--shadow-lg);
   border-radius: 4px;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .preview-actions {
@@ -502,8 +504,10 @@ body {
 
 @media print {
   .app-header, .progress-wrap, .app-footer, .preview-actions, .toast-container { display: none !important; }
-  .cv-page { box-shadow: none; max-width: 100%; }
+  .cv-page { box-shadow: none; max-width: 100%; overflow: visible !important; }
+  .preview-container { padding: 0 !important; margin: 0 !important; }
   body { background: #fff; }
+  * { overflow: visible !important; }
 }
 
 /* ==================== TOAST ==================== */

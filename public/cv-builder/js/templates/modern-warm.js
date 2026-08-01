@@ -33,7 +33,7 @@ window.CVTemplates['modern-warm'] = {
     const primaryColor = '#B86B53';
 
     return `
-      <div style="font-family:'Georgia', 'Times New Roman', serif; background-color:#ffffff; color:#333333; max-width:800px; margin:0 auto; box-shadow:0 0 10px rgba(0,0,0,0.05); text-align:left;">
+      <div style="font-family:'Georgia', 'Times New Roman', serif; background-color:#ffffff; color:#333333; max-width:800px; margin:0 auto; box-shadow:0 0 10px rgba(0,0,0,0.05); text-align:left; word-break:break-word; overflow-wrap:break-word;">
         
         <!-- Header Section -->
         <div style="background-color:${primaryColor}; color:#ffffff; padding:30px 35px; display:flex; align-items:center; gap:25px;">
@@ -76,7 +76,8 @@ window.CVTemplates['modern-warm'] = {
               <div style="font-size:11px; color:#777; margin:2px 0 6px 0; font-family:sans-serif;">
                 ${formatDate(exp.startDate)} - ${exp.currentlyWorking ? 'Present' : formatDate(exp.endDate)}
               </div>
-              ${exp.description ? `<p style="font-size:12px; color:#444; margin:4px 0; line-height:1.5; font-family:sans-serif;">${escapeHTML(exp.description)}</p>` : ''}
+              ${exp.location ? `<div style="font-size:11px; color:#777; margin:2px 0 6px 0; font-family:sans-serif;">${escapeHTML(exp.location)}</div>` : ''}
+              ${exp.description ? `<p style="font-size:12px; color:#444; margin:4px 0; line-height:1.5; font-family:sans-serif; white-space:pre-line;">${escapeHTML(exp.description)}</p>` : ''}
               ${exp.achievements ? `
                 <ul style="margin:4px 0 0 18px; padding:0; font-size:12px; color:#444; font-family:sans-serif; line-height:1.5;">
                   ${exp.achievements.split('\n').filter(Boolean).map(item => `<li>${escapeHTML(item)}</li>`).join('')}
@@ -94,7 +95,8 @@ window.CVTemplates['modern-warm'] = {
                   <div style="flex:1; min-width:200px;">
                     <div style="font-size:11px; color:#888; font-family:sans-serif;">${formatDate(edu.startDate)} ${edu.endDate ? '- ' + formatDate(edu.endDate) : ''}</div>
                     <div style="font-size:14px; font-weight:bold; color:#111; margin:2px 0;">${escapeHTML(edu.school)}</div>
-                    <div style="font-size:12px; color:#444; font-family:sans-serif;">${escapeHTML(edu.degree)}</div>
+                    <div style="font-size:12px; color:#444; font-family:sans-serif;">${escapeHTML(edu.degree)}${edu.fieldOfStudy ? ' — ' + escapeHTML(edu.fieldOfStudy) : ''}</div>
+                    ${edu.description ? `<p style="font-size:11px; color:#666; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(edu.description)}</p>` : ''}
                     ${edu.gpa ? `<div style="font-size:11px; color:#666; margin-top:2px; font-family:sans-serif;">GPA: ${escapeHTML(edu.gpa)}</div>` : ''}
                   </div>
                 `).join('')}
@@ -119,7 +121,9 @@ window.CVTemplates['modern-warm'] = {
           <!-- Certifications Section -->
           ${mwListSection('Certifications', data.certifications, cert => `
             <div style="font-size:12px; color:#333; margin-bottom:6px; font-family:sans-serif;">
-              &bull; <strong>${escapeHTML(cert.name)}</strong> ${cert.organization ? '| ' + escapeHTML(cert.organization) : ''} ${cert.issueDate ? '| ' + formatDate(cert.issueDate) : ''}
+              &bull; <strong>${escapeHTML(cert.name)}</strong> ${cert.organization ? '| ' + escapeHTML(cert.organization) : ''} ${cert.issueDate ? '| ' + formatDate(cert.issueDate) : ''}${cert.expiryDate ? ' – ' + formatDate(cert.expiryDate) : ''}
+              ${cert.credentialId ? `<br><span style="font-size:11px; color:#777;">ID: ${escapeHTML(cert.credentialId)}</span>` : ''}
+              ${cert.credentialUrl ? `<br><span style="font-size:11px; color:#777; word-break:break-all;">${escapeHTML(cert.credentialUrl)}</span>` : ''}
             </div>
           `, primaryColor)}
 
@@ -128,7 +132,8 @@ window.CVTemplates['modern-warm'] = {
             <div style="margin-bottom:12px;">
               <div style="font-size:13px; font-weight:bold;">${escapeHTML(proj.name)}</div>
               ${proj.technologies ? `<div style="font-size:11px; color:#777; font-family:sans-serif;">${escapeHTML(proj.technologies)}</div>` : ''}
-              ${proj.description ? `<p style="font-size:12px; color:#444; margin:3px 0; font-family:sans-serif;">${escapeHTML(proj.description)}</p>` : ''}
+              ${proj.description ? `<p style="font-size:12px; color:#444; margin:3px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(proj.description)}</p>` : ''}
+              ${(proj.github || proj.liveUrl) ? `<p style="font-size:11px; color:#777; font-family:sans-serif; word-break:break-all;">${[proj.github, proj.liveUrl].filter(Boolean).map(escapeHTML).join(' | ')}</p>` : ''}
             </div>
           `, primaryColor)}
 
@@ -145,33 +150,39 @@ window.CVTemplates['modern-warm'] = {
           <!-- Additional Dynamic Sections -->
           ${mwListSection('Awards', data.awards, a => `
             <div style="font-size:12px; color:#333; margin-bottom:4px; font-family:sans-serif;">
-              &bull; <strong>${escapeHTML(a.title)}</strong> &mdash; ${escapeHTML(a.issuer)}
+              &bull; <strong>${escapeHTML(a.title)}</strong> &mdash; ${escapeHTML(a.issuer)}${a.date ? ' | ' + formatDate(a.date) : ''}
+              ${a.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(a.description)}</p>` : ''}
             </div>
           `, primaryColor)}
 
           ${mwListSection('Volunteer', data.volunteer, v => `
             <div style="margin-bottom:8px;">
               <div style="font-size:13px; font-weight:bold;">${escapeHTML(v.role)} &mdash; ${escapeHTML(v.organization)}</div>
-              ${v.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif;">${escapeHTML(v.description)}</p>` : ''}
+              <div style="font-size:11px; color:#777; margin:2px 0; font-family:sans-serif;">${formatDate(v.startDate)} - ${formatDate(v.endDate)}${v.location ? ' | ' + escapeHTML(v.location) : ''}</div>
+              ${v.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(v.description)}</p>` : ''}
             </div>
           `, primaryColor)}
 
           ${mwListSection('Internships', data.internships, it => `
             <div style="margin-bottom:8px;">
               <div style="font-size:13px; font-weight:bold;">${escapeHTML(it.jobTitle)} &mdash; ${escapeHTML(it.company)}</div>
-              ${it.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif;">${escapeHTML(it.description)}</p>` : ''}
+              <div style="font-size:11px; color:#777; margin:2px 0; font-family:sans-serif;">${formatDate(it.startDate)} - ${formatDate(it.endDate)}${it.location ? ' | ' + escapeHTML(it.location) : ''}</div>
+              ${it.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(it.description)}</p>` : ''}
             </div>
           `, primaryColor)}
 
           ${mwListSection('Publications', data.publications, pub => `
             <div style="font-size:12px; color:#333; margin-bottom:4px; font-family:sans-serif;">
               &bull; <strong>${escapeHTML(pub.title)}</strong> &mdash; ${escapeHTML(pub.publisher)} ${pub.date ? '| ' + formatDate(pub.date) : ''}
+              ${pub.doi ? `<br><span style="font-size:11px; color:#777;">DOI: ${escapeHTML(pub.doi)}</span>` : ''}
+              ${pub.url ? `<br><span style="font-size:11px; color:#777; word-break:break-all;">${escapeHTML(pub.url)}</span>` : ''}
             </div>
           `, primaryColor)}
 
           ${mwListSection('Conferences', data.conferences, c => `
             <div style="font-size:12px; color:#333; margin-bottom:4px; font-family:sans-serif;">
-              &bull; <strong>${escapeHTML(c.name)}</strong> &mdash; ${escapeHTML(c.role)} ${c.date ? '| ' + formatDate(c.date) : ''}
+              &bull; <strong>${escapeHTML(c.name)}</strong> &mdash; ${escapeHTML(c.role)} ${c.date ? '| ' + formatDate(c.date) : ''}${c.location ? ' | ' + escapeHTML(c.location) : ''}
+              ${c.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(c.description)}</p>` : ''}
             </div>
           `, primaryColor)}
 
@@ -192,7 +203,7 @@ window.CVTemplates['modern-warm'] = {
             return `
               <div style="margin-bottom:25px;">
                 <h2 style="font-size:16px; font-weight:bold; color:${primaryColor}; margin:0 0 12px 0; border-bottom:1px solid #eee; padding-bottom:4px;">Social Links</h2>
-                <div style="font-size:12px; color:#444; font-family:sans-serif;">
+                <div style="font-size:12px; color:#444; font-family:sans-serif; word-break:break-all;">
                   ${links.map(([k,v]) => `<strong>${escapeHTML(k)}:</strong> ${escapeHTML(v)}`).join(' &nbsp;&bull;&nbsp; ')}
                 </div>
               </div>
@@ -247,7 +258,7 @@ function mwCustom(custom, color) {
     return mwListSection(sec.sectionName, items, item => `
       <div style="margin-bottom:6px;">
         <div style="font-size:12px; font-weight:bold;">${escapeHTML(item.title)}</div>
-        ${item.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif;">${escapeHTML(item.description)}</p>` : ''}
+        ${item.description ? `<p style="font-size:12px; color:#555; margin:2px 0; font-family:sans-serif; white-space:pre-line;">${escapeHTML(item.description)}</p>` : ''}
       </div>
     `, color);
   }).join('');
