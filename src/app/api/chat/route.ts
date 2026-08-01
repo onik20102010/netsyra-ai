@@ -335,6 +335,18 @@ export async function POST(req: NextRequest) {
     const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
     const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
+    // ── ASCII Diagram Detection (keyword + explicit user instruction) ──
+    const asciiDiagramKeywords = /\b(architecture|topology|infrastructure|stack|layers|pipeline|data flow|request flow|dependency|hierarchy|tree structure|outline|breakdown|components|how .+ connects to|visualize|draw|diagram|ascii diagram|text diagram|tree diagram|show me a diagram|make a diagram)\b/i;
+    const isAsciiDiagramRequest = asciiDiagramKeywords.test(userMessage);
+    const isExplicitAsciiRequest = /\b(ascii|text diagram|tree diagram)\b/i.test(userMessage);
+    const isExplicitMermaidRequest = /\b(mermaid|flowchart)\b/i.test(userMessage);
+    let asciiDiagramHint = "";
+    if (isExplicitAsciiRequest) {
+      asciiDiagramHint = "\n\n[SYSTEM NOTE: The user explicitly requested an ASCII diagram. You MUST include a ```ascii code block in your response.]";
+    } else if (isAsciiDiagramRequest && !isExplicitMermaidRequest) {
+      asciiDiagramHint = "\n\n[SYSTEM NOTE: This query involves a structure/topology/flow that would benefit from an ASCII diagram. Consider including a ```ascii code block to visualize it.]";
+    }
+
     // ── USAGE CHECK (CRITICAL - this must work) ──
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
 
@@ -823,6 +835,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         }
         extendedMessage += `[SYSTEM: Target response length is ${tiers.aai.maxTokens} tokens. Stop before that. End with a complete sentence. If you need more room, summarise and suggest upgrading to a higher tier.]`;
 
+        // Inject ASCII diagram hint
+        if (asciiDiagramHint) {
+          extendedMessage += asciiDiagramHint;
+        }
+
         // Prepend widget instruction
         extendedMessage = widgetInstruction + extendedMessage + `\n\nUser: ${userMessage}`;
         console.log(`📝 AAI extendedMessage now has ${extendedMessage.length} chars`);
@@ -941,6 +958,11 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
     // ── Inject intent label ──
     apiMessages[0].content += `\n\nIntent: ${intent}`;
+
+    // ── Inject ASCII diagram hint ──
+    if (asciiDiagramHint) {
+      apiMessages[0].content += asciiDiagramHint;
+    }
 
     // ── Dynamic Rich Content Engine (conditional — saves ~600 tokens on simple queries) ──
     const richContentIntents = new Set([

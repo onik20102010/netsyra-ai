@@ -217,7 +217,8 @@ export default function ChatSidebar({
           <div className="p-4 flex items-center gap-2 border-b border-gray-200">
             <button
               onClick={() => setOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition flex-shrink-0"
+              className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition flex-shrink-0 touch-manipulation"
+              aria-label="Close sidebar"
             >
               <PanelLeftClose className="h-5 w-5" />
             </button>

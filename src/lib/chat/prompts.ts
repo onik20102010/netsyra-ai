@@ -65,7 +65,34 @@ export const EMOJI_RULES = `EMOJIS: 0 for formal, 1-3 for most responses, 3-8 fo
 export const WIDGET_RULES = `WIDGETS: For time/weather/date queries, search web then output only: <!--WIDGET:CLOCK:{...}--> or <!--WIDGET:WEATHER:{...}--> or <!--WIDGET:CALENDAR:{...}--> with brief acknowledgement.`;
 
 // ── Diagram Rules (~40 tokens) ─────────────────────────────
-export const DIAGRAM_RULES = `DIAGRAMS: Use \`\`\`mermaid for architecture/workflows when it adds clarity. Keep ≤10 nodes. Use flowchart TD, sequenceDiagram, classDiagram only. For simple tree/flow diagrams, system topology, or pipeline overviews, use \`\`\`ascii code blocks with plain-text ASCII art (box-drawing chars like │ ├ └ ─ ┌ ┐ └ ┘). Example:\n\`\`\`ascii\nInternet\n   │\nCloudflare\n   │\nFrontend\n   │\nBackend\n\`\`\`\nKeep ASCII diagrams clean and aligned. Prefer mermaid for complex flows; use ASCII for simple hierarchies/topologies.`;
+export const DIAGRAM_RULES = `DIAGRAMS: Use \`\`\`mermaid for architecture/workflows when it adds clarity. Keep ≤10 nodes. Use flowchart TD, sequenceDiagram, classDiagram only.
+
+ASCII DIAGRAMS: For simple tree/flow diagrams, system topology, pipeline overviews, or hierarchy structures, use \`\`\`ascii code blocks with plain-text ASCII art (box-drawing chars like │ ├ └ ─ ┌ ┐ └ ┘). Example:
+\`\`\`ascii
+Internet
+   │
+Cloudflare
+   │
+Frontend
+   │
+Backend
+\`\`\`
+
+WHEN TO USE ASCII DIAGRAMS (auto-trigger keywords):
+- Architecture/topology: "architecture", "topology", "infrastructure", "stack", "layers", "pipeline", "flow"
+- Hierarchy/tree: "hierarchy", "tree", "structure", "outline", "breakdown", "components"
+- Relationships: "how X connects to Y", "data flow", "request flow", "dependency"
+- Comparisons that benefit from visual layout
+
+EXPLICIT USER INSTRUCTIONS (always obey):
+- If the user says "draw", "diagram", "visualize", "show me a diagram", "make a diagram", "ascii diagram", "text diagram", "tree diagram" → generate an ASCII diagram in a \`\`\`ascii block.
+- If the user says "mermaid" or "flowchart" → use \`\`\`mermaid instead.
+- If the user says "ascii" explicitly → always use \`\`\`ascii.
+
+RULES:
+- Keep ASCII diagrams clean and aligned.
+- Prefer mermaid for complex multi-branch flows; use ASCII for simple hierarchies/topologies.
+- After an ASCII diagram, you may add brief Pros/Cons or explanation as normal text.`;
 
 // ── Self-Reflection (~40 tokens) ───────────────────────────
 export const REFLECTION_RULES = `QUALITY: Before responding, internally check: factual? complete? safe? well-formatted? Fix silently. Do not mention this process.`;

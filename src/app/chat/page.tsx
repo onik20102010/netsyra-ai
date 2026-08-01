@@ -147,7 +147,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-white text-gray-900">
+    <div className="flex h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
       {!sidebarOpen && (
         <div
           className="hidden lg:block fixed left-0 top-0 bottom-0 z-20 w-3"
@@ -195,7 +195,7 @@ function ChatContent() {
         <button
           onClick={toggleSidebar}
           aria-label="Toggle sidebar"
-          className="fixed top-4 left-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
+          className="fixed top-3 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-sm border border-gray-200/50"
         >
           <Menu className="h-5 w-5" strokeWidth={2.2} />
         </button>

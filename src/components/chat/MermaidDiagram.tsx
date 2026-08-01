@@ -87,14 +87,10 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
   const [svgCode, setSvgCode] = useState<string>("");
   const lastChartRef = useRef("");
 
-  // ── Remove any stray Mermaid error divs from the DOM ──
+  // ── Remove any stray Mermaid error divs from the DOM (one-shot, no observer) ──
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      document.querySelectorAll(".mermaid-error").forEach((el) => el.remove());
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
+    document.querySelectorAll(".mermaid-error").forEach((el) => el.remove());
+  }, [chart]);
 
   // ── DOM transform (no state re‑render) ─────────────
   const applyTransform = useCallback(() => {
@@ -177,18 +173,10 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      e.preventDefault();
-      if (e.touches.length === 1 && isDragging.current) {
-        const dx = e.touches[0].clientX - lastMouse.current.x;
-        const dy = e.touches[0].clientY - lastMouse.current.y;
-        lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        translateRef.current = {
-          x: translateRef.current.x + dx,
-          y: translateRef.current.y + dy,
-        };
-        if (rafId.current) cancelAnimationFrame(rafId.current);
-        rafId.current = requestAnimationFrame(applyTransform);
-      } else if (e.touches.length === 2) {
+      // Only preventDefault for pinch-zoom (2 fingers), NOT single-finger pan
+      // This allows normal chat scrolling on mobile when finger is over the diagram
+      if (e.touches.length === 2) {
+        e.preventDefault();
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -297,7 +285,7 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
         </div>
       </div>
 
-      {/* Pan/zoom viewport — NO nested scrolling, CSS containment for performance */}
+      {/* Pan/zoom viewport — NO nested scrolling */}
       <div
         ref={outerRef}
         className="cursor-grab relative"
@@ -306,7 +294,6 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
           maxHeight: "600px",
           overflow: "hidden",
           touchAction: "pan-y pinch-zoom",
-          contain: "layout style paint",
           background: "radial-gradient(circle at center, #1a1a1a 0%, #0f0f0f 70%)",
         }}
         onWheel={handleWheel}
@@ -321,10 +308,6 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
         <div
           ref={innerRef}
           className="mermaid-container inline-block origin-top-left"
-          style={{ 
-            willChange: "transform",
-            contain: "layout style paint",
-          }}
         />
       </div>
     </div>

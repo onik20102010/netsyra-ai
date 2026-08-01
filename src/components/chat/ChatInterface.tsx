@@ -72,8 +72,10 @@ interface ChatInterfaceProps {
   allowedTiers?: string[];
 }
 
-function CopyButton({ code }: { code: string }) {
+function CopyButton({ code, variant = "dark" }: { code: string; variant?: "dark" | "light" }) {
   const [copied, setCopied] = useState(false);
+  const textColor = variant === "light" ? "text-gray-500 hover:text-gray-800" : "text-gray-400 hover:text-white";
+  const copiedColor = variant === "light" ? "text-green-600" : "text-green-400";
   return (
     <button
       onClick={async () => {
@@ -81,12 +83,12 @@ function CopyButton({ code }: { code: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition"
+      className={`flex items-center gap-1.5 text-xs ${textColor} transition`}
     >
       {copied ? (
         <>
-          <Check className="w-3.5 h-3.5 text-green-400" />
-          <span className="text-green-400">Copied!</span>
+          <Check className={`w-3.5 h-3.5 ${copiedColor}`} />
+          <span className={copiedColor}>Copied!</span>
         </>
       ) : (
         <>
@@ -237,10 +239,35 @@ export default function ChatInterface({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
+  const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
 
   const supabase = createClient();
 
   const { refetch: refetchUsage } = useChatUsage();
+
+  // ── Mobile keyboard detection: use visualViewport to detect keyboard ──
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const threshold = 150; // px difference between layout & visual viewport = keyboard
+    const update = () => {
+      const diff = window.innerHeight - vv.height;
+      setIsMobileKeyboardOpen(diff > threshold);
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  // ── Scroll to bottom when keyboard opens ──
+  useEffect(() => {
+    if (isMobileKeyboardOpen) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
+    }
+  }, [isMobileKeyboardOpen]);
 
 
   const isSelfCreatedConv = useRef(false);
@@ -431,10 +458,18 @@ export default function ChatInterface({
 
                   if (!inline && match && match[1] === "ascii") {
                     return (
-                      <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-x-auto">
-                        <pre className="p-4 text-sm leading-relaxed text-gray-800 font-mono whitespace-pre">
-                          {codeString}
-                        </pre>
+                      <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Diagram
+                          </span>
+                          <CopyButton code={codeString} variant="light" />
+                        </div>
+                        <div className="overflow-x-auto">
+                          <pre className="p-4 text-sm leading-relaxed text-gray-800 font-mono whitespace-pre">
+                            {codeString}
+                          </pre>
+                        </div>
                       </div>
                     );
                   }
@@ -1018,7 +1053,7 @@ export default function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="relative flex-1">
+      <div className="relative flex-1 min-h-0">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
           <div className="max-w-[420px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-0 space-y-4 sm:space-y-6">
             <AnimatePresence initial={false}>
@@ -1417,7 +1452,7 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      <div className="sticky bottom-0">
+      <div className="sticky bottom-0 bg-white" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pt-2 pb-3 sm:pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2 px-1">
@@ -1488,6 +1523,12 @@ export default function ChatInterface({
                   setInput(e.target.value);
                 }}
                 onPaste={handlePaste}
+                onFocus={() => {
+                  // On mobile, scroll chat to bottom when input is focused (keyboard pushes view up)
+                  if (window.innerWidth < 768) {
+                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
+                  }
+                }}
                 placeholder={attachedImages.length > 0 ? "Add a message about these images..." : "Message Netsyra..."}
                 rows={1}
                 className="flex-1 resize-none bg-transparent outline-none text-gray-900 placeholder:text-gray-400 py-1.5 pl-1 text-[15px] leading-relaxed max-h-[200px] overflow-y-auto"

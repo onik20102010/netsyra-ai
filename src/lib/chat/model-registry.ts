@@ -392,6 +392,14 @@ Backend
 
 Keep ASCII diagrams clean and aligned. Prefer Mermaid for complex flows; use ASCII for simple hierarchies/topologies.
 
+AUTO-TRIGGER KEYWORDS for ASCII diagrams: architecture, topology, infrastructure, stack, layers, pipeline, data flow, request flow, dependency, hierarchy, tree structure, outline, breakdown, components.
+
+EXPLICIT USER INSTRUCTIONS (always obey):
+- If the user says "draw", "diagram", "visualize", "show me a diagram", "make a diagram", "ascii diagram", "text diagram", "tree diagram" → generate an ASCII diagram in a \`\`\`ascii block.
+- If the user says "mermaid" or "flowchart" → use \`\`\`mermaid instead.
+- If the user says "ascii" explicitly → always use \`\`\`ascii.
+- After an ASCII diagram, you may add brief Pros/Cons or explanation as normal text.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOOL USAGE (Priority 6 – External Capabilities)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
