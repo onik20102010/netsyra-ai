@@ -27,6 +27,9 @@ export interface PendingEdit {
   oldContent: string;
   newContent: string;
   description: string;
+  // Search-and-replace fields (preferred over line numbers)
+  searchMatch?: string;
+  replaceWith?: string;
 }
 
 export interface AgentResult {
@@ -53,7 +56,9 @@ export interface AgentThought {
   timestamp: number;
 }
 
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 20;
+const MAX_CONTEXT_CHARS = 60000; // Trim conversation history to stay under this
+const TOOL_RETRY_LIMIT = 2; // Retry failed tool calls up to this many times
 
 // --- Agent System Prompt with Tool Definitions ---
 
@@ -75,12 +80,34 @@ You can use multiple tools in a single response:
 
 Available tools:
 - read_file: Read a file's content. Args: { "path": "src/path/File.ts" }. Optional line range: { "path": "...", "startLine": 160, "endLine": 190 } — use this after search_code to read ONLY the relevant lines and save tokens.
-- edit_file: Replace lines in a file. Args: { "path": "src/path/File.ts", "startLine": 10, "endLine": 15, "newText": "replacement code" }
+- edit_file: Edit a file using search-and-replace. Args: { "path": "src/path/File.ts", "searchMatch": "exact code to find", "replaceWith": "new code to insert" }. The searchMatch must be EXACT text from the file (copy it from read_file output). The replaceWith is what replaces it. You can also use line numbers as fallback: { "path": "...", "startLine": 10, "endLine": 15, "newText": "replacement code" }.
 - create_file: Create a new file. Args: { "path": "src/path/NewFile.ts", "content": "file content" }
 - search_code: Search for code across ALL workspace files by keyword. Args: { "query": "login" }. Returns file paths + line numbers + a snippet of each matching line. Use this to LOCATE relevant code before reading it.
 - list_files: List all open files and workspace structure. Args: {}
 - get_problems: Get all IDE diagnostics (errors, warnings) with file name, line number, and message. Use this to find bugs without reading entire files. Args: { "severity": "error" } (optional: "error", "warning", "info", or omit for all)
 - answer: Respond to the user with text. Args: { "content": "your response text" }
+
+## Edit Tool — Search-and-Replace (PREFERRED)
+
+Always prefer search-and-replace over line numbers. Line numbers shift as you edit, but search-and-replace is anchored to the actual code.
+
+**How to use search-and-replace:**
+1. Read the file first with read_file
+2. Copy the EXACT text you want to replace into "searchMatch"
+3. Write the replacement into "replaceWith"
+4. The tool finds the exact match and replaces it
+
+Example:
+<tool>{"tool": "edit_file", "args": {"path": "src/App.tsx", "searchMatch": "const [count, setCount] = useState(0);", "replaceWith": "const [count, setCount] = useState(1);"}}</tool>
+
+**Tips:**
+- Copy searchMatch EXACTLY from the read_file output (same whitespace, same indentation)
+- Use a unique block of code (5-15 lines) as searchMatch — too short and it might match multiple places
+- If the match fails, the tool will tell you — re-read the file and try again with corrected text
+- You can make multiple edits to the same file in separate tool calls
+
+**Line-number fallback** (use only if search-and-replace is impractical):
+<tool>{"tool": "edit_file", "args": {"path": "src/App.tsx", "startLine": 10, "endLine": 15, "newText": "replacement code"}}</tool>
 
 ## Rules
 - Line numbers in edit_file are 1-indexed (first line = 1, NOT 0)
@@ -88,18 +115,19 @@ Available tools:
 - You can call multiple read_file/search_code tools in parallel in a single response for efficiency.
 - If the user asks a question (not a code change), use the "answer" tool.
 - If the user asks to fix/edit/create code, use the appropriate file tools.
-- Always read a file before editing it to get accurate line numbers.
+- ALWAYS read a file before editing it.
 - After making edits, use "answer" to summarize what you did.
 - Edits are queued for user approval — tell the user you've prepared changes and they will be applied after review.
 - Keep explanations concise. Show code only when necessary.
+- If a tool returns an error, retry with corrected arguments rather than giving up.
 
 ## When to Answer vs Act
 - "What does this function do?" → answer
 - "Explain how X works" → answer
-- "Fix the bug in login" → get_problems → read_file (only relevant lines) → edit_file → answer
+- "Fix the bug in login" → get_problems → read_file (only relevant lines) → edit_file (search-and-replace) → answer
 - "Create a new component called Header" → create_file → answer
-- "Add a logout button" → read_file → edit_file → answer
-- "Fix all errors" → get_problems → read_file (only error lines) → edit_file → answer
+- "Add a logout button" → read_file → edit_file (search-and-replace) → answer
+- "Fix all errors" → get_problems → read_file (only error lines) → edit_file (search-and-replace) → answer
 
 ## Using get_problems for Efficiency
 The get_problems tool returns a compact list of all diagnostics with file path, line number, severity, and message. This is MUCH cheaper than reading entire files. Use it to:
@@ -113,7 +141,7 @@ You do NOT know where code lives ahead of time. Use search_code to find it first
 Workflow:
 1. search_code({ "query": "login" }) → returns matches like 'auth.ts L45: function login(...)'
 2. read_file({ "path": "auth.ts", "startLine": 35, "endLine": 70 }) → read ONLY the ~35 lines around the match, not the whole file
-3. edit_file or answer as needed
+3. edit_file (search-and-replace) or answer as needed
 
 Rules:
 - ALWAYS search before reading if you don't know the exact file/line.
@@ -128,6 +156,12 @@ When working on a task, follow this structured approach:
 3. **Act**: Execute tools one step at a time. After each tool result, evaluate whether you need more information or are ready to make changes.
 4. **Verify**: After making edits, consider calling get_problems again to check if your changes introduced new issues.
 5. **Summarize**: Use the answer tool to explain what you did, what changed, and any remaining issues.
+
+## Error Recovery
+- If a tool returns an error (e.g. "File not found", "searchMatch not found"), do NOT give up. Re-read the file and retry with corrected arguments.
+- If searchMatch fails, it means the text didn't match exactly. Re-read the file, copy the exact text including whitespace, and try again.
+- If a file is not found, use list_files or search_code to find the correct path.
+- You have up to 20 tool rounds — use them wisely.
 
 ## Proactive Problem Solving
 - If the workspace context shows errors/warnings, mention them in your answer even if the user didn't ask about them specifically.
@@ -262,6 +296,9 @@ export class AgentOrchestrator {
 
     // Tool-use loop
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      // Trim conversation history to prevent unbounded context growth
+      this.trimConversationHistory();
+
       this.onStatus(this.getStatusMessage(round));
       if (round === 0) {
         this.emitThought({ type: 'plan', title: 'Planning my approach', detail: 'Understanding the workspace and deciding what tools to use first.' });
@@ -310,8 +347,9 @@ export class AgentOrchestrator {
           this.onStatus(`Executing ${nonAnswerActions.length} tools in parallel...`);
         }
 
+        // Execute tools with error recovery
         const results = await Promise.all(
-          nonAnswerActions.map(action => this.executeTool(action))
+          nonAnswerActions.map(action => this.executeToolWithRetry(action))
         );
 
         // Emit observations from tool results
@@ -326,14 +364,16 @@ export class AgentOrchestrator {
           });
         });
 
-        // Feed all tool results back to the LLM
-        const resultSummary = nonAnswerActions
-          .map((action, i) => `[${action.tool}${action.args.path ? ': ' + action.args.path : action.args.query ? ': ' + action.args.query : ''}]: ${results[i]}`)
-          .join('\n');
+        // Feed tool results back to the LLM using structured format
+        // Each tool result is a separate message with clear tool identification
+        const toolResultMessages = nonAnswerActions.map((action, i) => {
+          const toolLabel = action.args.path || action.args.query || '';
+          return `[TOOL RESULT — ${action.tool}${toolLabel ? ': ' + toolLabel : ''}]\n${results[i]}`;
+        }).join('\n\n');
 
         this.conversationHistory.push({
           role: 'user',
-          content: `Tool results:\n${resultSummary}`,
+          content: toolResultMessages,
         });
       }
 
@@ -365,6 +405,85 @@ export class AgentOrchestrator {
       true,
       true
     );
+  }
+
+  // --- Trim conversation history to prevent unbounded context growth ---
+  private trimConversationHistory(): void {
+    // Always keep: system prompt (index 0), last 4 messages, and the most recent user prompt
+    const SYSTEM_MSG_COUNT = 1;
+    const KEEP_RECENT = 6;
+
+    let totalChars = this.conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
+
+    if (totalChars <= MAX_CONTEXT_CHARS) return;
+
+    // Strategy: keep system prompt + last N messages, but trim middle tool results
+    // Find tool result messages (role: 'user' with [TOOL RESULT) and trim older ones
+    const messages = this.conversationHistory;
+    const toolResultIndices: number[] = [];
+    for (let i = SYSTEM_MSG_COUNT; i < messages.length - KEEP_RECENT; i++) {
+      if (messages[i].role === 'user' && messages[i].content.includes('[TOOL RESULT')) {
+        toolResultIndices.push(i);
+      }
+    }
+
+    // Replace old tool results with compact summaries (keep first 200 chars)
+    for (const idx of toolResultIndices) {
+      const content = messages[idx].content;
+      if (content.length > 300) {
+        const firstLine = content.split('\n')[0];
+        messages[idx] = {
+          role: 'user',
+          content: `${firstLine}\n[... trimmed for context management ...]`,
+        };
+      }
+    }
+
+    // Recalculate and if still over limit, drop oldest non-system messages
+    totalChars = this.conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
+    while (totalChars > MAX_CONTEXT_CHARS && this.conversationHistory.length > SYSTEM_MSG_COUNT + KEEP_RECENT) {
+      // Remove the oldest non-system message (but not the last user prompt)
+      const lastUserIdx = this.conversationHistory.map(m => m.role).lastIndexOf('user');
+      const removeIdx = SYSTEM_MSG_COUNT;
+      if (removeIdx < lastUserIdx) {
+        totalChars -= this.conversationHistory[removeIdx].content.length;
+        this.conversationHistory.splice(removeIdx, 1);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // --- Execute tool with retry on error ---
+  private async executeToolWithRetry(action: AgentAction): Promise<string> {
+    let lastResult: string;
+
+    for (let attempt = 0; attempt <= TOOL_RETRY_LIMIT; attempt++) {
+      lastResult = await this.executeTool(action);
+
+      // Check if the result indicates an error
+      const isError = lastResult.startsWith('Error:') ||
+        lastResult.startsWith('File not found:') ||
+        lastResult.startsWith('searchMatch not found') ||
+        lastResult.includes('is out of bounds');
+
+      if (!isError || attempt === TOOL_RETRY_LIMIT) {
+        return lastResult;
+      }
+
+      // Emit a retry thought
+      this.emitThought({
+        type: 'thinking',
+        title: `Retrying ${action.tool} (attempt ${attempt + 2}/${TOOL_RETRY_LIMIT + 1})`,
+        detail: lastResult.substring(0, 100),
+        tool: action.tool,
+      });
+
+      // Brief delay before retry
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    return lastResult!;
   }
 
   // --- Streaming LLM Call ---
@@ -490,7 +609,9 @@ export class AgentOrchestrator {
           action.args.path,
           action.args.startLine,
           action.args.endLine,
-          action.args.newText
+          action.args.newText,
+          action.args.searchMatch,
+          action.args.replaceWith
         );
       case 'create_file':
         return this.toolCreateFile(action.args.path, action.args.content);
@@ -556,11 +677,16 @@ export class AgentOrchestrator {
   }
 
   // --- Tool: Edit File (stores as pending, does NOT apply immediately) ---
+  // Supports two modes:
+  //   1. Search-and-replace (PREFERRED): find exact text, replace it
+  //   2. Line-number (FALLBACK): replace lines startLine to endLine with newText
   private toolEditFile(
     path: string,
-    startLine: number,
-    endLine: number,
-    newText: string
+    startLine?: number,
+    endLine?: number,
+    newText?: string,
+    searchMatch?: string,
+    replaceWith?: string
   ): string {
     const store = useIdeStore.getState();
 
@@ -571,6 +697,82 @@ export class AgentOrchestrator {
 
     if (!file) {
       return `Error: File not open: ${path}. Ask the user to open it first, or use create_file for new files.`;
+    }
+
+    // --- Mode 1: Search-and-replace (preferred) ---
+    if (searchMatch && replaceWith !== undefined) {
+      const content = file.content;
+
+      // Try exact match first
+      let matchIndex = content.indexOf(searchMatch);
+
+      // If exact match fails, try normalizing whitespace (ignore leading/trailing whitespace per line)
+      if (matchIndex === -1) {
+        // Try matching with trimmed whitespace on each line
+        const normalizedContent = content.replace(/[ \t]+$/gm, '');
+        const normalizedSearch = searchMatch.replace(/[ \t]+$/gm, '');
+        matchIndex = normalizedContent.indexOf(normalizedSearch);
+
+        if (matchIndex !== -1) {
+          // Found with normalized whitespace — use the normalized content for replacement
+          const before = normalizedContent.substring(0, matchIndex);
+          const after = normalizedContent.substring(matchIndex + normalizedSearch.length);
+          const newContent = before + replaceWith + after;
+
+          const editId = `edit-${++this.editIdCounter}`;
+          const description = `Search-and-replace: "${searchMatch.substring(0, 60)}${searchMatch.length > 60 ? '...' : ''}" → "${replaceWith.substring(0, 60)}${replaceWith.length > 60 ? '...' : ''}"`;
+          this.pendingEdits.push({
+            id: editId,
+            filePath: file.path,
+            fileId: file.id,
+            action: 'edit_file',
+            oldContent: file.content,
+            newContent,
+            description,
+            searchMatch,
+            replaceWith,
+          });
+
+          return `Edit queued for ${file.path}: ${description}. The user will review and apply this change.`;
+        }
+      }
+
+      if (matchIndex !== -1) {
+        // Exact match found
+        const before = content.substring(0, matchIndex);
+        const after = content.substring(matchIndex + searchMatch.length);
+        const newContent = before + replaceWith + after;
+
+        const editId = `edit-${++this.editIdCounter}`;
+        const description = `Search-and-replace: "${searchMatch.substring(0, 60)}${searchMatch.length > 60 ? '...' : ''}" → "${replaceWith.substring(0, 60)}${replaceWith.length > 60 ? '...' : ''}"`;
+        this.pendingEdits.push({
+          id: editId,
+          filePath: file.path,
+          fileId: file.id,
+          action: 'edit_file',
+          oldContent: file.content,
+          newContent,
+          description,
+          searchMatch,
+          replaceWith,
+        });
+
+        return `Edit queued for ${file.path}: ${description}. The user will review and apply this change.`;
+      }
+
+      // Match not found — provide helpful error
+      // Check if it's a partial match issue
+      const firstLine = searchMatch.split('\n')[0].trim();
+      if (firstLine.length > 10 && content.includes(firstLine)) {
+        return `searchMatch not found in ${file.path}, but the first line "${firstLine}" was found. The full block didn't match — check for whitespace, indentation, or character differences. Re-read the file and copy the exact text.`;
+      }
+
+      return `searchMatch not found in ${file.path}. The exact text was not found. Re-read the file with read_file and copy the exact text including whitespace and indentation. Common issues: extra spaces, different indentation (tabs vs spaces), or the text spans different lines than expected.`;
+    }
+
+    // --- Mode 2: Line-number fallback ---
+    if (startLine == null || endLine == null || newText === undefined) {
+      return `Error: edit_file requires either searchMatch+replaceWith or startLine+endLine+newText. Please provide the correct arguments.`;
     }
 
     const start = Math.max(1, Math.floor(startLine) || 1);
@@ -857,7 +1059,11 @@ export class AgentOrchestrator {
       'Analyzing context...',
       'Planning next steps...',
       'Working on it...',
+      'Reading files...',
+      'Making edits...',
+      'Verifying changes...',
       'Refining approach...',
+      'Continuing work...',
       'Almost there...',
     ];
     return phases[Math.min(round, phases.length - 1)];
@@ -866,7 +1072,9 @@ export class AgentOrchestrator {
   private getToolStatus(action: AgentAction): string {
     switch (action.tool) {
       case 'read_file': return `Reading ${action.args.path}...`;
-      case 'edit_file': return `Editing ${action.args.path} lines ${action.args.startLine}-${action.args.endLine}...`;
+      case 'edit_file': return action.args.searchMatch
+        ? `Editing ${action.args.path} (search-replace)...`
+        : `Editing ${action.args.path} lines ${action.args.startLine}-${action.args.endLine}...`;
       case 'create_file': return `Creating ${action.args.path}...`;
       case 'search_code': return `Searching for "${action.args.query}"...`;
       case 'list_files': return 'Listing files...';

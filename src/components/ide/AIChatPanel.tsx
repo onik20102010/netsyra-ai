@@ -776,9 +776,11 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
             </span>
           )}
           <span className="font-mono text-[#8b949e] truncate text-[11px]">{edit.filePath}</span>
-          {edit.startLine && (
+          {edit.searchMatch ? (
+            <span className="text-[10px] text-[#d29922] font-mono shrink-0">search-replace</span>
+          ) : edit.startLine ? (
             <span className="text-[10px] text-[#484f58] font-mono shrink-0">L{edit.startLine}</span>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
