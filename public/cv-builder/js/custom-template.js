@@ -9,6 +9,7 @@ const CustomTemplateEditor = (function () {
   let active = false;
   let templateId = null;
   let data = null;
+  let originalHtml = '';
 
   const defaults = {
     primaryColor: '',
@@ -43,8 +44,8 @@ const CustomTemplateEditor = (function () {
   function close() {
     active = false;
     removeStyleTag();
-    const panel = document.getElementById('customPanel');
-    if (panel) panel.remove();
+    const appMain = document.getElementById('appMain');
+    appMain.classList.remove('editor-mode');
   }
 
   function render() {
@@ -52,7 +53,9 @@ const CustomTemplateEditor = (function () {
     if (!tpl) return;
 
     const html = tpl.render(data);
+    originalHtml = html;
     const appMain = document.getElementById('appMain');
+    appMain.classList.add('editor-mode');
 
     appMain.innerHTML = `
       <div class="custom-editor-layout">
@@ -71,6 +74,12 @@ const CustomTemplateEditor = (function () {
               ${colorField('accentColor', 'Secondary Accent', '#FF9966')}
               ${colorField('dividerColor', 'Divider Lines', '#D1D5DB')}
             `)}
+            <div class="custom-field">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="ctEnableColors" onchange="CustomTemplateEditor.update()">
+                <span>Enable color overrides</span>
+              </label>
+            </div>
 
             ${section('Typography', 'fa-font', `
               <div class="custom-field">
@@ -155,8 +164,8 @@ const CustomTemplateEditor = (function () {
               <button class="btn btn-secondary" onclick="CustomTemplateEditor.reset()">
                 <i class="fas fa-rotate-left"></i> Reset
               </button>
-              <button class="btn btn-primary" onclick="CustomTemplateEditor.applyAndExport()">
-                <i class="fas fa-download"></i> Apply & Export PDF
+              <button class="btn btn-primary" onclick="CustomTemplateEditor.exportPDF()">
+                <i class="fas fa-download"></i> Export PDF
               </button>
             </div>
           </div>
@@ -175,10 +184,16 @@ const CustomTemplateEditor = (function () {
     `;
 
     applyOverrides();
+    updateLabels();
   }
 
   function update() {
     readState();
+    // Re-render fresh template HTML to avoid stacking overrides
+    const container = document.getElementById('customCvPreview');
+    if (container && originalHtml) {
+      container.innerHTML = originalHtml;
+    }
     applyOverrides();
     updateLabels();
   }
@@ -228,6 +243,12 @@ const CustomTemplateEditor = (function () {
     setText('ctSectionSpacingVal', ss ? ss + 'px' : '--');
     const ps = val2('ctPhotoSize');
     setText('ctPhotoSizeVal', ps ? ps + 'px' : '--');
+
+    // Update hex displays for color fields
+    ['primaryColor', 'sidebarBg', 'textColor', 'accentColor', 'dividerColor'].forEach(id => {
+      const colorVal = val2('ct' + id);
+      setText('ct' + id + 'Hex', colorVal || '--');
+    });
   }
 
   function setText(id, txt) {
@@ -316,8 +337,9 @@ const CustomTemplateEditor = (function () {
 
     // DOM-level overrides (things CSS can't easily do with !important on inline styles)
 
-    // Primary color: replace common color values in inline styles
-    if (state.primaryColor || state.accentColor || state.sidebarBg) {
+    // Primary color: replace accent colors in inline styles
+    const enableColors = checked2('ctEnableColors');
+    if (enableColors) {
       const root = container.firstElementChild;
       if (root) {
         applyColorOverrides(root);
@@ -334,6 +356,11 @@ const CustomTemplateEditor = (function () {
   }
 
   function applyColorOverrides(root) {
+    const enableColors = checked2('ctEnableColors');
+    if (!enableColors) return;
+
+    // Collect all unique hex colors used in the template to auto-detect roles
+    const colorUsage = {};
     const all = root.querySelectorAll('*');
     all.forEach(el => {
       const style = el.getAttribute('style') || '';
@@ -341,38 +368,69 @@ const CustomTemplateEditor = (function () {
 
       let newStyle = style;
 
+      // Primary color: replace any non-white, non-black, non-gray accent colors
+      // These are typically the "brand" colors used in headings, section titles, icons, sidebar headers
       if (state.primaryColor) {
-        // Replace common primary color hex codes with user's choice
-        const primaryPatterns = [
-          /#7B96C2/gi, /#6b8fad/gi, /#5479a0/gi, /#7C95C4/gi,
-          /#05520E/gi, /#363A40/gi, /#FF5E62/gi, /#1A1A1A/gi,
-          /#718096/gi, /#4A5568/gi
-        ];
-        // Only replace if it looks like a primary/accent color (in background-color or color)
-        // We'll be conservative and replace specific known accent colors
-        if (/background-color:\s*#(7B96C2|6b8fad|5479a0|7C95C4|05520E|FF5E62|363A40)/i.test(style)) {
-          newStyle = newStyle.replace(/background-color:\s*(#7B96C2|#6b8fad|#5479a0|#7C95C4|#05520E|#FF5E62|#363A40)/gi, 'background-color: ' + state.primaryColor);
-        }
-        // Replace color properties for accent text
-        if (/color:\s*#(7B96C2|6b8fad|5479a0|7C95C4|05520E|FF5E62)/i.test(style) && !/background/i.test(style.split('color:')[0].split(';').pop())) {
-          newStyle = newStyle.replace(/(?<![a-z-])color:\s*(#7B96C2|#6b8fad|#5479a0|#7C95C4|#05520E|#FF5E62)/gi, 'color: ' + state.primaryColor);
-        }
+        // Replace accent colors in background-color
+        newStyle = newStyle.replace(/background-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+          if (isAccentColor(hex)) return 'background-color: ' + state.primaryColor;
+          return match;
+        });
+        // Replace accent colors in color (text)
+        newStyle = newStyle.replace(/(^|;\s*)color:\s*(#[0-9a-fA-F]{6})/gi, (match, pre, hex) => {
+          if (isAccentColor(hex)) return pre + 'color: ' + state.primaryColor;
+          return match;
+        });
+        // Replace in border-color
+        newStyle = newStyle.replace(/border-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+          if (isAccentColor(hex)) return 'border-color: ' + state.primaryColor;
+          return match;
+        });
+        // Replace in border shorthand
+        newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:\s*[^;]*#([0-9a-fA-F]{6})[^;]*/gi, (match) => {
+          if (/#[0-9a-fA-F]{6}/i.test(match) && isAccentColor(match.match(/#[0-9a-fA-F]{6}/i)[0])) {
+            return match.replace(/#[0-9a-fA-F]{6}/gi, state.primaryColor);
+          }
+          return match;
+        });
       }
 
+      // Accent color: replace secondary accent colors
       if (state.accentColor) {
         newStyle = newStyle.replace(/#FF9966/gi, state.accentColor);
         newStyle = newStyle.replace(/#7ECB88/gi, state.accentColor);
+        newStyle = newStyle.replace(/#FF6B6B/gi, state.accentColor);
+        newStyle = newStyle.replace(/#FFB347/gi, state.accentColor);
       }
 
+      // Sidebar background: replace light gray/cream backgrounds
       if (state.sidebarBg) {
-        // Replace common sidebar backgrounds
-        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0)/gi, 'background-color: ' + state.sidebarBg);
+        // Also replace dark sidebar backgrounds (charcoal, dark green, etc.)
+        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748)/gi, 'background-color: ' + state.sidebarBg);
       }
 
       if (newStyle !== style) {
         el.setAttribute('style', newStyle);
       }
     });
+  }
+
+  // Helper: determine if a hex color is an "accent" color (not white, black, or gray)
+  function isAccentColor(hex) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substr(0, 2), 16);
+    const g = parseInt(h.substr(2, 2), 16);
+    const b = parseInt(h.substr(4, 2), 16);
+    // Skip white, near-white, black, near-black, and grays
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    // Gray if R, G, B are close together (low saturation)
+    if (diff < 25) return false; // gray/black/white
+    // Skip very light pastels (probably backgrounds, not accents)
+    if (max > 240 && min > 220) return false;
+    return true;
   }
 
   function applyPhotoOverrides() {
@@ -444,7 +502,7 @@ const CustomTemplateEditor = (function () {
     toast('Customization reset');
   }
 
-  function applyAndExport() {
+  function exportPDF() {
     setTimeout(() => window.print(), 300);
   }
 
@@ -463,28 +521,13 @@ const CustomTemplateEditor = (function () {
         <label>${label}</label>
         <div class="color-input-row">
           <input type="color" id="ct${id}" value="${defaultColor}" oninput="CustomTemplateEditor.update()">
-          <input type="text" id="ct${id}Text" value="" placeholder="(use template default)" oninput="CustomTemplateEditor.syncColor('${id}')" class="color-text-input">
+          <span class="color-hex-display" id="ct${id}Hex">${defaultColor}</span>
         </div>
       </div>
     `;
   }
 
-  function syncColor(fieldId) {
-    const textEl = document.getElementById('ct' + fieldId + 'Text');
-    const colorEl = document.getElementById('ct' + fieldId);
-    if (textEl && colorEl) {
-      const val = textEl.value.trim();
-      if (val && val.match(/^#[0-9a-fA-F]{6}$/)) {
-        colorEl.value = val;
-      }
-      if (!val) {
-        colorEl.value = '#ffffff';
-      }
-    }
-    update();
-  }
-
   return {
-    open, close, update, reset, applyAndExport, syncColor
+    open, close, update, reset, exportPDF
   };
 })();

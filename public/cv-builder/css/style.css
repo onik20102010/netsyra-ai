@@ -544,6 +544,11 @@ body {
 .mb-2 { margin-bottom: 1rem; }
 
 /* ==================== CUSTOM TEMPLATE EDITOR ==================== */
+.app-main.editor-mode {
+  max-width: 1400px;
+  padding: 1rem 1rem 4rem;
+}
+
 .custom-editor-layout {
   display: flex;
   gap: 0;
@@ -702,6 +707,14 @@ body {
 
 .color-text-input:focus {
   border-color: var(--primary);
+}
+
+.color-hex-display {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  padding: 0 0.5rem;
+  line-height: 32px;
 }
 
 .custom-checkbox {
@@ -1046,6 +1059,7 @@ body {
   .app-footer { padding: 0.8rem 1rem; }
   .page-card { padding: 1.5rem; }
   .app-main { padding: 0 1rem 5rem; }
+  .app-main.editor-mode { padding: 0.5rem 0.5rem 2rem; }
   .btn-label { display: none; }
   .custom-editor-layout, .selfmade-layout { flex-direction: column; }
   .custom-panel, .selfmade-toolbar, .selfmade-props {

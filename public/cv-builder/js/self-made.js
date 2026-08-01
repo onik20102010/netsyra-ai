@@ -19,11 +19,15 @@ const SelfMadeEditor = (function () {
     elements = [];
     selectedId = null;
     nextId = 1;
+    const appMain = document.getElementById('appMain');
+    appMain.classList.add('editor-mode');
     render();
   }
 
   function close() {
     active = false;
+    const appMain = document.getElementById('appMain');
+    appMain.classList.remove('editor-mode');
   }
 
   function render() {
