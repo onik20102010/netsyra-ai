@@ -492,6 +492,11 @@ export class AgentOrchestrator {
   // --- Streaming LLM Call ---
   private async callLLMStream(messages: ChatMessage[]): Promise<string | null> {
     try {
+      // Signal new stream start so UI can reset
+      if (this.onToken) {
+        this.onToken('', '');
+      }
+
       const res = await fetch('/api/groq/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

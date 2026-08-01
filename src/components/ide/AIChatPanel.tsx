@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useIdeStore, getDB } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare } from "lucide-react";
+import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
 import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from 'react-markdown';
@@ -37,6 +37,20 @@ function flattenFiles(items: FlatFileNode[], acc: Array<{ name: string; path: st
     if (item.children) flattenFiles(item.children, acc);
   }
   return acc;
+}
+
+// --- Helper: find file ID by path in workspace tree ---
+function findFileIdByPath(items: any[], targetPath: string): string | null {
+  for (const item of items) {
+    if (item.path === targetPath || item.path.endsWith('/' + targetPath) || targetPath.endsWith(item.path)) {
+      return item.id;
+    }
+    if (item.children) {
+      const found = findFileIdByPath(item.children, targetPath);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 export function AIChatPanel() {
@@ -76,6 +90,8 @@ export function AIChatPanel() {
   const openFiles = useIdeStore((s) => s.openFiles);
   const activeFileId = useIdeStore((s) => s.activeFileId);
   const problems = useIdeStore((s) => s.problems);
+  const openFile = useIdeStore((s) => s.openFile);
+  const createFile = useIdeStore((s) => s.createFile);
 
   const allProblems = Object.values(problems).flat();
   const errorCount = allProblems.filter(p => p.severity === 'error').length;
@@ -138,7 +154,34 @@ export function AIChatPanel() {
         db,
         (status) => setAgentStatus(status),
         (token, fullText) => {
-          setStreamingText(fullText);
+          // Reset signal — new LLM round starting, clear previous streaming text
+          if (fullText === '') {
+            setStreamingText('');
+            return;
+          }
+
+          // If no tool tag, this is a plain text response — stream it directly
+          if (!fullText.includes('<tool>')) {
+            setStreamingText(fullText);
+            return;
+          }
+
+          // If it contains "answer" tool, extract just the content field from streaming JSON
+          if (fullText.includes('"answer"')) {
+            const contentMatch = fullText.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)/);
+            if (contentMatch) {
+              let content = contentMatch[1];
+              // Remove possibly incomplete trailing escape char
+              content = content.replace(/\\$/, '');
+              // Unescape JSON sequences for display
+              content = content.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+              setStreamingText(content);
+              return;
+            }
+          }
+
+          // It's a tool call (read_file, edit_file, etc.) — don't show raw JSON
+          // The activity panel will show what's happening via onThought callbacks
         },
         (thought) => {
           collectedThoughts.push(thought);
@@ -375,6 +418,45 @@ export function AIChatPanel() {
     setDraggedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Open a file by path from agent message click
+  const handleOpenFileFromChat = (filePath: string) => {
+    if (!workspace) return;
+    // Try exact match first
+    let fileId = findFileIdByPath(workspace.files, filePath);
+    // Try matching by filename only
+    if (!fileId) {
+      const fileName = filePath.split('/').pop() || filePath;
+      const findByName = (items: any[]): string | null => {
+        for (const item of items) {
+          if (!item.isDirectory && item.name === fileName) return item.id;
+          if (item.children) { const f = findByName(item.children); if (f) return f; }
+        }
+        return null;
+      };
+      fileId = findByName(workspace.files);
+    }
+    if (fileId) openFile(fileId);
+  };
+
+  // Copy message content
+  const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
+  const handleCopyMessage = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgIdx(idx);
+    setTimeout(() => setCopiedMsgIdx(null), 2000);
+  };
+
+  // New file/folder creation
+  const [showCreate, setShowCreate] = useState<{ parentPath: string; isDir: boolean } | null>(null);
+  const [createName, setCreateName] = useState('');
+  const handleCreate = () => {
+    if (showCreate && createName.trim()) {
+      createFile(showCreate.parentPath, createName.trim(), showCreate.isDir);
+    }
+    setShowCreate(null);
+    setCreateName('');
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0d1117] text-[#e6edf3]">
       {/* Header — Netsyra Agent style */}
@@ -385,6 +467,24 @@ export function AIChatPanel() {
           <span className="text-[10px] text-[#6e7681] font-medium uppercase tracking-wider ml-1">Agent</span>
         </div>
         <div className="flex items-center gap-1">
+          {workspace && (
+            <button
+              onClick={() => { setShowCreate({ parentPath: workspace.rootPath, isDir: false }); setCreateName(''); }}
+              className="p-1 rounded hover:bg-[#1f2428] text-[#6e7681] hover:text-[#e6edf3] transition-colors"
+              title="New File"
+            >
+              <Plus size={14} />
+            </button>
+          )}
+          {workspace && (
+            <button
+              onClick={() => { setShowCreate({ parentPath: workspace.rootPath, isDir: true }); setCreateName(''); }}
+              className="p-1 rounded hover:bg-[#1f2428] text-[#6e7681] hover:text-[#e6edf3] transition-colors"
+              title="New Folder"
+            >
+              <FolderPlus size={14} />
+            </button>
+          )}
           {canUndo && (
             <button
               onClick={handleUndo}
@@ -425,8 +525,28 @@ export function AIChatPanel() {
         )}
       </div>
 
+      {/* Inline new file/folder creation input */}
+      {showCreate && (
+        <div className="px-3 py-1.5 border-b border-[#1f2428] bg-[#161b22] shrink-0 flex items-center gap-2">
+          <span className="text-[11px] text-[#6e7681] shrink-0">{showCreate.isDir ? 'Folder:' : 'File:'}</span>
+          <input
+            type="text"
+            autoFocus
+            className="flex-1 bg-[#0d1117] text-[#e6edf3] text-[12px] px-2 py-1 border border-[#34e8bb] outline-none rounded-sm"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreate();
+              if (e.key === 'Escape') { setShowCreate(null); setCreateName(''); }
+            }}
+            onBlur={handleCreate}
+            placeholder={showCreate.isDir ? 'folder name...' : 'file name...'}
+          />
+        </div>
+      )}
+
       {/* Messages — Windsurf style: full-width, no max-width constraint */}
-      <div className="flex-1 overflow-y-auto scroll-smooth">
+      <div className="flex-1 overflow-y-auto scroll-smooth select-text">
         <div className="w-full px-4 py-4 space-y-5">
           {messages.map((message, index) => (
             <div
@@ -440,7 +560,20 @@ export function AIChatPanel() {
                   {message.toolCalls && message.toolCalls.length > 0 && (
                     <ToolCallCards toolCalls={message.toolCalls} />
                   )}
-                  <MarkdownRenderer content={message.content} onInsertCode={handleInsertCode} />
+                  <MarkdownRenderer content={message.content} onInsertCode={handleInsertCode} onOpenFile={handleOpenFileFromChat} />
+                  {/* Copy button below the last assistant message */}
+                  {index === messages.length - 1 && !isLoading && message.content && (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <button
+                        onClick={() => handleCopyMessage(message.content, index)}
+                        className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-[#6e7681] hover:text-[#e6edf3] border border-[#21262d] hover:border-[#30363d] rounded transition-colors"
+                        title="Copy message"
+                      >
+                        {copiedMsgIdx === index ? <Check size={11} className="text-[#3fb950]" /> : <Copy size={11} />}
+                        {copiedMsgIdx === index ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* User: subtle dark bubble, right-aligned, NOT bright blue */
@@ -475,7 +608,7 @@ export function AIChatPanel() {
                     {thoughts.length > 0 && (
                       <AgentActivityPanel thoughts={thoughts} status={agentStatus} collapsed />
                     )}
-                    <MarkdownRenderer content={streamingText} onInsertCode={handleInsertCode} />
+                    <MarkdownRenderer content={streamingText} onInsertCode={handleInsertCode} onOpenFile={handleOpenFileFromChat} />
                     <span className="inline-block w-1.5 h-3.5 bg-[#34e8bb] animate-pulse ml-0.5 align-middle rounded-sm" />
                   </div>
                 ) : !isStreaming ? (
@@ -903,7 +1036,17 @@ function ModelSelector({ selectedModel, onSelect }: { selectedModel: string; onS
 
 // --- Windsurf-style markdown renderer with syntax-highlighted code blocks + copy/insert ---
 
-function MarkdownRenderer({ content, onInsertCode }: { content: string; onInsertCode?: (code: string) => void }) {
+function MarkdownRenderer({ content, onInsertCode, onOpenFile }: { content: string; onInsertCode?: (code: string) => void; onOpenFile?: (filePath: string) => void }) {
+  // Check if a string looks like a file path
+  const isFilePath = (text: string): boolean => {
+    const trimmed = text.trim();
+    // Has a dot with extension, or contains / or \, and no spaces (single-word paths)
+    if (trimmed.length < 2 || trimmed.length > 200) return false;
+    if (trimmed.includes(' ')) return false;
+    // Looks like: src/App.tsx, App.tsx, components/ide/Store.ts, etc.
+    return /^[\w./\\-]+\.\w+$/.test(trimmed) || (/^[\w./\\-]+$/.test(trimmed) && (trimmed.includes('/') || trimmed.includes('\\')));
+  };
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -915,7 +1058,19 @@ function MarkdownRenderer({ content, onInsertCode }: { content: string; onInsert
           const isBlock = match || codeText.includes('\n');
 
           if (!isBlock) {
-            // Inline code — subtle bg, monospace
+            // Inline code — check if it's a file path
+            const text = codeText.trim();
+            if (onOpenFile && isFilePath(text)) {
+              return (
+                <code
+                  className="bg-[#161b22] text-[#58a6ff] px-1.5 py-0.5 rounded text-[12px] font-mono cursor-pointer hover:bg-[#1f2428] hover:text-[#34e8bb] transition-colors underline decoration-dotted"
+                  onClick={() => onOpenFile(text)}
+                  title={`Click to open ${text}`}
+                >
+                  {children}
+                </code>
+              );
+            }
             return (
               <code className="bg-[#161b22] text-[#34e8bb] px-1.5 py-0.5 rounded text-[12px] font-mono">
                 {children}

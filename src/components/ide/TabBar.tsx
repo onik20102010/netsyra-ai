@@ -1,9 +1,9 @@
 // d:\netsyra\src\components\ide\TabBar.tsx
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useIdeStore, getFileIconDetails } from "@/ide";
-import { X, File, FileCode, FileJson, FileText, Image, Check, SplitSquareHorizontal } from "lucide-react";
+import { X, File, FileCode, FileJson, FileText, Image, Check, SplitSquareHorizontal, Plus, FolderPlus } from "lucide-react";
 
 export function TabBar() {
   const openFiles = useIdeStore((s) => s.openFiles);
@@ -28,7 +28,18 @@ export function TabBar() {
     }
   }, [activeFileId, openFiles.length]);
 
-  if (openFiles.length === 0) return null;
+  const workspace = useIdeStore((s) => s.workspace);
+  const createFile = useIdeStore((s) => s.createFile);
+  const [showCreate, setShowCreate] = useState<{ parentPath: string; isDir: boolean } | null>(null);
+  const [createName, setCreateName] = useState('');
+
+  const handleCreate = () => {
+    if (showCreate && createName.trim()) {
+      createFile(showCreate.parentPath, createName.trim(), showCreate.isDir);
+    }
+    setShowCreate(null);
+    setCreateName('');
+  };
 
   // Helper to get icon for a tab
   const getTabIcon = (path: string) => {
@@ -122,6 +133,44 @@ export function TabBar() {
 
       {/* Right side contextual actions */}
       <div className="flex items-center shrink-0">
+        {/* New File button */}
+        {workspace && (
+          <button
+            onClick={() => { setShowCreate({ parentPath: workspace.rootPath, isDir: false }); setCreateName(''); }}
+            className="px-2.5 h-full text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428] transition-colors border-l border-[#1f2428] flex items-center"
+            title="New File"
+          >
+            <Plus size={14} />
+          </button>
+        )}
+        {/* New Folder button */}
+        {workspace && (
+          <button
+            onClick={() => { setShowCreate({ parentPath: workspace.rootPath, isDir: true }); setCreateName(''); }}
+            className="px-2.5 h-full text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428] transition-colors border-l border-[#1f2428] flex items-center"
+            title="New Folder"
+          >
+            <FolderPlus size={14} />
+          </button>
+        )}
+        {/* Inline create input */}
+        {showCreate && (
+          <div className="flex items-center h-full px-2 border-l border-[#1f2428] bg-[#0d1117]">
+            <input
+              type="text"
+              autoFocus
+              className="w-[140px] bg-[#0d1117] text-[#e6edf3] text-[12px] px-1.5 py-0.5 border border-[#34e8bb] outline-none rounded-sm"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreate();
+                if (e.key === 'Escape') { setShowCreate(null); setCreateName(''); }
+              }}
+              onBlur={handleCreate}
+              placeholder={showCreate.isDir ? 'folder name...' : 'file name...'}
+            />
+          </div>
+        )}
         {/* Split editor toggle */}
         {activeFileId && (
           <button
