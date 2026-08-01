@@ -220,6 +220,18 @@ function showPreview() {
         <button class="btn btn-secondary" onclick="openSelfMade()">
           <i class="fas fa-pen-ruler"></i> Create Self Made
         </button>
+        <button class="btn btn-ai" onclick="openAISuggestions()">
+          <i class="fas fa-wand-magic-sparkles"></i> AI Suggestions
+        </button>
+        <button class="btn btn-secondary" onclick="exportDOCX()">
+          <i class="fas fa-file-word"></i> DOCX Export
+        </button>
+        <button class="btn btn-secondary" onclick="openCoverLetter()">
+          <i class="fas fa-envelope-open-text"></i> Cover Letter
+        </button>
+        <button class="btn btn-secondary" onclick="openResumeScore()">
+          <i class="fas fa-chart-line"></i> Resume Score
+        </button>
       </div>
       <div class="cv-page" id="cvPageRender">${html}</div>
     </div>
@@ -306,6 +318,37 @@ function backToPreview() {
     SelfMadeEditor.close();
   }
   showPreview();
+}
+
+// ==================== AI SUGGESTIONS ====================
+function openAISuggestions() {
+  currentMode = 'ai';
+  if (typeof AISuggestions !== 'undefined' && AISuggestions.open) {
+    AISuggestions.open(cvData);
+  }
+}
+
+// ==================== DOCX EXPORT ====================
+function exportDOCX() {
+  if (typeof DOCXExport !== 'undefined' && DOCXExport.exportDoc) {
+    DOCXExport.exportDoc(cvData, selectedTemplate);
+  }
+}
+
+// ==================== COVER LETTER ====================
+function openCoverLetter() {
+  currentMode = 'coverletter';
+  if (typeof CoverLetter !== 'undefined' && CoverLetter.open) {
+    CoverLetter.open(cvData);
+  }
+}
+
+// ==================== RESUME SCORE ====================
+function openResumeScore() {
+  currentMode = 'score';
+  if (typeof ResumeScore !== 'undefined' && ResumeScore.open) {
+    ResumeScore.open(cvData);
+  }
 }
 
 // ==================== INIT ====================
