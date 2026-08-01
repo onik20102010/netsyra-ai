@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "compound";
-const GROQ_MODEL_FALLBACK = "compound-mini";
+const GROQ_MODEL = "groq/compound";
+const GROQ_MODEL_FALLBACK = "groq/compound-mini";
 const TIMEOUT_MS = 45000;
 
 export async function POST(request: NextRequest) {
