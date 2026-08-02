@@ -380,6 +380,26 @@
   .coverletter-form { width: 300px; }
 }
 
+/* ==================== BLENDER FEATURES RESPONSIVE ==================== */
+/* Shapes & Bars section in custom editor — stack on mobile */
+@media (max-width: 600px) {
+  .custom-section select { width: 100%; font-size: 0.85rem; padding: 0.5rem; }
+  .custom-panel-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* Self-made canvas — ensure scrollable on all devices */
+@media (max-width: 768px) {
+  .selfmade-canvas {
+    min-width: 100% !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .selfmade-canvas-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ==================== PRINT (keep existing + add new) ==================== */
 @media print {
   /* Hide all interactive UI */
@@ -403,4 +423,87 @@
   .coverletter-document { max-width: none !important; padding: 1in !important; }
   body { background: #fff !important; }
   * { overflow: visible !important; }
+
+  /* Responsive template classes for print */
+  .cv-template-root { max-width: 100% !important; box-shadow: none !important; }
+  .cv-template-row { page-break-inside: avoid; }
+}
+
+/* ==================== TOUCH DEVICE OPTIMIZATIONS ==================== */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger resize handles for touch */
+  .selfmade-resize-handle {
+    width: 18px !important;
+    height: 18px !important;
+    border: 2px solid #fff !important;
+  }
+  .selfmade-rh-tl { top: -9px !important; left: -9px !important; }
+  .selfmade-rh-tr { top: -9px !important; right: -9px !important; }
+  .selfmade-rh-bl { bottom: -9px !important; left: -9px !important; }
+  .selfmade-rh-br { bottom: -9px !important; right: -9px !important; }
+
+  /* Larger touch targets for tool buttons */
+  .selfmade-tool-btn {
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.85rem !important;
+    min-height: 40px;
+  }
+
+  /* Larger properties panel inputs */
+  .prop-row input[type="number"],
+  .prop-row input[type="text"],
+  .prop-row select,
+  .prop-row input[type="color"] {
+    min-height: 36px;
+    font-size: 0.9rem !important;
+  }
+
+  /* Prevent text selection on long press */
+  .selfmade-el {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* Canvas: allow horizontal scroll on touch */
+  .selfmade-canvas-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Custom template: larger color inputs on touch */
+  .color-input-row input[type="color"] {
+    width: 48px !important;
+    height: 40px !important;
+  }
+
+  /* Custom template: larger range slider thumbs */
+  .custom-field input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* ==================== RESPONSIVE TEMPLATE CLASSES ==================== */
+@media (max-width: 768px) {
+  .cv-template-root {
+    max-width: 100% !important;
+  }
+  .cv-template-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .cv-template-col {
+    min-width: 100% !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .cv-template-sidebar,
+  .cv-template-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
+  }
 }

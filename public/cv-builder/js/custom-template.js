@@ -28,7 +28,11 @@ const CustomTemplateEditor = (function () {
     photoShape: 'circle',
     photoSize: '',
     sectionSpacing: '',
-    lineHeight: ''
+    lineHeight: '',
+    sidebarShape: '',
+    barStyle: '',
+    sidebarPosition: '',
+    barAngle: ''
   };
 
   let state = Object.assign({}, defaults);
@@ -152,11 +156,49 @@ const CustomTemplateEditor = (function () {
                   <option value="square">Square</option>
                   <option value="rounded">Rounded</option>
                   <option value="hex">Hexagon (clip)</option>
+                  <option value="diamond">Diamond (clip)</option>
                 </select>
               </div>
               <div class="custom-field">
                 <label>Photo Size: <span id="ctPhotoSizeVal">--</span></label>
                 <input type="range" id="ctPhotoSize" min="60" max="160" step="5" value="90" oninput="CustomTemplateEditor.update()">
+              </div>
+            `)}
+
+            ${section('Shapes & Bars', 'fa-shapes', `
+              <div class="custom-field">
+                <label>Sidebar Shape</label>
+                <select id="ctSidebarShape" onchange="CustomTemplateEditor.update()">
+                  <option value="">Default (template)</option>
+                  <option value="sharp">Sharp Corners</option>
+                  <option value="rounded">Rounded</option>
+                  <option value="pill">Pill / Soft</option>
+                  <option value="hexagon">Hexagon Clip</option>
+                  <option value="diagonal">Diagonal Cut</option>
+                </select>
+              </div>
+              <div class="custom-field">
+                <label>Bar / Divider Style</label>
+                <select id="ctBarStyle" onchange="CustomTemplateEditor.update()">
+                  <option value="">Default (template)</option>
+                  <option value="solid">Solid</option>
+                  <option value="gradient">Gradient</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="double">Double Line</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+              <div class="custom-field">
+                <label>Sidebar Position</label>
+                <select id="ctSidebarPosition" onchange="CustomTemplateEditor.update()">
+                  <option value="">Default (template)</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right (flip layout)</option>
+                </select>
+              </div>
+              <div class="custom-field">
+                <label>Bar / Divider Angle: <span id="ctBarAngleVal">0°</span></label>
+                <input type="range" id="ctBarAngle" min="-45" max="45" step="1" value="0" oninput="CustomTemplateEditor.update()">
               </div>
             `)}
 
@@ -216,6 +258,10 @@ const CustomTemplateEditor = (function () {
     state.sectionSpacing = val2('ctSectionSpacing');
     state.photoShape = val2('ctPhotoShape');
     state.photoSize = val2('ctPhotoSize');
+    state.sidebarShape = val2('ctSidebarShape');
+    state.barStyle = val2('ctBarStyle');
+    state.sidebarPosition = val2('ctSidebarPosition');
+    state.barAngle = val2('ctBarAngle');
   }
 
   function val2(id) {
@@ -243,6 +289,8 @@ const CustomTemplateEditor = (function () {
     setText('ctSectionSpacingVal', ss ? ss + 'px' : '--');
     const ps = val2('ctPhotoSize');
     setText('ctPhotoSizeVal', ps ? ps + 'px' : '--');
+    const ba = val2('ctBarAngle');
+    setText('ctBarAngleVal', ba ? ba + '°' : '0°');
 
     // Update hex displays for color fields
     ['primaryColor', 'sidebarBg', 'textColor', 'accentColor', 'dividerColor'].forEach(id => {
@@ -353,6 +401,26 @@ const CustomTemplateEditor = (function () {
     if (state.sidebarWidth) {
       applySidebarWidth();
     }
+
+    // Sidebar shape (Blender feature)
+    if (state.sidebarShape) {
+      applySidebarShape();
+    }
+
+    // Bar / divider style (Blender feature)
+    if (state.barStyle) {
+      applyBarStyle();
+    }
+
+    // Layout flip (Blender feature)
+    if (state.sidebarPosition) {
+      applyLayoutFlip();
+    }
+
+    // Bar angle / rotation (Blender feature)
+    if (state.barAngle && state.barAngle !== '0') {
+      applyBarAngle();
+    }
   }
 
   function applyColorOverrides(root) {
@@ -458,6 +526,9 @@ const CustomTemplateEditor = (function () {
           } else if (state.photoShape === 'hex') {
             newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 0px;');
             newStyle += ' clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);';
+          } else if (state.photoShape === 'diamond') {
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 0px;');
+            newStyle += ' clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);';
           }
 
           if (state.photoSize) {
@@ -493,6 +564,143 @@ const CustomTemplateEditor = (function () {
           first.setAttribute('style', newStyle);
         }
       }
+    });
+  }
+
+  // ── Blender: Sidebar Shape ──
+  function applySidebarShape() {
+    const container = document.getElementById('customCvPreview');
+    if (!container) return;
+    const root = container.firstElementChild;
+    if (!root) return;
+
+    // Find sidebar columns (first child of flex containers, or elements with width < 45%)
+    const flexContainers = root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
+    flexContainers.forEach(fc => {
+      const children = fc.children;
+      if (children.length >= 2) {
+        const sidebar = children[0];
+        const fs = sidebar.getAttribute('style') || '';
+        let newStyle = fs;
+
+        // Remove existing clip-path
+        newStyle = newStyle.replace(/clip-path:\s*[^;]+;?/gi, '');
+
+        switch (state.sidebarShape) {
+          case 'sharp':
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 0px;');
+            if (!/border-radius/i.test(newStyle)) newStyle += ' border-radius: 0px;';
+            break;
+          case 'rounded':
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 16px;');
+            if (!/border-radius/i.test(newStyle)) newStyle += ' border-radius: 16px;';
+            break;
+          case 'pill':
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 999px;');
+            if (!/border-radius/i.test(newStyle)) newStyle += ' border-radius: 999px;';
+            break;
+          case 'hexagon':
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 0px;');
+            newStyle += ' clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);';
+            break;
+          case 'diagonal':
+            newStyle = newStyle.replace(/border-radius:\s*[^;]+;?/gi, 'border-radius: 0px;');
+            newStyle += ' clip-path: polygon(0% 0%, 100% 0%, 85% 100%, 0% 100%);';
+            break;
+        }
+
+        sidebar.setAttribute('style', newStyle);
+      }
+    });
+  }
+
+  // ── Blender: Bar / Divider Style ──
+  function applyBarStyle() {
+    const container = document.getElementById('customCvPreview');
+    if (!container) return;
+
+    // Target dividers: hr elements, divs with border-bottom, section headers with bottom border
+    const dividers = container.querySelectorAll('hr, [style*="border-bottom"]');
+    dividers.forEach(el => {
+      const tag = el.tagName.toLowerCase();
+      const fs = el.getAttribute('style') || '';
+      let newStyle = fs;
+
+      // Remove existing gradient backgrounds
+      newStyle = newStyle.replace(/background:\s*linear-gradient[^;]+;?/gi, '');
+
+      switch (state.barStyle) {
+        case 'solid':
+          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: solid;');
+          if (tag === 'hr') newStyle += ' border: none; border-top: 2px solid currentColor;';
+          break;
+        case 'gradient':
+          if (tag === 'hr') {
+            newStyle = 'border: none; height: 3px; background: linear-gradient(90deg, #6b8fad, #FF9966, #6b8fad);';
+          } else {
+            newStyle = newStyle.replace(/border-bottom[^;]*;?/gi, '');
+            newStyle += ' border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, #6b8fad, #FF9966) 1;';
+          }
+          break;
+        case 'dashed':
+          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: dashed;');
+          if (tag === 'hr') newStyle += ' border: none; border-top: 2px dashed currentColor;';
+          break;
+        case 'double':
+          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: double;');
+          newStyle = newStyle.replace(/border-bottom-width:\s*[^;]+;?/gi, 'border-bottom-width: 4px;');
+          if (tag === 'hr') newStyle += ' border: none; border-top: 4px double currentColor;';
+          break;
+        case 'dotted':
+          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: dotted;');
+          if (tag === 'hr') newStyle += ' border: none; border-top: 2px dotted currentColor;';
+          break;
+      }
+
+      el.setAttribute('style', newStyle);
+    });
+  }
+
+  // ── Blender: Layout Flip (sidebar left ↔ right) ──
+  function applyLayoutFlip() {
+    const container = document.getElementById('customCvPreview');
+    if (!container) return;
+    const root = container.firstElementChild;
+    if (!root) return;
+
+    const flexContainers = root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
+    flexContainers.forEach(fc => {
+      const fs = fc.getAttribute('style') || '';
+      let newStyle = fs;
+
+      if (state.sidebarPosition === 'right') {
+        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, '');
+        if (!/flex-direction:\s*row-reverse/i.test(newStyle)) {
+          newStyle += ' flex-direction: row-reverse;';
+        }
+      } else if (state.sidebarPosition === 'left') {
+        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, 'flex-direction: row;');
+      }
+
+      fc.setAttribute('style', newStyle);
+    });
+  }
+
+  // ── Blender: Bar Angle / Rotation ──
+  function applyBarAngle() {
+    const container = document.getElementById('customCvPreview');
+    if (!container) return;
+    const angle = parseFloat(state.barAngle) || 0;
+
+    const dividers = container.querySelectorAll('hr, [style*="border-bottom"]');
+    dividers.forEach(el => {
+      const fs = el.getAttribute('style') || '';
+      let newStyle = fs;
+      newStyle = newStyle.replace(/transform:\s*rotate[^;]+;?/gi, '');
+      if (angle !== 0) {
+        newStyle += ` transform: rotate(${angle}deg);`;
+      }
+      el.setAttribute('style', newStyle);
     });
   }
 

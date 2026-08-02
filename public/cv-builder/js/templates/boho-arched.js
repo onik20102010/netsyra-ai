@@ -29,10 +29,10 @@ window.CVTemplates['boho-arched'] = {
     const textColor = '#2B2B2B';
 
     return `
-      <div style="font-family:'Playfair Display', 'Georgia', serif; background-color:${mainBg}; color:${textColor}; max-width:800px; margin:0 auto; display:flex; min-height:1000px; box-shadow:0 0 10px rgba(0,0,0,0.06); text-align:left; box-sizing:border-box; word-break:break-word; overflow-wrap:break-word;">
+      <div class="cv-template-root" style="font-family:'Playfair Display', 'Georgia', serif; background-color:${mainBg}; color:${textColor}; max-width:800px; margin:0 auto; display:flex; min-height:1000px; box-shadow:0 0 10px rgba(0,0,0,0.06); text-align:left; box-sizing:border-box; word-break:break-word; overflow-wrap:break-word;">
         
         <!-- Left Column / Sidebar -->
-        <div style="background-color:${sidebarBg}; width:38%; padding:35px 25px; box-sizing:border-box; flex-shrink:0;">
+        <div class="cv-template-sidebar" style="background-color:${sidebarBg}; width:38%; padding:35px 25px; box-sizing:border-box; flex-shrink:0;">
           
           <!-- Arched Photo Frame -->
           <div style="text-align:center; position:relative; margin-bottom:30px;">
@@ -120,7 +120,7 @@ window.CVTemplates['boho-arched'] = {
         </div>
 
         <!-- Right Column / Main Body -->
-        <div style="width:62%; padding:45px 35px; box-sizing:border-box;">
+        <div class="cv-template-main" style="width:62%; padding:45px 35px; box-sizing:border-box;">
           
           <!-- Header Name & Title -->
           <div style="margin-bottom:20px;">

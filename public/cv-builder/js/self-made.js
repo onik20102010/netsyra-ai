@@ -8,10 +8,22 @@ const SelfMadeEditor = (function () {
 
   let active = false;
   let cvData = null;
-  let elements = []; // {id, type, x, y, w, h, props}
+  let elements = []; // {id, type, x, y, w, h, props, z}
   let selectedId = null;
   let nextId = 1;
   let dragState = null; // {mode:'move'|'resize', startX, startY, origX, origY, origW, origH}
+
+  // Undo / Redo
+  let history = [];
+  let historyIndex = -1;
+  const MAX_HISTORY = 50;
+
+  // Snap to grid
+  let snapToGrid = false;
+  let gridSize = 10;
+
+  // Touch support
+  let touchMode = false;
 
   function open(data) {
     cvData = data;
@@ -19,6 +31,10 @@ const SelfMadeEditor = (function () {
     elements = [];
     selectedId = null;
     nextId = 1;
+    history = [];
+    historyIndex = -1;
+    snapToGrid = false;
+    pushHistory();
     const appMain = document.getElementById('appMain');
     appMain.classList.add('editor-mode');
     render();
@@ -28,6 +44,88 @@ const SelfMadeEditor = (function () {
     active = false;
     const appMain = document.getElementById('appMain');
     appMain.classList.remove('editor-mode');
+  }
+
+  // ==================== UNDO / REDO ====================
+  function pushHistory() {
+    // Truncate any redo history
+    history = history.slice(0, historyIndex + 1);
+    history.push(JSON.stringify(elements));
+    if (history.length > MAX_HISTORY) history.shift();
+    historyIndex = history.length - 1;
+  }
+
+  function undo() {
+    if (historyIndex <= 0) { toast('Nothing to undo'); return; }
+    historyIndex--;
+    elements = JSON.parse(history[historyIndex]);
+    selectedId = null;
+    const canvas = document.getElementById('selfmadeCanvas');
+    if (canvas) canvas.innerHTML = renderElements();
+    renderProps();
+    toast('Undo');
+  }
+
+  function redo() {
+    if (historyIndex >= history.length - 1) { toast('Nothing to redo'); return; }
+    historyIndex++;
+    elements = JSON.parse(history[historyIndex]);
+    selectedId = null;
+    const canvas = document.getElementById('selfmadeCanvas');
+    if (canvas) canvas.innerHTML = renderElements();
+    renderProps();
+    toast('Redo');
+  }
+
+  // ==================== SNAP TO GRID ====================
+  function snapVal(v) {
+    if (!snapToGrid) return v;
+    return Math.round(v / gridSize) * gridSize;
+  }
+
+  function toggleSnap() {
+    snapToGrid = !snapToGrid;
+    const btn = document.getElementById('smSnapBtn');
+    if (btn) {
+      btn.classList.toggle('active', snapToGrid);
+      btn.style.background = snapToGrid ? 'var(--primary-light)' : '';
+      btn.style.borderColor = snapToGrid ? 'var(--primary)' : '';
+    }
+    toast(snapToGrid ? 'Snap to grid ON (' + gridSize + 'px)' : 'Snap to grid OFF');
+  }
+
+  function setGridSize(size) {
+    gridSize = parseInt(size) || 10;
+    if (snapToGrid) toast('Grid size: ' + gridSize + 'px');
+  }
+
+  // ==================== LAYER MANAGEMENT ====================
+  function bringForward() {
+    if (!selectedId) return;
+    const el = elements.find(x => x.id === selectedId);
+    if (!el) return;
+    const idx = elements.indexOf(el);
+    if (idx < elements.length - 1) {
+      pushHistory();
+      elements.splice(idx, 1);
+      elements.push(el);
+      const canvas = document.getElementById('selfmadeCanvas');
+      if (canvas) canvas.innerHTML = renderElements();
+    }
+  }
+
+  function sendBackward() {
+    if (!selectedId) return;
+    const el = elements.find(x => x.id === selectedId);
+    if (!el) return;
+    const idx = elements.indexOf(el);
+    if (idx > 0) {
+      pushHistory();
+      elements.splice(idx, 1);
+      elements.unshift(el);
+      const canvas = document.getElementById('selfmadeCanvas');
+      if (canvas) canvas.innerHTML = renderElements();
+    }
   }
 
   function render() {
@@ -45,24 +143,133 @@ const SelfMadeEditor = (function () {
 
           <div class="selfmade-tools">
             <div class="selfmade-tool-group">
-              <div class="selfmade-tool-label">Add Element</div>
+              <div class="selfmade-tool-label">History</div>
+              <div class="selfmade-tool-row">
+                <button class="selfmade-tool-btn" onclick="SelfMadeEditor.undo()" title="Undo">
+                  <i class="fas fa-rotate-left"></i> Undo
+                </button>
+                <button class="selfmade-tool-btn" onclick="SelfMadeEditor.redo()" title="Redo">
+                  <i class="fas fa-rotate-right"></i> Redo
+                </button>
+              </div>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Text</div>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addText()" title="Add Text">
                 <i class="fas fa-font"></i> Text
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addHeading()" title="Add Heading">
                 <i class="fas fa-heading"></i> Heading
               </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addSubheading()" title="Add Subheading">
+                <i class="fas fa-heading"></i> Subheading
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addParagraph()" title="Add Paragraph Block">
+                <i class="fas fa-paragraph"></i> Paragraph
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBulletList()" title="Add Bullet List">
+                <i class="fas fa-list-ul"></i> Bullet List
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addNumberedList()" title="Add Numbered List">
+                <i class="fas fa-list-ol"></i> Numbered List
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addQuote()" title="Add Quote">
+                <i class="fas fa-quote-left"></i> Quote
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addLink()" title="Add Link">
+                <i class="fas fa-link"></i> Link
+              </button>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Shapes</div>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addRect()" title="Add Rectangle">
                 <i class="fas fa-square"></i> Rectangle
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addCircle()" title="Add Circle">
                 <i class="fas fa-circle"></i> Circle
               </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addTriangle()" title="Add Triangle">
+                <i class="fas fa-play"></i> Triangle
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addDiamond()" title="Add Diamond">
+                <i class="fas fa-diamond"></i> Diamond
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addHexagon()" title="Add Hexagon">
+                <i class="fas fa-hexagon"></i> Hexagon
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addStar()" title="Add Star">
+                <i class="fas fa-star"></i> Star
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addHeart()" title="Add Heart">
+                <i class="fas fa-heart"></i> Heart
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addArrow()" title="Add Arrow">
+                <i class="fas fa-arrow-right"></i> Arrow
+              </button>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Lines & Dividers</div>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addLine()" title="Add Line">
                 <i class="fas fa-minus"></i> Line
               </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addDashedLine()" title="Add Dashed Line">
+                <i class="fas fa-minus"></i> Dashed Line
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addDoubleLine()" title="Add Double Line">
+                <i class="fas fa-equals"></i> Double Line
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addDivider()" title="Add Section Divider">
+                <i class="fas fa-grip-lines"></i> Divider
+              </button>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Media</div>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addImage()" title="Add Image">
                 <i class="fas fa-image"></i> Image
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addIcon()" title="Add Icon">
+                <i class="fas fa-icons"></i> Icon
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addPhotoFrame()" title="Add Photo Frame">
+                <i class="fas fa-id-badge"></i> Photo Frame
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBarcode()" title="Add Barcode Placeholder">
+                <i class="fas fa-barcode"></i> Barcode
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addQRPlaceholder()" title="Add QR Placeholder">
+                <i class="fas fa-qrcode"></i> QR Code
+              </button>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">CV Components</div>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addSkillBar()" title="Add Skill Bar">
+                <i class="fas fa-chart-bar"></i> Skill Bar
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addSkillTags()" title="Add Skill Tags">
+                <i class="fas fa-tags"></i> Skill Tags
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addTimeline()" title="Add Timeline">
+                <i class="fas fa-timeline"></i> Timeline
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addProgressBar()" title="Add Progress Bar">
+                <i class="fas fa-tasks"></i> Progress Bar
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBadge()" title="Add Badge">
+                <i class="fas fa-certificate"></i> Badge
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addContactCard()" title="Add Contact Card">
+                <i class="fas fa-address-card"></i> Contact Card
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addSocialIcons()" title="Add Social Icons">
+                <i class="fas fa-share-nodes"></i> Social Icons
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addRating()" title="Add Rating Stars">
+                <i class="fas fa-star-half-stroke"></i> Rating Stars
               </button>
             </div>
 
@@ -89,6 +296,44 @@ const SelfMadeEditor = (function () {
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.insertData('photo')" title="Photo">
                 <i class="fas fa-id-badge"></i> Photo
               </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.insertData('skills')" title="Skills List">
+                <i class="fas fa-tools"></i> Skills
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.insertData('experience')" title="Experience List">
+                <i class="fas fa-briefcase"></i> Experience
+              </button>
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.insertData('education')" title="Education List">
+                <i class="fas fa-graduation-cap"></i> Education
+              </button>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Canvas Options</div>
+              <button class="selfmade-tool-btn" id="smSnapBtn" onclick="SelfMadeEditor.toggleSnap()" title="Toggle Snap to Grid">
+                <i class="fas fa-border-all"></i> Snap to Grid
+              </button>
+              <div class="selfmade-tool-row">
+                <label class="sm-grid-label">Grid</label>
+                <select onchange="SelfMadeEditor.setGridSize(this.value)" class="sm-grid-select">
+                  <option value="5">5px</option>
+                  <option value="10" selected>10px</option>
+                  <option value="15">15px</option>
+                  <option value="20">20px</option>
+                  <option value="25">25px</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="selfmade-tool-group">
+              <div class="selfmade-tool-label">Layers</div>
+              <div class="selfmade-tool-row">
+                <button class="selfmade-tool-btn" onclick="SelfMadeEditor.bringForward()" title="Bring Forward">
+                  <i class="fas fa-arrow-up"></i> Forward
+                </button>
+                <button class="selfmade-tool-btn" onclick="SelfMadeEditor.sendBackward()" title="Send Backward">
+                  <i class="fas fa-arrow-down"></i> Backward
+                </button>
+              </div>
             </div>
 
             <div class="selfmade-tool-group">
@@ -109,16 +354,24 @@ const SelfMadeEditor = (function () {
             <button class="btn btn-secondary" onclick="SelfMadeEditor.close(); backToPreview();">
               <i class="fas fa-arrow-left"></i> Back
             </button>
-            <button class="btn btn-primary" onclick="SelfMadeEditor.exportPDF()">
-              <i class="fas fa-download"></i> Export PDF
-            </button>
+            <div class="selfmade-export-row">
+              <button class="btn btn-primary" onclick="SelfMadeEditor.exportPDF()" title="Export PDF">
+                <i class="fas fa-file-pdf"></i>
+              </button>
+              <button class="btn btn-secondary" onclick="SelfMadeEditor.exportPNG()" title="Export PNG">
+                <i class="fas fa-file-image"></i>
+              </button>
+              <button class="btn btn-secondary" onclick="SelfMadeEditor.exportJPG()" title="Export JPG">
+                <i class="fas fa-image"></i>
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Canvas Area -->
         <div class="selfmade-canvas-wrap">
           <div class="selfmade-canvas-toolbar">
-            <span class="selfmade-canvas-label">Canvas — drag elements to position, click to select, drag corners to resize</span>
+            <span class="selfmade-canvas-label">Canvas — drag to move, tap to select, drag corners to resize (mouse + touch)</span>
           </div>
           <div class="selfmade-canvas" id="selfmadeCanvas">
             ${renderElements()}
@@ -147,56 +400,249 @@ const SelfMadeEditor = (function () {
   function renderElement(el) {
     const sel = el.id === selectedId ? ' selfmade-el-selected' : '';
     const baseStyle = `position:absolute; left:${el.x}px; top:${el.y}px; width:${el.w}px; height:${el.h}px;`;
+    const dragAttr = `onmousedown="SelfMadeEditor.startDrag(event, ${el.id})" ontouchstart="SelfMadeEditor.startDrag(event, ${el.id})"`;
+    const handles = sel ? renderResizeHandles() : '';
 
-    if (el.type === 'text' || el.type === 'heading' || el.type === 'data') {
-      const fs = el.props.fontSize || (el.type === 'heading' ? 24 : 14);
-      const fw = el.props.fontWeight || (el.type === 'heading' ? 700 : 400);
+    // Text-like elements
+    const textTypes = ['text', 'heading', 'subheading', 'paragraph', 'data', 'quote', 'link'];
+    if (textTypes.includes(el.type)) {
+      const fs = el.props.fontSize || (el.type === 'heading' ? 24 : el.type === 'subheading' ? 18 : 14);
+      const fw = el.props.fontWeight || (el.type === 'heading' ? 700 : el.type === 'subheading' ? 600 : 400);
       const color = el.props.color || '#333333';
       const ff = el.props.fontFamily || "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
       const align = el.props.textAlign || 'left';
       const italic = el.props.italic ? 'font-style:italic;' : '';
-      const underline = el.props.underline ? 'text-decoration:underline;' : '';
+      const underline = el.props.underline || el.type === 'link' ? 'text-decoration:underline;' : '';
       const bg = el.props.bgColor ? `background-color:${el.props.bgColor};` : '';
       const pad = 'padding:4px 8px;';
       const overflow = 'overflow:hidden; word-break:break-word;';
-      return `<div class="selfmade-el${sel}" style="${baseStyle} ${bg} ${pad} ${overflow}" data-id="${el.id}" onmousedown="SelfMadeEditor.startDrag(event, ${el.id})">
-        <div style="font-size:${fs}px; font-weight:${fw}; color:${color}; font-family:${ff}; text-align:${align}; ${italic} ${underline} line-height:1.3;">${escapeHTML2(el.props.text || 'Double-click to edit')}</div>
-        ${sel ? renderResizeHandles() : ''}
+      const linkColor = el.type === 'link' ? (el.props.color || '#0066cc') : color;
+      const quoteStyle = el.type === 'quote' ? 'border-left:3px solid #6b8fad; padding-left:12px; font-style:italic;' : '';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} ${bg} ${pad} ${overflow} ${quoteStyle}" data-id="${el.id}" ${dragAttr}>
+        <div style="font-size:${fs}px; font-weight:${fw}; color:${linkColor}; font-family:${ff}; text-align:${align}; ${italic} ${underline} line-height:1.3;">${escapeHTML2(el.props.text || (el.type === 'link' ? 'Link Text' : 'Double-click to edit'))}</div>
+        ${handles}
       </div>`;
     }
 
+    // List elements
+    if (el.type === 'bulletList' || el.type === 'numberedList') {
+      const fs = el.props.fontSize || 13;
+      const color = el.props.color || '#333333';
+      const ff = el.props.fontFamily || "'Segoe UI', Roboto, sans-serif";
+      const items = (el.props.text || 'Item 1\nItem 2\nItem 3').split('\n').filter(Boolean);
+      const tag = el.type === 'numberedList' ? 'ol' : 'ul';
+      const listStyle = el.type === 'numberedList' ? 'decimal' : 'disc';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:4px 8px; overflow:hidden;" data-id="${el.id}" ${dragAttr}>
+        <${tag} style="margin:0; padding-left:20px; font-size:${fs}px; color:${color}; font-family:${ff}; list-style-type:${listStyle}; line-height:1.6;">
+          ${items.map(i => `<li>${escapeHTML2(i)}</li>`).join('')}
+        </${tag}>
+        ${handles}
+      </div>`;
+    }
+
+    // Shape elements
     if (el.type === 'rect') {
       const bg = el.props.bgColor || '#E2E4E7';
       const border = el.props.borderColor ? `border:2px solid ${el.props.borderColor};` : '';
       const radius = el.props.borderRadius || 0;
-      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; ${border} border-radius:${radius}px;" data-id="${el.id}" onmousedown="SelfMadeEditor.startDrag(event, ${el.id})">
-        ${sel ? renderResizeHandles() : ''}
-      </div>`;
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; ${border} border-radius:${radius}px;" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
     }
 
     if (el.type === 'circle') {
       const bg = el.props.bgColor || '#6b8fad';
       const border = el.props.borderColor ? `border:2px solid ${el.props.borderColor};` : '';
-      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; ${border} border-radius:50%;" data-id="${el.id}" onmousedown="SelfMadeEditor.startDrag(event, ${el.id})">
-        ${sel ? renderResizeHandles() : ''}
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; ${border} border-radius:50%;" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'triangle') {
+      const bg = el.props.bgColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle}" data-id="${el.id}" ${dragAttr}>
+        <div style="width:0;height:0;border-left:${el.w/2}px solid transparent;border-right:${el.w/2}px solid transparent;border-bottom:${el.h}px solid ${bg};"></div>
+        ${handles}
       </div>`;
     }
 
+    if (el.type === 'diamond') {
+      const bg = el.props.bgColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'hexagon') {
+      const bg = el.props.bgColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'star') {
+      const bg = el.props.bgColor || '#f59e0b';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'heart') {
+      const bg = el.props.bgColor || '#ef4444';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; clip-path:polygon(50% 100%,0% 35%,0% 15%,15% 0%,35% 0%,50% 15%,65% 0%,85% 0%,100% 15%,100% 35%);" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'arrow') {
+      const bg = el.props.bgColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${bg}; clip-path:polygon(0% 40%,60% 40%,60% 15%,100% 50%,60% 85%,60% 60%,0% 60%);" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    // Line elements
     if (el.type === 'line') {
       const color = el.props.bgColor || '#D1D5DB';
       const thickness = el.props.thickness || 2;
-      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${color}; height:${thickness}px;" data-id="${el.id}" onmousedown="SelfMadeEditor.startDrag(event, ${el.id})">
-        ${sel ? renderResizeHandles() : ''}
+      return `<div class="selfmade-el${sel}" style="${baseStyle} background-color:${color}; height:${thickness}px;" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'dashedLine') {
+      const color = el.props.bgColor || '#D1D5DB';
+      const thickness = el.props.thickness || 2;
+      return `<div class="selfmade-el${sel}" style="${baseStyle} border-top:${thickness}px dashed ${color};" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'doubleLine') {
+      const color = el.props.bgColor || '#D1D5DB';
+      const thickness = el.props.thickness || 3;
+      return `<div class="selfmade-el${sel}" style="${baseStyle} border-top:${thickness}px double ${color}; border-bottom:${thickness}px double ${color}; height:${thickness*3}px;" data-id="${el.id}" ${dragAttr}>${handles}</div>`;
+    }
+
+    if (el.type === 'divider') {
+      const color = el.props.bgColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; gap:8px;" data-id="${el.id}" ${dragAttr}>
+        <div style="flex:1;height:2px;background:${color};"></div>
+        <div style="color:${color};font-size:14px;"><i class="fas fa-circle" style="font-size:6px;"></i></div>
+        <div style="flex:1;height:2px;background:${color};"></div>
+        ${handles}
       </div>`;
     }
 
+    // Media elements
     if (el.type === 'image') {
       const src = el.props.src || '';
       const fit = el.props.objectFit || 'cover';
       const radius = el.props.borderRadius || 0;
-      return `<div class="selfmade-el${sel}" style="${baseStyle} overflow:hidden; border-radius:${radius}px;" data-id="${el.id}" onmousedown="SelfMadeEditor.startDrag(event, ${el.id})">
+      return `<div class="selfmade-el${sel}" style="${baseStyle} overflow:hidden; border-radius:${radius}px;" data-id="${el.id}" ${dragAttr}>
         ${src ? `<img src="${escapeHTML2(src)}" style="width:100%;height:100%;object-fit:${fit};display:block;">` : '<div style="width:100%;height:100%;background:#E2E8F0;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">No Image</div>'}
-        ${sel ? renderResizeHandles() : ''}
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'icon') {
+      const iconName = el.props.iconName || 'fa-star';
+      const color = el.props.color || '#6b8fad';
+      const size = el.props.fontSize || 24;
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center;" data-id="${el.id}" ${dragAttr}>
+        <i class="fas ${escapeHTML2(iconName)}" style="font-size:${size}px; color:${color};"></i>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'photoFrame') {
+      const src = el.props.src || '';
+      const radius = el.props.borderRadius || 50;
+      const border = el.props.borderColor || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; border:3px solid ${border}; border-radius:${radius}%; overflow:hidden; box-sizing:border-box;" data-id="${el.id}" ${dragAttr}>
+        ${src ? `<img src="${escapeHTML2(src)}" style="width:100%;height:100%;object-fit:cover;display:block;">` : '<div style="color:#999;font-size:11px;text-align:center;">Photo</div>'}
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'barcode') {
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:flex-end; gap:1px; padding:4px; background:#fff; border:1px solid #ddd;" data-id="${el.id}" ${dragAttr}>
+        ${[3,5,2,7,4,6,3,5,8,2,4,6,3,5,7,2,4].map(w => `<div style="width:${w}px;flex:1;background:#000;height:100%;"></div>`).join('')}
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'qrPlaceholder') {
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #ddd;" data-id="${el.id}" ${dragAttr}>
+        <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:1px; width:80%; height:80%;">
+          ${Array(64).fill(0).map((_,i) => `<div style="background:${Math.random()>0.5?'#000':'#fff'};"></div>`).join('')}
+        </div>
+        ${handles}
+      </div>`;
+    }
+
+    // CV Component elements
+    if (el.type === 'skillBar') {
+      const label = el.props.text || 'Skill';
+      const level = el.props.level || 75;
+      const color = el.props.color || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:4px 8px; display:flex; flex-direction:column; justify-content:center; gap:4px;" data-id="${el.id}" ${dragAttr}>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#333;">
+          <span>${escapeHTML2(label)}</span><span>${level}%</span>
+        </div>
+        <div style="height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden;">
+          <div style="width:${level}%; height:100%; background:${color}; border-radius:3px;"></div>
+        </div>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'skillTags') {
+      const tags = (el.props.text || 'JavaScript,Python,React,CSS,HTML').split(',').map(s => s.trim()).filter(Boolean);
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:4px 8px; display:flex; flex-wrap:wrap; gap:4px; align-content:flex-start;" data-id="${el.id}" ${dragAttr}>
+        ${tags.map(t => `<span style="padding:2px 8px; background:#E0E7FF; color:#4338CA; border-radius:10px; font-size:11px;">${escapeHTML2(t)}</span>`).join('')}
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'timeline') {
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:8px; display:flex; flex-direction:column; gap:6px;" data-id="${el.id}" ${dragAttr}>
+        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2020 - Event 1</div></div>
+        <div style="width:2px;height:12px;background:#ccc;margin-left:4px;"></div>
+        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2022 - Event 2</div></div>
+        <div style="width:2px;height:12px;background:#ccc;margin-left:4px;"></div>
+        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2024 - Event 3</div></div>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'progressBar') {
+      const level = el.props.level || 60;
+      const color = el.props.color || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:4px 8px; display:flex; flex-direction:column; justify-content:center; gap:4px;" data-id="${el.id}" ${dragAttr}>
+        <div style="height:8px; background:#E2E8F0; border-radius:4px; overflow:hidden;">
+          <div style="width:${level}%; height:100%; background:${color}; border-radius:4px;"></div>
+        </div>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'badge') {
+      const text = el.props.text || 'Badge';
+      const color = el.props.color || '#6b8fad';
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center;" data-id="${el.id}" ${dragAttr}>
+        <span style="padding:4px 12px; background:${color}; color:#fff; border-radius:12px; font-size:11px; font-weight:600;">${escapeHTML2(text)}</span>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'contactCard') {
+      const p = cvData.personal || {};
+      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:8px; display:flex; flex-direction:column; gap:4px; font-size:11px; color:#555;" data-id="${el.id}" ${dragAttr}>
+        ${p.email ? `<div><i class="fas fa-envelope" style="color:#6b8fad;margin-right:4px;"></i>${escapeHTML2(p.email)}</div>` : ''}
+        ${p.phone ? `<div><i class="fas fa-phone" style="color:#6b8fad;margin-right:4px;"></i>${escapeHTML2(p.phone)}</div>` : ''}
+        ${p.location ? `<div><i class="fas fa-location-dot" style="color:#6b8fad;margin-right:4px;"></i>${escapeHTML2(p.location)}</div>` : ''}
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'socialIcons') {
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; gap:8px;" data-id="${el.id}" ${dragAttr}>
+        <i class="fab fa-linkedin" style="font-size:18px;color:#0077b5;"></i>
+        <i class="fab fa-github" style="font-size:18px;color:#333;"></i>
+        <i class="fab fa-twitter" style="font-size:18px;color:#1da1f2;"></i>
+        <i class="fas fa-globe" style="font-size:18px;color:#6b8fad;"></i>
+        ${handles}
+      </div>`;
+    }
+
+    if (el.type === 'rating') {
+      const rating = el.props.level || 4;
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; gap:2px;" data-id="${el.id}" ${dragAttr}>
+        ${[1,2,3,4,5].map(i => `<i class="fas fa-star" style="font-size:16px;color:${i<=rating?'#f59e0b':'#d1d5db'};"></i>`).join('')}
+        ${handles}
       </div>`;
     }
 
@@ -216,21 +662,53 @@ const SelfMadeEditor = (function () {
     const canvas = document.getElementById('selfmadeCanvas');
     if (!canvas) return;
 
+    // Mouse: deselect on empty canvas click
     canvas.addEventListener('mousedown', function (e) {
-      // Click on empty canvas = deselect
-      if (e.target === canvas) {
-        selectElement(null);
-      }
+      if (e.target === canvas) selectElement(null);
     });
+
+    // Touch: deselect on empty canvas tap
+    canvas.addEventListener('touchstart', function (e) {
+      if (e.target === canvas) selectElement(null);
+    }, { passive: true });
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', onKeydown);
+  }
+
+  function onKeydown(e) {
+    if (!active) return;
+    // Don't intercept if typing in an input/textarea
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      redo();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (selectedId) {
+        e.preventDefault();
+        deleteSelected();
+      }
+    }
   }
 
   function startDrag(e, id) {
     e.stopPropagation();
     const el = elements.find(x => x.id === id);
     if (!el) return;
+
+    // Support both mouse and touch events
+    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
     // Check if clicking a resize handle
     const target = e.target;
@@ -239,8 +717,8 @@ const SelfMadeEditor = (function () {
       dragState = {
         mode: 'resize',
         type: resizeType,
-        startX: e.clientX,
-        startY: e.clientY,
+        startX: clientX,
+        startY: clientY,
         origX: el.x,
         origY: el.y,
         origW: el.w,
@@ -251,8 +729,8 @@ const SelfMadeEditor = (function () {
       selectElement(id);
       dragState = {
         mode: 'move',
-        startX: e.clientX,
-        startY: e.clientY,
+        startX: clientX,
+        startY: clientY,
         origX: el.x,
         origY: el.y,
         id: id
@@ -263,30 +741,42 @@ const SelfMadeEditor = (function () {
 
   function onMouseMove(e) {
     if (!dragState) return;
+    handleDragMove(e.clientX, e.clientY);
+  }
+
+  function onTouchMove(e) {
+    if (!dragState) return;
+    if (e.touches && e.touches[0]) {
+      e.preventDefault();
+      handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }
+
+  function handleDragMove(clientX, clientY) {
     const el = elements.find(x => x.id === dragState.id);
     if (!el) return;
 
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
+    const dx = clientX - dragState.startX;
+    const dy = clientY - dragState.startY;
 
     if (dragState.mode === 'move') {
-      el.x = Math.max(0, dragState.origX + dx);
-      el.y = Math.max(0, dragState.origY + dy);
+      el.x = snapVal(Math.max(0, dragState.origX + dx));
+      el.y = snapVal(Math.max(0, dragState.origY + dy));
     } else if (dragState.mode === 'resize') {
       if (dragState.type.includes('r')) {
-        el.w = Math.max(20, dragState.origW + dx);
+        el.w = snapVal(Math.max(20, dragState.origW + dx));
       }
       if (dragState.type.includes('b')) {
-        el.h = Math.max(20, dragState.origH + dy);
+        el.h = snapVal(Math.max(20, dragState.origH + dy));
       }
       if (dragState.type.includes('l')) {
-        const newW = Math.max(20, dragState.origW - dx);
-        el.x = dragState.origX + (dragState.origW - newW);
+        const newW = snapVal(Math.max(20, dragState.origW - dx));
+        el.x = snapVal(dragState.origX + (dragState.origW - newW));
         el.w = newW;
       }
       if (dragState.type.includes('t')) {
-        const newH = Math.max(20, dragState.origH - dy);
-        el.y = dragState.origY + (dragState.origH - newH);
+        const newH = snapVal(Math.max(20, dragState.origH - dy));
+        el.y = snapVal(dragState.origY + (dragState.origH - newH));
         el.h = newH;
       }
     }
@@ -295,6 +785,12 @@ const SelfMadeEditor = (function () {
   }
 
   function onMouseUp() {
+    if (dragState) pushHistory();
+    dragState = null;
+  }
+
+  function onTouchEnd() {
+    if (dragState) pushHistory();
     dragState = null;
   }
 
@@ -349,7 +845,7 @@ const SelfMadeEditor = (function () {
       </div>
     `;
 
-    if (el.type === 'text' || el.type === 'heading' || el.type === 'data') {
+    if (el.type === 'text' || el.type === 'heading' || el.type === 'subheading' || el.type === 'paragraph' || el.type === 'data' || el.type === 'quote' || el.type === 'link') {
       html += `
         <div class="prop-group">
           <div class="prop-group-title">Text Content</div>
@@ -415,7 +911,7 @@ const SelfMadeEditor = (function () {
       `;
     }
 
-    if (el.type === 'rect' || el.type === 'circle') {
+    if (el.type === 'rect' || el.type === 'circle' || el.type === 'triangle' || el.type === 'diamond' || el.type === 'hexagon' || el.type === 'star' || el.type === 'heart' || el.type === 'arrow') {
       html += `
         <div class="prop-group">
           <div class="prop-group-title">Appearance</div>
@@ -437,7 +933,7 @@ const SelfMadeEditor = (function () {
       `;
     }
 
-    if (el.type === 'line') {
+    if (el.type === 'line' || el.type === 'dashedLine' || el.type === 'doubleLine' || el.type === 'divider') {
       html += `
         <div class="prop-group">
           <div class="prop-group-title">Line</div>
@@ -453,7 +949,7 @@ const SelfMadeEditor = (function () {
       `;
     }
 
-    if (el.type === 'image') {
+    if (el.type === 'image' || el.type === 'photoFrame') {
       html += `
         <div class="prop-group">
           <div class="prop-group-title">Image</div>
@@ -472,6 +968,96 @@ const SelfMadeEditor = (function () {
           <div class="prop-row">
             <label>Border Radius</label>
             <input type="number" value="${el.props.borderRadius || 0}" oninput="SelfMadeEditor.setPropDeep('borderRadius', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'icon') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">Icon</div>
+          <div class="prop-row">
+            <label>Icon Name</label>
+            <input type="text" value="${escapeHTML2(el.props.iconName || 'fa-star')}" oninput="SelfMadeEditor.setPropDeep('iconName', this.value)" placeholder="fa-star, fa-heart, fa-user...">
+          </div>
+          <div class="prop-row">
+            <label>Size</label>
+            <input type="number" value="${el.props.fontSize || 24}" oninput="SelfMadeEditor.setPropDeep('fontSize', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Color</label>
+            <input type="color" value="${el.props.color || '#6b8fad'}" oninput="SelfMadeEditor.setPropDeep('color', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'skillBar' || el.type === 'progressBar') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">${el.type === 'skillBar' ? 'Skill Bar' : 'Progress Bar'}</div>
+          ${el.type === 'skillBar' ? `
+          <div class="prop-row">
+            <label>Label</label>
+            <input type="text" value="${escapeHTML2(el.props.text || '')}" oninput="SelfMadeEditor.setPropDeep('text', this.value)">
+          </div>
+          ` : ''}
+          <div class="prop-row">
+            <label>Level (%)</label>
+            <input type="number" value="${el.props.level || 75}" min="0" max="100" oninput="SelfMadeEditor.setPropDeep('level', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Color</label>
+            <input type="color" value="${el.props.color || '#6b8fad'}" oninput="SelfMadeEditor.setPropDeep('color', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'skillTags' || el.type === 'bulletList' || el.type === 'numberedList') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">Content</div>
+          <div class="prop-row">
+            <label>Items</label>
+            <textarea oninput="SelfMadeEditor.setPropDeep('text', this.value)" rows="3" placeholder="Comma-separated for tags, newline-separated for lists">${escapeHTML2(el.props.text || '')}</textarea>
+          </div>
+          <div class="prop-row">
+            <label>Font Size</label>
+            <input type="number" value="${el.props.fontSize || 13}" oninput="SelfMadeEditor.setPropDeep('fontSize', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Color</label>
+            <input type="color" value="${el.props.color || '#333333'}" oninput="SelfMadeEditor.setPropDeep('color', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'badge') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">Badge</div>
+          <div class="prop-row">
+            <label>Text</label>
+            <input type="text" value="${escapeHTML2(el.props.text || '')}" oninput="SelfMadeEditor.setPropDeep('text', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Color</label>
+            <input type="color" value="${el.props.color || '#6b8fad'}" oninput="SelfMadeEditor.setPropDeep('color', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'rating') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">Rating</div>
+          <div class="prop-row">
+            <label>Stars (1-5)</label>
+            <input type="number" value="${el.props.level || 4}" min="1" max="5" oninput="SelfMadeEditor.setPropDeep('level', this.value)">
           </div>
         </div>
       `;
@@ -503,6 +1089,7 @@ const SelfMadeEditor = (function () {
       props: { text: 'New text element', fontSize: 14, fontWeight: 400, color: '#333333', textAlign: 'left' }
     };
     elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -512,6 +1099,67 @@ const SelfMadeEditor = (function () {
       props: { text: 'New Heading', fontSize: 24, fontWeight: 700, color: '#1A202C', textAlign: 'left' }
     };
     elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addSubheading() {
+    const el = {
+      id: nextId++, type: 'subheading', x: 50, y: 50, w: 250, h: 35,
+      props: { text: 'Subheading', fontSize: 18, fontWeight: 600, color: '#2D3748', textAlign: 'left' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addParagraph() {
+    const el = {
+      id: nextId++, type: 'paragraph', x: 50, y: 50, w: 350, h: 80,
+      props: { text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', fontSize: 13, fontWeight: 400, color: '#555555', textAlign: 'left' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addBulletList() {
+    const el = {
+      id: nextId++, type: 'bulletList', x: 50, y: 50, w: 250, h: 80,
+      props: { text: 'First item\nSecond item\nThird item', fontSize: 13, color: '#333333' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addNumberedList() {
+    const el = {
+      id: nextId++, type: 'numberedList', x: 50, y: 50, w: 250, h: 80,
+      props: { text: 'First item\nSecond item\nThird item', fontSize: 13, color: '#333333' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addQuote() {
+    const el = {
+      id: nextId++, type: 'quote', x: 50, y: 50, w: 300, h: 60,
+      props: { text: 'The best way to predict the future is to create it.', fontSize: 14, fontWeight: 400, color: '#555555', textAlign: 'left', italic: true }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addLink() {
+    const el = {
+      id: nextId++, type: 'link', x: 50, y: 50, w: 200, h: 30,
+      props: { text: 'Click here', fontSize: 13, fontWeight: 400, color: '#0066cc', textAlign: 'left', underline: true }
+    };
+    elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -521,6 +1169,7 @@ const SelfMadeEditor = (function () {
       props: { bgColor: '#E2E4E7', borderColor: '', borderRadius: 0 }
     };
     elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -530,6 +1179,67 @@ const SelfMadeEditor = (function () {
       props: { bgColor: '#6b8fad', borderColor: '' }
     };
     elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addTriangle() {
+    const el = {
+      id: nextId++, type: 'triangle', x: 50, y: 50, w: 100, h: 100,
+      props: { bgColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addDiamond() {
+    const el = {
+      id: nextId++, type: 'diamond', x: 50, y: 50, w: 100, h: 100,
+      props: { bgColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addHexagon() {
+    const el = {
+      id: nextId++, type: 'hexagon', x: 50, y: 50, w: 100, h: 100,
+      props: { bgColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addStar() {
+    const el = {
+      id: nextId++, type: 'star', x: 50, y: 50, w: 100, h: 100,
+      props: { bgColor: '#f59e0b' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addHeart() {
+    const el = {
+      id: nextId++, type: 'heart', x: 50, y: 50, w: 100, h: 100,
+      props: { bgColor: '#ef4444' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addArrow() {
+    const el = {
+      id: nextId++, type: 'arrow', x: 50, y: 50, w: 120, h: 40,
+      props: { bgColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -539,6 +1249,37 @@ const SelfMadeEditor = (function () {
       props: { bgColor: '#D1D5DB', thickness: 2 }
     };
     elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addDashedLine() {
+    const el = {
+      id: nextId++, type: 'dashedLine', x: 50, y: 50, w: 300, h: 2,
+      props: { bgColor: '#D1D5DB', thickness: 2 }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addDoubleLine() {
+    const el = {
+      id: nextId++, type: 'doubleLine', x: 50, y: 50, w: 300, h: 9,
+      props: { bgColor: '#D1D5DB', thickness: 3 }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addDivider() {
+    const el = {
+      id: nextId++, type: 'divider', x: 50, y: 50, w: 300, h: 20,
+      props: { bgColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -548,6 +1289,127 @@ const SelfMadeEditor = (function () {
       props: { src: '', objectFit: 'cover', borderRadius: 0 }
     };
     elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addIcon() {
+    const el = {
+      id: nextId++, type: 'icon', x: 50, y: 50, w: 50, h: 50,
+      props: { iconName: 'fa-star', fontSize: 24, color: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addPhotoFrame() {
+    const el = {
+      id: nextId++, type: 'photoFrame', x: 50, y: 50, w: 100, h: 100,
+      props: { src: '', borderRadius: 50, borderColor: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addBarcode() {
+    const el = {
+      id: nextId++, type: 'barcode', x: 50, y: 50, w: 200, h: 60,
+      props: {}
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addQRPlaceholder() {
+    const el = {
+      id: nextId++, type: 'qrPlaceholder', x: 50, y: 50, w: 100, h: 100,
+      props: {}
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addSkillBar() {
+    const el = {
+      id: nextId++, type: 'skillBar', x: 50, y: 50, w: 250, h: 40,
+      props: { text: 'Skill', level: 75, color: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addSkillTags() {
+    const el = {
+      id: nextId++, type: 'skillTags', x: 50, y: 50, w: 250, h: 60,
+      props: { text: 'JavaScript,Python,React,CSS,HTML', fontSize: 11 }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addTimeline() {
+    const el = {
+      id: nextId++, type: 'timeline', x: 50, y: 50, w: 250, h: 120,
+      props: {}
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addProgressBar() {
+    const el = {
+      id: nextId++, type: 'progressBar', x: 50, y: 50, w: 250, h: 20,
+      props: { level: 60, color: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addBadge() {
+    const el = {
+      id: nextId++, type: 'badge', x: 50, y: 50, w: 120, h: 30,
+      props: { text: 'Badge', color: '#6b8fad' }
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addContactCard() {
+    const el = {
+      id: nextId++, type: 'contactCard', x: 50, y: 50, w: 200, h: 80,
+      props: {}
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addSocialIcons() {
+    const el = {
+      id: nextId++, type: 'socialIcons', x: 50, y: 50, w: 150, h: 30,
+      props: {}
+    };
+    elements.push(el);
+    pushHistory();
+    selectElement(el.id);
+  }
+
+  function addRating() {
+    const el = {
+      id: nextId++, type: 'rating', x: 50, y: 50, w: 120, h: 30,
+      props: { level: 4 }
+    };
+    elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
@@ -590,10 +1452,52 @@ const SelfMadeEditor = (function () {
             props: { src: p.photo, objectFit: 'cover', borderRadius: 50 }
           };
           elements.push(el);
+          pushHistory();
           selectElement(el.id);
           return;
         }
         text = 'No photo uploaded';
+        break;
+      case 'skills':
+        if (cvData.skills && cvData.skills.length) {
+          const el = {
+            id: nextId++, type: 'skillTags', x: 50, y: 50, w: 300, h: 60,
+            props: { text: cvData.skills.map(sk => sk.name || sk.skill || sk).join(', '), fontSize: 11 }
+          };
+          elements.push(el);
+          pushHistory();
+          selectElement(el.id);
+          return;
+        }
+        text = 'No skills added';
+        break;
+      case 'experience':
+        if (cvData.experience && cvData.experience.length) {
+          const items = cvData.experience.map(exp => `${exp.jobTitle || ''} at ${exp.company || ''}`).join('\n');
+          const el = {
+            id: nextId++, type: 'bulletList', x: 50, y: 50, w: 300, h: 100,
+            props: { text: items, fontSize: 12, color: '#333333' }
+          };
+          elements.push(el);
+          pushHistory();
+          selectElement(el.id);
+          return;
+        }
+        text = 'No experience added';
+        break;
+      case 'education':
+        if (cvData.education && cvData.education.length) {
+          const items = cvData.education.map(edu => `${edu.degree || ''} - ${edu.school || ''}`).join('\n');
+          const el = {
+            id: nextId++, type: 'bulletList', x: 50, y: 50, w: 300, h: 80,
+            props: { text: items, fontSize: 12, color: '#333333' }
+          };
+          elements.push(el);
+          pushHistory();
+          selectElement(el.id);
+          return;
+        }
+        text = 'No education added';
         break;
     }
 
@@ -608,11 +1512,13 @@ const SelfMadeEditor = (function () {
       }
     };
     elements.push(el);
+    pushHistory();
     selectElement(el.id);
   }
 
   function deleteSelected() {
     if (!selectedId) return;
+    pushHistory();
     elements = elements.filter(x => x.id !== selectedId);
     selectedId = null;
     const canvas = document.getElementById('selfmadeCanvas');
@@ -624,6 +1530,7 @@ const SelfMadeEditor = (function () {
     if (!selectedId) return;
     const el = elements.find(x => x.id === selectedId);
     if (!el) return;
+    pushHistory();
     const copy = JSON.parse(JSON.stringify(el));
     copy.id = nextId++;
     copy.x += 20;
@@ -634,6 +1541,7 @@ const SelfMadeEditor = (function () {
 
   function clearAll() {
     if (!confirm('Clear all elements from the canvas?')) return;
+    pushHistory();
     elements = [];
     selectedId = null;
     const canvas = document.getElementById('selfmadeCanvas');
@@ -642,11 +1550,64 @@ const SelfMadeEditor = (function () {
   }
 
   function exportPDF() {
-    // Deselect before print so handles don't show
     selectedId = null;
     const canvas = document.getElementById('selfmadeCanvas');
     if (canvas) canvas.innerHTML = renderElements();
     setTimeout(() => window.print(), 300);
+  }
+
+  function exportPNG() {
+    exportCanvasImage('png');
+  }
+
+  function exportJPG() {
+    exportCanvasImage('jpg');
+  }
+
+  function exportCanvasImage(format) {
+    const canvas = document.getElementById('selfmadeCanvas');
+    if (!canvas) return;
+    selectedId = null;
+    canvas.innerHTML = renderElements();
+
+    // Use html2canvas approach via SVG foreignObject
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    const clone = canvas.cloneNode(true);
+    const data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;height:' + h + 'px;">' +
+      clone.innerHTML + '</div></foreignObject></svg>';
+
+    const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = function () {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      if (format === 'jpg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+      }
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(function (blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'cv-selfmade.' + format;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        toast(format.toUpperCase() + ' exported');
+      }, format === 'png' ? 'image/png' : 'image/jpeg', 0.95);
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      toast('Export failed — try PDF export instead');
+    };
+    img.src = url;
   }
 
   function escapeHTML2(str) {
@@ -658,7 +1619,13 @@ const SelfMadeEditor = (function () {
 
   return {
     open, close, startDrag, setProp, setPropDeep, addText, addHeading,
-    addRect, addCircle, addLine, addImage, insertData, deleteSelected,
-    duplicateSelected, clearAll, exportPDF
+    addSubheading, addParagraph, addBulletList, addNumberedList, addQuote, addLink,
+    addRect, addCircle, addTriangle, addDiamond, addHexagon, addStar, addHeart, addArrow,
+    addLine, addDashedLine, addDoubleLine, addDivider,
+    addImage, addIcon, addPhotoFrame, addBarcode, addQRPlaceholder,
+    addSkillBar, addSkillTags, addTimeline, addProgressBar, addBadge, addContactCard, addSocialIcons, addRating,
+    insertData, deleteSelected, duplicateSelected, clearAll,
+    exportPDF, exportPNG, exportJPG,
+    undo, redo, toggleSnap, setGridSize, bringForward, sendBackward
   };
 })();

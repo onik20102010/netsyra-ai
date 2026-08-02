@@ -156,7 +156,19 @@
 .cl-salutation { margin-bottom: 1rem; }
 .cl-body { margin-bottom: 1.5rem; white-space: pre-wrap; }
 .cl-signature { margin-top: 2rem; }
+.cl-sender-addr { margin-bottom: 1rem; color: #555; font-size: 0.9em; line-height: 1.5; white-space: pre-wrap; }
+.cl-recipient-addr { margin-bottom: 1rem; color: #555; font-size: 0.9em; line-height: 1.5; white-space: pre-wrap; }
 .coverletter-footer { padding: 1.5rem 0; text-align: center; }
+
+.cl-template-row {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+}
+.cl-template-row .btn { flex: 1; min-width: 120px; }
+.cl-word-count {
+  font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;
+  padding: 0.35rem 0.6rem; background: var(--secondary); border-radius: 6px;
+}
+.cl-preview-actions { display: flex; gap: 0.5rem; }
 
 /* ==================== RESUME SCORE ==================== */
 .score-layout {
@@ -232,6 +244,39 @@
 .score-check-bar { height: 4px; background: #f1f5f9; border-radius: 2px; overflow: hidden; }
 .score-check-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
 
+/* Score Tips */
+.score-tips {
+  margin-top: 1.5rem; padding: 1.25rem;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 12px; border: 1px solid var(--border);
+}
+.score-tips-title {
+  font-size: 0.9rem; font-weight: 700; color: var(--text);
+  margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.score-tips-title i { color: #f59e0b; }
+.score-tip {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--card); border: 1px solid var(--border);
+}
+.score-tip.bad { border-left: 3px solid #ef4444; }
+.score-tip.warning { border-left: 3px solid #f59e0b; }
+.score-tip-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; color: #fff;
+  background: var(--primary);
+}
+.score-tip.bad .score-tip-num { background: #ef4444; }
+.score-tip.warning .score-tip-num { background: #f59e0b; }
+.score-tip-category { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.score-tip-detail { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; line-height: 1.4; }
+.score-tip-good {
+  text-align: center; padding: 1.5rem; font-size: 0.9rem; font-weight: 600;
+  color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+
 .score-footer {
   padding: 1.5rem 0; display: flex; justify-content: center; gap: 0.75rem;
 }
@@ -265,6 +310,13 @@
   .score-check { padding: 0.75rem; }
   .score-check-detail { font-size: 0.72rem; }
   .score-footer { flex-direction: column; gap: 0.5rem; }
+  .cl-template-row .btn { min-width: 100%; font-size: 0.78rem; }
+  .cl-preview-actions { flex-direction: column; gap: 0.35rem; }
+  .cl-preview-actions .btn { width: 100%; justify-content: center; }
+  .score-tips { padding: 0.85rem; }
+  .score-tip { padding: 0.5rem 0.6rem; }
+  .score-tip-category { font-size: 0.78rem; }
+  .score-tip-detail { font-size: 0.7rem; }
 }
 
 /* ==================== PRINT — NEW FEATURES ==================== */

@@ -328,6 +328,116 @@ const ResumeScore = (function () {
       status: completenessScore >= 70 ? "good" : completenessScore >= 40 ? "warning" : "bad"
     });
 
+    // 13. ATS Keywords (Applicant Tracking System)
+    const atsKeywords = ["managed", "developed", "implemented", "analyzed", "designed", "coordinated", "supervised", "trained", "resolved", "optimized", "automated", "collaborated", "negotiated", "presented", "researched", "budget", "revenue", "strategy", "compliance", "stakeholder"];
+    const atsFound = atsKeywords.filter(k => allDescriptions.includes(k)).length;
+    let atsScore = Math.min(100, atsFound * 10);
+    checks.push({
+      category: "ATS Keywords",
+      icon: "fa-robot",
+      score: atsScore,
+      maxScore: 100,
+      weight: 8,
+      details: atsFound === 0
+        ? "No ATS-friendly keywords found. Add terms like: managed, developed, implemented, optimized."
+        : `${atsFound} ATS keywords detected. ${atsFound < 5 ? "Add more recruiter-friendly terms." : "Strong ATS optimization."}`,
+      status: atsScore >= 70 ? "good" : atsScore >= 40 ? "warning" : "bad"
+    });
+
+    // 14. Readability Score
+    const wordCount = allDescriptions.split(/\s+/).filter(Boolean).length;
+    const sentenceCount = (allDescriptions.match(/[.!?]+/g) || []).length || 1;
+    const avgWordsPerSentence = wordCount / sentenceCount;
+    let readabilityScore = 100;
+    if (avgWordsPerSentence > 30) readabilityScore -= 40;
+    else if (avgWordsPerSentence > 25) readabilityScore -= 20;
+    if (avgWordsPerSentence < 5 && wordCount > 0) readabilityScore -= 30;
+    readabilityScore = Math.max(0, Math.min(100, readabilityScore));
+    checks.push({
+      category: "Readability",
+      icon: "fa-book-open",
+      score: readabilityScore,
+      maxScore: 100,
+      weight: 5,
+      details: wordCount === 0
+        ? "No description text to analyze."
+        : `~${Math.round(avgWordsPerSentence)} words per sentence. ${avgWordsPerSentence > 25 ? "Sentences are too long. Break them up." : avgWordsPerSentence < 5 ? "Sentences are too short. Add more detail." : "Good sentence length."}`,
+      status: readabilityScore >= 70 ? "good" : readabilityScore >= 40 ? "warning" : "bad"
+    });
+
+    // 15. Bullet Points Usage
+    const bulletCount = (allDescriptions.match(/[•·\-*]/g) || []).length;
+    let bulletScore = 0;
+    if (bulletCount >= 10) bulletScore = 100;
+    else if (bulletCount >= 5) bulletScore = 70;
+    else if (bulletCount >= 2) bulletScore = 40;
+    else bulletScore = 10;
+    checks.push({
+      category: "Bullet Points",
+      icon: "fa-list-ul",
+      score: bulletScore,
+      maxScore: 100,
+      weight: 5,
+      details: bulletCount === 0
+        ? "No bullet points detected. Use bullets to make achievements scannable."
+        : bulletCount < 5
+          ? `Only ${bulletCount} bullet points. Aim for 5+ for better readability.`
+          : `${bulletCount} bullet points — great for scannability.`,
+      status: bulletScore >= 70 ? "good" : bulletScore >= 40 ? "warning" : "bad"
+    });
+
+    // 16. Date Coverage (experience timeline)
+    const expWithDates = (data.experience || []).filter(e => e.period && e.period.trim()).length;
+    let dateScore = 0;
+    if (exp.length > 0) {
+      dateScore = Math.round((expWithDates / exp.length) * 100);
+    }
+    checks.push({
+      category: "Date Coverage",
+      icon: "fa-calendar-alt",
+      score: dateScore,
+      maxScore: 100,
+      weight: 5,
+      details: exp.length === 0
+        ? "No experience to check dates for."
+        : expWithDates === exp.length
+          ? "All experience entries have dates. Excellent."
+          : `${expWithDates}/${exp.length} entries have dates. Add dates to all positions.`,
+      status: dateScore >= 80 ? "good" : dateScore >= 50 ? "warning" : "bad"
+    });
+
+    // 17. Volunteer & Leadership
+    const volunteer = data.volunteer || [];
+    const internships = data.internships || [];
+    const leadershipCount = volunteer.length + internships.length;
+    let leadershipScore = Math.min(100, leadershipCount * 35);
+    checks.push({
+      category: "Volunteer & Leadership",
+      icon: "fa-hands-helping",
+      score: leadershipScore,
+      maxScore: 100,
+      weight: 4,
+      details: leadershipCount === 0
+        ? "No volunteer or internship entries. Adding these shows character and initiative."
+        : `${leadershipCount} volunteer/internship entries — great for showing well-roundedness.`,
+      status: leadershipScore >= 70 ? "good" : leadershipScore >= 40 ? "warning" : "bad"
+    });
+
+    // 18. Custom Sections
+    const custom = data.custom || [];
+    let customScore = Math.min(100, custom.length * 50);
+    checks.push({
+      category: "Custom Sections",
+      icon: "fa-puzzle-piece",
+      score: customScore,
+      maxScore: 100,
+      weight: 3,
+      details: custom.length === 0
+        ? "No custom sections. Add custom sections for unique qualifications."
+        : `${custom.length} custom sections added — great for standing out.`,
+      status: customScore >= 70 ? "good" : customScore >= 40 ? "warning" : "bad"
+    });
+
     // Calculate weighted total
     const totalWeight = checks.reduce((sum, c) => sum + c.weight, 0);
     const weightedTotal = checks.reduce((sum, c) => sum + (c.score * c.weight), 0);
@@ -401,10 +511,35 @@ const ResumeScore = (function () {
       </div>
 
       <div class="score-checks">
-        <div class="score-checks-title">Detailed Breakdown</div>
+        <div class="score-checks-title">Detailed Breakdown (${checks.length} checks)</div>
         ${checksHtml}
       </div>
+
+      <div class="score-tips">
+        <div class="score-tips-title"><i class="fas fa-lightbulb"></i> Top Priority Improvements</div>
+        ${generateTips(checks)}
+      </div>
     `;
+  }
+
+  function generateTips(checks) {
+    const badItems = checks.filter(c => c.status === "bad");
+    const warningItems = checks.filter(c => c.status === "warning");
+    const tips = [...badItems, ...warningItems].slice(0, 5);
+
+    if (tips.length === 0) {
+      return '<div class="score-tip-good"><i class="fas fa-trophy"></i> Your CV is in great shape! All categories are strong.</div>';
+    }
+
+    return tips.map((c, i) => `
+      <div class="score-tip ${c.status}">
+        <div class="score-tip-num">${i + 1}</div>
+        <div class="score-tip-content">
+          <div class="score-tip-category">${c.category}</div>
+          <div class="score-tip-detail">${c.details}</div>
+        </div>
+      </div>
+    `).join('');
   }
 
   return {

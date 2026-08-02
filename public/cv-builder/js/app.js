@@ -28,6 +28,16 @@ let selectedTemplate = null;
 let isPreviewMode = false;
 let currentMode = 'preview'; // 'preview' | 'custom' | 'selfmade'
 
+// ── Template photo metadata (which templates have picture area) ──
+const TEMPLATE_HAS_PHOTO = {
+  'boho-arched': true, 'dark-chevron-sidebar': true, 'emerald-pill-sidebar': true,
+  'gradient-accent-resume': true, 'modern-pill-cards': true, 'modern-warm': true,
+  'modern': true, 'split-charcoal': true, 'split-sidebar-functional': true,
+  'split-sidebar': true, 'classic': false, 'classic-functional-cv': false,
+  'early-career-functional': false, 'minimal': false, 'munich-executive': false,
+  'professional': false
+};
+
 // ==================== PAGE ORDER ====================
 const pageOrder = [
   'personal', 'summary', 'experience', 'education', 'skills',
@@ -155,11 +165,15 @@ function showTemplateSelection() {
   let cardsHtml = '';
   templateIds.forEach(id => {
     const tpl = templates[id];
+    const hasPhoto = TEMPLATE_HAS_PHOTO[id] || false;
     cardsHtml += `
       <div class="template-card" onclick="selectTemplate('${id}')">
         <div class="template-preview">${tpl.miniPreview ? tpl.miniPreview() : '<div class="mini-cv"></div>'}</div>
         <div class="template-info">
-          <div class="template-name">${tpl.name}</div>
+          <div class="template-name">
+            ${tpl.name}
+            ${hasPhoto ? '<span class="photo-badge" title="Includes photo area"><i class="fas fa-camera"></i></span>' : ''}
+          </div>
           <div class="template-desc">${tpl.description || ''}</div>
         </div>
       </div>
@@ -199,6 +213,8 @@ function showPreview() {
 
   const html = tpl.render(cvData);
 
+  const hasPhoto = TEMPLATE_HAS_PHOTO[selectedTemplate] || false;
+
   document.getElementById('appMain').innerHTML = `
     <div class="preview-container">
       <div class="preview-actions">
@@ -211,6 +227,9 @@ function showPreview() {
         <button class="btn btn-primary" onclick="window.print()">
           <i class="fas fa-download"></i> Export PDF
         </button>
+        <button class="btn btn-secondary" onclick="exportMultiPagePDF()">
+          <i class="fas fa-file-pdf"></i> Multi-Page PDF
+        </button>
         <button class="btn btn-secondary" onclick="changeTemplate()">
           <i class="fas fa-palette"></i> Change Template
         </button>
@@ -221,7 +240,19 @@ function showPreview() {
           <i class="fas fa-pen-ruler"></i> Create Self Made
         </button>
         <button class="btn btn-secondary" onclick="exportDOCX()">
-          <i class="fas fa-file-word"></i> DOCX Export
+          <i class="fas fa-file-word"></i> DOCX
+        </button>
+        <button class="btn btn-secondary" onclick="exportTXT()">
+          <i class="fas fa-file-lines"></i> TXT
+        </button>
+        <button class="btn btn-secondary" onclick="exportATS()">
+          <i class="fas fa-file-shield"></i> ATS-Friendly
+        </button>
+        <button class="btn btn-secondary" onclick="exportPNG()">
+          <i class="fas fa-file-image"></i> PNG
+        </button>
+        <button class="btn btn-secondary" onclick="exportJPG()">
+          <i class="fas fa-image"></i> JPG
         </button>
         <button class="btn btn-secondary" onclick="openCoverLetter()">
           <i class="fas fa-envelope-open-text"></i> Cover Letter
@@ -230,13 +261,55 @@ function showPreview() {
           <i class="fas fa-chart-line"></i> Resume Score
         </button>
       </div>
+      <div class="preview-photo-info">
+        ${hasPhoto
+          ? '<span class="photo-info-badge photo-yes"><i class="fas fa-camera"></i> Photo area — will show in print</span>'
+          : '<span class="photo-info-badge photo-no"><i class="fas fa-camera"></i> No photo area — hidden in print</span>'}
+      </div>
       <div class="cv-page" id="cvPageRender">${html}</div>
     </div>
   `;
 
+  // ── Inject print CSS: show photo only if template has photo area ──
+  injectPrintCSS(selectedTemplate);
+
   document.getElementById('progressWrap').style.display = 'none';
   document.getElementById('appFooter').style.display = 'none';
   scrollToTop();
+}
+
+// ── Print CSS: conditionally show/hide photo based on template ──
+function injectPrintCSS(tplId) {
+  removePrintCSS();
+  const hasPhoto = TEMPLATE_HAS_PHOTO[tplId] || false;
+  const style = document.createElement('style');
+  style.id = 'cvPrintCSS';
+  style.media = 'print';
+  style.textContent = `
+    @media print {
+      body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .app-header, .progress-wrap, .app-footer, .preview-actions, .btn,
+      .custom-panel, .custom-preview-toolbar, .selfmade-toolbar, .selfmade-props,
+      .selfmade-canvas-toolbar, .toast-container, .preview-photo-info { display: none !important; }
+      .app-main, .preview-container, .cv-page, #cvPageRender,
+      .custom-preview-area, .selfmade-canvas-wrap { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+      .cv-page, #cvPageRender { box-shadow: none !important; }
+      ${!hasPhoto ? `
+      /* Hide photo for templates without picture area */
+      img[src*="photo"], img[alt*="photo"], [style*="border-radius:50%"] img,
+      .cv-page img { display: none !important; }
+      ` : `
+      /* Show photo for templates with picture area */
+      .cv-page img, #cvPageRender img { display: block !important; }
+      `}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function removePrintCSS() {
+  const tag = document.getElementById('cvPrintCSS');
+  if (tag) tag.remove();
 }
 
 function changeTemplate() {
@@ -322,6 +395,23 @@ function exportDOCX() {
   if (typeof DOCXExport !== 'undefined' && DOCXExport.exportDoc) {
     DOCXExport.exportDoc(cvData, selectedTemplate);
   }
+}
+
+// ==================== ADDITIONAL EXPORTS ====================
+function exportTXT() {
+  if (typeof ExportUtils !== 'undefined') ExportUtils.exportTXT(cvData);
+}
+function exportATS() {
+  if (typeof ExportUtils !== 'undefined') ExportUtils.exportATS(cvData);
+}
+function exportPNG() {
+  if (typeof ExportUtils !== 'undefined') ExportUtils.exportPNG(cvData, selectedTemplate);
+}
+function exportJPG() {
+  if (typeof ExportUtils !== 'undefined') ExportUtils.exportJPG(cvData, selectedTemplate);
+}
+function exportMultiPagePDF() {
+  if (typeof ExportUtils !== 'undefined') ExportUtils.exportMultiPagePDF(cvData, selectedTemplate);
 }
 
 // ==================== COVER LETTER ====================

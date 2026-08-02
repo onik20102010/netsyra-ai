@@ -1151,6 +1151,7 @@ const niModels: ModelConfig[] = [
     contextWindowSize: 1050000,
   },
   // DeepSeek V4 Flash (for easy tasks)
+
   {
     provider: "openai",
     apiKeyEnv: "MESH_API_KEY_2",

@@ -24,8 +24,8 @@ window.CVTemplates.modern = {
     const s = data.summary || {};
     const accent = '#4a6b8a';
     return `
-      <div style="font-family:'Inter',sans-serif;color:#333;line-height:1.6;display:flex;min-height:600px;word-break:break-word;overflow-wrap:break-word;">
-        <div style="width:35%;background:${accent};color:#fff;padding:30px 20px;">
+      <div class="cv-template-root" style="font-family:'Inter',sans-serif;color:#333;line-height:1.6;display:flex;min-height:600px;word-break:break-word;overflow-wrap:break-word;">
+        <div class="cv-template-sidebar" style="width:35%;background:${accent};color:#fff;padding:30px 20px;">
           ${p.photo && !p.photo.includes('svg') ? `<img src="${p.photo}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid rgba(255,255,255,0.3);">` : ''}
           <h1 style="font-size:20px;margin:0 0 2px;">${escapeHTML(p.fullName)}</h1>
           <p style="font-size:13px;opacity:0.9;margin:0 0 18px;">${escapeHTML(p.professionalTitle)}</p>
@@ -35,7 +35,7 @@ window.CVTemplates.modern = {
           ${modSidebarTags('Interests', data.interests)}
           ${modSidebarSocial(data.social)}
         </div>
-        <div style="flex:1;padding:30px 25px;">
+        <div class="cv-template-main" style="flex:1;padding:30px 25px;">
           ${s.text ? `<div style="margin-bottom:18px;"><h2 style="font-size:15px;color:${accent};text-transform:uppercase;margin:0 0 6px;">Summary</h2><p style="font-size:12px;white-space:pre-line;">${escapeHTML(s.text)}</p></div>` : ''}
           ${modMainSection('Work Experience', data.experience, exp => `
             <div style="margin-bottom:10px;">

@@ -29,10 +29,10 @@ window.CVTemplates['split-sidebar'] = {
     const sidebarBg = '#2C3E50';
 
     return `
-      <div style="font-family:'Helvetica Neue', Arial, sans-serif; background:#ffffff; max-width:800px; margin:0 auto; display:flex; min-height:1000px; box-shadow:0 0 10px rgba(0,0,0,0.08); text-align:left; word-break:break-word; overflow-wrap:break-word;">
+      <div class="cv-template-root" style="font-family:'Helvetica Neue', Arial, sans-serif; background:#ffffff; max-width:800px; margin:0 auto; display:flex; min-height:1000px; box-shadow:0 0 10px rgba(0,0,0,0.08); text-align:left; word-break:break-word; overflow-wrap:break-word;">
         
         <!-- Left Sidebar Column -->
-        <div style="background-color:${sidebarBg}; color:#ffffff; width:33%; padding:30px 20px; box-sizing:border-box; flex-shrink:0;">
+        <div class="cv-template-sidebar" style="background-color:${sidebarBg}; color:#ffffff; width:33%; padding:30px 20px; box-sizing:border-box; flex-shrink:0;">
           
           <!-- Profile Photo -->
           <div style="text-align:center; margin-bottom:20px;">
@@ -113,7 +113,7 @@ window.CVTemplates['split-sidebar'] = {
         </div>
 
         <!-- Right Main Content Column -->
-        <div style="width:67%; padding:35px 30px; box-sizing:border-box; color:#333333;">
+        <div class="cv-template-main" style="width:67%; padding:35px 30px; box-sizing:border-box; color:#333333;">
           
           <!-- Profile / Summary Section -->
           ${s.text ? `
