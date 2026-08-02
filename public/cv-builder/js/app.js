@@ -225,8 +225,6 @@ function showPreview() {
 
   const html = tpl.render(cvData);
 
-  const hasPhoto = TEMPLATE_HAS_PHOTO[selectedTemplate] || false;
-
   document.getElementById('appMain').innerHTML = `
     <div class="preview-container">
       <div class="preview-actions">
@@ -236,7 +234,7 @@ function showPreview() {
         <button class="btn btn-secondary" onclick="goBackToPages()">
           <i class="fas fa-edit"></i> Edit Data
         </button>
-        <button class="btn btn-primary" onclick="window.print()">
+        <button class="btn btn-primary" onclick="exportPDFWithCustom()">
           <i class="fas fa-download"></i> Export PDF
         </button>
         <button class="btn btn-secondary" onclick="exportMultiPagePDF()">
@@ -273,14 +271,15 @@ function showPreview() {
           <i class="fas fa-chart-line"></i> Resume Score
         </button>
       </div>
-      <div class="preview-photo-info">
-        ${hasPhoto
-          ? '<span class="photo-info-badge photo-yes"><i class="fas fa-camera"></i> Photo area — will show in print</span>'
-          : '<span class="photo-info-badge photo-no"><i class="fas fa-camera"></i> No photo area — hidden in print</span>'}
-      </div>
       <div class="cv-page" id="cvPageRender">${html}</div>
     </div>
   `;
+
+  // ── Apply custom template overrides if any ──
+  const customState = (typeof CustomTemplateEditor !== 'undefined') ? CustomTemplateEditor.getState() : null;
+  if (customState) {
+    CustomTemplateEditor.applyOverrides('cvPageRender', customState);
+  }
 
   // ── Inject print CSS: show photo only if template has photo area ──
   injectPrintCSS(selectedTemplate);
@@ -326,7 +325,21 @@ function removePrintCSS() {
   if (tag) tag.remove();
 }
 
+// ── Export PDF with custom template overrides applied ──
+function exportPDFWithCustom() {
+  // Re-apply overrides to ensure they're fresh before printing
+  const customState = (typeof CustomTemplateEditor !== 'undefined') ? CustomTemplateEditor.getState() : null;
+  if (customState) {
+    CustomTemplateEditor.applyOverrides('cvPageRender', customState);
+  }
+  setTimeout(() => window.print(), 300);
+}
+
 function changeTemplate() {
+  // Clear custom overrides when switching templates
+  if (typeof CustomTemplateEditor !== 'undefined' && CustomTemplateEditor.clearState) {
+    CustomTemplateEditor.clearState();
+  }
   selectedTemplate = null;
   showTemplateSelection();
 }
@@ -382,7 +395,8 @@ function setVal(id, v) {
 function openCustomTemplate() {
   currentMode = 'custom';
   if (typeof CustomTemplateEditor !== 'undefined' && CustomTemplateEditor.open) {
-    CustomTemplateEditor.open(selectedTemplate, cvData);
+    const saved = CustomTemplateEditor.getState();
+    CustomTemplateEditor.open(selectedTemplate, cvData, saved);
   }
 }
 

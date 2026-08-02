@@ -10,6 +10,7 @@ const CustomTemplateEditor = (function () {
   let templateId = null;
   let data = null;
   let originalHtml = '';
+  let savedState = null; // persisted state for preview after closing
 
   const defaults = {
     primaryColor: '',
@@ -17,6 +18,7 @@ const CustomTemplateEditor = (function () {
     textColor: '',
     accentColor: '',
     dividerColor: '',
+    enableColors: false,
     fontFamily: '',
     baseFontSize: '',
     headingScale: '1',
@@ -37,19 +39,72 @@ const CustomTemplateEditor = (function () {
 
   let state = Object.assign({}, defaults);
 
-  function open(tplId, cvData) {
+  function open(tplId, cvData, savedState) {
     templateId = tplId;
     data = cvData;
     active = true;
-    state = Object.assign({}, defaults);
+    state = Object.assign({}, defaults, savedState || {});
     render();
+    // Restore DOM inputs to match the state (so sliders/controls show correct values)
+    if (savedState) {
+      restoreInputs(savedState);
+      updateLabels();
+    }
+  }
+
+  function restoreInputs(s) {
+    const set = function(id, val) {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null && val !== '') el.value = val;
+    };
+    const check = function(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!val;
+    };
+    set('ctPrimaryColor', s.primaryColor);
+    set('ctSidebarBg', s.sidebarBg);
+    set('ctTextColor', s.textColor);
+    set('ctAccentColor', s.accentColor);
+    set('ctDividerColor', s.dividerColor);
+    set('ctFontFamily', s.fontFamily);
+    set('ctBaseFontSize', s.baseFontSize);
+    set('ctHeadingScale', s.headingScale);
+    set('ctLineHeight', s.lineHeight);
+    check('ctBoldHeadings', s.boldHeadings);
+    check('ctItalicBody', s.italicBody);
+    check('ctUppercaseHeadings', s.uppercaseHeadings);
+    check('ctEnableColors', s.enableColors);
+    set('ctSidebarWidth', s.sidebarWidth);
+    set('ctBorderRadius', s.borderRadius);
+    set('ctSectionSpacing', s.sectionSpacing);
+    set('ctPhotoShape', s.photoShape);
+    set('ctPhotoSize', s.photoSize);
+    set('ctSidebarShape', s.sidebarShape);
+    set('ctBarStyle', s.barStyle);
+    set('ctSidebarPosition', s.sidebarPosition);
+    set('ctBarAngle', s.barAngle);
   }
 
   function close() {
+    // Save state before closing so it can be re-applied in preview
+    savedState = Object.assign({}, state);
     active = false;
     removeStyleTag();
     const appMain = document.getElementById('appMain');
     appMain.classList.remove('editor-mode');
+  }
+
+  function getState() {
+    return savedState ? Object.assign({}, savedState) : null;
+  }
+
+  function setState(s) {
+    savedState = s ? Object.assign({}, s) : null;
+  }
+
+  function clearState() {
+    savedState = null;
+    state = Object.assign({}, defaults);
   }
 
   function render() {
@@ -225,12 +280,15 @@ const CustomTemplateEditor = (function () {
       </div>
     `;
 
-    applyOverrides();
+    // Use current state directly (not DOM) to avoid flash of default template
+    applyOverrides('customCvPreview', state);
     updateLabels();
   }
 
   function update() {
     readState();
+    // Auto-enable color overrides if user changes a color
+    autoEnableColors();
     // Re-render fresh template HTML to avoid stacking overrides
     const container = document.getElementById('customCvPreview');
     if (container && originalHtml) {
@@ -238,6 +296,17 @@ const CustomTemplateEditor = (function () {
     }
     applyOverrides();
     updateLabels();
+  }
+
+  function autoEnableColors() {
+    // If any color field has a non-default value, auto-check the enable checkbox
+    const hasColor = state.primaryColor || state.sidebarBg || state.textColor || state.accentColor || state.dividerColor;
+    if (hasColor) {
+      const cb = document.getElementById('ctEnableColors');
+      if (cb && !cb.checked) {
+        cb.checked = true;
+      }
+    }
   }
 
   function readState() {
@@ -253,6 +322,7 @@ const CustomTemplateEditor = (function () {
     state.boldHeadings = checked2('ctBoldHeadings');
     state.italicBody = checked2('ctItalicBody');
     state.uppercaseHeadings = checked2('ctUppercaseHeadings');
+    state.enableColors = checked2('ctEnableColors');
     state.sidebarWidth = val2('ctSidebarWidth');
     state.borderRadius = val2('ctBorderRadius');
     state.sectionSpacing = val2('ctSectionSpacing');
@@ -309,72 +379,78 @@ const CustomTemplateEditor = (function () {
     if (tag) tag.remove();
   }
 
-  function applyOverrides() {
-    readState();
+  function applyOverrides(containerId, st) {
+    // Support both editor mode (read from DOM) and preview mode (use saved state)
+    const cid = containerId || 'customCvPreview';
+    const useEditorInputs = !st;
+    if (useEditorInputs) {
+      readState();
+    } else {
+      state = Object.assign({}, defaults, st);
+    }
     removeStyleTag();
 
-    const container = document.getElementById('customCvPreview');
+    const container = document.getElementById(cid);
     if (!container) return;
 
-    // Build CSS overrides
+    // Build CSS overrides — use cid selector so it works on any container
     let css = '';
 
     // Font family
     if (state.fontFamily) {
-      css += `#customCvPreview, #customCvPreview * { font-family: ${state.fontFamily} !important; }`;
+      css += `#${cid}, #${cid} * { font-family: ${state.fontFamily} !important; }`;
     }
 
     // Base font size
     if (state.baseFontSize) {
-      css += `#customCvPreview, #customCvPreview * { font-size: ${state.baseFontSize}px !important; }`;
+      css += `#${cid}, #${cid} * { font-size: ${state.baseFontSize}px !important; }`;
       // Re-scale headings
       const hs = parseFloat(state.headingScale) || 1;
-      css += `#customCvPreview h1 { font-size: ${parseFloat(state.baseFontSize) * 2.2 * hs}px !important; }`;
-      css += `#customCvPreview h2 { font-size: ${parseFloat(state.baseFontSize) * 1.4 * hs}px !important; }`;
-      css += `#customCvPreview h3 { font-size: ${parseFloat(state.baseFontSize) * 1.15 * hs}px !important; }`;
+      css += `#${cid} h1 { font-size: ${parseFloat(state.baseFontSize) * 2.2 * hs}px !important; }`;
+      css += `#${cid} h2 { font-size: ${parseFloat(state.baseFontSize) * 1.4 * hs}px !important; }`;
+      css += `#${cid} h3 { font-size: ${parseFloat(state.baseFontSize) * 1.15 * hs}px !important; }`;
     }
 
     // Line height
     if (state.lineHeight) {
-      css += `#customCvPreview p, #customCvPreview div, #customCvPreview span { line-height: ${state.lineHeight} !important; }`;
+      css += `#${cid} p, #${cid} div, #${cid} span { line-height: ${state.lineHeight} !important; }`;
     }
 
     // Text color
     if (state.textColor) {
-      css += `#customCvPreview { color: ${state.textColor} !important; }`;
-      css += `#customCvPreview p, #customCvPreview div, #customCvPreview span { color: ${state.textColor} !important; }`;
+      css += `#${cid} { color: ${state.textColor} !important; }`;
+      css += `#${cid} p, #${cid} div, #${cid} span { color: ${state.textColor} !important; }`;
     }
 
     // Bold headings
     if (state.boldHeadings) {
-      css += `#customCvPreview h1, #customCvPreview h2, #customCvPreview h3 { font-weight: 900 !important; }`;
+      css += `#${cid} h1, #${cid} h2, #${cid} h3 { font-weight: 900 !important; }`;
     }
 
     // Italic body
     if (state.italicBody) {
-      css += `#customCvPreview p { font-style: italic !important; }`;
+      css += `#${cid} p { font-style: italic !important; }`;
     }
 
     // Uppercase headings
     if (state.uppercaseHeadings) {
-      css += `#customCvPreview h1, #customCvPreview h2, #customCvPreview h3 { text-transform: uppercase !important; }`;
+      css += `#${cid} h1, #${cid} h2, #${cid} h3 { text-transform: uppercase !important; }`;
     }
 
     // Border radius
     if (state.borderRadius) {
-      css += `#customCvPreview, #customCvPreview * { border-radius: ${state.borderRadius}px !important; }`;
+      css += `#${cid}, #${cid} * { border-radius: ${state.borderRadius}px !important; }`;
     }
 
     // Section spacing
     if (state.sectionSpacing) {
-      css += `#customCvPreview > div > div > div { margin-bottom: ${state.sectionSpacing}px !important; }`;
+      css += `#${cid} > div > div > div { margin-bottom: ${state.sectionSpacing}px !important; }`;
     }
 
     // Divider color
     if (state.dividerColor) {
-      css += `#customCvPreview hr, #customCvPreview .divider { border-color: ${state.dividerColor} !important; background: ${state.dividerColor} !important; }`;
-      // Target divs used as dividers (height:1px or 2px with background)
-      css += `#customCvPreview div[style*="border-bottom"] { border-bottom-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} hr, #${cid} .divider { border-color: ${state.dividerColor} !important; background: ${state.dividerColor} !important; }`;
+      css += `#${cid} div[style*="border-bottom"] { border-bottom-color: ${state.dividerColor} !important; }`;
     }
 
     // Inject style
@@ -386,8 +462,7 @@ const CustomTemplateEditor = (function () {
     // DOM-level overrides (things CSS can't easily do with !important on inline styles)
 
     // Primary color: replace accent colors in inline styles
-    const enableColors = checked2('ctEnableColors');
-    if (enableColors) {
+    if (state.enableColors) {
       const root = container.firstElementChild;
       if (root) {
         applyColorOverrides(root);
@@ -395,37 +470,36 @@ const CustomTemplateEditor = (function () {
     }
 
     // Photo shape & size
-    applyPhotoOverrides();
+    applyPhotoOverrides(cid);
 
     // Sidebar width
     if (state.sidebarWidth) {
-      applySidebarWidth();
+      applySidebarWidth(cid);
     }
 
     // Sidebar shape (Blender feature)
     if (state.sidebarShape) {
-      applySidebarShape();
+      applySidebarShape(cid);
     }
 
     // Bar / divider style (Blender feature)
     if (state.barStyle) {
-      applyBarStyle();
+      applyBarStyle(cid);
     }
 
     // Layout flip (Blender feature)
     if (state.sidebarPosition) {
-      applyLayoutFlip();
+      applyLayoutFlip(cid);
     }
 
     // Bar angle / rotation (Blender feature)
     if (state.barAngle && state.barAngle !== '0') {
-      applyBarAngle();
+      applyBarAngle(cid);
     }
   }
 
   function applyColorOverrides(root) {
-    const enableColors = checked2('ctEnableColors');
-    if (!enableColors) return;
+    if (!state.enableColors) return;
 
     // Collect all unique hex colors used in the template to auto-detect roles
     const colorUsage = {};
@@ -501,8 +575,8 @@ const CustomTemplateEditor = (function () {
     return true;
   }
 
-  function applyPhotoOverrides() {
-    const container = document.getElementById('customCvPreview');
+  function applyPhotoOverrides(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
 
     const imgs = container.querySelectorAll('img');
@@ -545,8 +619,8 @@ const CustomTemplateEditor = (function () {
     });
   }
 
-  function applySidebarWidth() {
-    const container = document.getElementById('customCvPreview');
+  function applySidebarWidth(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
 
     const root = container.firstElementChild;
@@ -577,8 +651,8 @@ const CustomTemplateEditor = (function () {
   }
 
   // ── Blender: Sidebar Shape ──
-  function applySidebarShape() {
-    const container = document.getElementById('customCvPreview');
+  function applySidebarShape(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
     const root = container.firstElementChild;
     if (!root) return;
@@ -624,8 +698,8 @@ const CustomTemplateEditor = (function () {
   }
 
   // ── Blender: Bar / Divider Style ──
-  function applyBarStyle() {
-    const container = document.getElementById('customCvPreview');
+  function applyBarStyle(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
 
     // Target dividers: hr elements, divs with border-bottom, section headers with bottom border
@@ -671,8 +745,8 @@ const CustomTemplateEditor = (function () {
   }
 
   // ── Blender: Layout Flip (sidebar left ↔ right) ──
-  function applyLayoutFlip() {
-    const container = document.getElementById('customCvPreview');
+  function applyLayoutFlip(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
     const root = container.firstElementChild;
     if (!root) return;
@@ -696,8 +770,8 @@ const CustomTemplateEditor = (function () {
   }
 
   // ── Blender: Bar Angle / Rotation ──
-  function applyBarAngle() {
-    const container = document.getElementById('customCvPreview');
+  function applyBarAngle(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
     if (!container) return;
     const angle = parseFloat(state.barAngle) || 0;
 
@@ -715,6 +789,7 @@ const CustomTemplateEditor = (function () {
 
   function reset() {
     state = Object.assign({}, defaults);
+    savedState = null;
     render();
     toast('Customization reset');
   }
@@ -745,6 +820,8 @@ const CustomTemplateEditor = (function () {
   }
 
   return {
-    open, close, update, reset, exportPDF
+    open, close, update, reset, exportPDF,
+    getState, setState, clearState,
+    applyOverrides
   };
 })();
