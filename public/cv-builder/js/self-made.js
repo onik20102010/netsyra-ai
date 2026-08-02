@@ -237,10 +237,10 @@ const SelfMadeEditor = (function () {
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addPhotoFrame()" title="Add Photo Frame">
                 <i class="fas fa-id-badge"></i> Photo Frame
               </button>
-              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBarcode()" title="Add Barcode Placeholder">
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBarcode()" title="Add Barcode">
                 <i class="fas fa-barcode"></i> Barcode
               </button>
-              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addQRPlaceholder()" title="Add QR Placeholder">
+              <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addQRPlaceholder()" title="Add QR Code">
                 <i class="fas fa-qrcode"></i> QR Code
               </button>
             </div>
@@ -548,17 +548,60 @@ const SelfMadeEditor = (function () {
     }
 
     if (el.type === 'barcode') {
-      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:flex-end; gap:1px; padding:4px; background:#fff; border:1px solid #ddd;" data-id="${el.id}" ${dragAttr}>
-        ${[3,5,2,7,4,6,3,5,8,2,4,6,3,5,7,2,4].map(w => `<div style="width:${w}px;flex:1;background:#000;height:100%;"></div>`).join('')}
+      const value = el.props.value || 'https://example.com';
+      const format = el.props.format || 'CODE128';
+      const barColor = el.props.barColor || '#000000';
+      const bgColor = el.props.bgColor || '#ffffff';
+      // Generate barcode SVG using JsBarcode
+      let barcodeSvg = '';
+      try {
+        const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        if (typeof JsBarcode !== 'undefined') {
+          JsBarcode(tempSvg, value, { format: format, lineColor: barColor, background: bgColor, width: 2, height: 40, displayValue: true, fontSize: 12, margin: 4 });
+          barcodeSvg = tempSvg.outerHTML;
+        }
+      } catch(e) { /* fallback below */ }
+      if (!barcodeSvg) {
+        // Fallback: show value as text
+        barcodeSvg = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:11px;color:#333;">' + escapeHTML2(value) + '</div>';
+      }
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; background:${bgColor}; border:1px solid #ddd; overflow:hidden;" data-id="${el.id}" ${dragAttr}>
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${barcodeSvg.replace('<svg ', '<svg style="max-width:100%;max-height:100%;width:auto;height:auto;" ')}</div>
         ${handles}
       </div>`;
     }
 
     if (el.type === 'qrPlaceholder') {
-      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #ddd;" data-id="${el.id}" ${dragAttr}>
-        <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:1px; width:80%; height:80%;">
-          ${Array(64).fill(0).map((_,i) => `<div style="background:${Math.random()>0.5?'#000':'#fff'};"></div>`).join('')}
-        </div>
+      const value = el.props.value || 'https://example.com';
+      const fgColor = el.props.fgColor || '#000000';
+      const bgColor = el.props.bgColor || '#ffffff';
+      // Generate QR code using qrcode-generator with custom colors
+      let qrHtml = '';
+      try {
+        if (typeof qrcode !== 'undefined') {
+          const qr = qrcode(0, 'M');
+          qr.addData(value);
+          qr.make();
+          const moduleCount = qr.getModuleCount();
+          // Build a table-based QR code with custom colors
+          const totalSize = Math.min(el.w, el.h) - 8;
+          const cellSize = Math.max(1, Math.floor(totalSize / moduleCount));
+          const qrSize = cellSize * moduleCount;
+          let cells = '';
+          for (let r = 0; r < moduleCount; r++) {
+            for (let c = 0; c < moduleCount; c++) {
+              const isDark = qr.isDark(r, c);
+              cells += '<div style="position:absolute;top:' + (r * cellSize) + 'px;left:' + (c * cellSize) + 'px;width:' + cellSize + 'px;height:' + cellSize + 'px;background:' + (isDark ? fgColor : bgColor) + ';"></div>';
+            }
+          }
+          qrHtml = '<div style="position:relative;width:' + qrSize + 'px;height:' + qrSize + 'px;">' + cells + '</div>';
+        }
+      } catch(e) { /* fallback below */ }
+      if (!qrHtml) {
+        qrHtml = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:10px;color:#333;text-align:center;word-break:break-all;">' + escapeHTML2(value) + '</div>';
+      }
+      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; background:${bgColor}; border:1px solid #ddd; overflow:hidden; padding:4px; box-sizing:border-box;" data-id="${el.id}" ${dragAttr}>
+        ${qrHtml}
         ${handles}
       </div>`;
     }
@@ -1003,6 +1046,59 @@ const SelfMadeEditor = (function () {
       `;
     }
 
+    if (el.type === 'barcode') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">Barcode</div>
+          <div class="prop-row">
+            <label>Value / URL</label>
+            <input type="text" value="${escapeHTML2(el.props.value || '')}" oninput="SelfMadeEditor.setPropDeep('value', this.value)" placeholder="Enter URL or text">
+          </div>
+          <div class="prop-row">
+            <label>Format</label>
+            <select onchange="SelfMadeEditor.setPropDeep('format', this.value)">
+              <option value="CODE128" ${el.props.format === 'CODE128' || !el.props.format ? 'selected' : ''}>CODE128</option>
+              <option value="CODE39" ${el.props.format === 'CODE39' ? 'selected' : ''}>CODE39</option>
+              <option value="EAN13" ${el.props.format === 'EAN13' ? 'selected' : ''}>EAN-13</option>
+              <option value="EAN8" ${el.props.format === 'EAN8' ? 'selected' : ''}>EAN-8</option>
+              <option value="UPC" ${el.props.format === 'UPC' ? 'selected' : ''}>UPC</option>
+              <option value="ITF14" ${el.props.format === 'ITF14' ? 'selected' : ''}>ITF-14</option>
+              <option value="MSI" ${el.props.format === 'MSI' ? 'selected' : ''}>MSI</option>
+              <option value="pharmacode" ${el.props.format === 'pharmacode' ? 'selected' : ''}>Pharmacode</option>
+            </select>
+          </div>
+          <div class="prop-row">
+            <label>Bar Color</label>
+            <input type="color" value="${el.props.barColor || '#000000'}" oninput="SelfMadeEditor.setPropDeep('barColor', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Background</label>
+            <input type="color" value="${el.props.bgColor || '#ffffff'}" oninput="SelfMadeEditor.setPropDeep('bgColor', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.type === 'qrPlaceholder') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-group-title">QR Code</div>
+          <div class="prop-row">
+            <label>Value / URL</label>
+            <input type="text" value="${escapeHTML2(el.props.value || '')}" oninput="SelfMadeEditor.setPropDeep('value', this.value)" placeholder="Enter URL or text">
+          </div>
+          <div class="prop-row">
+            <label>Foreground</label>
+            <input type="color" value="${el.props.fgColor || '#000000'}" oninput="SelfMadeEditor.setPropDeep('fgColor', this.value)">
+          </div>
+          <div class="prop-row">
+            <label>Background</label>
+            <input type="color" value="${el.props.bgColor || '#ffffff'}" oninput="SelfMadeEditor.setPropDeep('bgColor', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
     if (el.type === 'skillBar' || el.type === 'progressBar') {
       html += `
         <div class="prop-group">
@@ -1332,7 +1428,7 @@ const SelfMadeEditor = (function () {
   function addBarcode() {
     const el = {
       id: nextId++, type: 'barcode', x: 50, y: 50, w: 200, h: 60,
-      props: {}
+      props: { value: 'https://example.com', format: 'CODE128', barColor: '#000000', bgColor: '#ffffff' }
     };
     elements.push(el);
     pushHistory();
@@ -1341,8 +1437,8 @@ const SelfMadeEditor = (function () {
 
   function addQRPlaceholder() {
     const el = {
-      id: nextId++, type: 'qrPlaceholder', x: 50, y: 50, w: 100, h: 100,
-      props: {}
+      id: nextId++, type: 'qrPlaceholder', x: 50, y: 50, w: 120, h: 120,
+      props: { value: 'https://example.com', fgColor: '#000000', bgColor: '#ffffff' }
     };
     elements.push(el);
     pushHistory();

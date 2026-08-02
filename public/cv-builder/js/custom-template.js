@@ -501,21 +501,50 @@ const CustomTemplateEditor = (function () {
   function applyColorOverrides(root) {
     if (!state.enableColors) return;
 
-    // Collect all unique hex colors used in the template to auto-detect roles
-    const colorUsage = {};
-    const all = root.querySelectorAll('*');
-    all.forEach(el => {
+    // First pass: collect all unique hex colors to auto-detect sidebar bg
+    const allElements = [root];
+    root.querySelectorAll('*').forEach(el => allElements.push(el));
+
+    // Detect sidebar element (first child of flex container with percentage width)
+    let sidebarEl = null;
+    let sidebarBgColor = null;
+    const rootStyle = root.getAttribute('style') || '';
+    const allFlex = [];
+    if (/display:\s*flex/i.test(rootStyle) && !/flex-direction:\s*column/i.test(rootStyle)) allFlex.push(root);
+    root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]').forEach(el => {
+      const s = el.getAttribute('style') || '';
+      if (!/flex-direction:\s*column/i.test(s)) allFlex.push(el);
+    });
+    allFlex.forEach(fc => {
+      const children = fc.children;
+      for (let i = 0; i < children.length; i++) {
+        const cs = children[i].getAttribute('style') || '';
+        if (/width:\s*\d+%/i.test(cs)) {
+          sidebarEl = children[i];
+          // Extract the sidebar's background color
+          const bgMatch = cs.match(/background(?:-color)?:\s*(#[0-9a-fA-F]{6})/i);
+          if (bgMatch) sidebarBgColor = bgMatch[1];
+          break;
+        }
+      }
+    });
+
+    allElements.forEach(el => {
       const style = el.getAttribute('style') || '';
       if (!style) return;
 
       let newStyle = style;
 
       // Primary color: replace any non-white, non-black, non-gray accent colors
-      // These are typically the "brand" colors used in headings, section titles, icons, sidebar headers
       if (state.primaryColor) {
-        // Replace accent colors in background-color
+        // Replace accent colors in background-color longhand
         newStyle = newStyle.replace(/background-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
           if (isAccentColor(hex)) return 'background-color: ' + state.primaryColor;
+          return match;
+        });
+        // Replace accent colors in background shorthand
+        newStyle = newStyle.replace(/background:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+          if (isAccentColor(hex)) return 'background: ' + state.primaryColor;
           return match;
         });
         // Replace accent colors in color (text)
@@ -537,19 +566,52 @@ const CustomTemplateEditor = (function () {
         });
       }
 
-      // Accent color: replace secondary accent colors
+      // Accent color: replace secondary accent colors (any saturated non-primary color)
       if (state.accentColor) {
+        // Replace common secondary accent hex values found across templates
         newStyle = newStyle.replace(/#FF9966/gi, state.accentColor);
         newStyle = newStyle.replace(/#7ECB88/gi, state.accentColor);
         newStyle = newStyle.replace(/#FF6B6B/gi, state.accentColor);
         newStyle = newStyle.replace(/#FFB347/gi, state.accentColor);
+        newStyle = newStyle.replace(/#EE9B00/gi, state.accentColor);
+        newStyle = newStyle.replace(/#7C95C4/gi, state.accentColor);
+        newStyle = newStyle.replace(/#B8A692/gi, state.accentColor);
+        newStyle = newStyle.replace(/#B8A898/gi, state.accentColor);
       }
 
-      // Sidebar background: replace light gray/cream backgrounds
+      // Sidebar background: replace the detected sidebar background color anywhere
       if (state.sidebarBg) {
-        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0)/gi, 'background-color: ' + state.sidebarBg);
-        // Also replace dark sidebar backgrounds (charcoal, dark green, etc.)
-        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748)/gi, 'background-color: ' + state.sidebarBg);
+        if (sidebarBgColor) {
+          // Replace the exact sidebar bg color wherever it appears
+          const re = new RegExp(sidebarBgColor, 'gi');
+          newStyle = newStyle.replace(re, state.sidebarBg);
+        }
+        // Also replace common sidebar backgrounds (both longhand and shorthand)
+        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background: ' + state.sidebarBg);
+      }
+
+      // Text color: replace inline text colors (CSS !important can't override inline styles)
+      if (state.textColor) {
+        // Replace color: longhand (but not border-color, background-color, etc.)
+        newStyle = newStyle.replace(/(^|;\s*)color:\s*(#[0-9a-fA-F]{6}|[a-zA-Z]+)/gi, (match, pre, val) => {
+          // Don't replace white text on dark sidebar (it should stay white)
+          if (/^#fff/i.test(val) || /^white$/i.test(val)) return match;
+          return pre + 'color: ' + state.textColor;
+        });
+      }
+
+      // Divider color: replace border colors on dividers
+      if (state.dividerColor) {
+        newStyle = newStyle.replace(/border-bottom:\s*\d+px\s+\w+\s+(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+          return match.replace(hex, state.dividerColor);
+        });
+        newStyle = newStyle.replace(/border-bottom-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-bottom-color: ' + state.dividerColor);
+        newStyle = newStyle.replace(/border-top:\s*\d+px\s+\w+\s+(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+          return match.replace(hex, state.dividerColor);
+        });
       }
 
       if (newStyle !== style) {
@@ -626,25 +688,42 @@ const CustomTemplateEditor = (function () {
     const root = container.firstElementChild;
     if (!root) return;
 
-    // Look for display:flex children (sidebar layouts)
-    const flexContainers = root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
-    flexContainers.forEach(fc => {
+    // Check root element itself + all descendants for flex sidebar layouts
+    const allFlex = [];
+    const rootStyle = root.getAttribute('style') || '';
+    if (/display:\s*flex/i.test(rootStyle)) allFlex.push(root);
+    root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]').forEach(el => allFlex.push(el));
+
+    allFlex.forEach(fc => {
+      const fcStyle = fc.getAttribute('style') || '';
+      // Skip column-direction flex containers (inner layouts, not sidebar)
+      if (/flex-direction:\s*column/i.test(fcStyle)) return;
+
       const children = fc.children;
-      if (children.length >= 2) {
-        const first = children[0];
-        const second = children[1];
-        const fs = first.getAttribute('style') || '';
-        const ss = second.getAttribute('style') || '';
-        if (fs.includes('width:')) {
-          // Update sidebar width
-          let newStyle = fs.replace(/width:\s*\d+%/gi, 'width: ' + state.sidebarWidth + '%');
-          first.setAttribute('style', newStyle);
-          // Update main content width if it has an explicit width
-          if (ss.includes('width:')) {
-            const mainWidth = 100 - parseInt(state.sidebarWidth);
-            let newMainStyle = ss.replace(/width:\s*\d+%/gi, 'width: ' + mainWidth + '%');
-            second.setAttribute('style', newMainStyle);
+      if (children.length < 2) return;
+
+      // Find the sidebar child (first child with a percentage width)
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        const cs = child.getAttribute('style') || '';
+        const widthMatch = cs.match(/width:\s*(\d+)%/i);
+        if (widthMatch) {
+          // This is the sidebar — update its width
+          let newStyle = cs.replace(/width:\s*\d+%/gi, 'width: ' + state.sidebarWidth + '%');
+          child.setAttribute('style', newStyle);
+
+          // Update the next sibling's width if it has a percentage width
+          if (i + 1 < children.length) {
+            const next = children[i + 1];
+            const ns = next.getAttribute('style') || '';
+            const nextWidthMatch = ns.match(/width:\s*(\d+)%/i);
+            if (nextWidthMatch) {
+              const mainWidth = 100 - parseInt(state.sidebarWidth);
+              let newNextStyle = ns.replace(/width:\s*\d+%/gi, 'width: ' + mainWidth + '%');
+              next.setAttribute('style', newNextStyle);
+            }
           }
+          break;
         }
       }
     });
@@ -657,13 +736,27 @@ const CustomTemplateEditor = (function () {
     const root = container.firstElementChild;
     if (!root) return;
 
-    // Find sidebar columns (first child of flex containers, or elements with width < 45%)
-    const flexContainers = root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
-    flexContainers.forEach(fc => {
+    // Find sidebar columns (first child of row-direction flex containers with percentage width)
+    const allFlex = [];
+    const rootStyle = root.getAttribute('style') || '';
+    if (/display:\s*flex/i.test(rootStyle) && !/flex-direction:\s*column/i.test(rootStyle)) allFlex.push(root);
+    root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]').forEach(el => {
+      const s = el.getAttribute('style') || '';
+      if (!/flex-direction:\s*column/i.test(s)) allFlex.push(el);
+    });
+    allFlex.forEach(fc => {
       const children = fc.children;
-      if (children.length >= 2) {
-        const sidebar = children[0];
-        const fs = sidebar.getAttribute('style') || '';
+      // Find the sidebar child (first with percentage width)
+      let sidebar = null;
+      for (let i = 0; i < children.length; i++) {
+        const cs = children[i].getAttribute('style') || '';
+        if (/width:\s*\d+%/i.test(cs)) {
+          sidebar = children[i];
+          break;
+        }
+      }
+      if (!sidebar) return;
+      const fs = sidebar.getAttribute('style') || '';
         let newStyle = fs;
 
         // Remove existing clip-path
@@ -693,7 +786,6 @@ const CustomTemplateEditor = (function () {
         }
 
         sidebar.setAttribute('style', newStyle);
-      }
     });
   }
 
@@ -706,37 +798,85 @@ const CustomTemplateEditor = (function () {
     const dividers = container.querySelectorAll('hr, [style*="border-bottom"]');
     dividers.forEach(el => {
       const tag = el.tagName.toLowerCase();
-      const fs = el.getAttribute('style') || '';
-      let newStyle = fs;
+      let style = el.getAttribute('style') || '';
+      let newStyle = style;
 
       // Remove existing gradient backgrounds
       newStyle = newStyle.replace(/background:\s*linear-gradient[^;]+;?/gi, '');
 
+      // Extract existing border-bottom color from shorthand or longhand
+      let borderColor = 'currentColor';
+      const bbMatch = newStyle.match(/border-bottom:\s*(\d+px)\s+\w+\s+(#[0-9a-fA-F]{6}|[a-zA-Z]+)/i);
+      if (bbMatch) {
+        borderColor = bbMatch[2];
+      } else {
+        const bcMatch = newStyle.match(/border-bottom-color:\s*(#[0-9a-fA-F]{6}|[a-zA-Z]+)/i);
+        if (bcMatch) borderColor = bcMatch[1];
+      }
+
+      // Extract existing border-top color (for hr elements)
+      let topColor = 'currentColor';
+      const btMatch = newStyle.match(/border-top:\s*(\d+px)\s+\w+\s+(#[0-9a-fA-F]{6}|[a-zA-Z]+)/i);
+      if (btMatch) {
+        topColor = btMatch[2];
+      }
+
       switch (state.barStyle) {
         case 'solid':
-          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: solid;');
-          if (tag === 'hr') newStyle += ' border: none; border-top: 2px solid currentColor;';
-          break;
-        case 'gradient':
           if (tag === 'hr') {
-            newStyle = 'border: none; height: 3px; background: linear-gradient(90deg, #6b8fad, #FF9966, #6b8fad);';
+            // Clear all border variants and set clean border-top
+            newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:[^;]*;?/gi, '');
+            newStyle += ' border: none; border-top: 2px solid ' + topColor + ';';
           } else {
-            newStyle = newStyle.replace(/border-bottom[^;]*;?/gi, '');
-            newStyle += ' border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, #6b8fad, #FF9966) 1;';
+            // Replace border-bottom shorthand and longhand
+            newStyle = newStyle.replace(/border-bottom:[^;]*;?/gi, '');
+            newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, '');
+            newStyle += ' border-bottom: 2px solid ' + borderColor + ';';
           }
           break;
+
+        case 'gradient':
+          if (tag === 'hr') {
+            newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:[^;]*;?/gi, '');
+            newStyle += ' border: none; height: 3px; background: linear-gradient(90deg, ' + borderColor + ', ' + (state.accentColor || '#FF9966') + ', ' + borderColor + ');';
+          } else {
+            newStyle = newStyle.replace(/border-bottom:[^;]*;?/gi, '');
+            newStyle += ' border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, ' + borderColor + ', ' + (state.accentColor || '#FF9966') + ') 1;';
+          }
+          break;
+
         case 'dashed':
-          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: dashed;');
-          if (tag === 'hr') newStyle += ' border: none; border-top: 2px dashed currentColor;';
+          if (tag === 'hr') {
+            newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:[^;]*;?/gi, '');
+            newStyle += ' border: none; border-top: 2px dashed ' + topColor + ';';
+          } else {
+            newStyle = newStyle.replace(/border-bottom:[^;]*;?/gi, '');
+            newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, '');
+            newStyle += ' border-bottom: 2px dashed ' + borderColor + ';';
+          }
           break;
+
         case 'double':
-          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: double;');
-          newStyle = newStyle.replace(/border-bottom-width:\s*[^;]+;?/gi, 'border-bottom-width: 4px;');
-          if (tag === 'hr') newStyle += ' border: none; border-top: 4px double currentColor;';
+          if (tag === 'hr') {
+            newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:[^;]*;?/gi, '');
+            newStyle += ' border: none; border-top: 5px double ' + topColor + ';';
+          } else {
+            newStyle = newStyle.replace(/border-bottom:[^;]*;?/gi, '');
+            newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, '');
+            newStyle = newStyle.replace(/border-bottom-width:\s*[^;]+;?/gi, '');
+            newStyle += ' border-bottom: 5px double ' + borderColor + ';';
+          }
           break;
+
         case 'dotted':
-          newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, 'border-bottom-style: dotted;');
-          if (tag === 'hr') newStyle += ' border: none; border-top: 2px dotted currentColor;';
+          if (tag === 'hr') {
+            newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:[^;]*;?/gi, '');
+            newStyle += ' border: none; border-top: 2px dotted ' + topColor + ';';
+          } else {
+            newStyle = newStyle.replace(/border-bottom:[^;]*;?/gi, '');
+            newStyle = newStyle.replace(/border-bottom-style:\s*[^;]+;?/gi, '');
+            newStyle += ' border-bottom: 2px dotted ' + borderColor + ';';
+          }
           break;
       }
 
@@ -751,18 +891,44 @@ const CustomTemplateEditor = (function () {
     const root = container.firstElementChild;
     if (!root) return;
 
-    const flexContainers = root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
-    flexContainers.forEach(fc => {
+    // Only target flex containers that are sidebar layouts:
+    // - Must NOT have flex-direction:column (that's an inner layout, not sidebar)
+    // - Must have at least 2 children with explicit width percentages
+    // Check root element itself + all descendants
+    const allFlex = [];
+    const rootStyle = root.getAttribute('style') || '';
+    if (/display:\s*flex/i.test(rootStyle)) allFlex.push(root);
+    root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]').forEach(el => allFlex.push(el));
+
+    allFlex.forEach(fc => {
       const fs = fc.getAttribute('style') || '';
+      // Skip column-direction flex containers (inner layouts, not sidebar)
+      if (/flex-direction:\s*column/i.test(fs)) return;
+
+      // Check if this is a sidebar layout: children with width percentages
+      const children = fc.children;
+      if (children.length < 2) return;
+      let hasWidthChildren = false;
+      for (let i = 0; i < children.length; i++) {
+        const cs = children[i].getAttribute('style') || '';
+        if (/width:\s*\d+%/i.test(cs)) {
+          hasWidthChildren = true;
+          break;
+        }
+      }
+      if (!hasWidthChildren) return;
+
       let newStyle = fs;
 
       if (state.sidebarPosition === 'right') {
-        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, '');
-        if (!/flex-direction:\s*row-reverse/i.test(newStyle)) {
-          newStyle += ' flex-direction: row-reverse;';
-        }
+        // Remove existing flex-direction to avoid duplicates
+        newStyle = newStyle.replace(/flex-direction:\s*[^;]+;?/gi, '');
+        newStyle += ' flex-direction: row-reverse;';
       } else if (state.sidebarPosition === 'left') {
-        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, 'flex-direction: row;');
+        // Remove row-reverse if present, restore default row
+        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, '');
+        // Only add explicit row if there was a row-reverse removed
+        // (default is already row, so no need to add it)
       }
 
       fc.setAttribute('style', newStyle);
