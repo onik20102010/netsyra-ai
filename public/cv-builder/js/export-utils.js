@@ -210,49 +210,71 @@ const ExportUtils = (function () {
     if (!tpl) { toast('Select a template first'); return; }
 
     const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:#fff;';
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;overflow:hidden;';
     container.innerHTML = tpl.render(cvData);
     document.body.appendChild(container);
 
-    const w = 800;
-    const h = container.scrollHeight || 1131;
+    // Wait for images to load before capturing
+    const images = container.querySelectorAll('img');
+    const imagePromises = [];
+    images.forEach(img => {
+      if (img.complete && img.naturalWidth > 0) return;
+      imagePromises.push(new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      }));
+    });
 
-    const data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%">' +
-      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;">' +
-      container.innerHTML + '</div></foreignObject></svg>';
+    Promise.all(imagePromises).then(() => {
+      const w = 800;
+      const h = container.scrollHeight || 1131;
 
-    document.body.removeChild(container);
+      // Build SVG with foreignObject — inline all styles for proper rendering
+      const clone = container.cloneNode(true);
+      // Ensure all images have their src set (base64 should work)
+      const cloneImgs = clone.querySelectorAll('img');
+      cloneImgs.forEach((img, i) => {
+        if (images[i] && images[i].src) img.setAttribute('src', images[i].src);
+      });
 
-    const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
-    img.onload = function () {
-      const c = document.createElement('canvas');
-      c.width = w;
-      c.height = h;
-      const ctx = c.getContext('2d');
-      if (format === 'jpg') {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, w, h);
-      }
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      c.toBlob(function (blob) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = getFileName(cvData.personal || {}, format);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast(format.toUpperCase() + ' exported');
-      }, format === 'png' ? 'image/png' : 'image/jpeg', 0.95);
-    };
-    img.onerror = function () {
-      URL.revokeObjectURL(url);
-      toast('Image export failed — try PDF instead');
-    };
-    img.src = url;
+      const data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%">' +
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;">' +
+        clone.innerHTML + '</div></foreignObject></svg>';
+
+      document.body.removeChild(container);
+
+      const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = function () {
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext('2d');
+        if (format === 'jpg') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+        }
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (blob) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = getFileName(cvData.personal || {}, format);
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          toast(format.toUpperCase() + ' exported');
+        }, format === 'png' ? 'image/png' : 'image/jpeg', 0.95);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        // Fallback: try using print to PDF as alternative
+        toast('Image export failed — try Print to PDF instead');
+      };
+      img.src = url;
+    });
   }
 
   function exportPNG(cvData, templateId) {

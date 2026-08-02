@@ -55,7 +55,19 @@ function loadFromStorage() {
 }
 
 function saveToStorage() {
-  localStorage.setItem('cvbuilder_pro_data', JSON.stringify(cvData));
+  try {
+    localStorage.setItem('cvbuilder_pro_data', JSON.stringify(cvData));
+  } catch (e) {
+    // localStorage quota exceeded — try to save without photo
+    try {
+      const trimmed = JSON.parse(JSON.stringify(cvData));
+      if (trimmed.personal) trimmed.personal.photo = '';
+      localStorage.setItem('cvbuilder_pro_data', JSON.stringify(trimmed));
+      toast('Photo too large for storage — other data saved. Try a smaller image.');
+    } catch (e2) {
+      toast('Could not save data — storage full');
+    }
+  }
 }
 
 // ==================== NAVIGATION ====================
@@ -295,9 +307,11 @@ function injectPrintCSS(tplId) {
       .custom-preview-area, .selfmade-canvas-wrap { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
       .cv-page, #cvPageRender { box-shadow: none !important; }
       ${!hasPhoto ? `
-      /* Hide photo for templates without picture area */
-      img[src*="photo"], img[alt*="photo"], [style*="border-radius:50%"] img,
-      .cv-page img { display: none !important; }
+      /* Hide profile photos for templates without picture area */
+      [style*="border-radius:50%"] img,
+      [style*="border-radius: 50%"] img,
+      img[style*="border-radius:50%"],
+      img[style*="border-radius: 50%"] { display: none !important; }
       ` : `
       /* Show photo for templates with picture area */
       .cv-page img, #cvPageRender img { display: block !important; }

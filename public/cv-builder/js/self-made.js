@@ -400,7 +400,7 @@ const SelfMadeEditor = (function () {
   function renderElement(el) {
     const sel = el.id === selectedId ? ' selfmade-el-selected' : '';
     const baseStyle = `position:absolute; left:${el.x}px; top:${el.y}px; width:${el.w}px; height:${el.h}px;`;
-    const dragAttr = `onmousedown="SelfMadeEditor.startDrag(event, ${el.id})" ontouchstart="SelfMadeEditor.startDrag(event, ${el.id})"`;
+    const dragAttr = `onmousedown="SelfMadeEditor.startDrag(event, ${el.id})"`;
     const handles = sel ? renderResizeHandles() : '';
 
     // Text-like elements
@@ -672,6 +672,15 @@ const SelfMadeEditor = (function () {
       if (e.target === canvas) selectElement(null);
     }, { passive: true });
 
+    // Touch event delegation for elements — must be passive:false to call preventDefault
+    canvas.addEventListener('touchstart', function (e) {
+      const el = e.target.closest('.selfmade-el');
+      if (el) {
+        const id = parseInt(el.getAttribute('data-id'));
+        if (id) startDrag(e, id);
+      }
+    }, { passive: false });
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -804,6 +813,7 @@ const SelfMadeEditor = (function () {
   }
 
   function selectElement(id) {
+    if (selectedId === id) return; // No change — don't re-render
     selectedId = id;
     // Re-render canvas to show selection handles
     const canvas = document.getElementById('selfmadeCanvas');
@@ -1077,9 +1087,15 @@ const SelfMadeEditor = (function () {
     const el = elements.find(x => x.id === selectedId);
     if (!el) return;
     el.props[key] = value;
-    // Re-render the element
-    const canvas = document.getElementById('selfmadeCanvas');
-    if (canvas) canvas.innerHTML = renderElements();
+    // Re-render only the changed element (not entire canvas, to preserve focus)
+    const dom = document.querySelector(`.selfmade-el[data-id="${el.id}"]`);
+    if (dom) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = renderElement(el);
+      if (tmp.firstElementChild) {
+        dom.outerHTML = tmp.firstElementChild.outerHTML;
+      }
+    }
   }
 
   // ==================== ADD ELEMENTS ====================
@@ -1446,7 +1462,7 @@ const SelfMadeEditor = (function () {
         w = 350; h = 100;
         break;
       case 'photo':
-        if (p.photo) {
+        if (p.photo && !p.photo.startsWith('data:image/svg')) {
           const el = {
             id: nextId++, type: 'image', x: 50, y: 50, w: 100, h: 100,
             props: { src: p.photo, objectFit: 'cover', borderRadius: 50 }

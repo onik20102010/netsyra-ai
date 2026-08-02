@@ -37,7 +37,7 @@ window.CVTemplates['modern-warm'] = {
         
         <!-- Header Section -->
         <div style="background-color:${primaryColor}; color:#ffffff; padding:30px 35px; display:flex; align-items:center; gap:25px;">
-          ${p.photo && !p.photo.includes('svg') ? `
+          ${p.photo && !p.photo.startsWith('data:image/svg') ? `
             <div style="flex-shrink:0;">
               <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #ffffff;" />
             </div>

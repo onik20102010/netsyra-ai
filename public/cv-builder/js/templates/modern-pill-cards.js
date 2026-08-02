@@ -47,7 +47,7 @@ window.CVTemplates['modern-pill-cards'] = {
           
           <!-- Left Header Photo & Contact Stack -->
           <div style="width:32%; flex-shrink:0;">
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:75px; height:85px; border-radius:4px; overflow:hidden; margin-bottom:10px; background:#D0D5DD;">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>

@@ -26,7 +26,7 @@ window.CVTemplates.modern = {
     return `
       <div class="cv-template-root" style="font-family:'Inter',sans-serif;color:#333;line-height:1.6;display:flex;min-height:600px;word-break:break-word;overflow-wrap:break-word;">
         <div class="cv-template-sidebar" style="width:35%;background:${accent};color:#fff;padding:30px 20px;">
-          ${p.photo && !p.photo.includes('svg') ? `<img src="${p.photo}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid rgba(255,255,255,0.3);">` : ''}
+          ${p.photo && !p.photo.startsWith('data:image/svg') ? `<img src="${p.photo}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid rgba(255,255,255,0.3);">` : ''}
           <h1 style="font-size:20px;margin:0 0 2px;">${escapeHTML(p.fullName)}</h1>
           <p style="font-size:13px;opacity:0.9;margin:0 0 18px;">${escapeHTML(p.professionalTitle)}</p>
           ${modSidebarSection('Contact', [p.email, p.phone, p.location, p.linkedin, p.website, p.github].filter(Boolean))}

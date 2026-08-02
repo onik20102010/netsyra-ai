@@ -36,7 +36,7 @@ window.CVTemplates['split-sidebar'] = {
           
           <!-- Profile Photo -->
           <div style="text-align:center; margin-bottom:20px;">
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #ffffff; display:inline-block;" />
             ` : ` 
               <div style="width:110px; height:110px; border-radius:50%; background:#34495e; border:3px solid #ffffff; display:inline-flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; color:#ffffff; margin:0 auto;">

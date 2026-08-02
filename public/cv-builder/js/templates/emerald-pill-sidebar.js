@@ -44,7 +44,7 @@ window.CVTemplates['emerald-pill-sidebar'] = {
           
           <!-- Top Avatar Photo & Candidate Name -->
           <div style="padding:25px 18px 15px 18px; text-align:center;">
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:90px; height:90px; border-radius:50%; overflow:hidden; margin:0 auto 15px auto; background:#E2E8F0; border:2px solid #ffffff;">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>

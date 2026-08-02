@@ -40,7 +40,7 @@ window.CVTemplates['dark-chevron-sidebar'] = {
         <!-- Top Dark Header Banner with Chevron -->
         <div style="position:relative; background-color:${headerBg}; color:#ffffff; padding:25px 30px; display:flex; align-items:center; gap:25px;">
           
-          ${p.photo && !p.photo.includes('svg') ? `
+          ${p.photo && !p.photo.startsWith('data:image/svg') ? `
             <div style="width:85px; height:85px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#666666; border:2px solid #ffffff;">
               <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
             </div>

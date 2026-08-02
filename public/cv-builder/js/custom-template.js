@@ -558,10 +558,19 @@ const CustomTemplateEditor = (function () {
       const children = fc.children;
       if (children.length >= 2) {
         const first = children[0];
+        const second = children[1];
         const fs = first.getAttribute('style') || '';
+        const ss = second.getAttribute('style') || '';
         if (fs.includes('width:')) {
+          // Update sidebar width
           let newStyle = fs.replace(/width:\s*\d+%/gi, 'width: ' + state.sidebarWidth + '%');
           first.setAttribute('style', newStyle);
+          // Update main content width if it has an explicit width
+          if (ss.includes('width:')) {
+            const mainWidth = 100 - parseInt(state.sidebarWidth);
+            let newMainStyle = ss.replace(/width:\s*\d+%/gi, 'width: ' + mainWidth + '%');
+            second.setAttribute('style', newMainStyle);
+          }
         }
       }
     });

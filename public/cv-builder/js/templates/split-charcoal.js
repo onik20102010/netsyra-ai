@@ -41,7 +41,7 @@ window.CVTemplates['split-charcoal'] = {
           
           <!-- Top Light Gray Section (Avatar + Name) -->
           <div style="background-color:${lightSidebarBg}; padding:35px 20px 25px 20px; text-align:center; box-sizing:border-box;">
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:110px; height:110px; border-radius:50%; overflow:hidden; margin:0 auto 15px auto; border:3px solid #ffffff; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>

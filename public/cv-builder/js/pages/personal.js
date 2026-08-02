@@ -48,7 +48,7 @@ window.CVPages.personal = {
       linkedin: val('linkedin'),
       website: val('website'),
       github: val('github'),
-      photo: (document.getElementById('photoPreview') || {}).src || ''
+      photo: getPhotoValue()
     };
   }
 };
@@ -56,9 +56,38 @@ window.CVPages.personal = {
 function handlePhotoUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
+  // Read and compress the image to prevent localStorage overflow on mobile
   const reader = new FileReader();
   reader.onload = (e) => {
-    document.getElementById('photoPreview').src = e.target.result;
+    const img = new Image();
+    img.onload = function () {
+      // Max dimensions for CV photo — 300x300 is plenty for a profile photo
+      const maxW = 300, maxH = 300;
+      let w = img.width, h = img.height;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW / w, maxH / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // Compress as JPEG at 0.85 quality (much smaller than raw PNG)
+      const compressed = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('photoPreview').src = compressed;
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function getPhotoValue() {
+  const img = document.getElementById('photoPreview');
+  if (!img) return '';
+  const src = img.src || '';
+  // Don't save the default SVG placeholder as the photo value
+  if (src.includes('image/svg') || src.includes('%3Csvg')) return '';
+  return src;
 }

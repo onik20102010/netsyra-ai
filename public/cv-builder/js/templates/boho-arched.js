@@ -39,7 +39,7 @@ window.CVTemplates['boho-arched'] = {
             <span style="position:absolute; top:5px; left:5px; font-size:16px; color:#8C7B6B;">&#10022;</span>
             <span style="position:absolute; bottom:20px; right:0px; font-size:14px; color:#8C7B6B;">&#10022;</span>
             
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:140px; height:180px; border-radius:100px 100px 0 0; overflow:hidden; margin:0 auto; background:#C5B5A3; display:inline-block;">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>

@@ -55,7 +55,7 @@ window.CVTemplates['gradient-accent-resume'] = {
           <div style="width:32%; flex-shrink:0;">
             
             <!-- Circular Avatar Photo -->
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:85px; height:85px; border-radius:50%; overflow:hidden; margin:0 auto 15px auto; background:#E2E8F0; border:2px solid #ffffff; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>

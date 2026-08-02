@@ -42,7 +42,7 @@ window.CVTemplates['split-sidebar-functional'] = {
           
           <!-- Photo & Name Accent Banner -->
           <div>
-            ${p.photo && !p.photo.includes('svg') ? `
+            ${p.photo && !p.photo.startsWith('data:image/svg') ? `
               <div style="width:100%; height:140px; overflow:hidden; background:#CBD5E0;">
                 <img src="${escapeHTML(p.photo)}" alt="${escapeHTML(p.fullName)}" style="width:100%; height:100%; object-fit:cover;" />
               </div>
