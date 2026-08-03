@@ -13,24 +13,24 @@ const CustomTemplateEditor = (function () {
   let savedState = null; // persisted state for preview after closing
 
   const defaults = {
-    primaryColor: '#6b8fad',
-    sidebarBg: '#07224b',
-    textColor: '#3675e2',
+    primaryColor: '#084372',
+    sidebarBg: '#065de0',
+    textColor: '#022b74',
     accentColor: '#ff9966',
-    dividerColor: '#d1d5db',
+    dividerColor: '#276cd3',
     enableColors: true,
     fontFamily: '',
-    baseFontSize: '',
+    baseFontSize: '11',
     headingScale: '1',
     boldHeadings: false,
     italicBody: false,
     uppercaseHeadings: false,
-    sidebarWidth: '',
-    borderRadius: '',
+    sidebarWidth: '33',
+    borderRadius: '4',
     photoShape: 'circle',
-    photoSize: '',
-    sectionSpacing: '',
-    lineHeight: '',
+    photoSize: '115',
+    sectionSpacing: '26',
+    lineHeight: '1.5',
     sidebarShape: '',
     barStyle: '',
     barAngle: ''
@@ -112,11 +112,11 @@ const CustomTemplateEditor = (function () {
     });
 
     // Fallback to common defaults if not found
-    if (!colors.primaryColor) colors.primaryColor = '#6b8fad';
-    if (!colors.sidebarBg) colors.sidebarBg = '#07224b';
-    if (!colors.textColor) colors.textColor = '#3675e2';
+    if (!colors.primaryColor) colors.primaryColor = '#084372';
+    if (!colors.sidebarBg) colors.sidebarBg = '#065de0';
+    if (!colors.textColor) colors.textColor = '#022b74';
     if (!colors.accentColor) colors.accentColor = '#ff9966';
-    if (!colors.dividerColor) colors.dividerColor = '#d1d5db';
+    if (!colors.dividerColor) colors.dividerColor = '#276cd3';
 
     return colors;
   }
@@ -218,11 +218,11 @@ const CustomTemplateEditor = (function () {
           </div>
           <div class="custom-panel-body">
             ${section('Colors', 'fa-palette', `
-              ${colorField('primaryColor', 'Primary / Accent', '#6b8fad')}
-              ${colorField('sidebarBg', 'Sidebar Background', '#07224b')}
-              ${colorField('textColor', 'Text Color', '#3675e2')}
+              ${colorField('primaryColor', 'Primary / Accent', '#084372')}
+              ${colorField('sidebarBg', 'Sidebar Background', '#065de0')}
+              ${colorField('textColor', 'Text Color', '#022b74')}
               ${colorField('accentColor', 'Secondary Accent', '#ff9966')}
-              ${colorField('dividerColor', 'Divider Lines', '#d1d5db')}
+              ${colorField('dividerColor', 'Divider Lines', '#276cd3')}
             `)}
 
             ${section('Typography', 'fa-font', `
@@ -284,7 +284,7 @@ const CustomTemplateEditor = (function () {
               </div>
               <div class="custom-field">
                 <label>Section Spacing: <span id="ctSectionSpacingVal">--</span></label>
-                <input type="range" id="ctSectionSpacing" min="10" max="50" step="2" value="25" oninput="CustomTemplateEditor.update()">
+                <input type="range" id="ctSectionSpacing" min="10" max="50" step="2" value="26" oninput="CustomTemplateEditor.update()">
               </div>
             `)}
 
@@ -301,7 +301,7 @@ const CustomTemplateEditor = (function () {
               </div>
               <div class="custom-field">
                 <label>Photo Size: <span id="ctPhotoSizeVal">--</span></label>
-                <input type="range" id="ctPhotoSize" min="60" max="160" step="5" value="90" oninput="CustomTemplateEditor.update()">
+                <input type="range" id="ctPhotoSize" min="60" max="160" step="5" value="115" oninput="CustomTemplateEditor.update()">
               </div>
             `)}
 
