@@ -13,12 +13,12 @@ const CustomTemplateEditor = (function () {
   let savedState = null; // persisted state for preview after closing
 
   const defaults = {
-    primaryColor: '',
-    sidebarBg: '',
-    textColor: '',
-    accentColor: '',
-    dividerColor: '',
-    enableColors: false,
+    primaryColor: '#6b8fad',
+    sidebarBg: '#07224b',
+    textColor: '#3675e2',
+    accentColor: '#ff9966',
+    dividerColor: '#d1d5db',
+    enableColors: true,
     fontFamily: '',
     baseFontSize: '',
     headingScale: '1',
@@ -33,23 +33,115 @@ const CustomTemplateEditor = (function () {
     lineHeight: '',
     sidebarShape: '',
     barStyle: '',
-    barAngle: '',
-    bendAngle: ''
+    barAngle: ''
   };
 
   let state = Object.assign({}, defaults);
+
+  // Extract actual colors from template HTML
+  function extractTemplateColors(html) {
+    const colors = {
+      primaryColor: '',
+      sidebarBg: '',
+      textColor: '',
+      accentColor: '',
+      dividerColor: ''
+    };
+
+    // Create a temporary DOM element to parse the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    // Helper to extract hex color from style string
+    const extractHex = (style) => {
+      const match = style.match(/#[0-9a-fA-F]{6}/i);
+      return match ? match[0] : '';
+    };
+
+    // Find sidebar background (first child of flex container with percentage width)
+    const allFlex = tempDiv.querySelectorAll('[style*="display:flex"], [style*="display: flex"]');
+    allFlex.forEach(fc => {
+      const s = fc.getAttribute('style') || '';
+      if (/flex-direction:\s*column/i.test(s)) return;
+      const children = fc.children;
+      for (let i = 0; i < children.length; i++) {
+        const cs = children[i].getAttribute('style') || '';
+        if (/width:\s*\d+%/i.test(cs)) {
+          const bg = extractHex(cs);
+          if (bg && !colors.sidebarBg) colors.sidebarBg = bg;
+          break;
+        }
+      }
+    });
+
+    // Find primary/accent color (from headings, links, or elements with distinct colors)
+    const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, strong, b');
+    headings.forEach(h => {
+      const s = h.getAttribute('style') || '';
+      const color = extractHex(s);
+      if (color && !colors.primaryColor) colors.primaryColor = color;
+    });
+
+    // Find text color (from paragraphs, body text)
+    const paragraphs = tempDiv.querySelectorAll('p, span, div');
+    paragraphs.forEach(p => {
+      const s = p.getAttribute('style') || '';
+      if (s.includes('color:') && !s.includes('background')) {
+        const color = extractHex(s);
+        if (color && !colors.textColor) colors.textColor = color;
+      }
+    });
+
+    // Find accent color (elements with distinct accent colors like links, badges)
+    const accents = tempDiv.querySelectorAll('[style*="color:"]');
+    accents.forEach(a => {
+      const s = a.getAttribute('style') || '';
+      const color = extractHex(s);
+      // Accent colors are typically brighter/more vibrant
+      if (color && color !== colors.primaryColor && color !== colors.textColor && !colors.accentColor) {
+        colors.accentColor = color;
+      }
+    });
+
+    // Find divider color (from border-bottom, border-top, hr)
+    const dividers = tempDiv.querySelectorAll('hr, [style*="border-bottom"], [style*="border-top"]');
+    dividers.forEach(d => {
+      const s = d.getAttribute('style') || '';
+      const color = extractHex(s);
+      if (color && !colors.dividerColor) colors.dividerColor = color;
+    });
+
+    // Fallback to common defaults if not found
+    if (!colors.primaryColor) colors.primaryColor = '#6b8fad';
+    if (!colors.sidebarBg) colors.sidebarBg = '#07224b';
+    if (!colors.textColor) colors.textColor = '#3675e2';
+    if (!colors.accentColor) colors.accentColor = '#ff9966';
+    if (!colors.dividerColor) colors.dividerColor = '#d1d5db';
+
+    return colors;
+  }
 
   function open(tplId, cvData, savedState) {
     templateId = tplId;
     data = cvData;
     active = true;
-    state = Object.assign({}, defaults, savedState || {});
-    render();
-    // Restore DOM inputs to match the state (so sliders/controls show correct values)
-    if (savedState) {
-      restoreInputs(savedState);
-      updateLabels();
+    
+    // Extract actual colors from template HTML if no saved state
+    let extractedColors = {};
+    if (!savedState) {
+      const tpl = window.CVTemplates[tplId];
+      if (tpl) {
+        const html = tpl.render(cvData);
+        extractedColors = extractTemplateColors(html);
+      }
     }
+    
+    state = Object.assign({}, defaults, savedState || extractedColors || {});
+    render();
+    
+    // Restore DOM inputs to match the state (so sliders/controls show correct values)
+    restoreInputs(state);
+    updateLabels();
   }
 
   function restoreInputs(s) {
@@ -73,7 +165,6 @@ const CustomTemplateEditor = (function () {
     check('ctBoldHeadings', s.boldHeadings);
     check('ctItalicBody', s.italicBody);
     check('ctUppercaseHeadings', s.uppercaseHeadings);
-    check('ctEnableColors', s.enableColors);
     set('ctSidebarWidth', s.sidebarWidth);
     set('ctBorderRadius', s.borderRadius);
     set('ctSectionSpacing', s.sectionSpacing);
@@ -82,7 +173,6 @@ const CustomTemplateEditor = (function () {
     set('ctSidebarShape', s.sidebarShape);
     set('ctBarStyle', s.barStyle);
     set('ctBarAngle', s.barAngle);
-    set('ctBendAngle', s.bendAngle);
   }
 
   function close() {
@@ -129,17 +219,11 @@ const CustomTemplateEditor = (function () {
           <div class="custom-panel-body">
             ${section('Colors', 'fa-palette', `
               ${colorField('primaryColor', 'Primary / Accent', '#6b8fad')}
-              ${colorField('sidebarBg', 'Sidebar Background', '#E2E4E7')}
-              ${colorField('textColor', 'Text Color', '#2D3748')}
-              ${colorField('accentColor', 'Secondary Accent', '#FF9966')}
-              ${colorField('dividerColor', 'Divider Lines', '#D1D5DB')}
+              ${colorField('sidebarBg', 'Sidebar Background', '#07224b')}
+              ${colorField('textColor', 'Text Color', '#3675e2')}
+              ${colorField('accentColor', 'Secondary Accent', '#ff9966')}
+              ${colorField('dividerColor', 'Divider Lines', '#d1d5db')}
             `)}
-            <div class="custom-field">
-              <label class="custom-checkbox">
-                <input type="checkbox" id="ctEnableColors" onchange="CustomTemplateEditor.update()">
-                <span>Enable color overrides</span>
-              </label>
-            </div>
 
             ${section('Typography', 'fa-font', `
               <div class="custom-field">
@@ -248,11 +332,6 @@ const CustomTemplateEditor = (function () {
                 <label>Bar / Divider Angle: <span id="ctBarAngleVal">0°</span></label>
                 <input type="range" id="ctBarAngle" min="-45" max="45" step="1" value="0" oninput="CustomTemplateEditor.update()">
               </div>
-              <div class="custom-field bend-mode-field" id="bendModeField" style="display:none;">
-                <label>Bend Mode: <span id="ctBendAngleVal">0°</span></label>
-                <input type="range" id="ctBendAngle" min="-90" max="90" step="1" value="0" oninput="CustomTemplateEditor.update()">
-                <small style="display:block;margin-top:4px;color:#888;font-size:0.75rem;">Curves bars &amp; dividers like Blender bend modifier</small>
-              </div>
             `)}
 
             <div class="custom-panel-footer">
@@ -285,8 +364,6 @@ const CustomTemplateEditor = (function () {
 
   function update() {
     readState();
-    // Auto-enable color overrides if user changes a color
-    autoEnableColors();
     // Re-render fresh template HTML to avoid stacking overrides
     const container = document.getElementById('customCvPreview');
     if (container && originalHtml) {
@@ -294,17 +371,6 @@ const CustomTemplateEditor = (function () {
     }
     applyOverrides();
     updateLabels();
-  }
-
-  function autoEnableColors() {
-    // If any color field has a non-default value, auto-check the enable checkbox
-    const hasColor = state.primaryColor || state.sidebarBg || state.textColor || state.accentColor || state.dividerColor;
-    if (hasColor) {
-      const cb = document.getElementById('ctEnableColors');
-      if (cb && !cb.checked) {
-        cb.checked = true;
-      }
-    }
   }
 
   function readState() {
@@ -320,7 +386,6 @@ const CustomTemplateEditor = (function () {
     state.boldHeadings = checked2('ctBoldHeadings');
     state.italicBody = checked2('ctItalicBody');
     state.uppercaseHeadings = checked2('ctUppercaseHeadings');
-    state.enableColors = checked2('ctEnableColors');
     state.sidebarWidth = val2('ctSidebarWidth');
     state.borderRadius = val2('ctBorderRadius');
     state.sectionSpacing = val2('ctSectionSpacing');
@@ -329,7 +394,6 @@ const CustomTemplateEditor = (function () {
     state.sidebarShape = val2('ctSidebarShape');
     state.barStyle = val2('ctBarStyle');
     state.barAngle = val2('ctBarAngle');
-    state.bendAngle = val2('ctBendAngle');
   }
 
   function val2(id) {
@@ -359,15 +423,6 @@ const CustomTemplateEditor = (function () {
     setText('ctPhotoSizeVal', ps ? ps + 'px' : '--');
     const ba = val2('ctBarAngle');
     setText('ctBarAngleVal', ba ? ba + '°' : '0°');
-    const bend = val2('ctBendAngle');
-    setText('ctBendAngleVal', bend ? bend + '°' : '0°');
-
-    // Show Bend Mode only on desktop (non-touch, fine pointer)
-    const bendField = document.getElementById('bendModeField');
-    if (bendField) {
-      const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-      bendField.style.display = isDesktop ? '' : 'none';
-    }
 
     // Update hex displays for color fields
     ['primaryColor', 'sidebarBg', 'textColor', 'accentColor', 'dividerColor'].forEach(id => {
@@ -469,11 +524,9 @@ const CustomTemplateEditor = (function () {
     // DOM-level overrides (things CSS can't easily do with !important on inline styles)
 
     // Primary color: replace accent colors in inline styles
-    if (state.enableColors) {
-      const root = container.firstElementChild;
-      if (root) {
-        applyColorOverrides(root);
-      }
+    const root = container.firstElementChild;
+    if (root) {
+      applyColorOverrides(root);
     }
 
     // Photo shape & size
@@ -498,16 +551,9 @@ const CustomTemplateEditor = (function () {
     if (state.barAngle && state.barAngle !== '0') {
       applyBarAngle(cid);
     }
-
-    // Bend mode (Blender-inspired bend modifier — desktop only)
-    if (state.bendAngle && state.bendAngle !== '0') {
-      applyBendMode(cid);
-    }
   }
 
   function applyColorOverrides(root) {
-    if (!state.enableColors) return;
-
     // First pass: collect all unique hex colors to auto-detect sidebar bg
     const allElements = [root];
     root.querySelectorAll('*').forEach(el => allElements.push(el));
@@ -923,43 +969,6 @@ const CustomTemplateEditor = (function () {
       if (angle !== 0) {
         newStyle += ` transform: rotate(${angle}deg);`;
       }
-      el.setAttribute('style', newStyle);
-    });
-  }
-
-  // ── Blender-inspired: Bend Mode ──
-  // Curves straight bars/dividers into a bent shape using border-radius
-  function applyBendMode(cid) {
-    const container = document.getElementById(cid || 'customCvPreview');
-    if (!container) return;
-    const angle = parseFloat(state.bendAngle) || 0;
-    if (angle === 0) return;
-
-    // Convert angle to a border-radius curve amount
-    // Positive angle bends upward (concave), negative bends downward (convex)
-    const absAngle = Math.abs(angle);
-    const radius = Math.round(absAngle * 2); // 2px per degree → up to 180px
-
-    const dividers = container.querySelectorAll('hr, [style*="border-bottom"]');
-    dividers.forEach(el => {
-      const fs = el.getAttribute('style') || '';
-      let newStyle = fs;
-
-      // Remove previous bend-related properties
-      newStyle = newStyle.replace(/border-radius:[^;]*;?/gi, '');
-      newStyle = newStyle.replace(/border-bottom-left-radius:[^;]*;?/gi, '');
-      newStyle = newStyle.replace(/border-bottom-right-radius:[^;]*;?/gi, '');
-      newStyle = newStyle.replace(/border-top-left-radius:[^;]*;?/gi, '');
-      newStyle = newStyle.replace(/border-top-right-radius:[^;]*;?/gi, '');
-
-      if (angle > 0) {
-        // Bend upward: curve the bottom corners
-        newStyle += ` border-bottom-left-radius: ${radius}px; border-bottom-right-radius: ${radius}px;`;
-      } else {
-        // Bend downward: curve the top corners
-        newStyle += ` border-top-left-radius: ${radius}px; border-top-right-radius: ${radius}px;`;
-      }
-
       el.setAttribute('style', newStyle);
     });
   }
