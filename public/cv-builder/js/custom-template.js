@@ -33,8 +33,8 @@ const CustomTemplateEditor = (function () {
     lineHeight: '',
     sidebarShape: '',
     barStyle: '',
-    sidebarPosition: '',
-    barAngle: ''
+    barAngle: '',
+    bendAngle: ''
   };
 
   let state = Object.assign({}, defaults);
@@ -81,8 +81,8 @@ const CustomTemplateEditor = (function () {
     set('ctPhotoSize', s.photoSize);
     set('ctSidebarShape', s.sidebarShape);
     set('ctBarStyle', s.barStyle);
-    set('ctSidebarPosition', s.sidebarPosition);
     set('ctBarAngle', s.barAngle);
+    set('ctBendAngle', s.bendAngle);
   }
 
   function close() {
@@ -245,16 +245,13 @@ const CustomTemplateEditor = (function () {
                 </select>
               </div>
               <div class="custom-field">
-                <label>Sidebar Position</label>
-                <select id="ctSidebarPosition" onchange="CustomTemplateEditor.update()">
-                  <option value="">Default (template)</option>
-                  <option value="left">Left</option>
-                  <option value="right">Right (flip layout)</option>
-                </select>
-              </div>
-              <div class="custom-field">
                 <label>Bar / Divider Angle: <span id="ctBarAngleVal">0°</span></label>
                 <input type="range" id="ctBarAngle" min="-45" max="45" step="1" value="0" oninput="CustomTemplateEditor.update()">
+              </div>
+              <div class="custom-field bend-mode-field" id="bendModeField" style="display:none;">
+                <label>Bend Mode: <span id="ctBendAngleVal">0°</span></label>
+                <input type="range" id="ctBendAngle" min="-90" max="90" step="1" value="0" oninput="CustomTemplateEditor.update()">
+                <small style="display:block;margin-top:4px;color:#888;font-size:0.75rem;">Curves bars &amp; dividers like Blender bend modifier</small>
               </div>
             `)}
 
@@ -331,8 +328,8 @@ const CustomTemplateEditor = (function () {
     state.photoSize = val2('ctPhotoSize');
     state.sidebarShape = val2('ctSidebarShape');
     state.barStyle = val2('ctBarStyle');
-    state.sidebarPosition = val2('ctSidebarPosition');
     state.barAngle = val2('ctBarAngle');
+    state.bendAngle = val2('ctBendAngle');
   }
 
   function val2(id) {
@@ -362,6 +359,15 @@ const CustomTemplateEditor = (function () {
     setText('ctPhotoSizeVal', ps ? ps + 'px' : '--');
     const ba = val2('ctBarAngle');
     setText('ctBarAngleVal', ba ? ba + '°' : '0°');
+    const bend = val2('ctBendAngle');
+    setText('ctBendAngleVal', bend ? bend + '°' : '0°');
+
+    // Show Bend Mode only on desktop (non-touch, fine pointer)
+    const bendField = document.getElementById('bendModeField');
+    if (bendField) {
+      const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      bendField.style.display = isDesktop ? '' : 'none';
+    }
 
     // Update hex displays for color fields
     ['primaryColor', 'sidebarBg', 'textColor', 'accentColor', 'dividerColor'].forEach(id => {
@@ -488,14 +494,14 @@ const CustomTemplateEditor = (function () {
       applyBarStyle(cid);
     }
 
-    // Layout flip (Blender feature)
-    if (state.sidebarPosition) {
-      applyLayoutFlip(cid);
-    }
-
     // Bar angle / rotation (Blender feature)
     if (state.barAngle && state.barAngle !== '0') {
       applyBarAngle(cid);
+    }
+
+    // Bend mode (Blender-inspired bend modifier — desktop only)
+    if (state.bendAngle && state.bendAngle !== '0') {
+      applyBendMode(cid);
     }
   }
 
@@ -903,57 +909,6 @@ const CustomTemplateEditor = (function () {
     });
   }
 
-  // ── Blender: Layout Flip (sidebar left ↔ right) ──
-  function applyLayoutFlip(cid) {
-    const container = document.getElementById(cid || 'customCvPreview');
-    if (!container) return;
-    const root = container.firstElementChild;
-    if (!root) return;
-
-    // Only target flex containers that are sidebar layouts:
-    // - Must NOT have flex-direction:column (that's an inner layout, not sidebar)
-    // - Must have at least 2 children with explicit width percentages
-    // Check root element itself + all descendants
-    const allFlex = [];
-    const rootStyle = root.getAttribute('style') || '';
-    if (/display:\s*flex/i.test(rootStyle)) allFlex.push(root);
-    root.querySelectorAll('[style*="display:flex"], [style*="display: flex"]').forEach(el => allFlex.push(el));
-
-    allFlex.forEach(fc => {
-      const fs = fc.getAttribute('style') || '';
-      // Skip column-direction flex containers (inner layouts, not sidebar)
-      if (/flex-direction:\s*column/i.test(fs)) return;
-
-      // Check if this is a sidebar layout: children with width percentages
-      const children = fc.children;
-      if (children.length < 2) return;
-      let hasWidthChildren = false;
-      for (let i = 0; i < children.length; i++) {
-        const cs = children[i].getAttribute('style') || '';
-        if (/width:\s*\d+%/i.test(cs)) {
-          hasWidthChildren = true;
-          break;
-        }
-      }
-      if (!hasWidthChildren) return;
-
-      let newStyle = fs;
-
-      if (state.sidebarPosition === 'right') {
-        // Remove existing flex-direction to avoid duplicates
-        newStyle = newStyle.replace(/flex-direction:\s*[^;]+;?/gi, '');
-        newStyle += ' flex-direction: row-reverse;';
-      } else if (state.sidebarPosition === 'left') {
-        // Remove row-reverse if present, restore default row
-        newStyle = newStyle.replace(/flex-direction:\s*row-reverse;?/gi, '');
-        // Only add explicit row if there was a row-reverse removed
-        // (default is already row, so no need to add it)
-      }
-
-      fc.setAttribute('style', newStyle);
-    });
-  }
-
   // ── Blender: Bar Angle / Rotation ──
   function applyBarAngle(cid) {
     const container = document.getElementById(cid || 'customCvPreview');
@@ -968,6 +923,43 @@ const CustomTemplateEditor = (function () {
       if (angle !== 0) {
         newStyle += ` transform: rotate(${angle}deg);`;
       }
+      el.setAttribute('style', newStyle);
+    });
+  }
+
+  // ── Blender-inspired: Bend Mode ──
+  // Curves straight bars/dividers into a bent shape using border-radius
+  function applyBendMode(cid) {
+    const container = document.getElementById(cid || 'customCvPreview');
+    if (!container) return;
+    const angle = parseFloat(state.bendAngle) || 0;
+    if (angle === 0) return;
+
+    // Convert angle to a border-radius curve amount
+    // Positive angle bends upward (concave), negative bends downward (convex)
+    const absAngle = Math.abs(angle);
+    const radius = Math.round(absAngle * 2); // 2px per degree → up to 180px
+
+    const dividers = container.querySelectorAll('hr, [style*="border-bottom"]');
+    dividers.forEach(el => {
+      const fs = el.getAttribute('style') || '';
+      let newStyle = fs;
+
+      // Remove previous bend-related properties
+      newStyle = newStyle.replace(/border-radius:[^;]*;?/gi, '');
+      newStyle = newStyle.replace(/border-bottom-left-radius:[^;]*;?/gi, '');
+      newStyle = newStyle.replace(/border-bottom-right-radius:[^;]*;?/gi, '');
+      newStyle = newStyle.replace(/border-top-left-radius:[^;]*;?/gi, '');
+      newStyle = newStyle.replace(/border-top-right-radius:[^;]*;?/gi, '');
+
+      if (angle > 0) {
+        // Bend upward: curve the bottom corners
+        newStyle += ` border-bottom-left-radius: ${radius}px; border-bottom-right-radius: ${radius}px;`;
+      } else {
+        // Bend downward: curve the top corners
+        newStyle += ` border-top-left-radius: ${radius}px; border-top-right-radius: ${radius}px;`;
+      }
+
       el.setAttribute('style', newStyle);
     });
   }
