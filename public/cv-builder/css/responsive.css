@@ -486,54 +486,69 @@
 }
 
 /* ==================== RESPONSIVE TEMPLATE CLASSES ==================== */
+/* Sidebars stay as sidebars on all screen sizes — no stacking to top bars */
 @media (max-width: 768px) {
   .cv-template-root {
     max-width: 100% !important;
   }
+  /* Keep sidebar layout side-by-side */
   .cv-template-row {
-    flex-direction: column !important;
-    gap: 0.5rem !important;
+    flex-direction: row !important;
+    gap: 0 !important;
   }
-  .cv-template-col {
-    min-width: 100% !important;
+  /* Sidebar stays on the side — narrower on tablet */
+  .cv-template-sidebar {
+    width: 33% !important;
+    flex-shrink: 0 !important;
+    padding: 20px 15px !important;
   }
-  /* General rule: any flex container inside .cv-page stacks vertically on tablet */
+  .cv-template-main {
+    width: 67% !important;
+    flex-shrink: 0 !important;
+    padding: 20px 18px !important;
+  }
+  /* Keep inline-styled flex layouts as row (sidebar side-by-side) */
   .cv-page > div[style*="display:flex"],
   .cv-page > div[style*="display: flex"],
   #cvPageRender > div[style*="display:flex"],
   #cvPageRender > div[style*="display: flex"] {
-    flex-direction: column !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
   }
-  /* Sidebar columns become full width */
-  .cv-page [style*="width:3"][style*="flex-shrink:0"],
-  .cv-page [style*="width: 3"][style*="flex-shrink:0"],
-  .cv-page [style*="width:2"][style*="flex-shrink:0"],
-  .cv-page [style*="width: 2"][style*="flex-shrink:0"],
-  #cvPageRender [style*="width:3"][style*="flex-shrink:0"],
-  #cvPageRender [style*="width: 3"][style*="flex-shrink:0"],
-  #cvPageRender [style*="width:2"][style*="flex-shrink:0"],
-  #cvPageRender [style*="width: 2"][style*="flex-shrink:0"] {
-    width: 100% !important;
-    flex-shrink: 1 !important;
+  /* Sidebar columns with inline width stay proportional */
+  .cv-page [style*="flex-shrink:0"],
+  #cvPageRender [style*="flex-shrink:0"] {
+    flex-shrink: 0 !important;
   }
 }
 
 @media (max-width: 600px) {
-  .cv-template-sidebar,
-  .cv-template-main {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 1rem !important;
+  .cv-template-sidebar {
+    width: 32% !important;
+    padding: 15px 10px !important;
+    font-size: 0.82rem !important;
   }
-  /* Force all sidebar-width columns to full width on mobile */
-  .cv-page [style*="width:"][style*="flex-shrink:0"],
-  #cvPageRender [style*="width:"][style*="flex-shrink:0"] {
-    width: 100% !important;
-    flex-shrink: 1 !important;
+  .cv-template-main {
+    width: 68% !important;
+    padding: 15px 12px !important;
+    font-size: 0.85rem !important;
   }
   /* Ensure images in templates don't overflow on small screens */
   .cv-page img,
   #cvPageRender img {
     max-width: 100% !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .cv-template-sidebar {
+    width: 30% !important;
+    padding: 10px 6px !important;
+    font-size: 0.75rem !important;
+  }
+  .cv-template-main {
+    width: 70% !important;
+    padding: 10px 8px !important;
+    font-size: 0.78rem !important;
   }
 }
