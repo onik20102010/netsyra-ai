@@ -41,7 +41,7 @@ window.CVTemplates.professional = {
               ${exp.employmentType?`<span style="font-size:10px;background:${accent}22;color:${accent};padding:1px 6px;border-radius:3px;margin-left:4px;">${escapeHTML(exp.employmentType)}</span>`:''}
               ${exp.location?`<br><span style="font-size:11px;color:#888;">${escapeHTML(exp.location)}</span>`:''}
               ${exp.description?`<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.description)}</p>`:''}
-              ${exp.achievements?`<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.achievements)}</p>`:''}
+              ${exp.achievements?`<ul style="margin:4px 0 0 18px;padding:0;font-size:12px;line-height:1.5;">${exp.achievements.split('\n').filter(Boolean).map(item=>`<li style="margin-bottom:2px;">${escapeHTML(item)}</li>`).join('')}</ul>`:''}
             </div>
           `)}
           ${proListSection('Education', data.education, dark, accent, edu => `

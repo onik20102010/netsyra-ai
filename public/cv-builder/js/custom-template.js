@@ -86,7 +86,8 @@ const CustomTemplateEditor = (function () {
   }
 
   function close() {
-    // Save state before closing so it can be re-applied in preview
+    // Read latest input values before saving state
+    readState();
     savedState = Object.assign({}, state);
     active = false;
     removeStyleTag();
@@ -529,35 +530,69 @@ const CustomTemplateEditor = (function () {
       }
     });
 
+    // Helper: check if an element is inside the sidebar
+    function isInsideSidebar(el) {
+      if (!sidebarEl) return false;
+      let node = el;
+      while (node) {
+        if (node === sidebarEl) return true;
+        node = node.parentElement;
+      }
+      return false;
+    }
+
+    // Helper: check if an element IS the sidebar
+    function isSidebar(el) {
+      return sidebarEl && el === sidebarEl;
+    }
+
     allElements.forEach(el => {
       const style = el.getAttribute('style') || '';
       if (!style) return;
 
       let newStyle = style;
+      const inSidebar = isInsideSidebar(el);
+      const isSb = isSidebar(el);
 
-      // Primary color: replace any non-white, non-black, non-gray accent colors
+      // ── 1. Sidebar background FIRST (before primary color so it takes priority) ──
+      if (state.sidebarBg) {
+        if (sidebarBgColor) {
+          const re = new RegExp(sidebarBgColor, 'gi');
+          newStyle = newStyle.replace(re, state.sidebarBg);
+        }
+        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background: ' + state.sidebarBg);
+      }
+
+      // ── 2. Primary color: replace accent colors, but SKIP sidebar element's background ──
       if (state.primaryColor) {
-        // Replace accent colors in background-color longhand
-        newStyle = newStyle.replace(/background-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
-          if (isAccentColor(hex)) return 'background-color: ' + state.primaryColor;
-          return match;
-        });
-        // Replace accent colors in background shorthand
-        newStyle = newStyle.replace(/background:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
-          if (isAccentColor(hex)) return 'background: ' + state.primaryColor;
-          return match;
-        });
-        // Replace accent colors in color (text)
-        newStyle = newStyle.replace(/(^|;\s*)color:\s*(#[0-9a-fA-F]{6})/gi, (match, pre, hex) => {
-          if (isAccentColor(hex)) return pre + 'color: ' + state.primaryColor;
-          return match;
-        });
-        // Replace in border-color
+        // Replace accent colors in background-color longhand — skip if this IS the sidebar element
+        if (!isSb) {
+          newStyle = newStyle.replace(/background-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+            if (isAccentColor(hex)) return 'background-color: ' + state.primaryColor;
+            return match;
+          });
+          // Replace accent colors in background shorthand — skip sidebar element
+          newStyle = newStyle.replace(/background:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
+            if (isAccentColor(hex)) return 'background: ' + state.primaryColor;
+            return match;
+          });
+        }
+        // Replace accent colors in color (text) — skip elements inside sidebar
+        if (!inSidebar) {
+          newStyle = newStyle.replace(/(^|;\s*)color:\s*(#[0-9a-fA-F]{6})/gi, (match, pre, hex) => {
+            if (isAccentColor(hex)) return pre + 'color: ' + state.primaryColor;
+            return match;
+          });
+        }
+        // Replace in border-color (applies to all elements)
         newStyle = newStyle.replace(/border-color:\s*(#[0-9a-fA-F]{6})/gi, (match, hex) => {
           if (isAccentColor(hex)) return 'border-color: ' + state.primaryColor;
           return match;
         });
-        // Replace in border shorthand
+        // Replace in border shorthand (applies to all elements)
         newStyle = newStyle.replace(/border(?:-top|-bottom|-left|-right)?:\s*[^;]*#([0-9a-fA-F]{6})[^;]*/gi, (match) => {
           if (/#[0-9a-fA-F]{6}/i.test(match) && isAccentColor(match.match(/#[0-9a-fA-F]{6}/i)[0])) {
             return match.replace(/#[0-9a-fA-F]{6}/gi, state.primaryColor);
@@ -566,9 +601,8 @@ const CustomTemplateEditor = (function () {
         });
       }
 
-      // Accent color: replace secondary accent colors (any saturated non-primary color)
+      // ── 3. Accent color: replace secondary accent hex values ──
       if (state.accentColor) {
-        // Replace common secondary accent hex values found across templates
         newStyle = newStyle.replace(/#FF9966/gi, state.accentColor);
         newStyle = newStyle.replace(/#7ECB88/gi, state.accentColor);
         newStyle = newStyle.replace(/#FF6B6B/gi, state.accentColor);
@@ -579,31 +613,16 @@ const CustomTemplateEditor = (function () {
         newStyle = newStyle.replace(/#B8A898/gi, state.accentColor);
       }
 
-      // Sidebar background: replace the detected sidebar background color anywhere
-      if (state.sidebarBg) {
-        if (sidebarBgColor) {
-          // Replace the exact sidebar bg color wherever it appears
-          const re = new RegExp(sidebarBgColor, 'gi');
-          newStyle = newStyle.replace(re, state.sidebarBg);
-        }
-        // Also replace common sidebar backgrounds (both longhand and shorthand)
-        newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background-color: ' + state.sidebarBg);
-        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background-color: ' + state.sidebarBg);
-        newStyle = newStyle.replace(/background:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background: ' + state.sidebarBg);
-        newStyle = newStyle.replace(/background:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background: ' + state.sidebarBg);
-      }
-
-      // Text color: replace inline text colors (CSS !important can't override inline styles)
+      // ── 4. Text color: replace inline text colors ──
       if (state.textColor) {
-        // Replace color: longhand (but not border-color, background-color, etc.)
         newStyle = newStyle.replace(/(^|;\s*)color:\s*(#[0-9a-fA-F]{6}|[a-zA-Z]+)/gi, (match, pre, val) => {
-          // Don't replace white text on dark sidebar (it should stay white)
+          // Don't replace white text (typically on dark sidebar)
           if (/^#fff/i.test(val) || /^white$/i.test(val)) return match;
           return pre + 'color: ' + state.textColor;
         });
       }
 
-      // Divider color: replace border colors on dividers
+      // ── 5. Divider color: replace border colors on dividers ──
       if (state.dividerColor) {
         newStyle = newStyle.replace(/border-bottom:\s*\d+px\s+\w+\s+(#[0-9a-fA-F]{6})/gi, (match, hex) => {
           return match.replace(hex, state.dividerColor);

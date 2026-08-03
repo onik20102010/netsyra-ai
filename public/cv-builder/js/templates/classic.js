@@ -39,7 +39,7 @@ window.CVTemplates.classic = {
             <span style="color:#777;font-size:11px;"> — ${formatDate(exp.startDate)} to ${exp.currentlyWorking ? 'Present' : formatDate(exp.endDate)}</span>
             ${exp.location ? `<br><span style="font-size:11px;color:#777;">${escapeHTML(exp.location)}</span>` : ''}
             ${exp.description ? `<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.description)}</p>` : ''}
-            ${exp.achievements ? `<p style="font-size:12px;margin:3px 0;white-space:pre-line;">${escapeHTML(exp.achievements)}</p>` : ''}
+            ${exp.achievements ? `<ul style="margin:4px 0 0 18px;padding:0;font-size:12px;line-height:1.5;">${exp.achievements.split('\n').filter(Boolean).map(item => `<li style="margin-bottom:2px;">${escapeHTML(item)}</li>`).join('')}</ul>` : ''}
           </div>
         `)}
         ${tplListSection('Education', data.education, edu => `

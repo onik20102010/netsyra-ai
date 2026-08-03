@@ -39,7 +39,7 @@ window.CVTemplates.minimal = {
             <div style="font-size:11px;color:#bbb;">${formatDate(exp.startDate)} — ${exp.currentlyWorking?'Present':formatDate(exp.endDate)}</div>
             ${exp.location ? `<div style="font-size:11px;color:#bbb;">${escapeHTML(exp.location)}</div>` : ''}
             ${exp.description?`<p style="font-size:12px;color:#666;margin:4px 0;white-space:pre-line;">${escapeHTML(exp.description)}</p>`:''}
-            ${exp.achievements?`<p style="font-size:12px;color:#666;margin:4px 0;white-space:pre-line;">${escapeHTML(exp.achievements)}</p>`:''}
+            ${exp.achievements?`<ul style="margin:4px 0 0 18px;padding:0;font-size:12px;color:#666;line-height:1.5;">${exp.achievements.split('\n').filter(Boolean).map(item=>`<li style="margin-bottom:2px;">${escapeHTML(item)}</li>`).join('')}</ul>`:''}
           </div>
         `)}
         ${minListSection('Education', data.education, edu => `
