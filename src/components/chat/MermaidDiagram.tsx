@@ -242,7 +242,14 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
 
   // ── DeepSeek‑style diagram container ───────────────
   return (
-    <div className="my-4 rounded-xl overflow-hidden border border-gray-700/50 bg-[#0f0f0f] shadow-2xl" style={{ contain: "layout style" }}>
+    <div
+      className="my-4 rounded-xl overflow-hidden border border-gray-700/50 bg-[#0f0f0f] shadow-2xl"
+      style={{
+        contain: "layout style paint",
+        isolation: "isolate",
+        transform: "translateZ(0)",
+      }}
+    >
       {/* Toolbar with zoom in/out */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900/60 border-b border-gray-700/30">
         <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">

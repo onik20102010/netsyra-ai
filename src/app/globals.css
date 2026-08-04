@@ -168,21 +168,23 @@
     .h-chat { height: 100dvh; }
   }
 
-  /* ── Mobile chat layout: lock to screen, prevent body scroll ── */
+  /* ── Mobile chat layout: use dvh for keyboard-aware height ── */
   @media (max-width: 768px) {
     .chat-layout {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      bottom: 0;
+      height: 100dvh;
       overflow: hidden;
     }
+    /* Input bar uses sticky positioning within the flex column.
+       Do NOT use position:fixed here — it detaches from the flex
+       flow and causes the hamburger/nav to be pushed off-screen
+       when the mobile keyboard opens. */
     .chat-input-bar {
-      position: fixed;
+      position: sticky;
       bottom: 0;
-      left: 0;
-      right: 0;
       z-index: 10;
     }
   }

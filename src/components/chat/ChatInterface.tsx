@@ -1088,6 +1088,20 @@ export default function ChatInterface({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
+                    onAnimationComplete={() => {
+                      // Clear the inline transform that framer-motion leaves behind.
+                      // Without this, the browser keeps a compositing layer on every
+                      // message bubble, which causes Mermaid SVGs to flicker during
+                      // scroll repaints. Removing it lets the bubble paint normally.
+                      const el = document.querySelector<HTMLDivElement>(
+                        `[data-msg-id="${msg.id}"]`
+                      );
+                      if (el) {
+                        el.style.transform = "none";
+                        el.style.willChange = "auto";
+                      }
+                    }}
+                    data-msg-id={msg.id}
                     className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}
                   >
                     {/* User images rendered OUTSIDE and ABOVE the bubble, starting from right, expanding left */}
