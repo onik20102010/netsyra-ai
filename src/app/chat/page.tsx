@@ -147,7 +147,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
+    <div className="chat-layout flex h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
       {!sidebarOpen && (
         <div
           className="hidden lg:block fixed left-0 top-0 bottom-0 z-20 w-3"

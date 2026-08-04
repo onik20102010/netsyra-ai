@@ -439,6 +439,13 @@ export default function AboutPage() {
               applications, Netsyra delivers <span className="text-white font-medium">the right answer,
               from the right model, at the right cost</span> — every single time.
             </p>
+            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
+              <span className="text-white font-medium">Our team</span> is based in the{" "}
+              <span className="text-[#6c5ce7] font-medium">United States</span> and is actively
+              building, improving, and expanding Netsyra AI every day. We are a dedicated group of
+              engineers and innovators committed to delivering the best AI experience — and we&apos;re
+              just getting started.
+            </p>
           </motion.div>
 
           {/* ── Stats ── */}

@@ -57,7 +57,7 @@ export default function ChatThreadPage() {
 
   if (isValid === null) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-dvh items-center justify-center bg-white">
         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -65,7 +65,7 @@ export default function ChatThreadPage() {
 
   if (!isValid) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-dvh items-center justify-center bg-white">
         <div className="text-center space-y-4">
           <p className="text-gray-500 text-lg">Conversation not found</p>
           <button
@@ -80,7 +80,7 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <div className="flex h-screen bg-white text-gray-900 relative overflow-hidden">
+    <div className="chat-layout flex h-dvh bg-white text-gray-900 relative overflow-hidden">
       {/* Top bar – show logo only when sidebar is closed */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 md:px-4 py-2 bg-white border-b border-gray-200 select-none">
         {!sidebarOpen && (

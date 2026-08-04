@@ -16,6 +16,7 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jet
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -76,14 +77,14 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
-    title: "Netsyra AI – Advanced Multi-Model AI Assistant",
+    title: "Netsyra AI",
     description:
       "Netsyra AI routes every prompt to the best AI model. Real-time web search, coding, reasoning, and up to 70% cost savings.",
-    url: "/",
+    url: "https://www.netsyraai.com",
     siteName: "Netsyra AI",
     images: [
       {
-        url: "/logo.png",
+        url: "https://www.netsyraai.com/logo.png",
         width: 512,
         height: 512,
         alt: "Netsyra AI logo",
@@ -97,7 +98,7 @@ export const metadata: Metadata = {
     title: "Netsyra AI",
     description:
       "Netsyra AI routes every prompt to the best AI model with real-time web search and autonomous intelligence.",
-    images: ["/logo.png"],
+    images: ["https://www.netsyraai.com/logo.png"],
   },
   verification: {
     // google: "YOUR_GOOGLE_SEARCH_CONSOLE_CODE",

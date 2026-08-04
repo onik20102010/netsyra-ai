@@ -51,6 +51,19 @@
     margin: 0;
   }
 
+  /* ── Mobile viewport: use dvh to handle keyboard ── */
+  @supports (height: 100dvh) {
+    html, body {
+      height: 100dvh;
+    }
+  }
+
+  /* ── Prevent overscroll bounce on mobile ── */
+  body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Hide scrollbar but keep functionality */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -148,6 +161,30 @@
   /* ── Mobile chat: dvh fallback for older browsers ── */
   @supports not (height: 100dvh) {
     .h-dvh { height: 100vh; }
+    .h-chat { height: 100vh; }
+  }
+  @supports (height: 100dvh) {
+    .h-dvh { height: 100dvh; }
+    .h-chat { height: 100dvh; }
+  }
+
+  /* ── Mobile chat layout: lock to screen, prevent body scroll ── */
+  @media (max-width: 768px) {
+    .chat-layout {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+    }
+    .chat-input-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+    }
   }
 }
 

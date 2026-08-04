@@ -6,6 +6,7 @@ import { useIdeStore, getDB } from "@/ide";
 import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
 import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought, type AgentPlan } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
+import { useAgentMessageLimit } from "@/hooks/useAgentMessageLimit";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -106,6 +107,9 @@ export function AIChatPanel() {
   const userId = user?.id || 'local';
   const db = getDB(userId);
 
+  // Agent message limit (3 messages per 24 hours)
+  const { status: limitStatus, loading: limitLoading, refetch: refetchLimit } = useAgentMessageLimit(user?.id || null);
+
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -114,6 +118,13 @@ export function AIChatPanel() {
   const handleSend = async (overrideInput?: string) => {
     const textToSend = (overrideInput ?? input).trim();
     if (!textToSend || isLoading) return;
+
+    // Check message limit (only for authenticated users)
+    if (user && limitStatus && limitStatus.remaining <= 0) {
+      const resetHours = Math.ceil(limitStatus.resetInSeconds / 3600);
+      alert(`Message limit exceeded. You can send 3 messages per 24 hours. Try again in ${resetHours} hour${resetHours > 1 ? 's' : ''}.`);
+      return;
+    }
 
     // If loading, queue the message (Windsurf style)
     if (isLoading) {
@@ -209,6 +220,11 @@ export function AIChatPanel() {
       setStreamingText('');
       setThoughts([]);
       setCurrentPlan(null);
+
+      // Refetch limit status after successful message
+      if (user) {
+        refetchLimit();
+      }
 
       // Build response text
       let responseText = result.message;
@@ -767,12 +783,34 @@ export function AIChatPanel() {
             </button>
 
             <div className="flex-1 flex flex-col gap-1.5 min-w-0 relative">
-              {/* Agent capability indicator — compact, muted */}
+              {/* Agent capability indicator + message limit — compact, muted */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#34e8bb] bg-[#34e8bb]/10 border border-[#34e8bb]/20">
                   <Zap size={10} />
                   Agent
                 </span>
+                {/* Message limit indicator */}
+                {user && limitStatus && (
+                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                    limitStatus.remaining <= 0
+                      ? 'text-[#f85149] bg-[#f85149]/10 border-[#f85149]/20'
+                      : limitStatus.remaining === 1
+                      ? 'text-[#d29922] bg-[#d29922]/10 border-[#d29922]/20'
+                      : 'text-[#6e7681] bg-[#161b22] border-[#30363d]'
+                  }`}>
+                    {limitStatus.remaining <= 0 ? (
+                      <>
+                        <AlertCircle size={10} />
+                        Limit reached
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare size={10} />
+                        {limitStatus.remaining}/3 left
+                      </>
+                    )}
+                  </span>
+                )}
                 {(errorCount > 0 || warningCount > 0) && (
                   <button
                     onClick={handleFixErrors}

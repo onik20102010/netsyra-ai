@@ -1052,10 +1052,10 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-chat bg-white overflow-hidden">
       <div className="relative flex-1 min-h-0">
-        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[420px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-0 space-y-4 sm:space-y-6">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto overscroll-contain">
+          <div className="max-w-[420px] sm:max-w-[720px] md:max-w-[960px] mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-[140px] sm:pb-0 space-y-4 sm:space-y-6">
             <AnimatePresence initial={false}>
               {messages.length === 0 && !isThinking && !isTyping && !showStream && !searching && (
                 <motion.div
@@ -1452,7 +1452,7 @@ export default function ChatInterface({
         </AnimatePresence>
       </div>
 
-      <div className="sticky bottom-0 bg-white" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="chat-input-bar sticky bottom-0 bg-white" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pt-2 pb-3 sm:pb-4">
           {selectedModel === "auto" && autoTiersUsed.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2 px-1">

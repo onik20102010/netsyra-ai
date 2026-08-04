@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createIdeServerClient } from '@/lib/supabase/server';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -57,6 +58,55 @@ async function callGroqWithRetry(
 
 export async function POST(request: NextRequest) {
   try {
+    // --- Auth check ---
+    const supabase = await createIdeServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // --- Message limit check (3 messages per 24 hours) ---
+    const { data: limitResult, error: limitError } = await supabase
+      .rpc('check_and_increment_agent_message', {
+        p_user_id: user.id,
+        p_limit: 3,
+        p_window_hours: 24,
+      });
+
+    if (limitError) {
+      console.error('Agent limit check error:', limitError);
+      return NextResponse.json(
+        { error: 'Failed to check message limit' },
+        { status: 500 }
+      );
+    }
+
+    if (limitResult === -1) {
+      // Get remaining info for error message
+      const { data: status } = await supabase
+        .rpc('get_agent_message_limit_status', {
+          p_user_id: user.id,
+          p_limit: 3,
+          p_window_hours: 24,
+        });
+
+      const resetSeconds = status?.[0]?.reset_in_seconds || 86400;
+      const resetHours = Math.ceil(resetSeconds / 3600);
+
+      return NextResponse.json(
+        { 
+          error: `Message limit exceeded. You can send 3 messages per 24 hours. Try again in ${resetHours} hour${resetHours > 1 ? 's' : ''}.`,
+          limitExceeded: true,
+          resetIn: resetSeconds,
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { messages, temperature, json_mode, stream } = body;
 
