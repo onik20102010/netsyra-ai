@@ -450,7 +450,7 @@ export default function ChatInterface({
                       return null;
                     }
                     return (
-                      <div className="my-4 p-4 rounded-2xl bg-[#F4F4F4] shadow-sm">
+                      <div className="my-4">
                         <MermaidDiagram chart={codeString} />
                       </div>
                     );

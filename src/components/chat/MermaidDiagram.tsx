@@ -71,6 +71,8 @@ function processSvg(svgString: string): string {
     svg.style.imageRendering = "auto";
     svg.setAttribute("shape-rendering", "geometricPrecision");
     svg.setAttribute("text-rendering", "optimizeLegibility");
+    // Explicit background prevents transparent-SVG flashing during scroll repaints
+    svg.style.backgroundColor = "#0f0f0f";
   }
   return div.innerHTML;
 }
@@ -240,7 +242,7 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
 
   // ── DeepSeek‑style diagram container ───────────────
   return (
-    <div className="my-4 rounded-xl overflow-hidden border border-gray-700/50 bg-[#0f0f0f] shadow-2xl backdrop-blur-sm">
+    <div className="my-4 rounded-xl overflow-hidden border border-gray-700/50 bg-[#0f0f0f] shadow-2xl" style={{ contain: "layout style" }}>
       {/* Toolbar with zoom in/out */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900/60 border-b border-gray-700/30">
         <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
@@ -294,7 +296,8 @@ export default function MermaidDiagram({ chart }: { chart: string }) {
           maxHeight: "600px",
           overflow: "hidden",
           touchAction: "pan-y pinch-zoom",
-          background: "radial-gradient(circle at center, #1a1a1a 0%, #0f0f0f 70%)",
+          background: "#0f0f0f",
+          contain: "layout style paint",
         }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
