@@ -18,7 +18,7 @@ export default function UsagePage() {
     if (!user) return;
     const fetchUsage = async () => {
       const { data: profile } = await supabase.from("profiles").select("daily_message_count, daily_reset_at, subscription_tier").eq("user_id", user.id).single();
-      const { count } = await chatSupabase.from("messages").select("*", { count: "exact" }).eq("conversation_id", "any"); // approximate
+      const { count } = await supabase.from("messages").select("*", { count: "exact", head: true }).eq("user_id", user.id);
       const { data: modelUsage } = await chatSupabase.from("user_model_usage").select("*").eq("user_id", user.id);
       setUsage({ profile, totalMessages: count || 0, modelUsage: modelUsage || [] });
     };

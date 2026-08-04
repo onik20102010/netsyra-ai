@@ -54,7 +54,7 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash-lite',
-    imageAnalysisDailyLimit: 10,
+    imageAnalysisDailyLimit: 3,
     imageAnalysisMonthlyTokenLimit: 0, // Free plan: no monthly token limit, just daily image count
   },
 
@@ -72,8 +72,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 100,
-    imageAnalysisMonthlyTokenLimit: 0, // Unlimited monthly tokens for image analysis
+    imageAnalysisDailyLimit: 15,
+    imageAnalysisMonthlyTokenLimit: 300, // 15/day, 300/month for Go Plus
     contextWindowSize: 16000,
   },
 
@@ -91,8 +91,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 100,
-    imageAnalysisMonthlyTokenLimit: 0,
+    imageAnalysisDailyLimit: 30,
+    imageAnalysisMonthlyTokenLimit: 600, // 30/day, 600/month for Pro
     contextWindowSize: 32000,
   },
 
@@ -115,8 +115,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: true,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
-    imageAnalysisDailyLimit: 100,
-    imageAnalysisMonthlyTokenLimit: 0,
+    imageAnalysisDailyLimit: 30,
+    imageAnalysisMonthlyTokenLimit: 600, // 30/day, 600/month for Plus Pro
     contextWindowSize: 32000,
   },
 };

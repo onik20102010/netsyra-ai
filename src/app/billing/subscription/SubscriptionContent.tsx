@@ -61,7 +61,12 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const [serverPrices, setServerPrices] = useState<Record<string, { amount: string; currency: string; formatted: string; interval: string }>>({});
   const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
+  // Fetch the user's most recent subscription (active OR cancelled).
+  // Plans are 1-month non-renewing: after the period ends, Paddle fires
+  // subscription.canceled, the webhook sets status to "cancelled", and the
+  // user reverts to Free. We show an "expired" banner with a repurchase CTA.
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
@@ -69,19 +74,31 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       .from("subscriptions")
       .select("status, plan, current_period_end")
       .eq("user_id", user.id)
-      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        setIsPro(!!data);
-        if (data?.plan) {
-          // Map plan names from database to display names
+        if (!data) {
+          setIsPro(false);
+          setCurrentPlan('Free');
+          setSubscriptionEndDate(null);
+          setIsExpired(false);
+          return;
+        }
+        const isActive = data.status === "active";
+        const isCancelled = data.status === "cancelled" || data.status === "canceled";
+        setIsPro(isActive);
+        setIsExpired(isCancelled);
+        if (data.plan) {
           const planMap: Record<string, 'Free' | 'Go Plus' | 'Pro' | '+ Pro'> = {
             'free': 'Free',
             'go_plus': 'Go Plus',
             'pro': 'Pro',
             'plus_pro': '+ Pro',
           };
-          setCurrentPlan(planMap[data.plan] || 'Free');
+          // If cancelled, the user is effectively back on Free for access purposes,
+          // but we still show which plan they had so the expired banner is meaningful.
+          setCurrentPlan(isActive ? (planMap[data.plan] || 'Free') : 'Free');
           if ((data as any).current_period_end) {
             setSubscriptionEndDate((data as any).current_period_end);
           }
@@ -111,7 +128,8 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
             .from("subscriptions")
             .select("status, plan, current_period_end")
             .eq("user_id", user.id)
-            .eq("status", "active")
+            .order("updated_at", { ascending: false })
+            .limit(1)
             .maybeSingle()
             .then(({ data: subData }) => {
               if (subData?.plan) {
@@ -121,8 +139,10 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                   'pro': 'Pro',
                   'plus_pro': '+ Pro',
                 };
-                setCurrentPlan(planMap[subData.plan] || 'Free');
-                setIsPro(true);
+                const active = subData.status === "active";
+                setIsPro(active);
+                setIsExpired(!active);
+                setCurrentPlan(active ? (planMap[subData.plan] || 'Free') : 'Free');
                 if ((subData as any).current_period_end) {
                   setSubscriptionEndDate((subData as any).current_period_end);
                 }
@@ -256,7 +276,8 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       .from("subscriptions")
       .select("status, plan, current_period_end")
       .eq("user_id", user.id)
-      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (data?.plan) {
@@ -266,13 +287,18 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
         'pro': 'Pro',
         'plus_pro': '+ Pro',
       };
-      setCurrentPlan(planMap[data.plan] || 'Free');
-      setIsPro(true);
+      const active = data.status === "active";
+      setIsPro(active);
+      setIsExpired(!active);
+      setCurrentPlan(active ? (planMap[data.plan] || 'Free') : 'Free');
       if ((data as any).current_period_end) {
         setSubscriptionEndDate((data as any).current_period_end);
       }
     } else {
       setSubscriptionEndDate(null);
+      setIsExpired(false);
+      setIsPro(false);
+      setCurrentPlan('Free');
     }
   };
 
@@ -302,6 +328,15 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
           {isSuccess && (
             <div className="mt-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
               ✅ Subscription successful! You now have access to all Pro features.
+            </div>
+          )}
+          {isExpired && subscriptionEndDate && (
+            <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm max-w-2xl mx-auto">
+              <p className="font-medium mb-1">Your subscription has ended</p>
+              <p className="text-amber-400/80">
+                Your plan expired on {new Date(subscriptionEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}.
+                You&apos;re now on the Free plan. Your chat history is preserved — you can repurchase any plan below to restore access.
+              </p>
             </div>
           )}
         </div>
@@ -433,7 +468,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                 )}
                 {isCurrentPlan && subscriptionEndDate && (
                   <p className="text-[11px] text-green-400/60 text-center mt-2">
-                    Renews on {formatDate(subscriptionEndDate)}
+                    {isExpired ? 'Expired on' : 'Expires on'} {formatDate(subscriptionEndDate)}
                   </p>
                 )}
               </div>

@@ -86,6 +86,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  // ── Handle subscription cancellation / expiry ──
+  // Paddle fires `subscription.canceled` when a subscription ends (either user-cancelled
+  // or non-renewing plan reached period end). We mark the Supabase subscription as
+  // `cancelled`, clear the profile tier, but KEEP all chat history (no cascade delete).
+  // The user can repurchase immediately — a new subscription row is created on re-buy.
+  if (event.event_type === "subscription.canceled") {
+    const subscriptionId = event.data.subscription_id || event.data.id;
+    const canceledStatus = event.data.status || "canceled";
+
+    console.log(`🗑️ Webhook: subscription.canceled for sub ${subscriptionId}, user ${userId}`);
+
+    const { error: cancelError } = await supabase
+      .from("subscriptions")
+      .update({
+        status: "cancelled",
+        scheduled_change_action: null,
+        scheduled_change_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("subscription_id", subscriptionId);
+
+    if (cancelError) {
+      console.error("Subscription cancellation update error:", cancelError.message);
+      return NextResponse.json({ received: true });
+    }
+
+    // Clear the profile tier so the user reverts to free access
+    await supabase.from("profiles").update({ subscription_tier: "free" }).eq("user_id", userId);
+
+    console.log(`✅ Webhook: Subscription ${subscriptionId} marked cancelled for user ${userId}. History preserved. User can repurchase.`);
+    return NextResponse.json({ received: true });
+  }
+
   // For transaction events, only process if a subscription_id is present
   // (transaction events may fire before subscription is created)
   if (transactionEvents.includes(event.event_type)) {
@@ -123,6 +156,13 @@ export async function POST(req: NextRequest) {
       }, { onConflict: "customer_id" });
     }
 
+    // Timer starts at purchase. Use Paddle's billing period end when available;
+    // otherwise default to now + 30 days (one-month plan).
+    const txPeriodEnd =
+      event.data?.current_billing_period?.ends_at ||
+      event.data?.billing_period?.ends_at ||
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
     const txSubData = {
       subscription_id: txSubscriptionId,
       customer_id: txCustomerId,
@@ -131,7 +171,7 @@ export async function POST(req: NextRequest) {
       price_id: txFirstItem?.price?.id || "unknown",
       product_id: txFirstItem?.product?.id || "unknown",
       plan: txPlan,
-      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      current_period_end: txPeriodEnd,
       updated_at: new Date().toISOString(),
     };
 
@@ -194,19 +234,35 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Insert / update subscription with fallback for product_id ──
+  // For `subscription.updated`, detect if the billing period has ended.
+  // Paddle sends `status: "canceled"` on the update event when a non-renewing
+  // plan reaches period end — we honour that. If the period end is in the past
+  // and status is canceled, mark as cancelled in Supabase too.
+  const paddleStatus = event.data.status || "active";
+  const periodEndRaw =
+    event.data.current_billing_period?.ends_at ||
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const periodEndDate = new Date(periodEndRaw);
+  const isPeriodEnded = periodEndDate.getTime() < Date.now();
+  const isCanceledStatus = paddleStatus === "canceled" || paddleStatus === "cancelled";
+
+  // Normalize status: Paddle uses "canceled" (American spelling); we store "cancelled"
+  const normalizedStatus = isCanceledStatus ? "cancelled" : paddleStatus;
+
+  // If the period has ended OR Paddle says canceled, the subscription is expired
+  const finalStatus = (isPeriodEnded || isCanceledStatus) ? "cancelled" : normalizedStatus;
+
   const subscriptionData = {
     subscription_id: event.data.subscription_id || event.data.id,
     customer_id: customerId,
     user_id: userId,
-    status: event.data.status || "active",
+    status: finalStatus,
     price_id: firstItem?.price?.id || "unknown",
     product_id: firstItem?.product?.id || "unknown",
     plan,
     scheduled_change_action: event.data.scheduled_change?.action,
     scheduled_change_at: event.data.scheduled_change?.effective_at,
-    current_period_end:
-      event.data.current_billing_period?.ends_at ||
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    current_period_end: periodEndRaw,
     updated_at: new Date().toISOString(),
   };
 
@@ -219,10 +275,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  console.log(`✅ Webhook: Successfully upserted subscription for user ${userId}, plan ${plan}`);
+  console.log(`✅ Webhook: Successfully upserted subscription for user ${userId}, plan ${plan}, status ${finalStatus}`);
 
   // Update profiles.subscription_tier for admin display
-  await supabase.from("profiles").update({ subscription_tier: plan }).eq("user_id", userId);
+  // If the subscription is cancelled, revert the user to free access.
+  // Chat history is preserved (no deletion) — the user can repurchase at any time.
+  const tierToSet = finalStatus === "cancelled" ? "free" : plan;
+  await supabase.from("profiles").update({ subscription_tier: tierToSet }).eq("user_id", userId);
+
+  if (finalStatus === "cancelled") {
+    console.log(`ℹ️ Webhook: Subscription expired for user ${userId}. Access reverted to free. History preserved. User can repurchase.`);
+  }
 
   return NextResponse.json({ received: true });
 }

@@ -151,7 +151,12 @@ export async function POST(request: NextRequest) {
 
         // ── Increment usage (estimate tokens: description length / 4) ──
         const tokensUsed = Math.ceil(description.length / 4);
-        await incrementImageAnalysisUsage(user.id, tokensUsed);
+        await incrementImageAnalysisUsage(
+          user.id,
+          tokensUsed,
+          routerConfig.imageAnalysisDailyLimit,
+          routerConfig.imageAnalysisMonthlyTokenLimit
+        );
 
         return NextResponse.json(
           { description },

@@ -133,7 +133,9 @@ export async function checkImageAnalysisLimit(
 
 export async function incrementImageAnalysisUsage(
   userId: string,
-  tokensUsed: number
+  tokensUsed: number,
+  dailyLimit: number = 3,
+  monthlyLimit: number = 0
 ): Promise<void> {
   const supabase = await createServerSupabaseClient();
 
@@ -165,12 +167,14 @@ export async function incrementImageAnalysisUsage(
       lastMonthlyReset = usageData.last_monthly_reset;
     }
 
-    // Update existing record
+    // Update existing record (also sync limits in case plan changed)
     const { error } = await supabase
       .from("image_analysis_usage")
       .update({
         daily_count: dailyCount,
         monthly_count: monthlyCount,
+        daily_limit: dailyLimit,
+        monthly_limit: monthlyLimit,
         last_daily_reset: lastDailyReset,
         last_monthly_reset: lastMonthlyReset,
         updated_at: now.toISOString(),
@@ -181,15 +185,15 @@ export async function incrementImageAnalysisUsage(
       console.error("Image analysis usage increment error:", error);
     }
   } else {
-    // Insert new record
+    // Insert new record with plan-aware limits
     const { error } = await supabase
       .from("image_analysis_usage")
       .insert({
         user_id: userId,
         daily_count: dailyCount,
         monthly_count: monthlyCount,
-        daily_limit: 30,
-        monthly_limit: 600,
+        daily_limit: dailyLimit,
+        monthly_limit: monthlyLimit,
         last_daily_reset: lastDailyReset,
         last_monthly_reset: lastMonthlyReset,
       });

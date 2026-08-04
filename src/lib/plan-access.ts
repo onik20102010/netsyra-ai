@@ -1,11 +1,16 @@
-// Plan to allowed model tier keys
-// Keys must match the database `subscriptions.plan` column values
-export const PLAN_TIER_MAP: Record<string, string[]> = {
-  free: ["fast", "plus", "pro", "code", "live", "aai"],
-  go_plus: ["go_plus"],
-  pro: ["ni"],
-  plus_pro: ["plus_pro"],
-};
+// Plan access — single source of truth for plan → tier mapping.
+//
+// IMPORTANT: The plan→tier mapping is derived from `routerConfigs` in
+// `@/lib/routers/router-config` so there is only ONE place to update when
+// plans change. Both the client UI (chat/page.tsx) and the server
+// (chat/route.ts via routerConfig.allowedModelKeys) read from the same data.
+
+import { routerConfigs } from "@/lib/routers/router-config";
+
+// Derive PLAN_TIER_MAP from routerConfigs — no manual duplication.
+export const PLAN_TIER_MAP: Record<string, string[]> = Object.fromEntries(
+  Object.entries(routerConfigs).map(([plan, cfg]) => [plan, cfg.allowedModelKeys])
+);
 
 export function getAllowedTiers(plan: string): string[] {
   return PLAN_TIER_MAP[plan] || PLAN_TIER_MAP.free;

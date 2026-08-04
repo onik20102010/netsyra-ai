@@ -6,6 +6,7 @@ import { MemoryManager } from "../memory/memory-manager";
 import { Planner } from "../planner/planner";
 import { ReasoningManager } from "../reasoning/manager";
 import { ReasoningContext } from "../reasoning/types";
+import { SYSTEM_PROMPT } from "@/lib/chat/model-registry";
 
 /**
  * Executive: Makes high-level decisions and orchestrates AAI
@@ -81,10 +82,10 @@ export class Executive {
     this.llmRouter = new LLMRouter(targetTier);
     const tierConfig = AAI_CONFIG.getTierConfig(targetTier);
 
-    // Build system prompt with memory context and reasoning
-    let finalSystemPrompt = tierConfig.systemPrompt;
+    // Build system prompt — all tiers use the same SYSTEM_PROMPT
+    let finalSystemPrompt = SYSTEM_PROMPT;
     if (memoryContext) {
-      finalSystemPrompt = `${memoryContext}\n\n${tierConfig.systemPrompt}`;
+      finalSystemPrompt = `${memoryContext}\n\n${finalSystemPrompt}`;
     }
     if (reasoningResult) {
       finalSystemPrompt = `${finalSystemPrompt}\n\nReasoning Steps:\n${reasoningResult.steps.map(s => s.output).join("\n")}\n\nConfidence: ${reasoningResult.confidence.overall.toFixed(2)}`;

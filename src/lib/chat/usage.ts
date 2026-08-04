@@ -1,7 +1,10 @@
-// src/lib/chat-usage.ts
+// src/lib/chat/usage.ts
 // Shared per-user per-tier message usage counter.
+// Uses the chat schema (createChatServerClient) — table is chat.chat_usage.
 // NOTE: This still has a read-update race. For production scale, use a Postgres
 // function or RPC call that increments atomically.
+
+import { createChatServerClient } from "@/lib/supabase/server";
 
 export const MODEL_LIMITS: Record<string, number> = {
   fast: 10,
@@ -10,16 +13,14 @@ export const MODEL_LIMITS: Record<string, number> = {
   code: 5,
   live: 5,
   aai: 5,
-  group: 10,
-  web_search: 10,
 };
 
 export async function checkAndUpdateUsage(
-  supabase: any,
   userId: string,
   modelTier: string,
   customLimit?: number
 ): Promise<{ allowed: boolean; remaining: number; resetAt: string }> {
+  const supabase = await createChatServerClient();
   const now = new Date();
   const limit = customLimit || MODEL_LIMITS[modelTier] || 10;
 
@@ -35,14 +36,14 @@ export async function checkAndUpdateUsage(
   }
 
   // Get current usage with retry logic for race conditions
-  let usage;
+  let usage: { messages_used: number; reset_at: string } | null = null;
   let retries = 0;
   const maxRetries = 3;
 
   while (retries < maxRetries) {
     try {
       const { data: usageData, error } = await supabase
-        .from("chat.chat_usage")
+        .from("chat_usage")
         .select("messages_used, reset_at")
         .eq("user_id", userId)
         .eq("model_tier", modelTier)
@@ -75,7 +76,7 @@ export async function checkAndUpdateUsage(
     
     // Use atomic upsert with conflict resolution
     const { error: upsertError } = await supabase
-      .from("chat.chat_usage")
+      .from("chat_usage")
       .upsert(
         { 
           user_id: userId, 
@@ -97,6 +98,9 @@ export async function checkAndUpdateUsage(
     console.log(`✅ Usage reset successful. Remaining: ${limit - 1}`);
     return { allowed: true, remaining: limit - 1, resetAt };
   }
+
+  // After needsReset check, usage is guaranteed non-null
+  if (!usage) throw new Error("Usage record missing after reset check");
 
   // Check if limit is reached
   if (usage.messages_used >= limit) {
@@ -124,7 +128,7 @@ export async function checkAndUpdateUsage(
   if (incrementError) {
     console.warn("RPC increment_chat_usage not available, using direct update");
     const { error: updateError } = await supabase
-      .from("chat.chat_usage")
+      .from("chat_usage")
       .update({ messages_used: usage.messages_used + 1 })
       .eq("user_id", userId)
       .eq("model_tier", modelTier)

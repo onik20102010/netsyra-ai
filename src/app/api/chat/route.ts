@@ -7,9 +7,9 @@ import { classifyIntent } from "@/lib/intent-classifier";
 import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
 import { performNLiveSearch } from "@/lib/chat/services/live-data";
-import { canUseModel, getAllowedTiers } from "@/lib/plan-access";
 import { getRouterConfig } from "@/lib/routers/router-factory";
 import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
+import { incrementModelUsage } from "@/lib/chat/model-limits";
 import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -17,18 +17,14 @@ import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
 import { buildMessageContext, generateConversationSummary } from "@/lib/chat/conversation-summary";
 import { getUserSummary, generateUserSummary, shouldUseUserSummary } from "@/lib/chat/user-summary";
 import { routeModel } from "@/lib/chat/router";
-// ── New unified systems ──
-// import { unifiedClassify, quickClassify } from "@/lib/chat/unified-classifier";
 import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
-// import { queueMessage, shouldProcessQueue, processQueue, getDynamicWindowSize, detectQueryComplexity, detectTopicSwitch } from "@/lib/chat/unified-memory";
 import { getSystemPrompt } from "@/lib/chat/model-registry";
-// import { countTokensSync, calculateTokenBudget, selectEfficientModel } from "@/lib/chat/token-counter";
 import { trimContextByTokens } from "@/lib/chat/token-counter";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
-import { analyzeTask, routeTask, estimateClaudeCredits, getRoutingExplanation, checkAndDeductTokens, checkAllLimitsExhausted, getTotalNiRemaining, estimateTokensNeeded, checkGPT5LimitsExhausted, getTotalGPT5Remaining } from "@/lib/chat/ni-router";
+import { analyzeTask, routeTask, getRoutingExplanation, checkAndDeductTokens, checkAllLimitsExhausted, getTotalNiRemaining, estimateTokensNeeded, checkGPT5LimitsExhausted, getTotalGPT5Remaining } from "@/lib/chat/ni-router";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -88,6 +84,50 @@ async function getUserTotalMessageCount(supabase: any, userId: string): Promise<
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   return error ? 0 : (count || 0);
+}
+
+// ── Track usage in chat schema tables (chat_usage + user_model_usage) ──
+// Fire-and-forget: never blocks the response. Uses a chat-schema client.
+async function trackChatUsage(
+  userId: string,
+  modelTier: string,
+  responseContent: string,
+  userContent: string
+): Promise<void> {
+  try {
+    const chatSupabase = await createChatServerClient();
+    const estimatedTokens = Math.ceil((userContent.length + responseContent.length) / 4);
+
+    // 1. Increment chat_usage (message count per tier, 24h window)
+    const now = new Date();
+    const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const { data: existing } = await chatSupabase
+      .from("chat_usage")
+      .select("messages_used, reset_at")
+      .eq("user_id", userId)
+      .eq("model_tier", modelTier)
+      .maybeSingle();
+
+    if (existing && new Date(existing.reset_at) > now) {
+      await chatSupabase
+        .from("chat_usage")
+        .update({ messages_used: (existing.messages_used || 0) + 1 })
+        .eq("user_id", userId)
+        .eq("model_tier", modelTier);
+    } else {
+      await chatSupabase
+        .from("chat_usage")
+        .upsert(
+          { user_id: userId, model_tier: modelTier, messages_used: 1, reset_at: resetAt },
+          { onConflict: "user_id,model_tier" }
+        );
+    }
+
+    // 2. Increment user_model_usage (tokens + messages per model, 24h window)
+    await incrementModelUsage(chatSupabase, userId, modelTier, estimatedTokens);
+  } catch (err) {
+    console.error(`Usage tracking failed for tier ${modelTier}:`, err);
+  }
 }
 
 // ── Updated scrapePage with Firecrawl → direct fetch → Groq scraper fallback ──
@@ -351,10 +391,18 @@ export async function POST(req: NextRequest) {
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
 
     // Check token limits for all plans
+    // NI tier uses per-LLM SQL limits (ni_token_usage / gpt5_token_usage) as the
+    // PRIMARY enforcement — handled below via checkAllLimitsExhausted + checkAndDeductTokens.
+    // So we skip the generic check_token_limits call for NI to avoid the contradictory
+    // double-limit (500k plan-level vs 10k/16k/34k per-model).
     let tokenCheck;
     try {
-      // For Plus Pro, check per-model token limits
-      if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && selectedModelKey) {
+      if (modelTier === 'ni') {
+        // NI: defer to per-LLM enforcement below. Mark as allowed here.
+        tokenCheck = { allowed: true, dailyTokensUsed: 0, monthlyTokensUsed: 0, dailyRemaining: 0, monthlyRemaining: 0, dailyResetAt: '', monthlyResetAt: '' };
+        console.log(`🟢 NI tier: deferring to per-LLM token enforcement`);
+      } else if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && selectedModelKey) {
+        // For Plus Pro, check per-model token limits
         const modelLimits = routerConfig.perModelTokenLimits[selectedModelKey];
         if (modelLimits) {
           tokenCheck = await checkTokenLimits(
@@ -376,7 +424,7 @@ export async function POST(req: NextRequest) {
           );
         }
       } else {
-        // For all other plans, use tier-level token limits
+        // For all other plans (free, go_plus), use tier-level token limits
         tokenCheck = await checkTokenLimits(
           supabase,
           user.id,
@@ -437,6 +485,7 @@ export async function POST(req: NextRequest) {
         console.log(`💾 Cache hit (${cached.source}): "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "user", userMessage);
         await saveMessage(supabase, user.id, convId, "assistant", cached.response);
+        trackChatUsage(user.id, modelTier, cached.response, userMessage).catch(console.error);
         const encoder = new TextEncoder();
         const words = cached.response.split(" ");
         const stream = new ReadableStream({
@@ -627,6 +676,7 @@ export async function POST(req: NextRequest) {
       if (cached) {
         console.log(`💾 Cache hit for query: "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "assistant", cached);
+        trackChatUsage(user.id, modelTier, cached, userMessage).catch(console.error);
         const encoder = new TextEncoder();
         const words = cached.split(" ");
         const stream = new ReadableStream({
@@ -719,6 +769,7 @@ export async function POST(req: NextRequest) {
 
       if (responseData) {
         await saveMessage(supabase, user.id, convId, "assistant", responseData);
+        trackChatUsage(user.id, modelTier, responseData, userMessage).catch(console.error);
         const encoder = new TextEncoder();
         const words = responseData.split(" ");
         const stream = new ReadableStream({
@@ -860,6 +911,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
           replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
         }
         await saveMessage(supabase, user.id, convId, "assistant", replyText);
+        trackChatUsage(user.id, modelTier, replyText, userMessage).catch(console.error);
 
         // Trigger user summary generation (async, non-blocking, Free plan only)
         if (!isTokenBasedTier) {
@@ -1137,6 +1189,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
+        trackChatUsage(user.id, modelTier, fullResponse, userMessage).catch(console.error);
 
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
@@ -1176,6 +1229,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
+        trackChatUsage(user.id, modelTier, errorMessage, userMessage).catch(console.error);
 
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
@@ -1357,6 +1411,17 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           }
 
           saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
+          trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
+
+          // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
+          if (modelTier !== 'ni') {
+            const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
+            const incrementModelKey = (userPlan === 'plus_pro' && selectedModelKey) ? selectedModelKey : null;
+            incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
+              console.error(`Token usage increment failed for tier ${modelTier}:`, err)
+            );
+          }
+
           if (!isTokenBasedTier) {
             getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
               generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
@@ -1499,6 +1564,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 }
 
                 saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
+                trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
                 if (!isTokenBasedTier) {
                   getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
                     generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
@@ -1620,6 +1686,16 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
               }
 
               saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
+              trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
+
+              // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
+              if (modelTier !== 'ni') {
+                const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
+                const incrementModelKey = (userPlan === 'plus_pro' && selectedModelKey) ? selectedModelKey : null;
+                incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
+                  console.error(`Token usage increment failed for tier ${modelTier}:`, err)
+                );
+              }
 
               // Trigger user summary generation (async, non-blocking, Free plan only)
               if (!isTokenBasedTier) {

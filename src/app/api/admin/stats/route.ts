@@ -62,27 +62,27 @@ export async function POST(req: Request) {
     // 4. All model usage from chat schema
     const { data: modelUsage } = await chatSupabase.from("user_model_usage").select("*");
 
-    // 5. All conversations
-    const { data: conversations } = await chatSupabase
+    // 5. All conversations (public schema — where chat route writes)
+    const { data: conversations } = await supabase
       .from("conversations")
       .select("id, user_id, created_at, title");
 
-    // 6. Today's messages
+    // 6. Today's messages (public schema)
     const today = new Date().toISOString().split("T")[0];
-    const { data: todayMessages } = await chatSupabase
+    const { data: todayMessages } = await supabase
       .from("messages")
       .select("id, user_id, conversation_id, role, created_at")
       .gte("created_at", today);
 
     // 7. Active now (messages in last 5 minutes)
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: recentMessages } = await chatSupabase
+    const { data: recentMessages } = await supabase
       .from("messages")
       .select("user_id")
       .gte("created_at", fiveMinAgo);
 
     // 8. Total messages count
-    const { count: totalMessages } = await chatSupabase
+    const { count: totalMessages } = await supabase
       .from("messages")
       .select("*", { count: "exact", head: true });
 

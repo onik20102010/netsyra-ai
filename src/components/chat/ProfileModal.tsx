@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Zap, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { createChatClient } from "@/lib/supabase/client";
+import { createClient, createChatClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 interface ProfileModalProps {
@@ -37,7 +37,8 @@ export default function ProfileModal({
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "usage">("profile");
   const [usage, setUsage] = useState<UsageStats | null>(null);
-  const supabase = createChatClient();
+  const supabase = createClient();
+  const chatSupabase = createChatClient();
 
   useEffect(() => {
     setMounted(true);
@@ -62,7 +63,7 @@ export default function ProfileModal({
         .select("*", { count: "exact", head: true })
         .gte("created_at", today);
 
-      const { data: modelUsage } = await supabase
+      const { data: modelUsage } = await chatSupabase
         .from("user_model_usage")
         .select("*")
         .eq("user_id", user.id);
