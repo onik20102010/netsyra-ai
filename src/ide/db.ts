@@ -23,12 +23,6 @@ export interface ImportRecord {
   importedPaths: string[];
 }
 
-export interface EmbeddingRecord {
-  id?: number;
-  filePath: string;
-  vector: number[];
-}
-
 export interface MetadataRecord {
   id: string;
   lastIndexed?: number;
@@ -48,7 +42,6 @@ export class NetsyraDB extends Dexie {
   files!: Table<FileRecord, string>;
   symbols!: Table<SymbolRecord, number>;
   imports!: Table<ImportRecord, number>;
-  embeddings!: Table<EmbeddingRecord, number>;
   metadata!: Table<MetadataRecord, string>;
   relations!: Table<RelationRecord, number>;
 
@@ -66,6 +59,14 @@ export class NetsyraDB extends Dexie {
       symbols: '++, name, kind, filePath',
       imports: '++, filePath',
       embeddings: '++, filePath',
+      metadata: 'id',
+      relations: '++, symbolName, callerFilePath, calleeFilePath, calleeSymbolName',
+    });
+    // v3: Remove embeddings table (no longer used)
+    this.version(3).stores({
+      files: 'id, path, hash, lastModified',
+      symbols: '++, name, kind, filePath',
+      imports: '++, filePath',
       metadata: 'id',
       relations: '++, symbolName, callerFilePath, calleeFilePath, calleeSymbolName',
     });

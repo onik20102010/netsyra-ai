@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useIdeStore, getDB } from "@/ide";
 import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
-import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought } from "@/agents/AgentOrchestrator";
+import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought, type AgentPlan } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,6 +18,8 @@ interface Message {
   attachedFiles?: Array<{ path: string; name: string; id: string }>;
   // Inline tool-call cards (Windsurf style)
   toolCalls?: AgentThought[];
+  // Plan shown above the response
+  plan?: AgentPlan;
 }
 
 // Available models for the selector pill (Windsurf style)
@@ -82,6 +84,8 @@ export function AIChatPanel() {
   // @-mention autocomplete
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number>(-1);
+  // Current plan from agent
+  const [currentPlan, setCurrentPlan] = useState<AgentPlan | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agentRef = useRef<AgentOrchestrator | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -186,16 +190,25 @@ export function AIChatPanel() {
         (thought) => {
           collectedThoughts.push(thought);
           setThoughts(prev => [...prev, thought]);
+        },
+        (plan) => {
+          setCurrentPlan(plan);
         }
       );
       agentRef.current = agent;
 
-      const result = await agent.run(effectivePrompt, chatHistory);
+      // Build attached files list from dragged files
+      const attachedFiles = draggedFiles.length > 0
+        ? draggedFiles.map(f => ({ path: f.path, name: f.name, id: f.id }))
+        : undefined;
+
+      const result = await agent.run(effectivePrompt, chatHistory, attachedFiles);
 
       setIsStreaming(false);
       setAgentStatus(null);
       setStreamingText('');
       setThoughts([]);
+      setCurrentPlan(null);
 
       // Build response text
       let responseText = result.message;
@@ -225,6 +238,7 @@ export function AIChatPanel() {
         content: responseText,
         timestamp: Date.now(),
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        plan: result.plan || undefined,
       }]);
 
       // Process queued messages (Windsurf style: send next in queue)
@@ -556,6 +570,8 @@ export function AIChatPanel() {
               {message.role === 'assistant' ? (
                 /* Assistant: no bubble, full-width markdown + inline tool cards, Windsurf style */
                 <div className="w-full text-[13px] leading-[1.6] text-[#e6edf3] break-words">
+                  {/* Plan card (if agent created a plan) */}
+                  {message.plan && <PlanCard plan={message.plan} />}
                   {/* Inline tool-call cards (Windsurf style) */}
                   {message.toolCalls && message.toolCalls.length > 0 && (
                     <ToolCallCards toolCalls={message.toolCalls} />
@@ -597,6 +613,8 @@ export function AIChatPanel() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="w-full">
+                {/* Live plan card */}
+                {currentPlan && <PlanCard plan={currentPlan} />}
                 {/* Live Agent Activity Panel */}
                 {thoughts.length > 0 && !isStreaming && (
                   <AgentActivityPanel thoughts={thoughts} status={agentStatus} />
@@ -863,42 +881,136 @@ export function AIChatPanel() {
   );
 }
 
-// --- Diff card with red/green line-by-line preview + per-file accept/reject (Windsurf style) ---
+// --- Plan Card: shows agent's step-by-step plan (Windsurf style) ---
 
-function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: () => void; onReject: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+function PlanCard({ plan }: { plan: AgentPlan }) {
+  const [expanded, setExpanded] = useState(true);
 
-  // Compute simple line-by-line diff
-  const oldLines = edit.oldContent.split('\n');
-  const newLines = edit.newContent.split('\n');
-  const maxLines = Math.max(oldLines.length, newLines.length);
+  const actionIcons: Record<string, React.ReactNode> = {
+    search: <Search size={12} className="text-[#34e8bb]" />,
+    read: <FileText size={12} className="text-[#8b949e]" />,
+    edit: <Code2 size={12} className="text-[#58a6ff]" />,
+    create: <Plus size={12} className="text-[#3fb950]" />,
+    verify: <AlertCircle size={12} className="text-[#d29922]" />,
+    answer: <MessageSquare size={12} className="text-[#a371f7]" />,
+  };
 
-  const diffLines: Array<{ type: 'add' | 'del' | 'ctx'; oldNum: number | null; newNum: number | null; content: string }> = [];
-  let oldNum = edit.startLine || 1;
-  let newNum = edit.startLine || 1;
+  return (
+    <div className="mb-3 rounded-lg border border-[#d29922]/20 bg-[#d29922]/5 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#d29922]/10 transition-colors"
+      >
+        <ChevronRight
+          size={14}
+          className={`text-[#d29922] transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
+        <Lightbulb size={13} className="text-[#d29922]" />
+        <span className="text-[11px] font-medium text-[#d29922] uppercase tracking-wider">
+          Plan
+        </span>
+        <span className="text-[12px] text-[#e6edf3] truncate flex-1 text-left">{plan.summary}</span>
+        <span className="text-[10px] text-[#6e7681] shrink-0">{plan.steps.length} steps</span>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-2 space-y-1">
+          {plan.steps.map((step) => (
+            <div key={step.id} className="flex items-start gap-2 py-0.5">
+              <span className="text-[10px] text-[#484f58] shrink-0 w-4 text-right">{step.id}</span>
+              <span className="shrink-0 mt-0.5">{actionIcons[step.action] || <Wrench size={12} className="text-[#6e7681]" />}</span>
+              <span className="text-[12px] text-[#e6edf3] leading-tight flex-1">
+                {step.goal}
+                {step.file && <span className="text-[#58a6ff] font-mono text-[11px] ml-1.5">→ {step.file}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  for (let i = 0; i < maxLines; i++) {
-    const oldLine = oldLines[i];
-    const newLine = newLines[i];
-    if (oldLine === newLine) {
-      diffLines.push({ type: 'ctx', oldNum: oldNum++, newNum: newNum++, content: oldLine ?? '' });
-    } else {
-      if (oldLine !== undefined) {
-        diffLines.push({ type: 'del', oldNum: oldNum++, newNum: null, content: oldLine });
-      }
-      if (newLine !== undefined) {
-        diffLines.push({ type: 'add', oldNum: null, newNum: newNum++, content: newLine });
+// --- LCS-based diff computation ---
+
+interface DiffLine {
+  type: 'add' | 'del' | 'ctx';
+  oldNum: number | null;
+  newNum: number | null;
+  content: string;
+}
+
+function computeLcsDiff(oldText: string, newText: string, startLine?: number): DiffLine[] {
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+  const start = startLine || 1;
+
+  // Build LCS table
+  const m = oldLines.length;
+  const n = newLines.length;
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
       }
     }
   }
 
-  // Show first 20 lines when collapsed, all when expanded
-  const visibleLines = expanded ? diffLines : diffLines.slice(0, 20);
-  const hasMore = diffLines.length > 20;
+  // Backtrack to produce diff
+  const result: DiffLine[] = [];
+  let i = m, j = n;
+  const tempResult: DiffLine[] = [];
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      tempResult.push({ type: 'ctx', oldNum: start + i - 1, newNum: start + j - 1, content: oldLines[i - 1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      tempResult.push({ type: 'add', oldNum: null, newNum: start + j - 1, content: newLines[j - 1] });
+      j--;
+    } else if (i > 0) {
+      tempResult.push({ type: 'del', oldNum: start + i - 1, newNum: null, content: oldLines[i - 1] });
+      i--;
+    }
+  }
+
+  tempResult.reverse();
+  return tempResult;
+}
+
+// --- Diff card with LCS-based diff + per-file accept/reject (Windsurf style) ---
+
+function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: () => void; onReject: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Use LCS-based diff for accurate line-level changes
+  const diffLines = useMemo(() => {
+    if (edit.action === 'create_file') {
+      // For new files, show all lines as additions
+      return edit.newContent.split('\n').map((line, i) => ({
+        type: 'add' as const,
+        oldNum: null,
+        newNum: i + 1,
+        content: line,
+      }));
+    }
+    return computeLcsDiff(edit.oldContent, edit.newContent, edit.startLine);
+  }, [edit]);
+
+  // Count changes
+  const addedCount = diffLines.filter(l => l.type === 'add').length;
+  const removedCount = diffLines.filter(l => l.type === 'del').length;
+
+  // Show first 30 lines when collapsed, all when expanded
+  const visibleLines = expanded ? diffLines : diffLines.slice(0, 30);
+  const hasMore = diffLines.length > 30;
 
   return (
     <div className="bg-[#0d1117] border border-[#21262d] rounded-md overflow-hidden">
-      {/* Header: file info + per-file accept/reject */}
+      {/* Header: file info + change stats + per-file accept/reject */}
       <div className="flex items-center justify-between px-2.5 py-2 border-b border-[#21262d]">
         <div className="flex items-center gap-2 min-w-0">
           {edit.action === 'create_file' ? (
@@ -918,6 +1030,9 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
           ) : edit.startLine ? (
             <span className="text-[10px] text-[#484f58] font-mono shrink-0">L{edit.startLine}</span>
           ) : null}
+          {/* Change stats */}
+          {addedCount > 0 && <span className="text-[10px] text-[#3fb950] font-mono shrink-0">+{addedCount}</span>}
+          {removedCount > 0 && <span className="text-[10px] text-[#f85149] font-mono shrink-0">-{removedCount}</span>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -942,8 +1057,8 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
         {edit.description}
       </div>
 
-      {/* Diff preview */}
-      <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+      {/* Diff preview — LCS-based with proper line tracking */}
+      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <tbody>
             {visibleLines.map((line, idx) => (
@@ -980,7 +1095,7 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
           onClick={() => setExpanded(!expanded)}
           className="w-full px-2.5 py-1.5 text-[11px] text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428] transition-colors border-t border-[#21262d] text-left"
         >
-          {expanded ? 'Show less' : `Show all ${diffLines.length} lines`}
+          {expanded ? 'Show less' : `Show all ${diffLines.length} lines (+${addedCount} -${removedCount})`}
         </button>
       )}
     </div>

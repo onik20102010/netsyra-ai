@@ -11,8 +11,27 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface PlanStep {
+  id: number;
+  action: string;
+  goal: string;
+  file?: string;
+  status: 'pending' | 'in_progress' | 'done';
+}
+
+export interface AgentPlan {
+  summary: string;
+  steps: PlanStep[];
+}
+
+export interface AttachedFile {
+  path: string;
+  name: string;
+  id: string;
+}
+
 export interface AgentAction {
-  tool: 'read_file' | 'edit_file' | 'create_file' | 'search_code' | 'list_files' | 'get_problems' | 'answer';
+  tool: 'read_file' | 'edit_file' | 'create_file' | 'search_code' | 'list_files' | 'get_problems' | 'answer' | 'batch_edit';
   args: Record<string, any>;
   content?: string;
 }
@@ -41,11 +60,13 @@ export interface AgentResult {
   canUndo: boolean;
   success: boolean;
   hitLimit?: boolean;
+  plan?: AgentPlan;
 }
 
 export type AgentStatusCallback = (status: string) => void;
 export type StreamTokenCallback = (token: string, fullText: string) => void;
 export type AgentThoughtCallback = (thought: AgentThought) => void;
+export type AgentPlanCallback = (plan: AgentPlan) => void;
 
 export interface AgentThought {
   type: 'plan' | 'action' | 'observation' | 'thinking' | 'result';
@@ -59,6 +80,23 @@ export interface AgentThought {
 const MAX_TOOL_ROUNDS = 20;
 const MAX_CONTEXT_CHARS = 60000; // Trim conversation history to stay under this
 const TOOL_RETRY_LIMIT = 2; // Retry failed tool calls up to this many times
+
+// --- Planning System Prompt ---
+
+const PLANNING_PROMPT = `You are a planning assistant for a coding agent. Given the user's request and workspace context, create a concise step-by-step plan.
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{"summary":"Brief one-line summary","steps":[{"action":"search|read|edit|create|verify|answer","goal":"What this step achieves","file":"optional file path"}]}
+
+Rules:
+- Keep plans to 3-8 steps for most tasks
+- Always start with search or read if the task involves code changes
+- Always end with verify (check problems) then answer
+- For simple questions (no code changes), use a single "answer" step
+- For bug fixes: search → read → edit → verify → answer
+- For new features: search → read → create → edit → verify → answer
+- For refactors: search → read → edit (multiple files) → verify → answer
+- Be specific about which files to target when possible`;
 
 // --- Agent System Prompt with Tool Definitions ---
 
@@ -85,6 +123,7 @@ Available tools:
 - search_code: Search for code across ALL workspace files by keyword. Args: { "query": "login" }. Returns file paths + line numbers + a snippet of each matching line. Use this to LOCATE relevant code before reading it.
 - list_files: List all open files and workspace structure. Args: {}
 - get_problems: Get all IDE diagnostics (errors, warnings) with file name, line number, and message. Use this to find bugs without reading entire files. Args: { "severity": "error" } (optional: "error", "warning", "info", or omit for all)
+- batch_edit: Apply multiple search-and-replace edits to the SAME file in one call. Args: { "path": "src/File.ts", "edits": [{"searchMatch": "old text 1", "replaceWith": "new text 1"}, {"searchMatch": "old text 2", "replaceWith": "new text 2"}] }. Use this when you need to make several changes to one file — it applies them sequentially so line shifts are handled correctly.
 - answer: Respond to the user with text. Args: { "content": "your response text" }
 
 ## Edit Tool — Search-and-Replace (PREFERRED)
@@ -190,6 +229,7 @@ export class AgentOrchestrator {
   private onStatus: AgentStatusCallback;
   private onToken: StreamTokenCallback | null;
   private onThought: AgentThoughtCallback | null;
+  private onPlan: AgentPlanCallback | null;
   private conversationHistory: ChatMessage[] = [];
   private filesChanged: Set<string> = new Set();
   private filesRead: Set<string> = new Set();
@@ -198,12 +238,20 @@ export class AgentOrchestrator {
   private snapshots: Map<string, FileSnapshot> = new Map();
   private editIdCounter = 0;
   private lastError: string | null = null;
+  private currentPlan: AgentPlan | null = null;
 
-  constructor(db: NetsyraDB, onStatus?: AgentStatusCallback, onToken?: StreamTokenCallback, onThought?: AgentThoughtCallback) {
+  constructor(
+    db: NetsyraDB,
+    onStatus?: AgentStatusCallback,
+    onToken?: StreamTokenCallback,
+    onThought?: AgentThoughtCallback,
+    onPlan?: AgentPlanCallback,
+  ) {
     this.db = db;
     this.onStatus = onStatus || (() => {});
     this.onToken = onToken || null;
     this.onThought = onThought || null;
+    this.onPlan = onPlan || null;
   }
 
   private emitThought(thought: Omit<AgentThought, 'timestamp'>) {
@@ -274,9 +322,63 @@ export class AgentOrchestrator {
     this.pendingEdits = [];
   }
 
+  // --- Planning: decompose task before acting ---
+  private async plan(userPrompt: string, workspaceCtx: string, graphCtx: string): Promise<AgentPlan | null> {
+    this.onStatus('Planning approach...');
+
+    const planMessages: ChatMessage[] = [
+      { role: 'system', content: PLANNING_PROMPT },
+      { role: 'user', content: `User request: ${userPrompt}\n\n## Workspace Context\n${workspaceCtx}\n${graphCtx}` },
+    ];
+
+    const response = await this.callLLMStream(planMessages);
+    if (!response) return null;
+
+    try {
+      // Strip any markdown fences if present
+      const jsonStr = response.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(jsonStr);
+
+      if (!parsed.steps || !Array.isArray(parsed.steps)) return null;
+
+      const plan: AgentPlan = {
+        summary: parsed.summary || 'Working on your request',
+        steps: parsed.steps.map((s: any, i: number) => ({
+          id: i + 1,
+          action: s.action || 'unknown',
+          goal: s.goal || '',
+          file: s.file,
+          status: 'pending' as const,
+        })),
+      };
+
+      this.currentPlan = plan;
+
+      // Notify UI
+      if (this.onPlan) {
+        this.onPlan(plan);
+      }
+
+      // Emit plan thoughts
+      this.emitThought({ type: 'plan', title: plan.summary, detail: `${plan.steps.length} steps planned` });
+      for (const step of plan.steps) {
+        this.emitThought({
+          type: 'plan',
+          title: `Step ${step.id}: ${step.action}`,
+          detail: step.goal + (step.file ? ` → ${step.file}` : ''),
+        });
+      }
+
+      return plan;
+    } catch {
+      return null;
+    }
+  }
+
   async run(
     userPrompt: string,
-    chatHistory: ChatMessage[] = []
+    chatHistory: ChatMessage[] = [],
+    attachedFiles?: AttachedFile[],
   ): Promise<AgentResult> {
     // Snapshot files before running (for undo)
     this.snapshotFiles();
@@ -286,9 +388,13 @@ export class AgentOrchestrator {
     this.emitThought({ type: 'thinking', title: 'Analyzing your request', detail: userPrompt });
     const workspaceCtx = this.buildWorkspaceContext();
     const graphCtx = await this.buildGraphContext(userPrompt);
+    const attachedCtx = this.buildAttachedFilesContext(attachedFiles);
 
-    // Build messages: system prompt + context + chat history + user prompt
-    const systemContent = `${AGENT_SYSTEM_PROMPT}\n\n## Current Workspace Context\n${workspaceCtx}\n${graphCtx}`;
+    // --- Planning phase ---
+    const plan = await this.plan(userPrompt, workspaceCtx + attachedCtx, graphCtx);
+
+    // Build messages: system prompt + context + attached files + chat history + user prompt
+    const systemContent = `${AGENT_SYSTEM_PROMPT}\n\n## Current Workspace Context\n${workspaceCtx}\n${attachedCtx}\n${graphCtx}${plan ? this.formatPlanForContext(plan) : ''}`;
 
     this.conversationHistory = [
       { role: 'system', content: systemContent },
@@ -630,6 +736,8 @@ export class AgentOrchestrator {
         );
       case 'create_file':
         return this.toolCreateFile(action.args.path, action.args.content);
+      case 'batch_edit':
+        return this.toolBatchEdit(action.args.path, action.args.edits);
       case 'search_code':
         return this.toolSearchCode(action.args.query);
       case 'list_files':
@@ -851,6 +959,83 @@ export class AgentOrchestrator {
     return `File creation queued for ${path}: ${content.split('\n').length} lines. The user will review and apply this change.`;
   }
 
+  // --- Tool: Batch Edit (multiple search-and-replace on same file, applied sequentially) ---
+  private toolBatchEdit(path: string, edits: Array<{ searchMatch: string; replaceWith: string }>): string {
+    if (!edits || !Array.isArray(edits) || edits.length === 0) {
+      return 'Error: batch_edit requires an "edits" array of {searchMatch, replaceWith} objects.';
+    }
+
+    const store = useIdeStore.getState();
+    let file = store.openFiles.find(f => f.path === path);
+    if (!file) {
+      file = store.openFiles.find(f => f.path.endsWith(path) || path.endsWith(f.path));
+    }
+    if (!file) {
+      return `Error: File not open: ${path}. Ask the user to open it first, or use create_file for new files.`;
+    }
+
+    let content = file.content;
+    const results: string[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < edits.length; i++) {
+      const { searchMatch, replaceWith } = edits[i];
+      if (!searchMatch || replaceWith === undefined) {
+        results.push(`  Edit ${i + 1}: Skipped (missing searchMatch or replaceWith)`);
+        continue;
+      }
+
+      let matchIndex = content.indexOf(searchMatch);
+
+      // Try normalized whitespace
+      if (matchIndex === -1) {
+        const normalized = content.replace(/[ \t]+$/gm, '');
+        const normalizedSearch = searchMatch.replace(/[ \t]+$/gm, '');
+        matchIndex = normalized.indexOf(normalizedSearch);
+        if (matchIndex !== -1) {
+          const before = normalized.substring(0, matchIndex);
+          const after = normalized.substring(matchIndex + normalizedSearch.length);
+          content = before + replaceWith + after;
+          successCount++;
+          results.push(`  Edit ${i + 1}: Applied (normalized whitespace)`);
+          continue;
+        }
+      }
+
+      if (matchIndex !== -1) {
+        const before = content.substring(0, matchIndex);
+        const after = content.substring(matchIndex + searchMatch.length);
+        content = before + replaceWith + after;
+        successCount++;
+        results.push(`  Edit ${i + 1}: Applied`);
+      } else {
+        const firstLine = searchMatch.split('\n')[0].trim();
+        if (firstLine.length > 10 && content.includes(firstLine)) {
+          results.push(`  Edit ${i + 1}: FAILED — first line found but full block didn't match. Check whitespace/indentation.`);
+        } else {
+          results.push(`  Edit ${i + 1}: FAILED — searchMatch not found in file.`);
+        }
+      }
+    }
+
+    if (successCount === 0) {
+      return `batch_edit on ${file.path}: All ${edits.length} edits failed.\n${results.join('\n')}`;
+    }
+
+    const editId = `batch-${++this.editIdCounter}`;
+    this.pendingEdits.push({
+      id: editId,
+      filePath: file.path,
+      fileId: file.id,
+      action: 'edit_file',
+      oldContent: file.content,
+      newContent: content,
+      description: `Batch edit: ${successCount}/${edits.length} search-and-replace operations applied`,
+    });
+
+    return `Batch edit queued for ${file.path}: ${successCount}/${edits.length} edits applied.\n${results.join('\n')}\nThe user will review and apply this change.`;
+  }
+
   // --- Tool: Search Code ---
   private async toolSearchCode(query: string): Promise<string> {
     if (!query || typeof query !== 'string') {
@@ -1067,6 +1252,46 @@ export class AgentOrchestrator {
     return `\nSymbol-graph-resolved files (relevant to: ${keywords.join(', ')}):\n${contextText}`;
   }
 
+  // --- Build Attached Files Context (@-mentions and dragged files) ---
+  private buildAttachedFilesContext(attachedFiles?: AttachedFile[]): string {
+    if (!attachedFiles || attachedFiles.length === 0) return '';
+
+    const store = useIdeStore.getState();
+    const parts: string[] = [];
+
+    for (const attached of attachedFiles) {
+      let content: string | null = null;
+
+      const openFile = store.openFiles.find(f => f.path === attached.path || f.path.endsWith(attached.path));
+      if (openFile) {
+        content = openFile.content;
+      } else {
+        const treeFile = findFileByPath(attached.path);
+        if (treeFile?.content) {
+          content = treeFile.content;
+        }
+      }
+
+      if (content) {
+        const lines = content.split('\n');
+        const numbered = lines.map((line, i) => `${i + 1}: ${line}`).join('\n');
+        parts.push(`Attached file: ${attached.path} (${lines.length} lines)\n${numbered}`);
+      } else {
+        parts.push(`Attached file: ${attached.path} (content not available — use read_file to access it)`);
+      }
+    }
+
+    return `\n## User-Attached Files (@-mentioned or dragged)\n${parts.join('\n\n')}`;
+  }
+
+  // --- Format Plan for System Prompt Context ---
+  private formatPlanForContext(plan: AgentPlan): string {
+    const stepsText = plan.steps.map(s =>
+      `  ${s.id}. [${s.action}] ${s.goal}${s.file ? ` → ${s.file}` : ''}`
+    ).join('\n');
+    return `\n\n## Execution Plan\nSummary: ${plan.summary}\nSteps:\n${stepsText}\n\nFollow this plan. Execute steps in order. Use the appropriate tool for each step.`;
+  }
+
   // --- Status Messages ---
   private getStatusMessage(round: number): string {
     const phases = [
@@ -1091,6 +1316,7 @@ export class AgentOrchestrator {
         ? `Editing ${action.args.path} (search-replace)...`
         : `Editing ${action.args.path} lines ${action.args.startLine}-${action.args.endLine}...`;
       case 'create_file': return `Creating ${action.args.path}...`;
+      case 'batch_edit': return `Batch editing ${action.args.path} (${action.args.edits?.length || 0} edits)...`;
       case 'search_code': return `Searching for "${action.args.query}"...`;
       case 'list_files': return 'Listing files...';
       case 'get_problems': return action.args.severity ? `Checking for ${action.args.severity}s...` : 'Checking problems...';
@@ -1110,6 +1336,7 @@ export class AgentOrchestrator {
       canUndo: this.snapshots.size > 0,
       success,
       hitLimit,
+      plan: this.currentPlan || undefined,
     };
   }
 }

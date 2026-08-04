@@ -62,9 +62,44 @@ export function useProjectIndexer() {
 
       if (indexableFiles.length === 0) return;
 
-      // Check if already indexed
-      const metadata = await db.metadata.get("project");
-      if (metadata && metadata.lastIndexed) {
+      // --- Incremental indexing: only reindex files whose hash changed ---
+      const filesToIndex: typeof indexableFiles = [];
+      const stalePaths = new Set<string>();
+
+      for (const file of indexableFiles) {
+        if (!file.content) continue;
+        const hash = await simpleHash(file.content);
+        const existing = await db.files.get(file.path);
+
+        if (!existing || existing.hash !== hash) {
+          filesToIndex.push(file);
+        }
+      }
+
+      // Detect deleted files (in DB but not in workspace)
+      const allDbFiles = await db.files.toArray();
+      const workspacePaths = new Set(indexableFiles.map(f => f.path));
+      for (const dbFile of allDbFiles) {
+        if (!workspacePaths.has(dbFile.path)) {
+          stalePaths.add(dbFile.path);
+        }
+      }
+
+      // Clean up stale entries
+      for (const stalePath of stalePaths) {
+        await db.files.delete(stalePath);
+        await db.symbols.where('filePath').equals(stalePath).delete();
+        await db.imports.where('filePath').equals(stalePath).delete();
+        await db.relations.where('callerFilePath').equals(stalePath).delete();
+      }
+
+      if (filesToIndex.length === 0) {
+        // All files up to date — just update metadata
+        await db.metadata.put({
+          id: 'project',
+          lastIndexed: Date.now(),
+          fileCount: indexableFiles.length,
+        });
         return;
       }
 
@@ -76,8 +111,8 @@ export function useProjectIndexer() {
           if (indexedRef.current.has(filePath)) return;
           indexedRef.current.add(filePath);
 
-          // Save file metadata
-          const file = flatFiles.find((f) => f.path === filePath);
+          // Save file metadata with hash
+          const file = filesToIndex.find((f) => f.path === filePath);
           if (file) {
             const hash = await simpleHash(file.content || "");
             await db.files.put({
@@ -122,8 +157,8 @@ export function useProjectIndexer() {
         };
       }
 
-      // Send all indexable files to the worker
-      for (const file of indexableFiles) {
+      // Send only changed files to the worker
+      for (const file of filesToIndex) {
         if (file.content) {
           astWorkerRef.current.postMessage({
             filePath: file.path,
