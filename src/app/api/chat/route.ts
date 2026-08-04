@@ -21,6 +21,9 @@ import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
 import { getSystemPrompt } from "@/lib/chat/model-registry";
 import { trimContextByTokens } from "@/lib/chat/token-counter";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
+import { shouldWebSearch } from "@/lib/chat/web-search-decision";
+import { checkDiveDeepLimit, incrementDiveDeepUsage } from "@/lib/chat/dive-deep-limiter";
+import { checkWebSearchLimit } from "@/lib/chat/web-search-limiter";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
@@ -324,7 +327,6 @@ export async function POST(req: NextRequest) {
 
     // N Live activation conditions
     const isGreeting = /^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you|bye|goodbye)[\s!.]*$/i.test(userMessage.trim());
-    const shouldUseNLive = diveDeep && !isGreeting;
 
     // ── Check if user has active subscription ──
     const { data: sub } = await supabase
@@ -337,6 +339,53 @@ export async function POST(req: NextRequest) {
     const isPaidUser = !!sub;
     const userPlan = sub?.plan || "free";
     const routerConfig = getRouterConfig(userPlan);
+
+    // ── Time/Weather/Date Query Detection (needed early for search decision) ──
+    const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
+    const isTimeQuery = /^(what( i|')?s the )?time|clock|what is it time/i.test(userMessage.trim());
+    const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+    const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
+
+    // ── Dive Deep limit check (3/24h on Free, higher on paid) ──
+    // If the user has hit their dive deep limit, force-disable it.
+    let diveDeepActive = diveDeep && !isGreeting;
+    let diveDeepRemaining = -1;
+    if (diveDeepActive) {
+      const diveDeepLimitResult = await checkDiveDeepLimit(
+        user.id,
+        routerConfig.diveDeepDailyLimit,
+        routerConfig.diveDeepLimitHours
+      );
+      diveDeepRemaining = diveDeepLimitResult.remaining;
+      if (!diveDeepLimitResult.allowed) {
+        console.log(`🌐 Dive Deep limit reached (${diveDeepLimitResult.used}/${diveDeepLimitResult.limit}) — auto-disabling for this message`);
+        diveDeepActive = false;
+      }
+    }
+    const shouldUseNLive = diveDeepActive;
+
+    // ── Auto web search decision (intent-based) ──
+    // If the user didn't toggle the web search button, check if the message
+    // intent requires real-time/external data. If so, auto-trigger a search
+    // (subject to the same web search limit as the button toggle).
+    let autoSearchDecision: { shouldSearch: boolean; reason: string } | null = null;
+    if (!webSearchEnabled && !shouldUseNLive && !isWidgetQuery) {
+      const decision = shouldWebSearch(userMessage);
+      if (decision.shouldSearch) {
+        // Check web search limit before auto-triggering
+        const wsLimit = await checkWebSearchLimit(
+          user.id,
+          routerConfig.webSearchDailyLimit,
+          routerConfig.webSearchLimitHours
+        );
+        if (wsLimit.allowed) {
+          autoSearchDecision = decision;
+          console.log(`🔍 Auto web search triggered: ${decision.reason}`);
+        } else {
+          console.log(`🔍 Auto web search skipped — limit reached (${wsLimit.used}/${wsLimit.limit})`);
+        }
+      }
+    }
 
     // ── For Plus Pro, select model based on complexity and token availability ──
     let selectedModelKey = modelTier;
@@ -368,12 +417,6 @@ export async function POST(req: NextRequest) {
 
     // ── Intent classification ─────────────────
     const intent = await classifyIntent(userMessage);
-
-    // ── Time/Weather/Date Query Detection (independent of search decision) ──
-    const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
-    const isTimeQuery = /^(what( i|')?s the )?time|clock|what is it time/i.test(userMessage.trim());
-    const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
-    const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
     // ── ASCII Diagram Detection (keyword + explicit user instruction) ──
     const asciiDiagramKeywords = /\b(architecture|topology|infrastructure|stack|layers|pipeline|data flow|request flow|dependency|hierarchy|tree structure|outline|breakdown|components|how .+ connects to|visualize|draw|diagram|ascii diagram|text diagram|tree diagram|show me a diagram|make a diagram)\b/i;
@@ -1169,6 +1212,9 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       const cleanQ = searchQuery.length > 3 ? searchQuery : userMessage;
       const searchResult = await performNLiveSearch(cleanQ);
 
+      // Count this as a dive deep usage (independent from web search limit)
+      await incrementDiveDeepUsage(user.id);
+
       if (searchResult.answer && !searchResult.useLLM) {
         // Tavily succeeded - stream directly in italic (sources passed via header)
         const italicAnswer = `*${searchResult.answer}*`;
@@ -1285,11 +1331,17 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
     }
 
-    // ── User-triggered Web Search (button toggle) ──
+    // ── Web Search (button toggle OR auto-trigger from intent) ──
     // Injected AFTER system prompt trimming so search results are not cut off.
     // N Live has its own search pipeline, so skip when shouldUseNLive is true.
-    if (webSearchEnabled && !shouldUseNLive && !isWidgetQuery) {
-      console.log(`🔍 Web search enabled by user — performing search for: "${userMessage.slice(0, 80)}"`);
+    // Two trigger paths:
+    //   1. User toggled the web search button (webSearchEnabled)
+    //   2. Auto-triggered because the message intent requires real-time data
+    //      (autoSearchDecision — checked against limit above)
+    const shouldPerformWebSearch = (webSearchEnabled || autoSearchDecision !== null) && !shouldUseNLive && !isWidgetQuery;
+    if (shouldPerformWebSearch) {
+      const trigger = webSearchEnabled ? "user button" : `auto (${autoSearchDecision!.reason})`;
+      console.log(`🔍 Web search triggered by ${trigger} — performing search for: "${userMessage.slice(0, 80)}"`);
       try {
         const { result: searchResult, sources: webSources } = await executeWebSearch({
           query: userMessage,

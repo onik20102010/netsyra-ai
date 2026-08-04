@@ -1,6 +1,11 @@
+// Dive Deep (N Live) limiter — tracks usage in web_search_usage table
+// (same table as web search, since dive deep IS a form of web search).
+// We use a separate column `search_type` to distinguish dive deep from
+// regular web search so the limits are tracked independently.
+
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export interface WebSearchLimitResult {
+export interface DiveDeepLimitResult {
   allowed: boolean;
   remaining: number;
   used: number;
@@ -8,11 +13,11 @@ export interface WebSearchLimitResult {
   windowHours: number;
 }
 
-export async function checkWebSearchLimit(
+export async function checkDiveDeepLimit(
   userId: string,
   limit: number,
   windowHours: number
-): Promise<WebSearchLimitResult> {
+): Promise<DiveDeepLimitResult> {
   const supabase = await createServerSupabaseClient();
 
   const windowStart = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
@@ -21,11 +26,11 @@ export async function checkWebSearchLimit(
     .from("web_search_usage")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("search_type", "web_search")
+    .eq("search_type", "dive_deep")
     .gte("created_at", windowStart);
 
   if (error) {
-    console.error("Web search limit check error:", error);
+    console.error("Dive deep limit check error:", error);
     return { allowed: true, remaining: limit, used: 0, limit, windowHours };
   }
 
@@ -40,14 +45,14 @@ export async function checkWebSearchLimit(
   };
 }
 
-export async function incrementWebSearchUsage(userId: string): Promise<void> {
+export async function incrementDiveDeepUsage(userId: string): Promise<void> {
   const supabase = await createServerSupabaseClient();
 
   const { error } = await supabase
     .from("web_search_usage")
-    .insert({ user_id: userId, search_type: "web_search" });
+    .insert({ user_id: userId, search_type: "dive_deep" });
 
   if (error) {
-    console.error("Web search usage increment error:", error);
+    console.error("Dive deep usage increment error:", error);
   }
 }

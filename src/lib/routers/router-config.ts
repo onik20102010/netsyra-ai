@@ -26,6 +26,10 @@ export interface RouterConfig {
   webSearchLimitHours: number; // Time window in hours for web search limit
   webSearchProviders: ('serper' | 'tavily' | 'wikipedia')[];
 
+  // Dive Deep (N Live) configuration — same limit structure as web search
+  diveDeepDailyLimit: number;
+  diveDeepLimitHours: number;
+
   // Whether image generation is enabled
   imageGenerationEnabled: boolean;
 
@@ -51,6 +55,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchDailyLimit: 3,
     webSearchLimitHours: 24,
     webSearchProviders: ['tavily', 'wikipedia'],
+    diveDeepDailyLimit: 3,
+    diveDeepLimitHours: 24,
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash-lite',
@@ -69,6 +75,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchDailyLimit: 100,
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
+    diveDeepDailyLimit: 100,
+    diveDeepLimitHours: 6,
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
@@ -88,6 +96,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchDailyLimit: 200,
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
+    diveDeepDailyLimit: 200,
+    diveDeepLimitHours: 6,
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',
@@ -112,6 +122,8 @@ export const routerConfigs: Record<string, RouterConfig> = {
     webSearchDailyLimit: 250,
     webSearchLimitHours: 6,
     webSearchProviders: ['serper', 'tavily', 'wikipedia'],
+    diveDeepDailyLimit: 250,
+    diveDeepLimitHours: 6,
     imageGenerationEnabled: true,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash',

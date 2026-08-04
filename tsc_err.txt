@@ -1,0 +1,24 @@
+
+<--- Last few GCs --->
+
+[7880:000001C82785B000]     2233 ms: Scavenge (interleaved) 122.3 (155.5) -> 104.1 (158.8) MB, pooled: 0 MB, 7.45 / 0.33 ms  (average mu = 0.946, current mu = 0.979) allocation failure; 
+[7880:000001C82785B000]     2461 ms: Scavenge (interleaved) 127.2 (160.2) -> 117.6 (171.2) MB, pooled: 5 MB, 13.26 / 0.06 ms  (average mu = 0.946, current mu = 0.979) allocation failure; 
+
+FATAL ERROR: Committing semi space failed. Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF6EF9A97FF 
+ 2: 00007FF6F05EDA77 
+ 3: 00007FF6F03EE327 
+ 4: 00007FF6F0386D4B 
+ 5: 00007FF6F035E79E 
+ 6: 00007FF6F03F0DC2 
+ 7: 00007FF6F03EFD77 
+ 8: 00007FF6F0400CE2 
+ 9: 00007FF6F040080B 
+10: 00007FF6F18689AD 
+11: 00007FF6F03EBDF0 
+12: 00007FF6F040667A 
+13: 00007FF6F0412A96 
+14: 00007FF6EFFE5BB7 
+15: 000001C84F7B733A 

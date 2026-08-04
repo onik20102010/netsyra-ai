@@ -231,6 +231,36 @@ export default function ChatInterface({
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
+  // ── Search limits (dive deep + web search) ──
+  const [searchLimits, setSearchLimits] = useState<{
+    webSearch: { used: number; remaining: number; limit: number };
+    diveDeep: { used: number; remaining: number; limit: number };
+  } | null>(null);
+
+  const fetchSearchLimits = async () => {
+    try {
+      const res = await fetch("/api/chat/search-limits");
+      if (res.ok) {
+        const data = await res.json();
+        setSearchLimits(data);
+      }
+    } catch {
+      // silent fail — limits are optional UX enhancement
+    }
+  };
+
+  // Poll search limits on mount and after each message
+  useEffect(() => {
+    fetchSearchLimits();
+  }, []);
+
+  // Auto-disable web search button when limit reached
+  useEffect(() => {
+    if (searchLimits && searchLimits.webSearch.remaining <= 0 && webSearchEnabled) {
+      setWebSearchEnabled(false);
+    }
+  }, [searchLimits, webSearchEnabled]);
+
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const TYPING_DELAY = 2000;
@@ -745,6 +775,8 @@ export default function ChatInterface({
       };
       setMessages(prev => [...prev, assistantMessage]);
       refetchUsage();
+      // Refresh search limits after each message (dive deep / web search counts may have changed)
+      fetchSearchLimits();
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
     } finally {
@@ -1559,15 +1591,27 @@ export default function ChatInterface({
                 <button
                   type="button"
                   onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  disabled={searchLimits ? searchLimits.webSearch.remaining <= 0 : false}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     webSearchEnabled
                       ? "bg-black text-white shadow-sm border border-gray-600 hover:bg-gray-800"
                       : "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
-                  }`}
-                  title={webSearchEnabled ? "Web search is ON" : "Enable web search"}
+                  } ${searchLimits && searchLimits.webSearch.remaining <= 0 ? "opacity-40 cursor-not-allowed" : ""}`}
+                  title={
+                    searchLimits && searchLimits.webSearch.remaining <= 0
+                      ? `Web search limit reached (${searchLimits.webSearch.limit}/24h)`
+                      : webSearchEnabled
+                        ? "Web search is ON"
+                        : "Enable web search"
+                  }
                 >
                   <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-gray-300" : "text-gray-400"}`} />
                   <span className="hidden sm:inline">Web Search</span>
+                  {searchLimits && searchLimits.webSearch.limit <= 10 && (
+                    <span className={`text-[10px] tabular-nums ${webSearchEnabled ? "text-gray-400" : "text-gray-400"}`}>
+                      ({searchLimits.webSearch.remaining})
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -1587,8 +1631,8 @@ export default function ChatInterface({
 
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">
               Netsyra may produce inaccurate information.
-              {diveDeep && " 🌐 Dive Deep is ON"}
-              {webSearchEnabled && " 🔍 Web Search is ON"}
+              {diveDeep && searchLimits && ` 🌐 Dive Deep ON (${searchLimits.diveDeep.remaining} left)`}
+              {webSearchEnabled && searchLimits && ` 🔍 Web Search ON (${searchLimits.webSearch.remaining} left)`}
             </p>
           </form>
         </div>
