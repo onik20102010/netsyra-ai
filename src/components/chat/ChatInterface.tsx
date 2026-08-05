@@ -249,6 +249,61 @@ export default function ChatInterface({
     }
   };
 
+  // ── Model limit status (for countdown timer when all models exhausted) ──
+  const [limitStatus, setLimitStatus] = useState<{
+    allExhausted: boolean;
+    resetsAt: string | null;
+  } | null>(null);
+
+  const fetchLimitStatus = async () => {
+    try {
+      const res = await fetch("/api/chat/limit-status");
+      if (res.ok) {
+        const data = await res.json();
+        setLimitStatus(data);
+      }
+    } catch {
+      // silent fail
+    }
+  };
+
+  useEffect(() => {
+    fetchLimitStatus();
+    const interval = setInterval(fetchLimitStatus, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh limit status after each message
+  useEffect(() => {
+    if (!isLoading) {
+      fetchLimitStatus();
+    }
+  }, [isLoading]);
+
+  // ── Countdown timer for limit reset ──
+  const [countdown, setCountdown] = useState<string>("");
+  useEffect(() => {
+    if (!limitStatus?.allExhausted || !limitStatus.resetsAt) {
+      setCountdown("");
+      return;
+    }
+    const update = () => {
+      const ms = new Date(limitStatus.resetsAt!).getTime() - Date.now();
+      if (ms <= 0) {
+        setCountdown("Resetting...");
+        fetchLimitStatus();
+        return;
+      }
+      const h = Math.floor(ms / (1000 * 60 * 60));
+      const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((ms % (1000 * 60)) / 1000);
+      setCountdown(`${h}h ${m}m ${s}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [limitStatus]);
+
   // Poll search limits on mount and after each message
   useEffect(() => {
     fetchSearchLimits();
@@ -676,7 +731,12 @@ export default function ChatInterface({
           const data = await res.json();
           toast.error(data.error || "Limit reached", { duration: 6000 });
           refetchUsage();
+          fetchLimitStatus();
           setIsLoading(false);
+          setIsThinking(false);
+          setIsTyping(false);
+          setShowStream(false);
+          setStreamingMessageId(null);
           return;
         }
         const data = await res.json();
@@ -1513,6 +1573,15 @@ export default function ChatInterface({
           )}
 
           <form onSubmit={handleSend} className="relative">
+            {/* Limit exhausted banner with countdown timer */}
+            {limitStatus?.allExhausted && limitStatus.resetsAt && (
+              <div className="mb-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                <p className="text-sm text-amber-800 font-medium">
+                  You've reached the message limit. Access resets in <span className="tabular-nums font-bold">{countdown}</span>
+                </p>
+              </div>
+            )}
+
             {/* Attached Images Preview */}
             {attachedImages.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 px-1">
@@ -1617,7 +1686,7 @@ export default function ChatInterface({
 
               <button
                 type="submit"
-                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
+                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage || (limitStatus?.allExhausted ?? false)}
                 className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
                 aria-label="Send message"
               >

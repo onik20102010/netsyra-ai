@@ -185,15 +185,21 @@ export async function selectAvailablePlusProModel(
   perModelLimits: Record<string, { daily: number; monthly: number }>
 ): Promise<ModelSelectionResult> {
   const primarySelection = selectPlusProModel(message);
-  
+
   // Check if primary model has tokens available
+  const primaryLimits = perModelLimits[primarySelection.modelKey];
+  if (!primaryLimits) {
+    // Model key not in perModelLimits — fall back to first available
+    return selectFirstAvailable(supabase, userId, modelTier, perModelLimits, primarySelection);
+  }
+
   const primaryAvailable = await checkModelTokenAvailability(
     supabase,
     userId,
     primarySelection.modelKey,
     modelTier,
-    perModelLimits[primarySelection.modelKey].daily,
-    perModelLimits[primarySelection.modelKey].monthly
+    primaryLimits.daily,
+    primaryLimits.monthly
   );
 
   if (primaryAvailable) {
@@ -210,13 +216,16 @@ export async function selectAvailablePlusProModel(
   for (const modelKey of fallbackOrder) {
     if (modelKey === primarySelection.modelKey) continue;
 
+    const limits = perModelLimits[modelKey];
+    if (!limits) continue;
+
     const available = await checkModelTokenAvailability(
       supabase,
       userId,
       modelKey,
       modelTier,
-      perModelLimits[modelKey].daily,
-      perModelLimits[modelKey].monthly
+      limits.daily,
+      limits.monthly
     );
 
     if (available) {
@@ -230,6 +239,39 @@ export async function selectAvailablePlusProModel(
   }
 
   // All models out of tokens
+  return {
+    modelKey: primarySelection.modelKey,
+    reason: 'All models out of tokens - will be blocked by limit check',
+    complexity: primarySelection.complexity,
+    requestType: primarySelection.requestType
+  };
+}
+
+/**
+ * Fallback: select the first model with available tokens.
+ * Used when the primary selection's modelKey is not in perModelLimits.
+ */
+async function selectFirstAvailable(
+  supabase: any,
+  userId: string,
+  modelTier: string,
+  perModelLimits: Record<string, { daily: number; monthly: number }>,
+  primarySelection: ModelSelectionResult
+): Promise<ModelSelectionResult> {
+  for (const modelKey of Object.keys(perModelLimits)) {
+    const limits = perModelLimits[modelKey];
+    const available = await checkModelTokenAvailability(
+      supabase, userId, modelKey, modelTier, limits.daily, limits.monthly
+    );
+    if (available) {
+      return {
+        modelKey,
+        reason: `Primary model not in limits config — using ${modelKey}`,
+        complexity: primarySelection.complexity,
+        requestType: primarySelection.requestType
+      };
+    }
+  }
   return {
     modelKey: primarySelection.modelKey,
     reason: 'All models out of tokens - will be blocked by limit check',

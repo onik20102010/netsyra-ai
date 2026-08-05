@@ -9,7 +9,7 @@ import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib
 import { performNLiveSearch } from "@/lib/chat/services/live-data";
 import { getRouterConfig } from "@/lib/routers/router-factory";
 import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
-import { incrementModelUsage } from "@/lib/chat/model-limits";
+import { incrementModelUsage, checkModelLimit } from "@/lib/chat/model-limits";
 import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -433,6 +433,25 @@ export async function POST(req: NextRequest) {
     // ── USAGE CHECK (CRITICAL - this must work) ──
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
 
+    // ── Free Plan: enforce per-model message limits (24h block when hit) ──
+    // Free plan models have messagesPerDay limits (fast=15, plus=10, pro=5, etc.)
+    // When the user hits the limit for the selected model, block for 24h.
+    if (userPlan === 'free') {
+      const modelLimitCheck = await checkModelLimit(supabase, user.id, modelTier);
+      if (!modelLimitCheck.allowed) {
+        console.log(`🚫 Free plan message limit reached for tier ${modelTier}. Reset at: ${modelLimitCheck.resetsAt}`);
+        return NextResponse.json(
+          {
+            error: `You've reached the message limit. Your access will reset in 24 hours.`,
+            limitReached: true,
+            resetsAt: modelLimitCheck.resetsAt,
+            tier: modelTier,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     // Check token limits for all plans
     // NI tier uses per-LLM SQL limits (ni_token_usage / gpt5_token_usage) as the
     // PRIMARY enforcement — handled below via checkAllLimitsExhausted + checkAndDeductTokens.
@@ -597,10 +616,15 @@ export async function POST(req: NextRequest) {
     // ── NI Router: Determine actual model for NI tier ──
     let niModelRoute: any = null;
     if (modelTier === "ni") {
-      const allLimitsExhausted = await checkAllLimitsExhausted(user.id, supabase);
-      if (allLimitsExhausted) {
+      // Check BOTH NI models (opus/sonnet/deepseek) AND GPT-5 models (gpt-5/gpt-5-mini)
+      // deepseek-v4-flash is intentionally unlimited (easy tasks fallback)
+      const [allNiExhausted, allGpt5Exhausted] = await Promise.all([
+        checkAllLimitsExhausted(user.id, supabase),
+        checkGPT5LimitsExhausted(user.id, supabase),
+      ]);
+      if (allNiExhausted && allGpt5Exhausted) {
         return NextResponse.json(
-          { error: "Your daily NI token limits have been exhausted. Please wait 24 hours for reset." },
+          { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
           { status: 429 }
         );
       }
@@ -1368,12 +1392,84 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
     let lastError: string | null = null;
 
-    for (const modelConfig of tier.models) {
+    // ── For NI tier (Pro plan): filter models to only the router's chosen model ──
+    // The NI router (routeTask) picks a model based on task complexity and deducts
+    // tokens from that model's budget. The model loop must only try the router's
+    // chosen model (and its fallback chain), NOT all models in the tier.
+    // Otherwise tokens are deducted from one model but the API call goes to another.
+    let modelsToTry = tier.models;
+    if (modelTier === 'ni' && niModelRoute) {
+      const routedModelNames = new Set<string>();
+      let route: any = niModelRoute;
+      while (route) {
+        if (route.model) routedModelNames.add(route.model);
+        route = route.fallback;
+      }
+      modelsToTry = tier.models.filter((m: any) => routedModelNames.has(m.modelName));
+      if (modelsToTry.length === 0) {
+        // Fallback: if no models matched (shouldn't happen), use all
+        console.warn(`⚠️ NI router chose models not in tier.models, using all`);
+        modelsToTry = tier.models;
+      }
+      console.log(`🎯 NI router selected models: ${[...routedModelNames].join(', ')}`);
+    }
+
+    // ── For Plus Pro: sort models to prioritize the selected model ──
+    // selectAvailablePlusProModel picks a model based on complexity + token
+    // availability. The model loop must try that model FIRST, then fall back
+    // to others. Otherwise the loop uses opus (first in array) even when the
+    // selector chose luna — and tokens are incremented from the wrong model.
+    if (userPlan === 'plus_pro' && selectedModelKey && selectedModelKey !== modelTier) {
+      modelsToTry = [...tier.models].sort((a: any, b: any) => {
+        if (a.modelKey === selectedModelKey) return -1;
+        if (b.modelKey === selectedModelKey) return 1;
+        return 0;
+      });
+      console.log(`🎯 Plus Pro prioritized model: ${selectedModelKey}`);
+    }
+
+    // Track which model was actually used (for correct token increment)
+    let actualModelKeyUsed: string | null = null;
+
+    for (const modelConfig of modelsToTry) {
       console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Endpoint: ${modelConfig.endpoint}`);
 
+      // ── Per-model token limit check for Plus Pro (fallback to next model) ──
+      // If this model's token limit is exhausted, skip it and try the next one.
+      // When all models are exhausted, the loop ends and we return 429 below.
+      // Note: Pro (NI tier) uses per-LLM SQL limits (ni_token_usage / gpt5_token_usage)
+      // which are already checked+deducted above via checkAndDeductTokens.
+      if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && modelConfig.modelKey) {
+        const modelLimitCfg = routerConfig.perModelTokenLimits[modelConfig.modelKey];
+        if (modelLimitCfg) {
+          const perModelCheck = await checkTokenLimits(
+            supabase,
+            user.id,
+            modelTier,
+            modelLimitCfg.daily,
+            modelLimitCfg.monthly,
+            modelConfig.modelKey
+          );
+          if (!perModelCheck.allowed) {
+            console.log(`🔄 Model ${modelConfig.modelKey} token limit reached — falling back to next model`);
+            lastError = `Token limit reached for this model`;
+            continue;
+          }
+        }
+      }
+
+      // Track which model is actually being used (for correct token increment)
+      actualModelKeyUsed = modelConfig.modelKey || null;
+
       // ── Per-model token-based context trimming for paid tiers ──
-      const modelApiMessages = (modelConfig.contextWindowSize && isTokenBasedTier)
-        ? trimContextByTokens(apiMessages, modelConfig.contextWindowSize, tier.maxTokens)
+      // Use routerConfig.contextWindowSize (plan-level limit) if defined,
+      // otherwise fall back to modelConfig.contextWindowSize (model's full window).
+      // This enforces the plan's context window limit (e.g. Go Plus = 16k, not 1M).
+      const effectiveContextWindow = (isTokenBasedTier && routerConfig.contextWindowSize)
+        ? routerConfig.contextWindowSize
+        : (modelConfig.contextWindowSize || 0);
+      const modelApiMessages = (effectiveContextWindow && isTokenBasedTier)
+        ? trimContextByTokens(apiMessages, effectiveContextWindow, tier.maxTokens)
         : apiMessages;
 
       let apiKey = process.env[modelConfig.apiKeyEnv];
@@ -1466,9 +1562,12 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
 
           // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
+          // Use actualModelKeyUsed (the model that actually served the request)
+          // instead of selectedModelKey (the model the selector chose) to avoid
+          // incrementing the wrong model's budget.
           if (modelTier !== 'ni') {
             const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
-            const incrementModelKey = (userPlan === 'plus_pro' && selectedModelKey) ? selectedModelKey : null;
+            const incrementModelKey = (userPlan === 'plus_pro' && actualModelKeyUsed) ? actualModelKeyUsed : null;
             incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
               console.error(`Token usage increment failed for tier ${modelTier}:`, err)
             );
@@ -1741,9 +1840,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
               trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
 
               // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
+              // Use actualModelKeyUsed (the model that actually served the request)
               if (modelTier !== 'ni') {
                 const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
-                const incrementModelKey = (userPlan === 'plus_pro' && selectedModelKey) ? selectedModelKey : null;
+                const incrementModelKey = (userPlan === 'plus_pro' && actualModelKeyUsed) ? actualModelKeyUsed : null;
                 incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
                   console.error(`Token usage increment failed for tier ${modelTier}:`, err)
                 );
@@ -1792,6 +1892,99 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       } catch (fetchError: any) {
         console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Error: ${fetchError.message || "Unknown fetch error"}`);
         lastError = fetchError.message || "Unknown fetch error";
+      }
+    }
+
+    // ── All models exhausted: check if it was due to token limits ──
+    // For Plus Pro: check per-model token limits via generic token_usage table
+    if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits) {
+      let earliestReset: string | null = null;
+      for (const modelConfig of tier.models) {
+        if (!modelConfig.modelKey) continue;
+        const modelLimitCfg = routerConfig.perModelTokenLimits[modelConfig.modelKey];
+        if (modelLimitCfg) {
+          const perModelCheck = await checkTokenLimits(
+            supabase,
+            user.id,
+            modelTier,
+            modelLimitCfg.daily,
+            modelLimitCfg.monthly,
+            modelConfig.modelKey
+          );
+          if (!perModelCheck.allowed) {
+            const resetTime = perModelCheck.dailyResetAt || perModelCheck.monthlyResetAt;
+            if (resetTime && (!earliestReset || new Date(resetTime) < new Date(earliestReset))) {
+              earliestReset = resetTime;
+            }
+          }
+        }
+      }
+      if (earliestReset) {
+        console.log(`🚫 All models exhausted for ${userPlan} plan. Earliest reset: ${earliestReset}`);
+        return NextResponse.json(
+          {
+            error: `You've reached the limit for all available models. Your access will reset soon.`,
+            limitReached: true,
+            allModelsExhausted: true,
+            resetsAt: earliestReset,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    // For Pro (NI tier): check per-LLM SQL limits (ni_token_usage + gpt5_token_usage)
+    if (userPlan === 'pro' && modelTier === 'ni') {
+      const niModels = ['claude-opus-4.6', 'claude-sonnet-4.6', 'deepseek-v4-pro'];
+      const gpt5Models = ['gpt-5', 'gpt-5-mini'];
+      let earliestReset: string | null = null;
+      let exhaustedCount = 0;
+
+      for (const modelType of niModels) {
+        const { data } = await supabase.rpc('get_or_reset_ni_token_usage', {
+          p_user_id: user.id, p_model_type: modelType,
+        });
+        const remaining = data?.[0]?.remaining_tokens ?? 0;
+        if (remaining <= 0) {
+          exhaustedCount++;
+          const lastReset = data?.[0]?.last_reset_at;
+          if (lastReset) {
+            const resetAt = new Date(new Date(lastReset).getTime() + 24 * 60 * 60 * 1000).toISOString();
+            if (!earliestReset || new Date(resetAt) < new Date(earliestReset)) {
+              earliestReset = resetAt;
+            }
+          }
+        }
+      }
+      for (const modelType of gpt5Models) {
+        const { data } = await supabase.rpc('get_or_reset_gpt5_token_usage', {
+          p_user_id: user.id, p_model_type: modelType,
+        });
+        const remaining = data?.[0]?.remaining_tokens ?? 0;
+        if (remaining <= 0) {
+          exhaustedCount++;
+          const lastReset = data?.[0]?.last_reset_at;
+          if (lastReset) {
+            const resetAt = new Date(new Date(lastReset).getTime() + 24 * 60 * 60 * 1000).toISOString();
+            if (!earliestReset || new Date(resetAt) < new Date(earliestReset)) {
+              earliestReset = resetAt;
+            }
+          }
+        }
+      }
+
+      const totalTracked = niModels.length + gpt5Models.length;
+      if (exhaustedCount === totalTracked && earliestReset) {
+        console.log(`🚫 All NI models exhausted for Pro plan. Earliest reset: ${earliestReset}`);
+        return NextResponse.json(
+          {
+            error: `You've reached the limit for all available models. Your access will reset soon.`,
+            limitReached: true,
+            allModelsExhausted: true,
+            resetsAt: earliestReset,
+          },
+          { status: 429 }
+        );
       }
     }
 
