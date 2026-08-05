@@ -252,7 +252,9 @@ export default function ChatInterface({
   // ── Model limit status (for countdown timer when all models exhausted) ──
   const [limitStatus, setLimitStatus] = useState<{
     allExhausted: boolean;
+    anyExhausted: boolean;
     resetsAt: string | null;
+    tierStatus?: Record<string, { remaining: number; total: number; label: string; exhausted: boolean; resetsAt: string | null }>;
   } | null>(null);
 
   const fetchLimitStatus = async () => {
@@ -1569,12 +1571,34 @@ export default function ChatInterface({
           {selectedModel !== "auto" && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 px-1">
               <span>Using {MODEL_LABELS[selectedModel] || selectedModel}</span>
+              {limitStatus?.tierStatus?.[selectedModel] && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums ${
+                  limitStatus.tierStatus[selectedModel].exhausted
+                    ? "bg-red-100 text-red-700"
+                    : limitStatus.tierStatus[selectedModel].remaining <= 2
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}>
+                  {limitStatus.tierStatus[selectedModel].exhausted
+                    ? "Limit reached"
+                    : `${limitStatus.tierStatus[selectedModel].remaining}/${limitStatus.tierStatus[selectedModel].total} left`}
+                </span>
+              )}
             </div>
           )}
 
           <form onSubmit={handleSend} className="relative">
-            {/* Limit exhausted banner with countdown timer */}
-            {limitStatus?.allExhausted && limitStatus.resetsAt && (
+            {/* Per-tier exhausted banner with countdown timer */}
+            {limitStatus?.tierStatus?.[selectedModel]?.exhausted && limitStatus.tierStatus[selectedModel].resetsAt && (
+              <div className="mb-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                <p className="text-sm text-amber-800 font-medium">
+                  You've reached the message limit for {MODEL_LABELS[selectedModel] || selectedModel}. Access resets in <span className="tabular-nums font-bold">{countdown}</span>
+                </p>
+              </div>
+            )}
+
+            {/* All tiers exhausted banner (fallback) */}
+            {limitStatus?.allExhausted && limitStatus.resetsAt && !limitStatus?.tierStatus?.[selectedModel]?.exhausted && (
               <div className="mb-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
                 <p className="text-sm text-amber-800 font-medium">
                   You've reached the message limit. Access resets in <span className="tabular-nums font-bold">{countdown}</span>
@@ -1686,7 +1710,7 @@ export default function ChatInterface({
 
               <button
                 type="submit"
-                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage || (limitStatus?.allExhausted ?? false)}
+                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage || (limitStatus?.tierStatus?.[selectedModel]?.exhausted ?? false) || (limitStatus?.allExhausted ?? false)}
                 className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
                 aria-label="Send message"
               >

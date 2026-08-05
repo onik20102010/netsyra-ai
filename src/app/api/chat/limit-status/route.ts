@@ -5,7 +5,6 @@
 import { NextResponse } from "next/server";
 import { createChatServerClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getRouterConfig } from "@/lib/routers/router-factory";
-import { checkModelLimit } from "@/lib/chat/model-limits";
 import { checkTokenLimits } from "@/lib/chat/token-usage";
 
 export async function GET() {
@@ -27,17 +26,65 @@ export async function GET() {
 
   // ── Free plan: check message limits for all allowed tiers ──
   // IMPORTANT: user_model_usage is in the CHAT schema, must use chat client.
+  // Direct table query — no RPC needed.
   if (userPlan === "free") {
     let earliestReset: string | null = null;
     let exhaustedCount = 0;
     const allowedTiers = routerConfig.allowedModelKeys;
+    const now = new Date();
+
+    // Fetch all usage rows for this user in one query
+    const { data: usageRows } = await supabase
+      .from("user_model_usage")
+      .select("model_id, messages_sent, tokens_used, reset_at")
+      .eq("user_id", user.id);
+
+    const usageMap = new Map<string, any>();
+    if (usageRows) {
+      for (const row of usageRows) {
+        usageMap.set(row.model_id, row);
+      }
+    }
+
+    // Per-model limits (must match model-limits.ts)
+    const freeLimits: Record<string, { messages: number; tokens: number; label: string }> = {
+      fast: { messages: 15, tokens: 6800, label: "N Fast" },
+      plus: { messages: 10, tokens: 6800, label: "N Plus" },
+      pro: { messages: 5, tokens: 6800, label: "N Pro" },
+      code: { messages: 5, tokens: 6800, label: "N Code" },
+      live: { messages: 5, tokens: 6800, label: "N Live" },
+      aai: { messages: 5, tokens: 6800, label: "N AAI" },
+    };
+
+    // Build per-tier remaining info for the UI
+    const tierStatus: Record<string, { remaining: number; total: number; label: string; exhausted: boolean; resetsAt: string | null }> = {};
 
     for (const tier of allowedTiers) {
-      const check = await checkModelLimit(supabase, user.id, tier);
-      if (!check.allowed) {
+      const limit = freeLimits[tier];
+      if (!limit) continue;
+
+      const usage = usageMap.get(tier);
+      const resetAt = usage?.reset_at ? new Date(usage.reset_at) : now;
+      const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60);
+
+      // Window expired or no usage — full quota available
+      if (!usage || hoursSinceReset >= 24) {
+        tierStatus[tier] = { remaining: limit.messages, total: limit.messages, label: limit.label, exhausted: false, resetsAt: null };
+        continue;
+      }
+
+      const messagesSent = usage.messages_sent || 0;
+      const tokensUsed = usage.tokens_used || 0;
+      const isExhausted = messagesSent >= limit.messages || tokensUsed >= limit.tokens;
+      const remaining = Math.max(0, limit.messages - messagesSent);
+      const nextReset = new Date(resetAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+      tierStatus[tier] = { remaining, total: limit.messages, label: limit.label, exhausted: isExhausted, resetsAt: isExhausted ? nextReset : null };
+
+      if (isExhausted) {
         exhaustedCount++;
-        if (!earliestReset || new Date(check.resetsAt) < new Date(earliestReset)) {
-          earliestReset = check.resetsAt;
+        if (!earliestReset || new Date(nextReset) < new Date(earliestReset)) {
+          earliestReset = nextReset;
         }
       }
     }
@@ -49,6 +96,7 @@ export async function GET() {
       exhaustedCount,
       totalTiers: allowedTiers.length,
       resetsAt: earliestReset,
+      tierStatus,
     });
   }
 

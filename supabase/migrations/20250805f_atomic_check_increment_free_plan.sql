@@ -1,26 +1,17 @@
 -- ============================================================
 -- Atomic check-and-increment for Free plan message limits
 -- ============================================================
+-- 
+-- WHY THIS EXISTS:
+-- The TypeScript code does read-then-write (SELECT then UPDATE),
+-- which creates race conditions under concurrent requests.
+-- Two simultaneous messages both read "4", both pass the check,
+-- both write "5" — user gets 6 messages on a 5-message limit.
 --
--- PROBLEM: The old flow was:
---   1. checkModelLimit (read) → allowed
---   2. API call (slow, 5-30 seconds)
---   3. trackChatUsage → incrementModelUsage (write) — fire-and-forget async
+-- This SQL function uses FOR UPDATE row locking inside a single
+-- transaction, making the check+increment truly atomic.
 --
--- This created TWO race conditions:
---   a) The increment was fire-and-forget (.catch(console.error)), so the
---      next message's check ran BEFORE the previous increment completed.
---   b) incrementModelUsage used read-then-write (SELECT then UPSERT),
---      so concurrent requests overwrote each other's counts.
---
--- RESULT: A user could send 7+ messages on N Pro (limit=5) because the
---         counter never reached 5 before the next check ran.
---
--- SOLUTION: This function atomically checks AND increments in a single
---           transaction with FOR UPDATE lock. Called BEFORE the API call.
---           If the limit is hit, returns allowed=false and does NOT increment.
---           If allowed, increments immediately so the next concurrent
---           request sees the updated count.
+-- YOU MUST RUN THIS IN YOUR SUPABASE SQL EDITOR.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION chat.check_and_increment_model_usage(
@@ -53,12 +44,22 @@ BEGIN
     )
     ON CONFLICT (user_id, model_id) DO NOTHING;
 
-    RETURN jsonb_build_object(
-      'allowed', true,
-      'messages_sent', 1,
-      'messages_remaining', p_message_limit - 1,
-      'resets_at', v_now + INTERVAL '24 hours'
-    );
+    -- If insert failed due to concurrent insert, re-read with lock
+    IF NOT FOUND THEN
+      SELECT * INTO v_usage
+      FROM chat.user_model_usage
+      WHERE user_id = p_user_id AND model_id = p_model_id
+      FOR UPDATE;
+      
+      -- Fall through to normal check below
+    ELSE
+      RETURN jsonb_build_object(
+        'allowed', true,
+        'messages_sent', 1,
+        'messages_remaining', p_message_limit - 1,
+        'resets_at', v_now + INTERVAL '24 hours'
+      );
+    END IF;
   END IF;
 
   -- Check if reset is needed (24h window)
@@ -95,7 +96,7 @@ BEGIN
       'allowed', false,
       'messages_sent', v_messages_sent,
       'messages_remaining', 0,
-      'resets_at', v_reset_at
+      'resets_at', v_reset_at + INTERVAL '24 hours'
     );
   END IF;
 
@@ -120,9 +121,33 @@ $$ LANGUAGE plpgsql;
 -- Grant execute to authenticated users
 GRANT EXECUTE ON FUNCTION chat.check_and_increment_model_usage TO authenticated;
 
--- Also fix the reset_at column: old rows may have reset_at = creation time
--- (not creation + 24h), causing immediate resets. Update them to be forward-looking.
-UPDATE chat.user_model_usage
-SET reset_at = NOW() + INTERVAL '24 hours'
-WHERE reset_at < NOW() - INTERVAL '24 hours'
-  AND messages_sent = 0;
+-- ============================================================
+-- Safety: ensure unique constraint exists (prevents duplicate rows)
+-- ============================================================
+-- The table already has UNIQUE(user_id, model_id) from the original
+-- migration, but this ensures it exists even if the table was modified.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'chat.user_model_usage'::regclass
+      AND contype = 'u'
+      AND array_to_string(conkey, ',') = (
+        SELECT array_to_string(array_agg(attnum), ',')
+        FROM pg_attribute
+        WHERE attrelid = 'chat.user_model_usage'::regclass
+          AND attname IN ('user_id', 'model_id')
+      )
+  ) THEN
+    ALTER TABLE chat.user_model_usage
+      ADD CONSTRAINT user_model_usage_user_id_model_id_key UNIQUE (user_id, model_id);
+  END IF;
+END $$;
+
+-- ============================================================
+-- Safety: ensure index exists for fast lookups under high load
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_user_model_usage_user_model
+  ON chat.user_model_usage (user_id, model_id);
+

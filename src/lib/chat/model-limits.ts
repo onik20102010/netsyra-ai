@@ -15,17 +15,20 @@ export interface AtomicCheckResult {
 }
 
 /**
- * Atomic check-and-increment for Free plan message limits.
- * Calls the SQL function chat.check_and_increment_model_usage which:
- *   1. Locks the row (FOR UPDATE)
- *   2. Checks if limit is reached
- *   3. If allowed, increments immediately (atomic, no race condition)
- *   4. Returns allowed + remaining + reset time
+ * Check remaining messages for a Free plan tier AND increment immediately.
  *
- * This MUST be called BEFORE the LLM API call, not after.
- * The old flow (check → API → fire-and-forget increment) had race conditions
- * that let users exceed limits by sending messages faster than the increment
- * could complete.
+ * TWO MODES:
+ * 1. PRIMARY (scalable): Calls SQL RPC `chat.check_and_increment_model_usage`
+ *    which uses FOR UPDATE row locking — truly atomic, safe under concurrent
+ *    requests. Works at any scale (millions of users).
+ * 2. FALLBACK (works without migration): Direct read-then-write on
+ *    chat.user_model_usage. Has a small race condition under high concurrency
+ *    but works correctly for normal usage. Used only if the RPC doesn't exist.
+ *
+ * The increment is FULLY AWAITED before returning, so the next message
+ * will see the updated count. This is called BEFORE the LLM API call.
+ *
+ * @param supabase MUST be a chat-schema client (createChatServerClient)
  */
 export async function atomicCheckAndIncrement(
   supabase: any,
@@ -37,9 +40,10 @@ export async function atomicCheckAndIncrement(
     return { allowed: true, messagesSent: 0, messagesRemaining: 9999, resetsAt: new Date(Date.now() + 86400000).toISOString() };
   }
 
-  const estimatedTokens = 500; // Conservative pre-estimate before API call
+  const estimatedTokens = 500;
 
-  const { data, error } = await supabase.rpc('check_and_increment_model_usage', {
+  // ── PRIMARY: Try the atomic RPC first (scalable, race-condition-free) ──
+  const { data: rpcData, error: rpcError } = await supabase.rpc('check_and_increment_model_usage', {
     p_user_id: userId,
     p_model_id: modelKey,
     p_message_limit: limit.messagesPerDay,
@@ -47,18 +51,133 @@ export async function atomicCheckAndIncrement(
     p_estimated_tokens: estimatedTokens,
   });
 
-  if (error) {
-    console.error('atomicCheckAndIncrement error:', error);
-    // On error, allow the message (don't block users due to DB issues)
-    return { allowed: true, messagesSent: 0, messagesRemaining: limit.messagesPerDay, resetsAt: new Date(Date.now() + 86400000).toISOString() };
+  if (!rpcError && rpcData) {
+    // RPC succeeded — use the atomic result
+    const result: AtomicCheckResult = {
+      allowed: rpcData.allowed,
+      messagesSent: rpcData.messages_sent,
+      messagesRemaining: rpcData.messages_remaining,
+      resetsAt: rpcData.resets_at,
+    };
+    if (result.allowed) {
+      console.log(`✅ atomicCheckAndIncrement [RPC]: ${modelKey} — sent ${result.messagesSent}/${limit.messagesPerDay}, remaining ${result.messagesRemaining}`);
+    } else {
+      console.log(`🚫 atomicCheckAndIncrement [RPC]: BLOCKED for ${modelKey}. Sent: ${result.messagesSent}/${limit.messagesPerDay}`);
+    }
+    return result;
   }
 
-  return {
-    allowed: data.allowed,
-    messagesSent: data.messages_sent,
-    messagesRemaining: data.messages_remaining,
-    resetsAt: data.resets_at,
-  };
+  // ── FALLBACK: RPC doesn't exist or failed — use direct queries ──
+  if (rpcError) {
+    console.warn(`⚠️ atomicCheckAndIncrement: RPC not available for ${modelKey}, using fallback. Error: ${rpcError.message}`);
+  }
+
+  return await fallbackCheckAndIncrement(supabase, userId, modelKey, limit.messagesPerDay, limit.tokensPerDay, estimatedTokens);
+}
+
+/**
+ * Fallback: direct read-then-write on user_model_usage.
+ * Works without the SQL migration but has a small race condition
+ * under high concurrency. Acceptable for low-traffic scenarios.
+ */
+async function fallbackCheckAndIncrement(
+  supabase: any,
+  userId: string,
+  modelKey: string,
+  messageLimit: number,
+  tokenLimit: number,
+  estimatedTokens: number
+): Promise<AtomicCheckResult> {
+  const now = new Date();
+
+  // Step 1: Read current usage (awaited)
+  const { data: usage, error: readError } = await supabase
+    .from("user_model_usage")
+    .select("messages_sent, tokens_used, reset_at")
+    .eq("user_id", userId)
+    .eq("model_id", modelKey)
+    .maybeSingle();
+
+  if (readError) {
+    console.error(`❌ fallbackCheckAndIncrement: read error for ${modelKey}:`, readError);
+    return { allowed: true, messagesSent: 0, messagesRemaining: messageLimit, resetsAt: new Date(now.getTime() + 86400000).toISOString() };
+  }
+
+  // No record exists — first message on this model
+  if (!usage) {
+    const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const { error: insertError } = await supabase
+      .from("user_model_usage")
+      .insert({
+        user_id: userId,
+        model_id: modelKey,
+        tokens_used: estimatedTokens,
+        messages_sent: 1,
+        reset_at: resetAt,
+      });
+
+    if (insertError) {
+      console.error(`❌ fallbackCheckAndIncrement: insert error for ${modelKey}:`, insertError);
+    }
+
+    console.log(`✅ fallbackCheckAndIncrement: First message on ${modelKey}. Remaining: ${messageLimit - 1}/${messageLimit}`);
+    return { allowed: true, messagesSent: 1, messagesRemaining: messageLimit - 1, resetsAt: resetAt };
+  }
+
+  // Step 2: Check if 24h reset is needed
+  const resetAt = usage.reset_at ? new Date(usage.reset_at) : now;
+  const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60);
+
+  if (hoursSinceReset >= 24) {
+    const newResetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const { error: updateError } = await supabase
+      .from("user_model_usage")
+      .update({
+        messages_sent: 1,
+        tokens_used: estimatedTokens,
+        reset_at: newResetAt,
+      })
+      .eq("user_id", userId)
+      .eq("model_id", modelKey);
+
+    if (updateError) {
+      console.error(`❌ fallbackCheckAndIncrement: reset error for ${modelKey}:`, updateError);
+    }
+
+    console.log(`✅ fallbackCheckAndIncrement: Window reset for ${modelKey}. Remaining: ${messageLimit - 1}/${messageLimit}`);
+    return { allowed: true, messagesSent: 1, messagesRemaining: messageLimit - 1, resetsAt: newResetAt };
+  }
+
+  // Step 3: Check if limit is reached
+  const messagesSent = usage.messages_sent || 0;
+  const tokensUsed = usage.tokens_used || 0;
+
+  if (messagesSent >= messageLimit || tokensUsed >= tokenLimit) {
+    const nextReset = new Date(resetAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    console.log(`🚫 fallbackCheckAndIncrement: BLOCKED for ${modelKey}. Sent: ${messagesSent}/${messageLimit}`);
+    return { allowed: false, messagesSent, messagesRemaining: 0, resetsAt: nextReset };
+  }
+
+  // Step 4: Limit not reached — increment NOW (awaited)
+  const newMessagesSent = messagesSent + 1;
+  const newResetAt = resetAt.toISOString();
+
+  const { error: incrementError } = await supabase
+    .from("user_model_usage")
+    .update({
+      messages_sent: newMessagesSent,
+      tokens_used: tokensUsed + estimatedTokens,
+    })
+    .eq("user_id", userId)
+    .eq("model_id", modelKey);
+
+  if (incrementError) {
+    console.error(`❌ fallbackCheckAndIncrement: increment error for ${modelKey}:`, incrementError);
+  }
+
+  const remaining = messageLimit - newMessagesSent;
+  console.log(`✅ fallbackCheckAndIncrement: ${modelKey} — sent ${newMessagesSent}/${messageLimit}, remaining ${remaining}`);
+  return { allowed: true, messagesSent: newMessagesSent, messagesRemaining: remaining, resetsAt: newResetAt };
 }
 
 export const modelLimits: Record<string, ModelLimit> = {
