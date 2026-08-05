@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient, createChatServerClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
@@ -25,7 +25,6 @@ function verifyPasswords(provided: string[]): boolean {
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
-    const chatSupabase = await createChatServerClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -59,10 +58,7 @@ export async function POST(req: Request) {
       .from("subscriptions")
       .select("user_id, plan, status, current_period_end");
 
-    // 4. All model usage from chat schema
-    const { data: modelUsage } = await chatSupabase.from("user_model_usage").select("*");
-
-    // 5. All conversations (public schema — where chat route writes)
+    // 4. All conversations (public schema — where chat route writes)
     const { data: conversations } = await supabase
       .from("conversations")
       .select("id, user_id, created_at, title");
@@ -103,17 +99,6 @@ export async function POST(req: Request) {
     const users = (authUsers as any[]).map((u: any) => {
       const profile = (profiles || []).find((p: any) => p.user_id === u.id);
       const sub = (subscriptions || []).find((s: any) => s.user_id === u.id && s.status === "active");
-      const usageRows = (modelUsage || []).filter((m: any) => m.user_id === u.id);
-      const tokensUsed = usageRows.reduce((sum: number, m: any) => sum + (m.tokens_used || 0), 0);
-      const messagesSent = usageRows.reduce((sum: number, m: any) => sum + (m.messages_sent || 0), 0);
-
-      // Per-model breakdown
-      const modelBreakdown = usageRows.map((m: any) => ({
-        model: m.model_id,
-        tokens: m.tokens_used || 0,
-        messages: m.messages_sent || 0,
-        resetAt: m.reset_at,
-      }));
 
       const userConvIds = conversationMap.get(u.id) || [];
       const userTodayMsgs = todayMessageMap.get(u.id) || 0;
@@ -124,13 +109,10 @@ export async function POST(req: Request) {
         name: profile?.name || null,
         plan: sub?.plan || "free",
         subscriptionStatus: sub?.status || "none",
-        tokensUsed,
-        messagesSent,
         messagesToday: userTodayMsgs,
         totalConversations: userConvIds.length,
         isActiveNow: activeNowUserIds.has(u.id),
         joined: u.created_at,
-        modelBreakdown,
         lastActive: profile?.last_active_at || null,
       };
     });
@@ -148,15 +130,6 @@ export async function POST(req: Request) {
       planDistribution[u.plan] = (planDistribution[u.plan] || 0) + 1;
     });
 
-    // Model usage breakdown
-    const modelStats: Record<string, { tokens: number; messages: number }> = {};
-    (modelUsage || []).forEach((m: any) => {
-      const key = m.model_id || "unknown";
-      if (!modelStats[key]) modelStats[key] = { tokens: 0, messages: 0 };
-      modelStats[key].tokens += m.tokens_used || 0;
-      modelStats[key].messages += m.messages_sent || 0;
-    });
-
     return NextResponse.json({
       users,
       stats: {
@@ -168,7 +141,6 @@ export async function POST(req: Request) {
         totalMessages: totalMessages || 0,
         messagesToday: (todayMessages || []).length,
         planDistribution,
-        modelStats,
       },
     });
   } catch (err: any) {

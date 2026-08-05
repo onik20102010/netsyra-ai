@@ -1,205 +1,231 @@
-// Image Analysis Limiter — plan-aware daily image count + monthly token limits
+// src/lib/chat/image-analysis-limiter.ts
 //
-// Daily limit:   Max images per day per user
-// Monthly limit: Max tokens per month for image analysis (0 = no monthly token limit, just daily count)
+// Image analysis limit enforcement — plan-aware daily + monthly limits.
 //
-// Uses existing Supabase RPC functions from migration 20250725_create_image_analysis_limits.sql
-
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+//   Free:     3/day,  no monthly
+//   Go Plus:  15/day, 300/month
+//   Pro:      30/day, 600/month
+//   Plus Pro: 30/day, 600/month
+//
+// Daily reset: 24h. Monthly reset: 30 days.
+//
+// Enforcement: chat.check_image_analysis_limit (pre-flight) +
+//              chat.increment_image_analysis_usage (post-success).
 
 export interface ImageAnalysisLimitResult {
   allowed: boolean;
   dailyUsed: number;
   dailyLimit: number;
   dailyRemaining: number;
-  monthlyTokensUsed: number;
-  monthlyTokenLimit: number;
-  monthlyTokensRemaining: number;
+  monthlyUsed: number;
+  monthlyLimit: number;
+  monthlyRemaining: number;
   reason?: string;
 }
 
+/**
+ * Check if a user can perform image analysis (WITHOUT incrementing).
+ * Call incrementImageAnalysisUsage after the analysis succeeds.
+ *
+ * @param supabase           Chat-schema client (createChatServerClient)
+ * @param userId             User UUID
+ * @param dailyLimit         Max images per 24h
+ * @param monthlyLimit       Max images per 30 days (0 = no monthly limit)
+ */
 export async function checkImageAnalysisLimit(
+  supabase: any,
   userId: string,
   dailyLimit: number,
-  monthlyTokenLimit: number
+  monthlyLimit: number
 ): Promise<ImageAnalysisLimitResult> {
-  const supabase = await createServerSupabaseClient();
+  // ── PRIMARY: Atomic RPC ──
+  const { data: rpcData, error: rpcError } = await supabase.rpc("check_image_analysis_limit", {
+    p_user_id: userId,
+    p_daily_limit: dailyLimit,
+    p_monthly_limit: monthlyLimit,
+  });
 
-  // ── Check daily image count by querying table directly ──
-  const { data: usageData, error: usageError } = await supabase
+  if (!rpcError && rpcData) {
+    const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+    const allowed = row.allowed;
+    const result: ImageAnalysisLimitResult = {
+      allowed,
+      dailyUsed: row.daily_used,
+      dailyLimit,
+      dailyRemaining: row.daily_remaining,
+      monthlyUsed: row.monthly_used,
+      monthlyLimit,
+      monthlyRemaining: row.monthly_remaining,
+    };
+    if (!allowed) {
+      result.reason = row.daily_remaining <= 0
+        ? `Daily image limit reached (${row.daily_used}/${dailyLimit}). Try again tomorrow.`
+        : `Monthly image analysis limit reached (${row.monthly_used}/${monthlyLimit}). Resets next month.`;
+    }
+    return result;
+  }
+
+  // ── FALLBACK: direct read ──
+  if (rpcError) {
+    console.warn(`⚠️ check_image_analysis_limit: RPC not available, using fallback. Error: ${rpcError.message}`);
+  }
+  return await fallbackCheckImageAnalysisLimit(supabase, userId, dailyLimit, monthlyLimit);
+}
+
+/**
+ * Increment image analysis usage after a successful analysis.
+ *
+ * @param supabase       Chat-schema client
+ * @param userId         User UUID
+ * @param dailyLimit     Max images per 24h
+ * @param monthlyLimit   Max images per 30 days (0 = no monthly limit)
+ */
+export async function incrementImageAnalysisUsage(
+  supabase: any,
+  userId: string,
+  dailyLimit: number,
+  monthlyLimit: number
+): Promise<void> {
+  // ── PRIMARY: Atomic RPC ──
+  const { error: rpcError } = await supabase.rpc("increment_image_analysis_usage", {
+    p_user_id: userId,
+    p_daily_limit: dailyLimit,
+    p_monthly_limit: monthlyLimit,
+  });
+
+  if (!rpcError) return;
+
+  // ── FALLBACK: direct read-then-write ──
+  console.warn(`⚠️ increment_image_analysis_usage: RPC not available, using fallback. Error: ${rpcError.message}`);
+  await fallbackIncrementImageAnalysisUsage(supabase, userId, dailyLimit, monthlyLimit);
+}
+
+// ── Fallback implementations ──
+
+async function fallbackCheckImageAnalysisLimit(
+  supabase: any,
+  userId: string,
+  dailyLimit: number,
+  monthlyLimit: number
+): Promise<ImageAnalysisLimitResult> {
+  const now = new Date();
+
+  const { data: usage } = await supabase
     .from("image_analysis_usage")
-    .select("*")
+    .select("daily_count, monthly_count, last_daily_reset, last_monthly_reset")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (usageError) {
-    console.error("Image analysis limit check error:", usageError);
-    // Allow on error to not block users
+  if (!usage) {
     return {
       allowed: true,
       dailyUsed: 0,
       dailyLimit,
       dailyRemaining: dailyLimit,
-      monthlyTokensUsed: 0,
-      monthlyTokenLimit,
-      monthlyTokensRemaining: monthlyTokenLimit,
+      monthlyUsed: 0,
+      monthlyLimit,
+      monthlyRemaining: Math.max(monthlyLimit, 0),
     };
   }
 
-  if (!usageData) {
-    // No usage record yet, allow
-    return {
-      allowed: true,
-      dailyUsed: 0,
-      dailyLimit,
-      dailyRemaining: dailyLimit,
-      monthlyTokensUsed: 0,
-      monthlyTokenLimit,
-      monthlyTokensRemaining: monthlyTokenLimit,
-    };
-  }
+  const dailyReset = new Date(usage.last_daily_reset);
+  const monthlyReset = new Date(usage.last_monthly_reset);
+  let dailyUsed = usage.daily_count || 0;
+  let monthlyUsed = usage.monthly_count || 0;
 
-  // Check if daily reset is needed (24 hours)
-  const hoursSinceDailyReset = (Date.now() - new Date(usageData.last_daily_reset).getTime()) / (1000 * 60 * 60);
-  let dailyUsed = usageData.daily_count || 0;
-  
-  if (hoursSinceDailyReset >= 24) {
-    dailyUsed = 0; // Reset happened
-  }
+  if (now >= dailyReset) dailyUsed = 0;
+  if (monthlyLimit > 0 && now >= new Date(monthlyReset.getTime() + 30 * 86400000)) monthlyUsed = 0;
 
-  const dailyRemaining = Math.max(0, dailyLimit - dailyUsed);
-
-  if (dailyRemaining <= 0) {
+  if (dailyUsed >= dailyLimit) {
     return {
       allowed: false,
       dailyUsed,
       dailyLimit,
       dailyRemaining: 0,
-      monthlyTokensUsed: 0,
-      monthlyTokenLimit,
-      monthlyTokensRemaining: monthlyTokenLimit,
+      monthlyUsed,
+      monthlyLimit,
+      monthlyRemaining: Math.max(monthlyLimit - monthlyUsed, 0),
       reason: `Daily image limit reached (${dailyUsed}/${dailyLimit}). Try again tomorrow.`,
     };
   }
 
-  // ── Check monthly token limit (skip if 0 = no monthly token limit) ──
-  if (monthlyTokenLimit > 0) {
-    // The existing schema doesn't track tokens, only image counts
-    // For now, we'll use the monthly_count as a proxy for token usage
-    const daysSinceMonthlyReset = (Date.now() - new Date(usageData.last_monthly_reset).getTime()) / (1000 * 60 * 60 * 24);
-    let monthlyUsed = usageData.monthly_count || 0;
-    
-    if (daysSinceMonthlyReset >= 30) {
-      monthlyUsed = 0; // Reset happened
-    }
-    
-    const monthlyRemaining = Math.max(0, monthlyTokenLimit - monthlyUsed);
-
-    if (monthlyRemaining <= 0) {
-      return {
-        allowed: false,
-        dailyUsed,
-        dailyLimit,
-        dailyRemaining,
-        monthlyTokensUsed: monthlyUsed,
-        monthlyTokenLimit,
-        monthlyTokensRemaining: 0,
-        reason: `Monthly image analysis limit reached (${monthlyUsed}/${monthlyTokenLimit}). Resets next month.`,
-      };
-    }
-
+  if (monthlyLimit > 0 && monthlyUsed >= monthlyLimit) {
     return {
-      allowed: true,
+      allowed: false,
       dailyUsed,
       dailyLimit,
-      dailyRemaining,
-      monthlyTokensUsed: monthlyUsed,
-      monthlyTokenLimit,
-      monthlyTokensRemaining: monthlyRemaining,
+      dailyRemaining: dailyLimit - dailyUsed,
+      monthlyUsed,
+      monthlyLimit,
+      monthlyRemaining: 0,
+      reason: `Monthly image analysis limit reached (${monthlyUsed}/${monthlyLimit}). Resets next month.`,
     };
   }
 
-  // No monthly token limit (free plan — just daily image count)
   return {
     allowed: true,
     dailyUsed,
     dailyLimit,
-    dailyRemaining,
-    monthlyTokensUsed: 0,
-    monthlyTokenLimit,
-    monthlyTokensRemaining: monthlyTokenLimit,
+    dailyRemaining: dailyLimit - dailyUsed,
+    monthlyUsed,
+    monthlyLimit,
+    monthlyRemaining: Math.max(monthlyLimit - monthlyUsed, 0),
   };
 }
 
-export async function incrementImageAnalysisUsage(
+async function fallbackIncrementImageAnalysisUsage(
+  supabase: any,
   userId: string,
-  tokensUsed: number,
-  dailyLimit: number = 3,
-  monthlyLimit: number = 0
+  dailyLimit: number,
+  monthlyLimit: number
 ): Promise<void> {
-  const supabase = await createServerSupabaseClient();
+  const now = new Date();
 
-  // Get current usage record
-  const { data: usageData } = await supabase
+  const { data: usage } = await supabase
     .from("image_analysis_usage")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
-  const now = new Date();
-  let dailyCount = 1;
-  let monthlyCount = 1;
-  let lastDailyReset = now.toISOString();
-  let lastMonthlyReset = now.toISOString();
-
-  if (usageData) {
-    // Check if daily reset is needed (24 hours)
-    const hoursSinceDailyReset = (Date.now() - new Date(usageData.last_daily_reset).getTime()) / (1000 * 60 * 60);
-    if (hoursSinceDailyReset < 24) {
-      dailyCount = (usageData.daily_count || 0) + 1;
-      lastDailyReset = usageData.last_daily_reset;
-    }
-
-    // Check if monthly reset is needed (30 days)
-    const daysSinceMonthlyReset = (Date.now() - new Date(usageData.last_monthly_reset).getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceMonthlyReset < 30) {
-      monthlyCount = (usageData.monthly_count || 0) + 1;
-      lastMonthlyReset = usageData.last_monthly_reset;
-    }
-
-    // Update existing record (also sync limits in case plan changed)
-    const { error } = await supabase
-      .from("image_analysis_usage")
-      .update({
-        daily_count: dailyCount,
-        monthly_count: monthlyCount,
-        daily_limit: dailyLimit,
-        monthly_limit: monthlyLimit,
-        last_daily_reset: lastDailyReset,
-        last_monthly_reset: lastMonthlyReset,
-        updated_at: now.toISOString(),
-      })
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error("Image analysis usage increment error:", error);
-    }
-  } else {
-    // Insert new record with plan-aware limits
-    const { error } = await supabase
-      .from("image_analysis_usage")
-      .insert({
-        user_id: userId,
-        daily_count: dailyCount,
-        monthly_count: monthlyCount,
-        daily_limit: dailyLimit,
-        monthly_limit: monthlyLimit,
-        last_daily_reset: lastDailyReset,
-        last_monthly_reset: lastMonthlyReset,
-      });
-
-    if (error) {
-      console.error("Image analysis usage increment error:", error);
-    }
+  if (!usage) {
+    await supabase.from("image_analysis_usage").insert({
+      user_id: userId,
+      daily_count: 1,
+      monthly_count: 1,
+      daily_limit: dailyLimit,
+      monthly_limit: monthlyLimit,
+      last_daily_reset: now.toISOString(),
+      last_monthly_reset: now.toISOString(),
+    });
+    return;
   }
+
+  const dailyReset = new Date(usage.last_daily_reset);
+  const monthlyReset = new Date(usage.last_monthly_reset);
+  let dailyCount = usage.daily_count || 0;
+  let monthlyCount = usage.monthly_count || 0;
+  let lastDailyReset = usage.last_daily_reset;
+  let lastMonthlyReset = usage.last_monthly_reset;
+
+  if (now >= dailyReset) {
+    dailyCount = 0;
+    lastDailyReset = now.toISOString();
+  }
+  if (monthlyLimit > 0 && now >= new Date(monthlyReset.getTime() + 30 * 86400000)) {
+    monthlyCount = 0;
+    lastMonthlyReset = now.toISOString();
+  }
+
+  await supabase
+    .from("image_analysis_usage")
+    .update({
+      daily_count: dailyCount + 1,
+      monthly_count: monthlyCount + 1,
+      daily_limit: dailyLimit,
+      monthly_limit: monthlyLimit,
+      last_daily_reset: lastDailyReset,
+      last_monthly_reset: lastMonthlyReset,
+      updated_at: now.toISOString(),
+    })
+    .eq("user_id", userId);
 }

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { createClient, createChatClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function UsagePage() {
@@ -10,7 +10,6 @@ export default function UsagePage() {
   const router = useRouter();
   const [usage, setUsage] = useState<any>(null);
   const supabase = createClient();
-  const chatSupabase = createChatClient();
 
   useEffect(() => { if (!loading && !user) router.push("/login"); }, [user, loading]);
 
@@ -19,11 +18,10 @@ export default function UsagePage() {
     const fetchUsage = async () => {
       const { data: profile } = await supabase.from("profiles").select("daily_message_count, daily_reset_at, subscription_tier").eq("user_id", user.id).single();
       const { count } = await supabase.from("messages").select("*", { count: "exact", head: true }).eq("user_id", user.id);
-      const { data: modelUsage } = await chatSupabase.from("user_model_usage").select("*").eq("user_id", user.id);
-      setUsage({ profile, totalMessages: count || 0, modelUsage: modelUsage || [] });
+      setUsage({ profile, totalMessages: count || 0 });
     };
     fetchUsage();
-  }, [user, supabase, chatSupabase]);
+  }, [user, supabase]);
 
   if (loading || !user) return null;
 
@@ -41,15 +39,7 @@ export default function UsagePage() {
             <p className="text-sm text-white/50">Total messages</p>
           </div>
         </div>
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-white">Model Usage</h2>
-          {usage?.modelUsage?.map((m: any) => (
-            <div key={m.model_id} className="flex justify-between text-sm p-2 rounded bg-white/5">
-              <span>{m.model_id}</span>
-              <span>{m.tokens_used} tokens</span>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm text-white/40">All features are unlimited — text LLM, web search, dive deep, and image analysis.</p>
         <Link href="/chat" className="text-indigo-400 hover:underline text-sm">← Back to Chat</Link>
       </div>
     </div>

@@ -1,9 +1,10 @@
+// Returns the user's current web search and dive deep usage + limits.
+// Used by the frontend to show remaining counts.
+
 import { NextResponse } from "next/server";
-import { createChatServerClient } from "@/lib/supabase/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createChatServerClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getRouterConfig } from "@/lib/routers/router-factory";
-import { checkWebSearchLimit } from "@/lib/chat/web-search-limiter";
-import { checkDiveDeepLimit } from "@/lib/chat/dive-deep-limiter";
+import { checkWebSearchLimit, checkDiveDeepLimit } from "@/lib/chat/web-search-limiter";
 
 export async function GET() {
   const supabase = await createChatServerClient();
@@ -23,8 +24,8 @@ export async function GET() {
   const routerConfig = getRouterConfig(userPlan);
 
   const [webSearchLimit, diveDeepLimit] = await Promise.all([
-    checkWebSearchLimit(user.id, routerConfig.webSearchDailyLimit, routerConfig.webSearchLimitHours),
-    checkDiveDeepLimit(user.id, routerConfig.diveDeepDailyLimit, routerConfig.diveDeepLimitHours),
+    checkWebSearchLimit(supabase, user.id, "web_search", routerConfig.webSearchDailyLimit, routerConfig.webSearchLimitHours),
+    checkDiveDeepLimit(supabase, user.id, routerConfig.diveDeepDailyLimit, routerConfig.diveDeepLimitHours),
   ]);
 
   return NextResponse.json({

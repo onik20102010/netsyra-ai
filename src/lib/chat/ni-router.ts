@@ -334,213 +334,6 @@ export async function analyzeTask(
   };
 }
 
-// ── Token enforcement ─────────────────────────────────
-export async function checkAndDeductTokens(
-  userId: string,
-  modelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini',
-  tokensNeeded: number,
-  supabase: any
-): Promise<{ success: boolean; remainingTokens?: number; error?: string }> {
-  try {
-    // Determine which function to use based on model type
-    const isGPT5 = modelType === 'gpt-5' || modelType === 'gpt-5-mini';
-    const rpcFunction = isGPT5 ? 'get_or_reset_gpt5_token_usage' : 'get_or_reset_ni_token_usage';
-    
-    // Get current token usage
-    const { data: usageData, error: getError } = await supabase.rpc(
-      rpcFunction,
-      { p_user_id: userId, p_model_type: modelType }
-    );
-
-    if (getError || !usageData?.length) {
-      return { success: false, error: 'Token balance unavailable' };
-    }
-
-    const remaining = usageData[0].remaining_tokens;
-
-    if (remaining < tokensNeeded) {
-      return {
-        success: false,
-        remainingTokens: remaining,
-        error: `Insufficient ${modelType} tokens. Need ${tokensNeeded}, have ${remaining}.`,
-      };
-    }
-
-    // Deduct tokens
-    const deductFunction = isGPT5 ? 'deduct_gpt5_tokens' : 'deduct_ni_tokens';
-    const { data: newBalance, error: deductError } = await supabase.rpc(
-      deductFunction,
-      { p_user_id: userId, p_model_type: modelType, p_tokens: tokensNeeded }
-    );
-
-    if (deductError || newBalance === -1) {
-      return { success: false, error: 'Failed to deduct tokens' };
-    }
-
-    return { success: true, remainingTokens: newBalance };
-  } catch (error) {
-    console.error('Token deduction error:', error);
-    return { success: false, error: 'Token system error' };
-  }
-}
-
-// ── Check if all NI token limits are exhausted ─────────
-export async function checkAllLimitsExhausted(
-  userId: string,
-  supabase: any
-): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'check_ni_limits_exhausted',
-      { p_user_id: userId }
-    );
-    if (error) return false;
-    return data;
-  } catch (error) {
-    console.error('Error checking limits:', error);
-    return false;
-  }
-}
-
-// ── Check if all GPT-5 token limits are exhausted ────────
-export async function checkGPT5LimitsExhausted(
-  userId: string,
-  supabase: any
-): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'check_gpt5_limits_exhausted',
-      { p_user_id: userId }
-    );
-    if (error) return false;
-    return data;
-  } catch (error) {
-    console.error('Error checking GPT-5 limits:', error);
-    return false;
-  }
-}
-
-// ── Get remaining tokens for all models ─────────────────
-export async function getTotalNiRemaining(
-  userId: string,
-  supabase: any
-): Promise<{ opus: number; sonnet: number; deepseek: number; total: number }> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'get_total_ni_remaining',
-      { p_user_id: userId }
-    );
-    if (error || !data?.length) return { opus: 0, sonnet: 0, deepseek: 0, total: 0 };
-    return {
-      opus: data[0].opus_remaining || 0,
-      sonnet: data[0].sonnet_remaining || 0,
-      deepseek: data[0].deepseek_remaining || 0,
-      total: data[0].total_remaining || 0,
-    };
-  } catch (error) {
-    console.error('Error getting remaining tokens:', error);
-    return { opus: 0, sonnet: 0, deepseek: 0, total: 0 };
-  }
-}
-
-// ── Get remaining tokens for all GPT-5 models ────────────
-export async function getTotalGPT5Remaining(
-  userId: string,
-  supabase: any
-): Promise<{ gpt5: number; mini: number; total: number }> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'get_total_gpt5_remaining',
-      { p_user_id: userId }
-    );
-    if (error || !data?.length) return { gpt5: 0, mini: 0, total: 0 };
-    return {
-      gpt5: data[0].gpt5_remaining || 0,
-      mini: data[0].mini_remaining || 0,
-      total: data[0].total_remaining || 0,
-    };
-  } catch (error) {
-    console.error('Error getting GPT-5 remaining tokens:', error);
-    return { gpt5: 0, mini: 0, total: 0 };
-  }
-}
-
-// ── Image Analysis Limit Functions ─────────────────────
-
-export async function checkImageAnalysisLimitsExhausted(
-  userId: string,
-  supabase: any
-): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'check_image_analysis_limits_exhausted',
-      { p_user_id: userId }
-    );
-    if (error) {
-      console.error('Error checking image analysis limits:', error);
-      return false;
-    }
-    return data || false;
-  } catch (error) {
-    console.error('Error checking image analysis limits:', error);
-    return false;
-  }
-}
-
-export async function deductImageAnalysisCredit(
-  userId: string,
-  supabase: any
-): Promise<{ success: boolean; remainingDaily: number; remainingMonthly: number; error?: string }> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'deduct_image_analysis_credit',
-      { p_user_id: userId }
-    );
-    if (error) {
-      console.error('Error deducting image analysis credit:', error);
-      return { success: false, remainingDaily: 0, remainingMonthly: 0, error: error.message };
-    }
-    if (!data) {
-      return { success: false, remainingDaily: 0, remainingMonthly: 0, error: 'Failed to deduct credit' };
-    }
-    return {
-      success: data.success || false,
-      remainingDaily: data.remaining_daily || 0,
-      remainingMonthly: data.remaining_monthly || 0,
-      error: data.error,
-    };
-  } catch (error) {
-    console.error('Error deducting image analysis credit:', error);
-    return { success: false, remainingDaily: 0, remainingMonthly: 0, error: 'Unknown error' };
-  }
-}
-
-export async function getImageAnalysisRemaining(
-  userId: string,
-  supabase: any
-): Promise<{ remainingDaily: number; remainingMonthly: number }> {
-  try {
-    const { data, error } = await supabase.rpc(
-      'get_or_reset_image_analysis_usage',
-      { p_user_id: userId }
-    );
-    if (error) {
-      console.error('Error getting image analysis remaining:', error);
-      return { remainingDaily: 30, remainingMonthly: 600 };
-    }
-    if (!data || data.length === 0) {
-      return { remainingDaily: 30, remainingMonthly: 600 };
-    }
-    return {
-      remainingDaily: data[0].remaining_daily || 30,
-      remainingMonthly: data[0].remaining_monthly || 600,
-    };
-  } catch (error) {
-    console.error('Error getting image analysis remaining:', error);
-    return { remainingDaily: 30, remainingMonthly: 600 };
-  }
-}
-
 // ── Estimate tokens needed for a task ───────────────────
 export function estimateTokensNeeded(analysis: TaskAnalysis): number {
   const { complexity, estimatedLines, estimatedFiles } = analysis;
@@ -566,194 +359,56 @@ export function estimateTokensNeeded(analysis: TaskAnalysis): number {
   return Math.ceil(tokens);
 }
 
-// ── Task routing with token-based fallback ────────────────
-export function routeTask(
-  analysis: TaskAnalysis,
-  tokenLimits?: {
-    opusRemaining?: number;
-    sonnetRemaining?: number;
-    deepseekRemaining?: number;
-    gpt5Remaining?: number;
-    gpt5MiniRemaining?: number;
-  }
-): ModelRoute {
+// ── Task routing (no token limits — pure complexity-based) ──
+export function routeTask(analysis: TaskAnalysis): ModelRoute {
   const { type, complexity, primarySubType, primaryCategory } = analysis;
-  const tokensNeeded = estimateTokensNeeded(analysis);
 
   if (type === 'image_analysis')
     return { model: 'gemini-flash-lite', provider: 'google', reason: 'Image analysis' };
 
   // Reasoning, planning, creative, teaching tasks - use GPT-5
-  if (primaryCategory === 'reasoning' || primaryCategory === 'creative' || 
+  if (primaryCategory === 'reasoning' || primaryCategory === 'creative' ||
       analysis.requiresReasoning || analysis.requiresArchitecture) {
-    // Try GPT-5 first
-    if (tokenLimits?.gpt5Remaining !== undefined && tokenLimits.gpt5Remaining >= tokensNeeded) {
-      return {
-        model: 'gpt-5',
-        provider: 'openai',
-        reason: 'Reasoning/creative task - using GPT-5 for advanced capabilities',
-        fallback: {
-          model: 'gpt-5-mini',
-          provider: 'openai',
-          reason: 'Fallback to GPT-5-mini if GPT-5 exhausted',
-        },
-      };
-    }
-
-    // Fallback to GPT-5-mini
-    if (tokenLimits?.gpt5MiniRemaining !== undefined && tokenLimits.gpt5MiniRemaining >= tokensNeeded) {
-      return {
-        model: 'gpt-5-mini',
-        provider: 'openai',
-        reason: 'GPT-5 exhausted, using GPT-5-mini',
-      };
-    }
-
-    // All GPT-5 limits exhausted, return error
     return {
-      model: 'gpt-5-mini',
+      model: 'gpt-5',
       provider: 'openai',
-      reason: 'GPT-5 token limits exhausted',
-      error: 'Your daily GPT-5 token limits have been exhausted. Please wait 24 hours for reset.',
+      reason: 'Reasoning/creative task - using GPT-5 for advanced capabilities',
     };
   }
 
   // Security-audit tasks always get highest priority (use Opus)
   if (primarySubType === 'security-audit' && complexity !== 'easy') {
-    if (tokenLimits?.opusRemaining !== undefined && tokenLimits.opusRemaining >= tokensNeeded) {
-      return {
-        model: 'claude-opus-4.6',
-        provider: 'anthropic',
-        reason: 'Security audit - using Claude Opus 4.6 for maximum accuracy',
-        fallback: {
-          model: 'claude-sonnet-4.6',
-          provider: 'anthropic',
-          reason: 'Fallback to Claude Sonnet 4.6',
-          fallback: {
-            model: 'deepseek-v4-pro',
-            provider: 'deepseek',
-            reason: 'Final fallback to DeepSeek V4 Pro',
-          },
-        },
-      };
-    }
-  }
-
-  // Deployment and operations tasks prioritize Sonnet for reliability
-  if (primaryCategory === 'operations' && complexity !== 'easy') {
-    if (tokenLimits?.sonnetRemaining !== undefined && tokenLimits.sonnetRemaining >= tokensNeeded) {
-      return {
-        model: 'claude-sonnet-4.6',
-        provider: 'anthropic',
-        reason: 'Operations task - using Claude Sonnet 4.6 for reliability',
-        fallback: {
-          model: 'deepseek-v4-pro',
-          provider: 'deepseek',
-          reason: 'Fallback to DeepSeek V4 Pro',
-        },
-      };
-    }
-  }
-
-  // Very hard coding tasks - prioritize Opus 4.6, fallback to Sonnet, then DeepSeek
-  if (complexity === 'very_hard' && (analysis.isDebugging || analysis.isRefactoring)) {
-    // Try Opus 4.6 first
-    if (tokenLimits?.opusRemaining !== undefined && tokenLimits.opusRemaining >= tokensNeeded) {
-      return {
-        model: 'claude-opus-4.6',
-        provider: 'anthropic',
-        reason: 'Very hard coding task - using Claude Opus 4.6',
-        fallback: {
-          model: 'claude-sonnet-4.6',
-          provider: 'anthropic',
-          reason: 'Fallback to Claude Sonnet 4.6 if Opus exhausted',
-          fallback: {
-            model: 'deepseek-v4-pro',
-            provider: 'deepseek',
-            reason: 'Final fallback to DeepSeek V4 Pro',
-          },
-        },
-      };
-    }
-
-    // Fallback to Sonnet 4.6
-    if (tokenLimits?.sonnetRemaining !== undefined && tokenLimits.sonnetRemaining >= tokensNeeded) {
-      return {
-        model: 'claude-sonnet-4.6',
-        provider: 'anthropic',
-        reason: 'Opus exhausted, using Claude Sonnet 4.6',
-        fallback: {
-          model: 'deepseek-v4-pro',
-          provider: 'deepseek',
-          reason: 'Final fallback to DeepSeek V4 Pro',
-        },
-      };
-    }
-
-    // Final fallback to DeepSeek V4 Pro
-    if (tokenLimits?.deepseekRemaining !== undefined && tokenLimits.deepseekRemaining >= tokensNeeded) {
-      return {
-        model: 'deepseek-v4-pro',
-        provider: 'deepseek',
-        reason: 'Opus and Sonnet exhausted, using DeepSeek V4 Pro',
-      };
-    }
-
-    // All limits exhausted
     return {
-      model: 'deepseek-v4-pro',
-      provider: 'deepseek',
-      reason: 'All NI token limits exhausted',
-      error: 'Your daily NI token limits have been exhausted. Please wait 24 hours for reset.',
+      model: 'claude-opus-4.6',
+      provider: 'anthropic',
+      reason: 'Security audit - using Claude Opus 4.6 for maximum accuracy',
     };
   }
 
-  // Hard tasks - use Sonnet 4.6, fallback to DeepSeek
-  if (complexity === 'hard') {
-    if (tokenLimits?.sonnetRemaining !== undefined && tokenLimits.sonnetRemaining >= tokensNeeded) {
-      return {
-        model: 'claude-sonnet-4.6',
-        provider: 'anthropic',
-        reason: 'Hard task - using Claude Sonnet 4.6',
-        fallback: {
-          model: 'deepseek-v4-pro',
-          provider: 'deepseek',
-          reason: 'Fallback to DeepSeek V4 Pro if Sonnet exhausted',
-        },
-      };
-    }
-
-    if (tokenLimits?.deepseekRemaining !== undefined && tokenLimits.deepseekRemaining >= tokensNeeded) {
-      return {
-        model: 'deepseek-v4-pro',
-        provider: 'deepseek',
-        reason: 'Sonnet exhausted, using DeepSeek V4 Pro',
-      };
-    }
-
+  // Very hard coding tasks - use Opus 4.6
+  if (complexity === 'very_hard' && (analysis.isDebugging || analysis.isRefactoring)) {
     return {
-      model: 'deepseek-v4-pro',
-      provider: 'deepseek',
-      reason: 'Token limits exhausted',
-      error: 'Your daily NI token limits have been exhausted. Please wait 24 hours for reset.',
+      model: 'claude-opus-4.6',
+      provider: 'anthropic',
+      reason: 'Very hard coding task - using Claude Opus 4.6',
+    };
+  }
+
+  // Hard tasks - use Sonnet 4.6
+  if (complexity === 'hard') {
+    return {
+      model: 'claude-sonnet-4.6',
+      provider: 'anthropic',
+      reason: 'Hard task - using Claude Sonnet 4.6',
     };
   }
 
   // Medium tasks - use DeepSeek V4 Pro
   if (complexity === 'medium' || (analysis.estimatedLines && analysis.estimatedLines > 100)) {
-    if (tokenLimits?.deepseekRemaining !== undefined && tokenLimits.deepseekRemaining >= tokensNeeded) {
-      return {
-        model: 'deepseek-v4-pro',
-        provider: 'deepseek',
-        reason: 'Medium complexity task - using DeepSeek V4 Pro',
-      };
-    }
-
     return {
       model: 'deepseek-v4-pro',
       provider: 'deepseek',
-      reason: 'Token limits exhausted',
-      error: 'Your daily NI token limits have been exhausted. Please wait 24 hours for reset.',
+      reason: 'Medium complexity task - using DeepSeek V4 Pro',
     };
   }
 
@@ -762,7 +417,6 @@ export function routeTask(
     model: 'deepseek-v4-flash',
     provider: 'deepseek',
     reason: 'Easy task - using DeepSeek V4 Flash',
-    noTokenLimit: true, // No token tracking for default fallback
   };
 }
 

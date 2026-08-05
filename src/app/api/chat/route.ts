@@ -8,9 +8,6 @@ import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
 import { performNLiveSearch } from "@/lib/chat/services/live-data";
 import { getRouterConfig } from "@/lib/routers/router-factory";
-import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
-import { incrementModelUsage, checkModelLimit, atomicCheckAndIncrement } from "@/lib/chat/model-limits";
-import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { safeFetch } from "@/lib/safe-fetch";
 import { getUserMemorySummary, generateMemorySummary } from "@/lib/chat/memory";
@@ -22,12 +19,13 @@ import { getSystemPrompt } from "@/lib/chat/model-registry";
 import { trimContextByTokens } from "@/lib/chat/token-counter";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
 import { shouldWebSearch } from "@/lib/chat/web-search-decision";
-import { checkDiveDeepLimit, incrementDiveDeepUsage } from "@/lib/chat/dive-deep-limiter";
-import { checkWebSearchLimit } from "@/lib/chat/web-search-limiter";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
-import { analyzeTask, routeTask, getRoutingExplanation, checkAndDeductTokens, checkAllLimitsExhausted, getTotalNiRemaining, estimateTokensNeeded, checkGPT5LimitsExhausted, getTotalGPT5Remaining } from "@/lib/chat/ni-router";
+import { analyzeTask, routeTask, getRoutingExplanation } from "@/lib/chat/ni-router";
+import { checkAndIncrementMessageUsage } from "@/lib/chat/model-limits";
+import { checkTokenLimits, incrementTokenUsage, goPlusTokenLimits, plusProTokenLimits, proTokenLimits } from "@/lib/chat/token-usage";
+import { checkWebSearchLimit, recordWebSearch, checkDiveDeepLimit, recordDiveDeep } from "@/lib/chat/web-search-limiter";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -89,86 +87,42 @@ async function getUserTotalMessageCount(supabase: any, userId: string): Promise<
   return error ? 0 : (count || 0);
 }
 
-// Server-side model labels (for error messages)
-const MODEL_LABELS_SERVER: Record<string, string> = {
-  fast: "N Fast",
-  plus: "N Plus",
-  pro: "N Pro",
-  code: "N Code",
-  live: "N Live",
-  aai: "N AAI",
-};
-
-// ── Track usage in chat schema tables (chat_usage + user_model_usage) ──
-// Fire-and-forget: never blocks the response. Uses a chat-schema client.
-// NOTE: For Free plan, user_model_usage is already incremented atomically
-// BEFORE the API call via atomicCheckAndIncrement. This function only
-// updates chat_usage (analytics table) and adjusts the token count in
-// user_model_usage to reflect the actual response length (the pre-increment
-// used a conservative 500-token estimate).
-async function trackChatUsage(
+/**
+ * Increment token usage after a successful LLM call.
+ * Estimates tokens from content length (~4 chars/token).
+ * Only increments for token-based tiers (go_plus, ni, plus_pro).
+ */
+async function incrementTokensForResponse(
+  supabase: any,
   userId: string,
+  userPlan: string,
   modelTier: string,
-  responseContent: string,
-  userContent: string,
-  userPlan?: string
+  modelKey: string | null,
+  modelName: string | null,
+  content: string
 ): Promise<void> {
+  // Rough token estimate: ~4 chars per token
+  const estimatedTokens = Math.max(1, Math.ceil(content.length / 4));
+
   try {
-    const chatSupabase = await createChatServerClient();
-    const estimatedTokens = Math.ceil((userContent.length + responseContent.length) / 4);
-
-    // 1. Increment chat_usage (analytics table, not used for enforcement)
-    const now = new Date();
-    const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    const { data: existing } = await chatSupabase
-      .from("chat_usage")
-      .select("messages_used, reset_at")
-      .eq("user_id", userId)
-      .eq("model_tier", modelTier)
-      .maybeSingle();
-
-    if (existing && new Date(existing.reset_at) > now) {
-      await chatSupabase
-        .from("chat_usage")
-        .update({ messages_used: (existing.messages_used || 0) + 1 })
-        .eq("user_id", userId)
-        .eq("model_tier", modelTier);
-    } else {
-      await chatSupabase
-        .from("chat_usage")
-        .upsert(
-          { user_id: userId, model_tier: modelTier, messages_used: 1, reset_at: resetAt },
-          { onConflict: "user_id,model_tier" }
-        );
-    }
-
-    // 2. For Free plan: only adjust token count (message was already counted atomically)
-    //    For paid plans: increment normally (they use token_usage table, not user_model_usage)
-    if (userPlan !== 'free') {
-      await incrementModelUsage(chatSupabase, userId, modelTier, estimatedTokens);
-    } else {
-      // Adjust the token estimate: the atomic pre-increment used 500 tokens,
-      // now update to the actual estimate. We do a direct update (not increment)
-      // to avoid double-counting the message.
-      const { data: usage } = await chatSupabase
-        .from("user_model_usage")
-        .select("tokens_used")
-        .eq("user_id", userId)
-        .eq("model_id", modelTier)
-        .maybeSingle();
-
-      if (usage) {
-        // Replace the 500-token pre-estimate with the actual estimate
-        const adjustedTokens = usage.tokens_used - 500 + estimatedTokens;
-        await chatSupabase
-          .from("user_model_usage")
-          .update({ tokens_used: Math.max(0, adjustedTokens) })
-          .eq("user_id", userId)
-          .eq("model_id", modelTier);
+    if (userPlan === "go_plus" && modelTier === "go_plus") {
+      await incrementTokenUsage(supabase, userId, "go_plus", estimatedTokens, goPlusTokenLimits);
+      console.log(`📊 Token usage incremented: go_plus +${estimatedTokens} tokens`);
+    } else if (userPlan === "plus_pro" && modelTier === "plus_pro" && modelKey) {
+      const limits = plusProTokenLimits[modelKey];
+      if (limits) {
+        await incrementTokenUsage(supabase, userId, modelKey, estimatedTokens, limits);
+        console.log(`📊 Token usage incremented: ${modelKey} +${estimatedTokens} tokens`);
+      }
+    } else if (userPlan === "pro" && modelTier === "ni" && modelName) {
+      const proLimits = proTokenLimits[modelName];
+      if (proLimits) {
+        await incrementTokenUsage(supabase, userId, modelName, estimatedTokens, proLimits);
+        console.log(`📊 NI token usage incremented: ${modelName} +${estimatedTokens} tokens`);
       }
     }
   } catch (err) {
-    console.error(`Usage tracking failed for tier ${modelTier}:`, err);
+    console.warn(`⚠️ Failed to increment token usage:`, err);
   }
 }
 
@@ -385,65 +339,36 @@ export async function POST(req: NextRequest) {
     const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
     const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
-    // ── Dive Deep limit check (3/24h on Free, higher on paid) ──
-    // If the user has hit their dive deep limit, force-disable it.
-    let diveDeepActive = diveDeep && !isGreeting;
-    let diveDeepRemaining = -1;
-    if (diveDeepActive) {
-      const diveDeepLimitResult = await checkDiveDeepLimit(
-        user.id,
-        routerConfig.diveDeepDailyLimit,
-        routerConfig.diveDeepLimitHours
-      );
-      diveDeepRemaining = diveDeepLimitResult.remaining;
-      if (!diveDeepLimitResult.allowed) {
-        console.log(`🌐 Dive Deep limit reached (${diveDeepLimitResult.used}/${diveDeepLimitResult.limit}) — auto-disabling for this message`);
-        diveDeepActive = false;
-      }
-    }
+    // ── Dive Deep (no limits) ──
+    const diveDeepActive = diveDeep && !isGreeting;
     const shouldUseNLive = diveDeepActive;
 
-    // ── Auto web search decision (intent-based) ──
+    // ── Auto web search decision (intent-based, no limits) ──
     // If the user didn't toggle the web search button, check if the message
-    // intent requires real-time/external data. If so, auto-trigger a search
-    // (subject to the same web search limit as the button toggle).
+    // intent requires real-time/external data. If so, auto-trigger a search.
     let autoSearchDecision: { shouldSearch: boolean; reason: string } | null = null;
     if (!webSearchEnabled && !shouldUseNLive && !isWidgetQuery) {
       const decision = shouldWebSearch(userMessage);
       if (decision.shouldSearch) {
-        // Check web search limit before auto-triggering
-        const wsLimit = await checkWebSearchLimit(
-          user.id,
-          routerConfig.webSearchDailyLimit,
-          routerConfig.webSearchLimitHours
-        );
-        if (wsLimit.allowed) {
-          autoSearchDecision = decision;
-          console.log(`🔍 Auto web search triggered: ${decision.reason}`);
-        } else {
-          console.log(`🔍 Auto web search skipped — limit reached (${wsLimit.used}/${wsLimit.limit})`);
-        }
+        autoSearchDecision = decision;
+        console.log(`🔍 Auto web search triggered: ${decision.reason}`);
       }
     }
 
-    // ── For Plus Pro, select model based on complexity and token availability ──
+    // ── For Plus Pro, select model based on complexity (no token limits) ──
     let selectedModelKey = modelTier;
     if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits) {
-      console.log(`🎯 Using Plus Pro model selection fallback logic`);
-      try {
-        const modelSelection = await selectAvailablePlusProModel(
-          supabase,
-          user.id,
-          userMessage,
-          modelTier,
-          routerConfig.perModelTokenLimits
-        );
-        selectedModelKey = modelSelection.modelKey;
-        console.log(`🎯 Selected model: ${selectedModelKey}, Reason: ${modelSelection.reason}`);
-      } catch (error) {
-        console.error(`🔴 Model selection failed, using default:`, error);
-        selectedModelKey = 'plus_pro_deepseek'; // Fallback to DeepSeek
+      // Simple complexity-based selection: coding → opus, reasoning → luna, default → deepseek
+      const isCodingTask = /\b(code|function|bug|fix|implement|refactor|debug|api|class|method)\b/i.test(userMessage);
+      const isReasoningTask = /\b(why|explain|analyze|compare|design|architecture|plan|strategy)\b/i.test(userMessage);
+      if (isCodingTask) {
+        selectedModelKey = 'plus_pro_opus';
+      } else if (isReasoningTask) {
+        selectedModelKey = 'plus_pro_luna';
+      } else {
+        selectedModelKey = 'plus_pro_deepseek';
       }
+      console.log(`🎯 Plus Pro model selected: ${selectedModelKey}`);
     }
 
     // ── Check if user's plan allows the requested model tier ──
@@ -452,6 +377,62 @@ export async function POST(req: NextRequest) {
         { error: `The ${modelTier} tier is not available on your plan. Upgrade to access it.` },
         { status: 403 }
       );
+    }
+
+    // ── Free plan: per-tier message limit check + increment (no token limit) ──
+    // Atomic check-and-increment via RPC. Blocks the request if the daily
+    // message limit for this tier is reached.
+    if (userPlan === "free") {
+      const msgCheck = await checkAndIncrementMessageUsage(supabase, user.id, modelTier);
+      if (!msgCheck.allowed) {
+        console.log(`🚫 Free tier limit reached: ${modelTier} (${msgCheck.messagesSent})`);
+        return NextResponse.json(
+          {
+            error: `You've reached the daily limit for ${modelTier === 'fast' ? 'N Fast' : modelTier === 'plus' ? 'N Plus' : modelTier === 'pro' ? 'N Pro' : modelTier === 'code' ? 'N Code' : modelTier === 'aai' ? 'N AAI' : modelTier === 'live' ? 'N Live' : modelTier}. Try again tomorrow or upgrade for more access.`,
+            limitReached: true,
+            resetsAt: msgCheck.resetsAt,
+          },
+          { status: 429 }
+        );
+      }
+      console.log(`📊 Free tier ${modelTier}: ${msgCheck.messagesSent} messages used, ${msgCheck.messagesRemaining} remaining`);
+    }
+
+    // ── Go Plus: pre-flight token limit check (no message limit) ──
+    if (userPlan === "go_plus" && modelTier === "go_plus") {
+      const tokenCheck = await checkTokenLimits(supabase, user.id, "go_plus", goPlusTokenLimits);
+      if (!tokenCheck.allowed) {
+        console.log(`🚫 Go Plus token limit reached: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
+        return NextResponse.json(
+          {
+            error: "You've reached your token limit for Go Plus. Your quota resets daily and monthly.",
+            limitReached: true,
+            dailyResetAt: tokenCheck.dailyResetAt,
+            monthlyResetAt: tokenCheck.monthlyResetAt,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    // ── Plus Pro: pre-flight per-model token limit check ──
+    if (userPlan === "plus_pro" && modelTier === "plus_pro" && routerConfig.perModelTokenLimits) {
+      const limits = routerConfig.perModelTokenLimits[selectedModelKey] || plusProTokenLimits[selectedModelKey];
+      if (limits) {
+        const tokenCheck = await checkTokenLimits(supabase, user.id, selectedModelKey, limits);
+        if (!tokenCheck.allowed) {
+          console.log(`🚫 Plus Pro token limit reached for ${selectedModelKey}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
+          return NextResponse.json(
+            {
+              error: `You've reached the token limit for this model (${selectedModelKey}). Try a different model or wait for your quota to reset.`,
+              limitReached: true,
+              dailyResetAt: tokenCheck.dailyResetAt,
+              monthlyResetAt: tokenCheck.monthlyResetAt,
+            },
+            { status: 429 }
+          );
+        }
+      }
     }
 
     // ── Intent classification ─────────────────
@@ -469,115 +450,6 @@ export async function POST(req: NextRequest) {
       asciiDiagramHint = "\n\n[SYSTEM NOTE: This query involves a structure/topology/flow that would benefit from an ASCII diagram. Consider including a ```ascii code block to visualize it.]";
     }
 
-    // ── USAGE CHECK (CRITICAL - this must work) ──
-    console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
-
-    // ── Free Plan: enforce per-model message limits (24h block when hit) ──
-    // Uses ATOMIC check-and-increment: checks the limit AND increments the counter
-    // in a single SQL transaction. This prevents race conditions where users could
-    // send messages faster than the fire-and-forget increment could complete.
-    // The increment happens BEFORE the LLM API call, so concurrent requests
-    // see the updated count immediately.
-    if (userPlan === 'free') {
-      const chatSupabaseForCheck = await createChatServerClient();
-      const modelLimitCheck = await atomicCheckAndIncrement(chatSupabaseForCheck, user.id, modelTier);
-      if (!modelLimitCheck.allowed) {
-        console.log(`🚫 Free plan message limit reached for tier ${modelTier}. Messages: ${modelLimitCheck.messagesSent}. Reset at: ${modelLimitCheck.resetsAt}`);
-        return NextResponse.json(
-          {
-            error: `You've reached the message limit for ${MODEL_LABELS_SERVER[modelTier] || modelTier}. Your access will reset in 24 hours.`,
-            limitReached: true,
-            resetsAt: modelLimitCheck.resetsAt,
-            tier: modelTier,
-            messagesRemaining: 0,
-          },
-          { status: 429 }
-        );
-      }
-      console.log(`✅ Free plan check passed for tier ${modelTier}. Messages: ${modelLimitCheck.messagesSent}/${modelLimitCheck.messagesRemaining + modelLimitCheck.messagesSent}`);
-    }
-
-    // Check token limits for all plans
-    // NI tier uses per-LLM SQL limits (ni_token_usage / gpt5_token_usage) as the
-    // PRIMARY enforcement — handled below via checkAllLimitsExhausted + checkAndDeductTokens.
-    // So we skip the generic check_token_limits call for NI to avoid the contradictory
-    // double-limit (500k plan-level vs 10k/16k/34k per-model).
-    let tokenCheck;
-    try {
-      if (modelTier === 'ni') {
-        // NI: defer to per-LLM enforcement below. Mark as allowed here.
-        tokenCheck = { allowed: true, dailyTokensUsed: 0, monthlyTokensUsed: 0, dailyRemaining: 0, monthlyRemaining: 0, dailyResetAt: '', monthlyResetAt: '' };
-        console.log(`🟢 NI tier: deferring to per-LLM token enforcement`);
-      } else if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && selectedModelKey) {
-        // For Plus Pro, check per-model token limits
-        const modelLimits = routerConfig.perModelTokenLimits[selectedModelKey];
-        if (modelLimits) {
-          tokenCheck = await checkTokenLimits(
-            supabase,
-            user.id,
-            modelTier,
-            modelLimits.daily,
-            modelLimits.monthly,
-            selectedModelKey
-          );
-        } else {
-          // Fallback to tier-level limits if model not found
-          tokenCheck = await checkTokenLimits(
-            supabase,
-            user.id,
-            modelTier,
-            routerConfig.dailyTokenLimit,
-            routerConfig.monthlyTokenLimit
-          );
-        }
-      } else {
-        // For all other plans (free, go_plus), use tier-level token limits
-        tokenCheck = await checkTokenLimits(
-          supabase,
-          user.id,
-          modelTier,
-          routerConfig.dailyTokenLimit,
-          routerConfig.monthlyTokenLimit
-        );
-      }
-      console.log(`🟢 Token check result:`, tokenCheck);
-    } catch (error) {
-      console.error(`🔴 TOKEN CHECK FAILED:`, error);
-      return NextResponse.json(
-        { error: "Token usage tracking failed. Please try again." },
-        { status: 500 }
-      );
-    }
-
-    // Block if token limit is reached
-    if (!tokenCheck || !tokenCheck.allowed) {
-      const dailyResetTime = new Date(tokenCheck?.dailyResetAt || new Date(Date.now() + 24 * 60 * 60 * 1000));
-      const monthlyResetTime = new Date(tokenCheck?.monthlyResetAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-      const dailyTimeLeftMs = dailyResetTime.getTime() - Date.now();
-      const monthlyTimeLeftMs = monthlyResetTime.getTime() - Date.now();
-
-      const dailyHours = Math.floor(dailyTimeLeftMs / (1000 * 60 * 60));
-      const dailyMinutes = Math.floor((dailyTimeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
-      const monthlyDays = Math.floor(monthlyTimeLeftMs / (1000 * 60 * 60 * 24));
-
-      console.log(`🚫🚫🚫 TOKEN LIMIT BLOCKED for user ${user.id}, tier ${modelTier}. Token check:`, tokenCheck);
-
-      return NextResponse.json(
-        {
-          error: `You've used all your tokens. Daily limit resets in ${dailyHours}h ${dailyMinutes}m. Monthly limit resets in ${monthlyDays} days.`,
-          remaining: 0,
-          dailyResetAt: tokenCheck?.dailyResetAt,
-          monthlyResetAt: tokenCheck?.monthlyResetAt,
-          tier: modelTier,
-          dailyLimit: routerConfig.dailyTokenLimit,
-          monthlyLimit: routerConfig.monthlyTokenLimit
-        },
-        { status: 429 }
-      );
-    }
-
-    console.log(`✅ Token check PASSED. Daily tokens remaining: ${tokenCheck.dailyRemaining}, Monthly tokens remaining: ${tokenCheck.monthlyRemaining}`);
-
     // ── Ensure conversation exists BEFORE cache check (so cache hits work on new conversations) ──
     if (newConversation || !conversationId) {
       console.log(`Creating conversation: newConversation=${newConversation}, conversationId=${conversationId}, convId=${convId}`);
@@ -592,8 +464,7 @@ export async function POST(req: NextRequest) {
         console.log(`💾 Cache hit (${cached.source}): "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "user", userMessage);
         await saveMessage(supabase, user.id, convId, "assistant", cached.response);
-        trackChatUsage(user.id, modelTier, cached.response, userMessage, userPlan).catch(console.error);
-        const encoder = new TextEncoder();
+                const encoder = new TextEncoder();
         const words = cached.response.split(" ");
         const stream = new ReadableStream({
           async start(controller) {
@@ -658,84 +529,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── NI Router: Determine actual model for NI tier ──
+    // ── NI Router: Determine actual model for NI tier (no token limits) ──
     let niModelRoute: any = null;
     if (modelTier === "ni") {
-      // Check BOTH NI models (opus/sonnet/deepseek) AND GPT-5 models (gpt-5/gpt-5-mini)
-      // deepseek-v4-flash is intentionally unlimited (easy tasks fallback)
-      const [allNiExhausted, allGpt5Exhausted] = await Promise.all([
-        checkAllLimitsExhausted(user.id, supabase),
-        checkGPT5LimitsExhausted(user.id, supabase),
-      ]);
-      if (allNiExhausted && allGpt5Exhausted) {
-        return NextResponse.json(
-          { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
-          { status: 429 }
-        );
-      }
-
-      const tokenRemaining = await getTotalNiRemaining(user.id, supabase);
-      const gpt5TokenRemaining = await getTotalGPT5Remaining(user.id, supabase);
-      const tokenLimits = {
-        opusRemaining: tokenRemaining.opus,
-        sonnetRemaining: tokenRemaining.sonnet,
-        deepseekRemaining: tokenRemaining.deepseek,
-        gpt5Remaining: gpt5TokenRemaining.gpt5,
-        gpt5MiniRemaining: gpt5TokenRemaining.mini,
-      };
-
-      // TODO: Use unified classifier when integrated
-      // const classification = await unifiedClassify(userMessage, {
-      //   historyLength: messages.length,
-      //   forceAI: false,
-      // });
-      
       const taskAnalysis = await analyzeTask(userMessage, {
         codeLength: messages.length * 50,
         fileCount: 1,
         conversationHistoryLength: messages.length,
       });
 
-      niModelRoute = routeTask(taskAnalysis, tokenLimits);
+      // No token limits — pass undefined so routeTask picks the best model
+      niModelRoute = routeTask(taskAnalysis);
       console.log(`🧠 NI Router: ${getRoutingExplanation(niModelRoute)} (confidence: ${taskAnalysis.confidence})`);
 
-      if (niModelRoute.error) {
-        console.log(`⚠️ ${niModelRoute.error}`);
-      }
-
-      // TODO: Use accurate token counting when integrated
-      // const tokensNeeded = countTokensSync(userMessage) + countTokensSync(tiers.ni.systemPrompt) + 500;
-      const tokensNeeded = estimateTokensNeeded(taskAnalysis);
-      let modelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
-      
-      if (niModelRoute.model === 'claude-opus-4.6') modelType = 'claude-opus-4.6';
-      else if (niModelRoute.model === 'claude-sonnet-4.6') modelType = 'claude-sonnet-4.6';
-      else if (niModelRoute.model === 'deepseek-v4-pro') modelType = 'deepseek-v4-pro';
-      else if (niModelRoute.model === 'gpt-5') modelType = 'gpt-5';
-      else if (niModelRoute.model === 'gpt-5-mini') modelType = 'gpt-5-mini';
-
-      if (niModelRoute.noTokenLimit) {
-        console.log(`🔄 Using ${niModelRoute.model} with no token limit tracking`);
-      } else {
-        const tokenResult = await checkAndDeductTokens(user.id, modelType, tokensNeeded, supabase);
-        if (!tokenResult.success) {
-          if (niModelRoute.fallback) {
-            niModelRoute = niModelRoute.fallback;
-            let fallbackModelType: 'claude-opus-4.6' | 'claude-sonnet-4.6' | 'deepseek-v4-pro' | 'gpt-5' | 'gpt-5-mini' = 'deepseek-v4-pro';
-            if (niModelRoute.model === 'claude-sonnet-4.6') fallbackModelType = 'claude-sonnet-4.6';
-            else if (niModelRoute.model === 'gpt-5-mini') fallbackModelType = 'gpt-5-mini';
-            else if (niModelRoute.model === 'deepseek-v4-pro') fallbackModelType = 'deepseek-v4-pro';
-            
-            const fallbackResult = await checkAndDeductTokens(user.id, fallbackModelType, tokensNeeded, supabase);
-            if (!fallbackResult.success) {
-              return NextResponse.json(
-                { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
-                { status: 429 }
-              );
-            }
-          } else {
+      // ── Pro (NI): pre-flight per-LLM token limit check ──
+      // Uses the NI router's chosen model name as the model_key in token_usage.
+      if (userPlan === "pro") {
+        const proLimits = proTokenLimits[niModelRoute.model];
+        if (proLimits) {
+          const tokenCheck = await checkTokenLimits(supabase, user.id, niModelRoute.model, proLimits);
+          if (!tokenCheck.allowed) {
+            console.log(`🚫 NI token limit reached for ${niModelRoute.model}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
             return NextResponse.json(
-              { error: "Your daily token limits have been exhausted. Please wait 24 hours for reset." },
+              {
+                error: `You've reached the token limit for this model. Try again later or use a different model.`,
+                limitReached: true,
+                dailyResetAt: tokenCheck.dailyResetAt,
+                monthlyResetAt: tokenCheck.monthlyResetAt,
+              },
               { status: 429 }
             );
           }
@@ -788,8 +609,7 @@ export async function POST(req: NextRequest) {
       if (cached) {
         console.log(`💾 Cache hit for query: "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "assistant", cached);
-        trackChatUsage(user.id, modelTier, cached, userMessage, userPlan).catch(console.error);
-        const encoder = new TextEncoder();
+                const encoder = new TextEncoder();
         const words = cached.split(" ");
         const stream = new ReadableStream({
           async start(controller) {
@@ -881,8 +701,7 @@ export async function POST(req: NextRequest) {
 
       if (responseData) {
         await saveMessage(supabase, user.id, convId, "assistant", responseData);
-        trackChatUsage(user.id, modelTier, responseData, userMessage, userPlan).catch(console.error);
-        const encoder = new TextEncoder();
+                const encoder = new TextEncoder();
         const words = responseData.split(" ");
         const stream = new ReadableStream({
           async start(controller) {
@@ -1023,8 +842,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
           replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
         }
         await saveMessage(supabase, user.id, convId, "assistant", replyText);
-        trackChatUsage(user.id, modelTier, replyText, userMessage, userPlan).catch(console.error);
-
+        
         // Trigger user summary generation (async, non-blocking, Free plan only)
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
@@ -1279,10 +1097,30 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
       // Perform N Live search
       const cleanQ = searchQuery.length > 3 ? searchQuery : userMessage;
+
+      // ── Dive deep limit check (24h sliding window) ──
+      const diveDeepCheck = await checkDiveDeepLimit(
+        supabase, user.id, routerConfig.diveDeepDailyLimit, routerConfig.diveDeepLimitHours
+      );
+      if (!diveDeepCheck.allowed) {
+        console.log(`🚫 Dive deep limit reached: ${diveDeepCheck.used}/${routerConfig.diveDeepDailyLimit}`);
+        return NextResponse.json(
+          {
+            error: `You've reached your daily Dive Deep limit (${routerConfig.diveDeepDailyLimit} per 24 hours). Try again later or upgrade for more.`,
+            limitReached: true,
+            used: diveDeepCheck.used,
+            limit: routerConfig.diveDeepDailyLimit,
+          },
+          { status: 429 }
+        );
+      }
+
       const searchResult = await performNLiveSearch(cleanQ);
 
-      // Count this as a dive deep usage (independent from web search limit)
-      await incrementDiveDeepUsage(user.id);
+      // Record the dive deep action after success
+      if (searchResult.answer || searchResult.useLLM) {
+        await recordDiveDeep(supabase, user.id).catch(console.error);
+      }
 
       if (searchResult.answer && !searchResult.useLLM) {
         // Tavily succeeded - stream directly in italic (sources passed via header)
@@ -1304,8 +1142,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
-        trackChatUsage(user.id, modelTier, fullResponse, userMessage, userPlan).catch(console.error);
-
+        
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
           generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
@@ -1344,8 +1181,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
-        trackChatUsage(user.id, modelTier, errorMessage, userMessage, userPlan).catch(console.error);
-
+        
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
           generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
@@ -1409,29 +1245,40 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     //      (autoSearchDecision — checked against limit above)
     const shouldPerformWebSearch = (webSearchEnabled || autoSearchDecision !== null) && !shouldUseNLive && !isWidgetQuery;
     if (shouldPerformWebSearch) {
-      const trigger = webSearchEnabled ? "user button" : `auto (${autoSearchDecision!.reason})`;
-      console.log(`🔍 Web search triggered by ${trigger} — performing search for: "${userMessage.slice(0, 80)}"`);
-      try {
-        const { result: searchResult, sources: webSources } = await executeWebSearch({
-          query: userMessage,
-          userId: user.id,
-          limit: routerConfig.webSearchDailyLimit,
-          windowHours: routerConfig.webSearchLimitHours,
-          isPaidUser,
-        });
+      // ── Web search limit check (24h sliding window) ──
+      const wsLimitCheck = await checkWebSearchLimit(
+        supabase, user.id, "web_search", routerConfig.webSearchDailyLimit, routerConfig.webSearchLimitHours
+      );
+      if (!wsLimitCheck.allowed) {
+        console.log(`🚫 Web search limit reached: ${wsLimitCheck.used}/${routerConfig.webSearchDailyLimit}`);
+        // Don't block the chat — just skip the search and inform via console
+        console.log(`⚠️ Web search skipped due to limit. Proceeding without search results.`);
+      } else {
+        const trigger = webSearchEnabled ? "user button" : `auto (${autoSearchDecision!.reason})`;
+        console.log(`🔍 Web search triggered by ${trigger} — performing search for: "${userMessage.slice(0, 80)}"`);
+        try {
+          const { result: searchResult, sources: webSources } = await executeWebSearch({
+            query: userMessage,
+            userId: user.id,
+            isPaidUser,
+          });
 
-        if (searchResult && !searchResult.includes("limit reached") && !searchResult.includes("Failed to perform") && searchResult !== "No search results found.") {
-          searchAttempted = true;
-          if (webSources.length > 0) {
-            searchSources = webSources;
+          if (searchResult && !searchResult.includes("limit reached") && !searchResult.includes("Failed to perform") && searchResult !== "No search results found.") {
+            searchAttempted = true;
+            if (webSources.length > 0) {
+              searchSources = webSources;
+            }
+            apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS ---\n${searchResult}\n\nIMPORTANT: You have been provided with web search results above. Use this information to answer the user's question. Cite sources when relevant. Do NOT repeat the search results verbatim — synthesize and build upon them.`;
+            console.log(`✅ Web search results injected (${searchResult.length} chars, ${webSources.length} sources)`);
+
+            // Record the web search action after success
+            await recordWebSearch(supabase, user.id, "web_search").catch(console.error);
+          } else {
+            console.log(`⚠️ Web search skipped: ${searchResult?.slice(0, 100)}`);
           }
-          apiMessages[0].content += `\n\n--- WEB SEARCH RESULTS ---\n${searchResult}\n\nIMPORTANT: You have been provided with web search results above. Use this information to answer the user's question. Cite sources when relevant. Do NOT repeat the search results verbatim — synthesize and build upon them.`;
-          console.log(`✅ Web search results injected (${searchResult.length} chars, ${webSources.length} sources)`);
-        } else {
-          console.log(`⚠️ Web search skipped: ${searchResult?.slice(0, 100)}`);
+        } catch (searchError) {
+          console.warn(`⚠️ Web search failed:`, searchError);
         }
-      } catch (searchError) {
-        console.warn(`⚠️ Web search failed:`, searchError);
       }
     }
 
@@ -1479,31 +1326,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     for (const modelConfig of modelsToTry) {
       console.log(`🤖 Using model: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Endpoint: ${modelConfig.endpoint}`);
 
-      // ── Per-model token limit check for Plus Pro (fallback to next model) ──
-      // If this model's token limit is exhausted, skip it and try the next one.
-      // When all models are exhausted, the loop ends and we return 429 below.
-      // Note: Pro (NI tier) uses per-LLM SQL limits (ni_token_usage / gpt5_token_usage)
-      // which are already checked+deducted above via checkAndDeductTokens.
-      if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits && modelConfig.modelKey) {
-        const modelLimitCfg = routerConfig.perModelTokenLimits[modelConfig.modelKey];
-        if (modelLimitCfg) {
-          const perModelCheck = await checkTokenLimits(
-            supabase,
-            user.id,
-            modelTier,
-            modelLimitCfg.daily,
-            modelLimitCfg.monthly,
-            modelConfig.modelKey
-          );
-          if (!perModelCheck.allowed) {
-            console.log(`🔄 Model ${modelConfig.modelKey} token limit reached — falling back to next model`);
-            lastError = `Token limit reached for this model`;
-            continue;
-          }
-        }
-      }
-
-      // Track which model is actually being used (for correct token increment)
+      // Track which model is actually being used
       actualModelKeyUsed = modelConfig.modelKey || null;
 
       // ── Per-model token-based context trimming for paid tiers ──
@@ -1604,18 +1427,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           }
 
           saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-          trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
 
-          // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
-          // Use actualModelKeyUsed (the model that actually served the request)
-          // instead of selectedModelKey (the model the selector chose) to avoid
-          // incrementing the wrong model's budget.
-          if (modelTier !== 'ni') {
-            const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
-            const incrementModelKey = (userPlan === 'plus_pro' && actualModelKeyUsed) ? actualModelKeyUsed : null;
-            incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
-              console.error(`Token usage increment failed for tier ${modelTier}:`, err)
-            );
+          // Increment token usage for token-based tiers
+          if (isTokenBasedTier) {
+            incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
           }
 
           if (!isTokenBasedTier) {
@@ -1760,8 +1575,13 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 }
 
                 saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-                trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
-                if (!isTokenBasedTier) {
+
+                // Increment token usage for token-based tiers
+                if (isTokenBasedTier) {
+                  incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
+                }
+
+                                if (!isTokenBasedTier) {
                   getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
                     generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
                   }).catch(console.error);
@@ -1882,16 +1702,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
               }
 
               saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-              trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
 
-              // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
-              // Use actualModelKeyUsed (the model that actually served the request)
-              if (modelTier !== 'ni') {
-                const estimatedTokens = Math.ceil((userMessage.length + finalContent.length) / 4);
-                const incrementModelKey = (userPlan === 'plus_pro' && actualModelKeyUsed) ? actualModelKeyUsed : null;
-                incrementTokenUsage(supabase, user.id, modelTier, estimatedTokens, incrementModelKey || undefined).catch(err =>
-                  console.error(`Token usage increment failed for tier ${modelTier}:`, err)
-                );
+              // Increment token usage for token-based tiers
+              if (isTokenBasedTier) {
+                incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
               }
 
               // Trigger user summary generation (async, non-blocking, Free plan only)
@@ -1937,99 +1751,6 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       } catch (fetchError: any) {
         console.warn(`❌ LLM Error: ${modelConfig.modelName} (${modelConfig.modelKey}) | API Key: ${modelConfig.apiKeyEnv} | Error: ${fetchError.message || "Unknown fetch error"}`);
         lastError = fetchError.message || "Unknown fetch error";
-      }
-    }
-
-    // ── All models exhausted: check if it was due to token limits ──
-    // For Plus Pro: check per-model token limits via generic token_usage table
-    if (userPlan === 'plus_pro' && routerConfig.perModelTokenLimits) {
-      let earliestReset: string | null = null;
-      for (const modelConfig of tier.models) {
-        if (!modelConfig.modelKey) continue;
-        const modelLimitCfg = routerConfig.perModelTokenLimits[modelConfig.modelKey];
-        if (modelLimitCfg) {
-          const perModelCheck = await checkTokenLimits(
-            supabase,
-            user.id,
-            modelTier,
-            modelLimitCfg.daily,
-            modelLimitCfg.monthly,
-            modelConfig.modelKey
-          );
-          if (!perModelCheck.allowed) {
-            const resetTime = perModelCheck.dailyResetAt || perModelCheck.monthlyResetAt;
-            if (resetTime && (!earliestReset || new Date(resetTime) < new Date(earliestReset))) {
-              earliestReset = resetTime;
-            }
-          }
-        }
-      }
-      if (earliestReset) {
-        console.log(`🚫 All models exhausted for ${userPlan} plan. Earliest reset: ${earliestReset}`);
-        return NextResponse.json(
-          {
-            error: `You've reached the limit for all available models. Your access will reset soon.`,
-            limitReached: true,
-            allModelsExhausted: true,
-            resetsAt: earliestReset,
-          },
-          { status: 429 }
-        );
-      }
-    }
-
-    // For Pro (NI tier): check per-LLM SQL limits (ni_token_usage + gpt5_token_usage)
-    if (userPlan === 'pro' && modelTier === 'ni') {
-      const niModels = ['claude-opus-4.6', 'claude-sonnet-4.6', 'deepseek-v4-pro'];
-      const gpt5Models = ['gpt-5', 'gpt-5-mini'];
-      let earliestReset: string | null = null;
-      let exhaustedCount = 0;
-
-      for (const modelType of niModels) {
-        const { data } = await supabase.rpc('get_or_reset_ni_token_usage', {
-          p_user_id: user.id, p_model_type: modelType,
-        });
-        const remaining = data?.[0]?.remaining_tokens ?? 0;
-        if (remaining <= 0) {
-          exhaustedCount++;
-          const lastReset = data?.[0]?.last_reset_at;
-          if (lastReset) {
-            const resetAt = new Date(new Date(lastReset).getTime() + 24 * 60 * 60 * 1000).toISOString();
-            if (!earliestReset || new Date(resetAt) < new Date(earliestReset)) {
-              earliestReset = resetAt;
-            }
-          }
-        }
-      }
-      for (const modelType of gpt5Models) {
-        const { data } = await supabase.rpc('get_or_reset_gpt5_token_usage', {
-          p_user_id: user.id, p_model_type: modelType,
-        });
-        const remaining = data?.[0]?.remaining_tokens ?? 0;
-        if (remaining <= 0) {
-          exhaustedCount++;
-          const lastReset = data?.[0]?.last_reset_at;
-          if (lastReset) {
-            const resetAt = new Date(new Date(lastReset).getTime() + 24 * 60 * 60 * 1000).toISOString();
-            if (!earliestReset || new Date(resetAt) < new Date(earliestReset)) {
-              earliestReset = resetAt;
-            }
-          }
-        }
-      }
-
-      const totalTracked = niModels.length + gpt5Models.length;
-      if (exhaustedCount === totalTracked && earliestReset) {
-        console.log(`🚫 All NI models exhausted for Pro plan. Earliest reset: ${earliestReset}`);
-        return NextResponse.json(
-          {
-            error: `You've reached the limit for all available models. Your access will reset soon.`,
-            limitReached: true,
-            allModelsExhausted: true,
-            resetsAt: earliestReset,
-          },
-          { status: 429 }
-        );
       }
     }
 

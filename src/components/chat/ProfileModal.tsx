@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Zap, Sparkles, ArrowRight } from "lucide-react";
+import { X, User, Check, Sun, Globe, BarChart3, MessageSquare, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { createClient, createChatClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 interface ProfileModalProps {
@@ -19,7 +19,6 @@ interface ProfileModalProps {
 type UsageStats = {
   messagesToday: number;
   totalMessages: number;
-  modelUsage: { model: string; tokens: number; messages: number }[];
 };
 
 export default function ProfileModal({
@@ -38,7 +37,6 @@ export default function ProfileModal({
   const [activeTab, setActiveTab] = useState<"profile" | "usage">("profile");
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const supabase = createClient();
-  const chatSupabase = createChatClient();
 
   useEffect(() => {
     setMounted(true);
@@ -48,11 +46,6 @@ export default function ProfileModal({
   useEffect(() => {
     if (!isOpen) return;
     const fetchUsage = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { count: totalCount } = await supabase
         .from("messages")
         .select("*", { count: "exact", head: true });
@@ -63,32 +56,9 @@ export default function ProfileModal({
         .select("*", { count: "exact", head: true })
         .gte("created_at", today);
 
-      const { data: modelUsage } = await chatSupabase
-        .from("user_model_usage")
-        .select("*")
-        .eq("user_id", user.id);
-
-      const modelLabels: Record<string, string> = {
-        fast: "N Fast",
-        plus: "N Plus",
-        pro: "N Pro",
-        live: "N Live",
-        code: "N Code",
-        plus_fallback: "N Plus (fallback)",
-        pro_fallback: "N Pro (fallback)",
-        live_fallback: "N Live (fallback)",
-      };
-
-      const modelUsageList = (modelUsage || []).map((m: any) => ({
-        model: modelLabels[m.model_id] || m.model_id,
-        tokens: m.tokens_used || 0,
-        messages: m.messages_sent || 0,
-      }));
-
       setUsage({
         messagesToday: todayCount || 0,
         totalMessages: totalCount || 0,
-        modelUsage: modelUsageList,
       });
     };
     fetchUsage();
@@ -304,36 +274,9 @@ export default function ProfileModal({
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-                        <Zap className="w-4 h-4 text-amber-500" /> Model Usage
-                      </h3>
-                      {usage?.modelUsage && usage.modelUsage.length > 0 ? (
-                        <div className="space-y-2">
-                          {usage.modelUsage.map((m, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100"
-                            >
-                              <div>
-                                <p className="text-sm font-medium text-gray-700">{m.model}</p>
-                                <p className="text-xs text-gray-400">{m.messages} messages</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {m.tokens.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-gray-400">tokens used</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-400 text-center py-4">
-                          No usage data yet.
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-xs text-gray-400 text-center py-2">
+                      All features are unlimited — text LLM, web search, dive deep, and image analysis.
+                    </p>
                   </div>
                 )}
               </div>

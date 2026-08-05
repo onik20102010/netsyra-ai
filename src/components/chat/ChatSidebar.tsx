@@ -16,7 +16,6 @@ import {
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { getImageAnalysisRemaining } from "@/lib/chat/ni-router";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-access";
 
 interface ChatSidebarProps {
@@ -61,9 +60,6 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<'Free' | 'Go Plus' | 'Pro' | '+ Pro'>('Free');
-  const [webSearchRemaining, setWebSearchRemaining] = useState<number | null>(null);
-  const [diveDeepRemaining, setDiveDeepRemaining] = useState<number | null>(null);
-  const [imageAnalysisRemaining, setImageAnalysisRemaining] = useState<{ remainingDaily: number; remainingMonthly: number } | null>(null);
   const supabase = createClient();
 
   const handleAddConversation = useCallback((conv: Conversation) => {
@@ -102,32 +98,6 @@ export default function ChatSidebar({
           setCurrentPlan('Free');
         }
       });
-  }, [user, supabase]);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchSearchLimits = async () => {
-      try {
-        const res = await fetch("/api/chat/search-limits");
-        if (res.ok) {
-          const data = await res.json();
-          setWebSearchRemaining(data.webSearch.remaining);
-          setDiveDeepRemaining(data.diveDeep.remaining);
-        }
-      } catch {
-        // silent fail
-      }
-    };
-    fetchSearchLimits();
-  }, [user, refreshKey]);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchImageAnalysisUsage = async () => {
-      const remaining = await getImageAnalysisRemaining(user.id, supabase);
-      setImageAnalysisRemaining(remaining);
-    };
-    fetchImageAnalysisUsage();
   }, [user, supabase]);
 
   useEffect(() => {
@@ -264,23 +234,15 @@ export default function ChatSidebar({
             {/* N Live toggle button */}
             <button
               onClick={() => setDiveDeep(!diveDeep)}
-              disabled={diveDeepRemaining !== null && diveDeepRemaining <= 0 && !diveDeep}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
                 diveDeep
                   ? "bg-cyan-100 text-cyan-700 font-medium"
                   : "text-gray-600 hover:bg-gray-200/50"
-              } ${diveDeepRemaining !== null && diveDeepRemaining <= 0 && !diveDeep ? "opacity-40 cursor-not-allowed" : ""}`}
-              title={
-                diveDeepRemaining !== null && diveDeepRemaining <= 0
-                  ? `Dive Deep limit reached (0 left today)`
-                  : "Enable real-time web search for any model"
-              }
+              }`}
+              title="Enable real-time web search for any model"
             >
               <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-cyan-600" : "text-gray-400"}`} />
               Deep Dive
-              {diveDeepRemaining !== null && diveDeepRemaining <= 3 && (
-                <span className="text-[10px] text-gray-400 tabular-nums">({diveDeepRemaining} left)</span>
-              )}
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
                 diveDeep ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
               }`}>

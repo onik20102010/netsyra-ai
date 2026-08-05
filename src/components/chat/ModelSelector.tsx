@@ -145,7 +145,6 @@ export default function ModelSelector({
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [modelStatuses, setModelStatuses] = useState<Record<string, any>>({});
   const [isMobile, setIsMobile] = useState(false);
 
   const checkScreen = useCallback(() => {
@@ -157,19 +156,6 @@ export default function ModelSelector({
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
   }, [checkScreen]);
-
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      try {
-        const res = await fetch("/api/model-status");
-        const data = await res.json();
-        setModelStatuses(data);
-      } catch {}
-    };
-    fetchStatuses();
-    const interval = setInterval(fetchStatuses, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -206,24 +192,20 @@ export default function ModelSelector({
   const displayAdvancedModels = filteredAdvancedModels;
 
   const renderModelButton = (model: (typeof allModels)[0]) => {
-    const status = modelStatuses[model.id];
-    const isDisabled = status && !status.allowed;
     const isLockedBySubscription = model.id === "ni" && !isPro;
-    const remainingMs = status ? new Date(status.resetsAt).getTime() - Date.now() : 0;
-    const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
 
     return (
       <button
         key={model.id}
         type="button"
         onClick={() => {
-          if (!isDisabled && !isLockedBySubscription) handleSelect(model.id);
+          if (!isLockedBySubscription) handleSelect(model.id);
         }}
-        disabled={isDisabled || isLockedBySubscription}
+        disabled={isLockedBySubscription}
         className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all ${
           selected === model.id
             ? "bg-indigo-50 text-indigo-700 font-medium"
-            : isDisabled || isLockedBySubscription
+            : isLockedBySubscription
             ? "text-gray-300 cursor-not-allowed"
             : "text-gray-600 hover:bg-gray-50"
         } ${isMobile ? "py-3 text-base" : ""}`}
@@ -232,10 +214,10 @@ export default function ModelSelector({
         <div className="text-left flex-1">
           <div className="font-medium text-xs sm:text-sm">{model.name}</div>
           <div className="text-[10px] sm:text-xs text-gray-400">
-            {isLockedBySubscription ? "Pro only" : isDisabled ? `Resets in ${remainingHours}h` : model.desc}
+            {isLockedBySubscription ? "Pro only" : model.desc}
           </div>
         </div>
-        {(isDisabled || isLockedBySubscription) && <span className="text-xs text-gray-400">🔒</span>}
+        {isLockedBySubscription && <span className="text-xs text-gray-400">🔒</span>}
       </button>
     );
   };

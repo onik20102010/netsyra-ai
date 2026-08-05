@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createChatServerClient } from '@/lib/supabase/server';
 import { getRouterConfig } from '@/lib/routers/router-factory';
 import { checkImageAnalysisLimit, incrementImageAnalysisUsage } from '@/lib/chat/image-analysis-limiter';
 
@@ -32,19 +32,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Check image analysis limits ──
-    const limitCheck = await checkImageAnalysisLimit(
+    // ── Image analysis limit check (daily + monthly) ──
+    const chatClient = await createChatServerClient();
+    const imgLimitCheck = await checkImageAnalysisLimit(
+      chatClient,
       user.id,
       routerConfig.imageAnalysisDailyLimit,
-      routerConfig.imageAnalysisMonthlyTokenLimit
+      routerConfig.imageAnalysisMonthlyLimit
     );
-
-    if (!limitCheck.allowed) {
+    if (!imgLimitCheck.allowed) {
       return NextResponse.json(
-        { error: limitCheck.reason || 'Image analysis limit reached.' },
+        {
+          error: imgLimitCheck.reason || 'Image analysis limit reached.',
+          limitReached: true,
+          dailyUsed: imgLimitCheck.dailyUsed,
+          dailyLimit: imgLimitCheck.dailyLimit,
+          monthlyUsed: imgLimitCheck.monthlyUsed,
+          monthlyLimit: imgLimitCheck.monthlyLimit,
+        },
         { status: 429 }
       );
     }
+    console.log(`📊 Image analysis limit: ${imgLimitCheck.dailyUsed}/${imgLimitCheck.dailyLimit} daily, ${imgLimitCheck.monthlyUsed}/${imgLimitCheck.monthlyLimit} monthly`);
 
     const formData = await request.formData();
     const images = formData.getAll('images') as File[];
@@ -149,14 +158,13 @@ export async function POST(request: NextRequest) {
       if (description) {
         console.log(`✅ LLM Response: ${modelName} | API Key: GEMINI_API_KEY | Provider: gemini | Content length: ${description.length} chars`);
 
-        // ── Increment usage (estimate tokens: description length / 4) ──
-        const tokensUsed = Math.ceil(description.length / 4);
+        // Increment image analysis usage after success
         await incrementImageAnalysisUsage(
+          chatClient,
           user.id,
-          tokensUsed,
           routerConfig.imageAnalysisDailyLimit,
-          routerConfig.imageAnalysisMonthlyTokenLimit
-        );
+          routerConfig.imageAnalysisMonthlyLimit
+        ).catch(console.error);
 
         return NextResponse.json(
           { description },

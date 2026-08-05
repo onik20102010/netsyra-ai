@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-// Aggregate daily Groq token limit across all free tiers (estimate)
-const DAILY_GROQ_LIMIT = 100000;
-
+// Aggregate daily usage stats (text LLM limits removed — this is now informational only)
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -13,25 +11,14 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Count total messages today across all users
   const today = new Date().toISOString().split("T")[0];
-
-  // Sum all tokens used today across all users
-  const { data: usageRows, error } = await supabase
-    .from("user_model_usage")
-    .select("tokens_used");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  const totalTokens = (usageRows || []).reduce((sum, row) => sum + (row.tokens_used || 0), 0);
-  const percentUsed = Math.round((totalTokens / DAILY_GROQ_LIMIT) * 100);
+  const { count } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", today);
 
   return NextResponse.json({
-    totalTokens,
-    limit: DAILY_GROQ_LIMIT,
-    percentUsed,
-    isWarning: percentUsed >= 80,
-    isCritical: percentUsed >= 95,
+    totalMessagesToday: count || 0,
   });
 }

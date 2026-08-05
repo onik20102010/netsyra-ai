@@ -125,7 +125,8 @@ GRANT EXECUTE ON FUNCTION chat.check_and_increment_model_usage TO authenticated;
 -- Safety: ensure unique constraint exists (prevents duplicate rows)
 -- ============================================================
 -- The table already has UNIQUE(user_id, model_id) from the original
--- migration, but this ensures it exists even if the table was modified.
+-- migration. This only adds it if missing. Uses exception handling
+-- to avoid errors if the constraint already exists.
 
 DO $$
 BEGIN
@@ -133,16 +134,12 @@ BEGIN
     SELECT 1 FROM pg_constraint
     WHERE conrelid = 'chat.user_model_usage'::regclass
       AND contype = 'u'
-      AND array_to_string(conkey, ',') = (
-        SELECT array_to_string(array_agg(attnum), ',')
-        FROM pg_attribute
-        WHERE attrelid = 'chat.user_model_usage'::regclass
-          AND attname IN ('user_id', 'model_id')
-      )
   ) THEN
     ALTER TABLE chat.user_model_usage
       ADD CONSTRAINT user_model_usage_user_id_model_id_key UNIQUE (user_id, model_id);
   END IF;
+EXCEPTION WHEN duplicate_object THEN
+  NULL; -- Constraint already exists, ignore
 END $$;
 
 -- ============================================================

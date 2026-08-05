@@ -231,93 +231,6 @@ export default function ChatInterface({
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
-  // ── Search limits (dive deep + web search) ──
-  const [searchLimits, setSearchLimits] = useState<{
-    webSearch: { used: number; remaining: number; limit: number };
-    diveDeep: { used: number; remaining: number; limit: number };
-  } | null>(null);
-
-  const fetchSearchLimits = async () => {
-    try {
-      const res = await fetch("/api/chat/search-limits");
-      if (res.ok) {
-        const data = await res.json();
-        setSearchLimits(data);
-      }
-    } catch {
-      // silent fail — limits are optional UX enhancement
-    }
-  };
-
-  // ── Model limit status (for countdown timer when all models exhausted) ──
-  const [limitStatus, setLimitStatus] = useState<{
-    allExhausted: boolean;
-    anyExhausted: boolean;
-    resetsAt: string | null;
-    tierStatus?: Record<string, { remaining: number; total: number; label: string; exhausted: boolean; resetsAt: string | null }>;
-  } | null>(null);
-
-  const fetchLimitStatus = async () => {
-    try {
-      const res = await fetch("/api/chat/limit-status");
-      if (res.ok) {
-        const data = await res.json();
-        setLimitStatus(data);
-      }
-    } catch {
-      // silent fail
-    }
-  };
-
-  useEffect(() => {
-    fetchLimitStatus();
-    const interval = setInterval(fetchLimitStatus, 30000); // refresh every 30s
-    return () => clearInterval(interval);
-  }, []);
-
-  // Refresh limit status after each message
-  useEffect(() => {
-    if (!isLoading) {
-      fetchLimitStatus();
-    }
-  }, [isLoading]);
-
-  // ── Countdown timer for limit reset ──
-  const [countdown, setCountdown] = useState<string>("");
-  useEffect(() => {
-    if (!limitStatus?.allExhausted || !limitStatus.resetsAt) {
-      setCountdown("");
-      return;
-    }
-    const update = () => {
-      const ms = new Date(limitStatus.resetsAt!).getTime() - Date.now();
-      if (ms <= 0) {
-        setCountdown("Resetting...");
-        fetchLimitStatus();
-        return;
-      }
-      const h = Math.floor(ms / (1000 * 60 * 60));
-      const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((ms % (1000 * 60)) / 1000);
-      setCountdown(`${h}h ${m}m ${s}s`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [limitStatus]);
-
-  // Poll search limits on mount and after each message
-  useEffect(() => {
-    fetchSearchLimits();
-  }, []);
-
-  // Auto-disable web search button when limit reached
-  useEffect(() => {
-    if (searchLimits && searchLimits.webSearch.remaining <= 0 && webSearchEnabled) {
-      setWebSearchEnabled(false);
-    }
-  }, [searchLimits, webSearchEnabled]);
-
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const TYPING_DELAY = 2000;
@@ -733,7 +646,6 @@ export default function ChatInterface({
           const data = await res.json();
           toast.error(data.error || "Limit reached", { duration: 6000 });
           refetchUsage();
-          fetchLimitStatus();
           setIsLoading(false);
           setIsThinking(false);
           setIsTyping(false);
@@ -837,8 +749,6 @@ export default function ChatInterface({
       };
       setMessages(prev => [...prev, assistantMessage]);
       refetchUsage();
-      // Refresh search limits after each message (dive deep / web search counts may have changed)
-      fetchSearchLimits();
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");
     } finally {
@@ -1571,40 +1481,10 @@ export default function ChatInterface({
           {selectedModel !== "auto" && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 px-1">
               <span>Using {MODEL_LABELS[selectedModel] || selectedModel}</span>
-              {limitStatus?.tierStatus?.[selectedModel] && (
-                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums ${
-                  limitStatus.tierStatus[selectedModel].exhausted
-                    ? "bg-red-100 text-red-700"
-                    : limitStatus.tierStatus[selectedModel].remaining <= 2
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}>
-                  {limitStatus.tierStatus[selectedModel].exhausted
-                    ? "Limit reached"
-                    : `${limitStatus.tierStatus[selectedModel].remaining}/${limitStatus.tierStatus[selectedModel].total} left`}
-                </span>
-              )}
             </div>
           )}
 
           <form onSubmit={handleSend} className="relative">
-            {/* Per-tier exhausted banner with countdown timer */}
-            {limitStatus?.tierStatus?.[selectedModel]?.exhausted && limitStatus.tierStatus[selectedModel].resetsAt && (
-              <div className="mb-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                <p className="text-sm text-amber-800 font-medium">
-                  You've reached the message limit for {MODEL_LABELS[selectedModel] || selectedModel}. Access resets in <span className="tabular-nums font-bold">{countdown}</span>
-                </p>
-              </div>
-            )}
-
-            {/* All tiers exhausted banner (fallback) */}
-            {limitStatus?.allExhausted && limitStatus.resetsAt && !limitStatus?.tierStatus?.[selectedModel]?.exhausted && (
-              <div className="mb-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                <p className="text-sm text-amber-800 font-medium">
-                  You've reached the message limit. Access resets in <span className="tabular-nums font-bold">{countdown}</span>
-                </p>
-              </div>
-            )}
 
             {/* Attached Images Preview */}
             {attachedImages.length > 0 && (
@@ -1684,33 +1564,21 @@ export default function ChatInterface({
                 <button
                   type="button"
                   onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  disabled={searchLimits ? searchLimits.webSearch.remaining <= 0 : false}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     webSearchEnabled
                       ? "bg-black text-white shadow-sm border border-gray-600 hover:bg-gray-800"
                       : "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
-                  } ${searchLimits && searchLimits.webSearch.remaining <= 0 ? "opacity-40 cursor-not-allowed" : ""}`}
-                  title={
-                    searchLimits && searchLimits.webSearch.remaining <= 0
-                      ? `Web search limit reached (${searchLimits.webSearch.limit}/24h)`
-                      : webSearchEnabled
-                        ? "Web search is ON"
-                        : "Enable web search"
-                  }
+                  }`}
+                  title={webSearchEnabled ? "Web search is ON" : "Enable web search"}
                 >
                   <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-gray-300" : "text-gray-400"}`} />
                   <span className="hidden sm:inline">Web Search</span>
-                  {searchLimits && searchLimits.webSearch.limit <= 10 && (
-                    <span className={`text-[10px] tabular-nums ${webSearchEnabled ? "text-gray-400" : "text-gray-400"}`}>
-                      ({searchLimits.webSearch.remaining})
-                    </span>
-                  )}
                 </button>
               </div>
 
               <button
                 type="submit"
-                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage || (limitStatus?.tierStatus?.[selectedModel]?.exhausted ?? false) || (limitStatus?.allExhausted ?? false)}
+                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
                 className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
                 aria-label="Send message"
               >
@@ -1724,8 +1592,8 @@ export default function ChatInterface({
 
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">
               Netsyra may produce inaccurate information.
-              {diveDeep && searchLimits && ` 🌐 Dive Deep ON (${searchLimits.diveDeep.remaining} left)`}
-              {webSearchEnabled && searchLimits && ` 🔍 Web Search ON (${searchLimits.webSearch.remaining} left)`}
+              {diveDeep && ` 🌐 Dive Deep ON`}
+              {webSearchEnabled && ` 🔍 Web Search ON`}
             </p>
           </form>
         </div>
