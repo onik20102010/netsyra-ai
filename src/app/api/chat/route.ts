@@ -436,8 +436,11 @@ export async function POST(req: NextRequest) {
     // ── Free Plan: enforce per-model message limits (24h block when hit) ──
     // Free plan models have messagesPerDay limits (fast=15, plus=10, pro=5, etc.)
     // When the user hits the limit for the selected model, block for 24h.
+    // IMPORTANT: user_model_usage is in the CHAT schema, not public.
+    // createServerSupabaseClient uses public schema → must use createChatServerClient.
     if (userPlan === 'free') {
-      const modelLimitCheck = await checkModelLimit(supabase, user.id, modelTier);
+      const chatSupabaseForCheck = await createChatServerClient();
+      const modelLimitCheck = await checkModelLimit(chatSupabaseForCheck, user.id, modelTier);
       if (!modelLimitCheck.allowed) {
         console.log(`🚫 Free plan message limit reached for tier ${modelTier}. Reset at: ${modelLimitCheck.resetsAt}`);
         return NextResponse.json(

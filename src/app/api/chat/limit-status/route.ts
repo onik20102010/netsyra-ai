@@ -26,13 +26,14 @@ export async function GET() {
   const routerConfig = getRouterConfig(userPlan);
 
   // ── Free plan: check message limits for all allowed tiers ──
+  // IMPORTANT: user_model_usage is in the CHAT schema, must use chat client.
   if (userPlan === "free") {
     let earliestReset: string | null = null;
     let exhaustedCount = 0;
     const allowedTiers = routerConfig.allowedModelKeys;
 
     for (const tier of allowedTiers) {
-      const check = await checkModelLimit(serverClient, user.id, tier);
+      const check = await checkModelLimit(supabase, user.id, tier);
       if (!check.allowed) {
         exhaustedCount++;
         if (!earliestReset || new Date(check.resetsAt) < new Date(earliestReset)) {

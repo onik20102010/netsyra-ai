@@ -87,7 +87,7 @@ export async function checkModelLimit(
     .select("*")
     .eq("user_id", userId)
     .eq("model_id", modelKey)
-    .single();
+    .maybeSingle();
 
   const resetAt = usage?.reset_at ? new Date(usage.reset_at) : now;
   const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60);
@@ -210,7 +210,7 @@ export async function incrementModelUsage(
     .select("*")
     .eq("user_id", userId)
     .eq("model_id", modelKey)
-    .single();
+    .maybeSingle();
 
   const currentTokens = usage?.tokens_used || 0;
   const currentMessages = usage?.messages_sent || 0;
