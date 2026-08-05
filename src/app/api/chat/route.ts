@@ -9,7 +9,7 @@ import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib
 import { performNLiveSearch } from "@/lib/chat/services/live-data";
 import { getRouterConfig } from "@/lib/routers/router-factory";
 import { checkTokenLimits, incrementTokenUsage } from "@/lib/chat/token-usage";
-import { incrementModelUsage, checkModelLimit } from "@/lib/chat/model-limits";
+import { incrementModelUsage, checkModelLimit, atomicCheckAndIncrement } from "@/lib/chat/model-limits";
 import { selectAvailablePlusProModel } from "@/lib/chat/model-selector-fallback";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -89,19 +89,35 @@ async function getUserTotalMessageCount(supabase: any, userId: string): Promise<
   return error ? 0 : (count || 0);
 }
 
+// Server-side model labels (for error messages)
+const MODEL_LABELS_SERVER: Record<string, string> = {
+  fast: "N Fast",
+  plus: "N Plus",
+  pro: "N Pro",
+  code: "N Code",
+  live: "N Live",
+  aai: "N AAI",
+};
+
 // ── Track usage in chat schema tables (chat_usage + user_model_usage) ──
 // Fire-and-forget: never blocks the response. Uses a chat-schema client.
+// NOTE: For Free plan, user_model_usage is already incremented atomically
+// BEFORE the API call via atomicCheckAndIncrement. This function only
+// updates chat_usage (analytics table) and adjusts the token count in
+// user_model_usage to reflect the actual response length (the pre-increment
+// used a conservative 500-token estimate).
 async function trackChatUsage(
   userId: string,
   modelTier: string,
   responseContent: string,
-  userContent: string
+  userContent: string,
+  userPlan?: string
 ): Promise<void> {
   try {
     const chatSupabase = await createChatServerClient();
     const estimatedTokens = Math.ceil((userContent.length + responseContent.length) / 4);
 
-    // 1. Increment chat_usage (message count per tier, 24h window)
+    // 1. Increment chat_usage (analytics table, not used for enforcement)
     const now = new Date();
     const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
     const { data: existing } = await chatSupabase
@@ -126,8 +142,31 @@ async function trackChatUsage(
         );
     }
 
-    // 2. Increment user_model_usage (tokens + messages per model, 24h window)
-    await incrementModelUsage(chatSupabase, userId, modelTier, estimatedTokens);
+    // 2. For Free plan: only adjust token count (message was already counted atomically)
+    //    For paid plans: increment normally (they use token_usage table, not user_model_usage)
+    if (userPlan !== 'free') {
+      await incrementModelUsage(chatSupabase, userId, modelTier, estimatedTokens);
+    } else {
+      // Adjust the token estimate: the atomic pre-increment used 500 tokens,
+      // now update to the actual estimate. We do a direct update (not increment)
+      // to avoid double-counting the message.
+      const { data: usage } = await chatSupabase
+        .from("user_model_usage")
+        .select("tokens_used")
+        .eq("user_id", userId)
+        .eq("model_id", modelTier)
+        .maybeSingle();
+
+      if (usage) {
+        // Replace the 500-token pre-estimate with the actual estimate
+        const adjustedTokens = usage.tokens_used - 500 + estimatedTokens;
+        await chatSupabase
+          .from("user_model_usage")
+          .update({ tokens_used: Math.max(0, adjustedTokens) })
+          .eq("user_id", userId)
+          .eq("model_id", modelTier);
+      }
+    }
   } catch (err) {
     console.error(`Usage tracking failed for tier ${modelTier}:`, err);
   }
@@ -434,25 +473,28 @@ export async function POST(req: NextRequest) {
     console.log(`🔴 CRITICAL: About to check usage for user ${user.id}, tier ${modelTier}`);
 
     // ── Free Plan: enforce per-model message limits (24h block when hit) ──
-    // Free plan models have messagesPerDay limits (fast=15, plus=10, pro=5, etc.)
-    // When the user hits the limit for the selected model, block for 24h.
-    // IMPORTANT: user_model_usage is in the CHAT schema, not public.
-    // createServerSupabaseClient uses public schema → must use createChatServerClient.
+    // Uses ATOMIC check-and-increment: checks the limit AND increments the counter
+    // in a single SQL transaction. This prevents race conditions where users could
+    // send messages faster than the fire-and-forget increment could complete.
+    // The increment happens BEFORE the LLM API call, so concurrent requests
+    // see the updated count immediately.
     if (userPlan === 'free') {
       const chatSupabaseForCheck = await createChatServerClient();
-      const modelLimitCheck = await checkModelLimit(chatSupabaseForCheck, user.id, modelTier);
+      const modelLimitCheck = await atomicCheckAndIncrement(chatSupabaseForCheck, user.id, modelTier);
       if (!modelLimitCheck.allowed) {
-        console.log(`🚫 Free plan message limit reached for tier ${modelTier}. Reset at: ${modelLimitCheck.resetsAt}`);
+        console.log(`🚫 Free plan message limit reached for tier ${modelTier}. Messages: ${modelLimitCheck.messagesSent}. Reset at: ${modelLimitCheck.resetsAt}`);
         return NextResponse.json(
           {
-            error: `You've reached the message limit. Your access will reset in 24 hours.`,
+            error: `You've reached the message limit for ${MODEL_LABELS_SERVER[modelTier] || modelTier}. Your access will reset in 24 hours.`,
             limitReached: true,
             resetsAt: modelLimitCheck.resetsAt,
             tier: modelTier,
+            messagesRemaining: 0,
           },
           { status: 429 }
         );
       }
+      console.log(`✅ Free plan check passed for tier ${modelTier}. Messages: ${modelLimitCheck.messagesSent}/${modelLimitCheck.messagesRemaining + modelLimitCheck.messagesSent}`);
     }
 
     // Check token limits for all plans
@@ -550,7 +592,7 @@ export async function POST(req: NextRequest) {
         console.log(`💾 Cache hit (${cached.source}): "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "user", userMessage);
         await saveMessage(supabase, user.id, convId, "assistant", cached.response);
-        trackChatUsage(user.id, modelTier, cached.response, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, cached.response, userMessage, userPlan).catch(console.error);
         const encoder = new TextEncoder();
         const words = cached.response.split(" ");
         const stream = new ReadableStream({
@@ -746,7 +788,7 @@ export async function POST(req: NextRequest) {
       if (cached) {
         console.log(`💾 Cache hit for query: "${userMessage.slice(0, 50)}..."`);
         await saveMessage(supabase, user.id, convId, "assistant", cached);
-        trackChatUsage(user.id, modelTier, cached, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, cached, userMessage, userPlan).catch(console.error);
         const encoder = new TextEncoder();
         const words = cached.split(" ");
         const stream = new ReadableStream({
@@ -839,7 +881,7 @@ export async function POST(req: NextRequest) {
 
       if (responseData) {
         await saveMessage(supabase, user.id, convId, "assistant", responseData);
-        trackChatUsage(user.id, modelTier, responseData, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, responseData, userMessage, userPlan).catch(console.error);
         const encoder = new TextEncoder();
         const words = responseData.split(" ");
         const stream = new ReadableStream({
@@ -981,7 +1023,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
           replyText = "I searched the web but couldn't retrieve the full information. Please try again.";
         }
         await saveMessage(supabase, user.id, convId, "assistant", replyText);
-        trackChatUsage(user.id, modelTier, replyText, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, replyText, userMessage, userPlan).catch(console.error);
 
         // Trigger user summary generation (async, non-blocking, Free plan only)
         if (!isTokenBasedTier) {
@@ -1262,7 +1304,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", fullResponse);
-        trackChatUsage(user.id, modelTier, fullResponse, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, fullResponse, userMessage, userPlan).catch(console.error);
 
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
@@ -1302,7 +1344,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
         });
 
         await saveMessage(supabase, user.id, convId, "assistant", errorMessage);
-        trackChatUsage(user.id, modelTier, errorMessage, userMessage).catch(console.error);
+        trackChatUsage(user.id, modelTier, errorMessage, userMessage, userPlan).catch(console.error);
 
         if (!isTokenBasedTier) {
           const totalMessageCount = await getUserTotalMessageCount(supabase, user.id);
@@ -1562,7 +1604,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
           }
 
           saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-          trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
+          trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
 
           // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
           // Use actualModelKeyUsed (the model that actually served the request)
@@ -1718,7 +1760,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
                 }
 
                 saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-                trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
+                trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
                 if (!isTokenBasedTier) {
                   getUserTotalMessageCount(supabase, user.id).then(totalMessageCount => {
                     generateUserSummary(user.id, messages, totalMessageCount).catch(console.error);
@@ -1840,7 +1882,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
               }
 
               saveMessage(supabase, user.id, convId, "assistant", finalContent).catch(console.error);
-              trackChatUsage(user.id, modelTier, finalContent, userMessage).catch(console.error);
+              trackChatUsage(user.id, modelTier, finalContent, userMessage, userPlan).catch(console.error);
 
               // ── Record token usage (skip NI — handled by per-LLM SQL deduction) ──
               // Use actualModelKeyUsed (the model that actually served the request)

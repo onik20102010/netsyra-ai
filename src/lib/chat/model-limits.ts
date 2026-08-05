@@ -7,6 +7,60 @@ export interface ModelLimit {
   messagesPerDay: number;
 }
 
+export interface AtomicCheckResult {
+  allowed: boolean;
+  messagesSent: number;
+  messagesRemaining: number;
+  resetsAt: string;
+}
+
+/**
+ * Atomic check-and-increment for Free plan message limits.
+ * Calls the SQL function chat.check_and_increment_model_usage which:
+ *   1. Locks the row (FOR UPDATE)
+ *   2. Checks if limit is reached
+ *   3. If allowed, increments immediately (atomic, no race condition)
+ *   4. Returns allowed + remaining + reset time
+ *
+ * This MUST be called BEFORE the LLM API call, not after.
+ * The old flow (check → API → fire-and-forget increment) had race conditions
+ * that let users exceed limits by sending messages faster than the increment
+ * could complete.
+ */
+export async function atomicCheckAndIncrement(
+  supabase: any,
+  userId: string,
+  modelKey: string
+): Promise<AtomicCheckResult> {
+  const limit = modelLimits[modelKey];
+  if (!limit) {
+    return { allowed: true, messagesSent: 0, messagesRemaining: 9999, resetsAt: new Date(Date.now() + 86400000).toISOString() };
+  }
+
+  const estimatedTokens = 500; // Conservative pre-estimate before API call
+
+  const { data, error } = await supabase.rpc('check_and_increment_model_usage', {
+    p_user_id: userId,
+    p_model_id: modelKey,
+    p_message_limit: limit.messagesPerDay,
+    p_token_limit: limit.tokensPerDay,
+    p_estimated_tokens: estimatedTokens,
+  });
+
+  if (error) {
+    console.error('atomicCheckAndIncrement error:', error);
+    // On error, allow the message (don't block users due to DB issues)
+    return { allowed: true, messagesSent: 0, messagesRemaining: limit.messagesPerDay, resetsAt: new Date(Date.now() + 86400000).toISOString() };
+  }
+
+  return {
+    allowed: data.allowed,
+    messagesSent: data.messages_sent,
+    messagesRemaining: data.messages_remaining,
+    resetsAt: data.resets_at,
+  };
+}
+
 export const modelLimits: Record<string, ModelLimit> = {
   fast: {
     modelId: "fast",
