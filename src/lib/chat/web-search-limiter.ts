@@ -130,7 +130,8 @@ async function fallbackCheckWebSearchLimit(
 
   if (error) {
     console.error("❌ fallbackCheckWebSearchLimit:", error);
-    return { allowed: true, used: 0, remaining: limit, limit, windowHours };
+    // FAIL CLOSED: deny on error so limits are enforced even if DB is unreachable.
+    return { allowed: false, used: 0, remaining: 0, limit, windowHours };
   }
 
   const used = count || 0;

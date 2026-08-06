@@ -39,7 +39,11 @@ export async function createSharedServerClient() {
 }
 
 export async function createChatServerClient() {
-  return createSchemaServerClient("chat");
+  // Use public schema — PostgREST only exposes `public` and `graphql_public`
+  // by default on Supabase Cloud. The `chat` schema tables/RPCs are accessible
+  // via wrapper views and functions created in `public` by migration
+  // 20250809_expose_chat_via_public_wrappers.sql.
+  return createSchemaServerClient("public");
 }
 
 export async function createIdeServerClient() {

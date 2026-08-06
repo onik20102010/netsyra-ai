@@ -115,10 +115,12 @@ async function fallbackCheckAndIncrement(
 
   if (readError) {
     console.error(`❌ fallback: read error for ${modelTier}:`, readError);
+    // FAIL CLOSED: deny on error so limits are enforced even if DB is unreachable.
+    // This prevents unlimited usage when the database has issues.
     return {
-      allowed: true,
+      allowed: false,
       messagesSent: 0,
-      messagesRemaining: messageLimit,
+      messagesRemaining: 0,
       resetsAt: new Date(now.getTime() + 86400000).toISOString(),
     };
   }

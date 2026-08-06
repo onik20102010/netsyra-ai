@@ -140,12 +140,26 @@ async function fallbackCheckTokenLimits(
 ): Promise<TokenCheckResult> {
   const now = new Date();
 
-  const { data: usage } = await supabase
+  const { data: usage, error: readError } = await supabase
     .from("token_usage")
     .select("tokens_used_today, tokens_used_month, daily_reset_at, monthly_reset_at")
     .eq("user_id", userId)
     .eq("model_key", modelKey)
     .maybeSingle();
+
+  if (readError) {
+    console.error(`❌ fallbackCheckTokenLimits: read error for ${modelKey}:`, readError);
+    // FAIL CLOSED: deny on error so limits are enforced even if DB is unreachable.
+    return {
+      allowed: false,
+      dailyUsed: 0,
+      dailyRemaining: 0,
+      monthlyUsed: 0,
+      monthlyRemaining: 0,
+      dailyResetAt: new Date(now.getTime() + 86400000).toISOString(),
+      monthlyResetAt: new Date(now.getTime() + 30 * 86400000).toISOString(),
+    };
+  }
 
   if (!usage) {
     return {
