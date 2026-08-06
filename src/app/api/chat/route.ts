@@ -23,9 +23,9 @@ import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
 import { analyzeTask, routeTask, getRoutingExplanation } from "@/lib/chat/ni-router";
-import { checkAndIncrementMessageUsage } from "@/lib/chat/model-limits";
-import { checkTokenLimits, incrementTokenUsage, goPlusTokenLimits, plusProTokenLimits, proTokenLimits } from "@/lib/chat/token-usage";
+import { incrementTokenUsage, goPlusTokenLimits, plusProTokenLimits, proTokenLimits } from "@/lib/chat/token-usage";
 import { checkWebSearchLimit, recordWebSearch, checkDiveDeepLimit, recordDiveDeep } from "@/lib/chat/web-search-limiter";
+import { evaluateLimits } from "@/lib/chat/brain-router";
 
 // ── DB helpers ──────────────────────────────
 async function createConversation(supabase: any, userId: string, id: string, title?: string) {
@@ -382,60 +382,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Free plan: per-tier message limit check + increment (no token limit) ──
-    // Atomic check-and-increment via RPC. Blocks the request if the daily
-    // message limit for this tier is reached.
-    if (userPlan === "free") {
-      const msgCheck = await checkAndIncrementMessageUsage(chatSupabase, user.id, modelTier);
-      if (!msgCheck.allowed) {
-        console.log(`🚫 Free tier limit reached: ${modelTier} (${msgCheck.messagesSent})`);
+    // ── BRAIN ROUTER: unified limit check for Free / Go Plus / Plus Pro ──
+    // The brain router detects plan → model tier → LLM model → limits → user UUID
+    // → usage, then decides whether to proceed. For paid plans with fallback,
+    // it automatically shifts to the next available model if the requested one
+    // is out of tokens.
+    // Pro (NI) is handled AFTER the NI router picks the LLM model (below).
+    if (userPlan === "free" || (userPlan === "go_plus" && modelTier === "go_plus") || (userPlan === "plus_pro" && modelTier === "plus_pro")) {
+      const brainResult = await evaluateLimits(
+        chatSupabase,
+        user.id,
+        user.email || user.id,
+        userPlan,
+        modelTier,
+        selectedModelKey,
+        null // NI model name — not applicable here
+      );
+
+      if (!brainResult.allowed) {
+        console.log(`🚫 Brain Router BLOCKED: ${brainResult.reason}`);
         return NextResponse.json(
           {
-            error: `You've reached the daily limit for ${modelTier === 'fast' ? 'N Fast' : modelTier === 'plus' ? 'N Plus' : modelTier === 'pro' ? 'N Pro' : modelTier === 'code' ? 'N Code' : modelTier === 'aai' ? 'N AAI' : modelTier === 'live' ? 'N Live' : modelTier}. Try again tomorrow or upgrade for more access.`,
+            error: brainResult.clientError || "You've reached your usage limit. Please try again later or upgrade for more access.",
             limitReached: true,
-            resetsAt: msgCheck.resetsAt,
+            resetsAt: brainResult.resetsAt,
+            dailyResetAt: brainResult.dailyResetAt,
+            monthlyResetAt: brainResult.monthlyResetAt,
           },
-          { status: 429 }
+          { status: brainResult.statusCode }
         );
       }
-      console.log(`📊 Free tier ${modelTier}: ${msgCheck.messagesSent} messages used, ${msgCheck.messagesRemaining} remaining`);
-    }
 
-    // ── Go Plus: pre-flight token limit check (no message limit) ──
-    if (userPlan === "go_plus" && modelTier === "go_plus") {
-      const tokenCheck = await checkTokenLimits(chatSupabase, user.id, "go_plus", goPlusTokenLimits);
-      if (!tokenCheck.allowed) {
-        console.log(`🚫 Go Plus token limit reached: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
-        return NextResponse.json(
-          {
-            error: "You've reached your token limit for Go Plus. Your quota resets daily and monthly.",
-            limitReached: true,
-            dailyResetAt: tokenCheck.dailyResetAt,
-            monthlyResetAt: tokenCheck.monthlyResetAt,
-          },
-          { status: 429 }
-        );
+      // ── Fallback: brain router shifted to a different model ──
+      if (brainResult.fallbackUsed && brainResult.modelKey) {
+        console.log(`� Brain Router fallback: ${brainResult.fallbackFrom} → ${brainResult.modelKey}`);
+        // Update selectedModelKey so the model loop prioritizes the fallback model
+        selectedModelKey = brainResult.modelKey;
       }
-    }
 
-    // ── Plus Pro: pre-flight per-model token limit check ──
-    if (userPlan === "plus_pro" && modelTier === "plus_pro" && routerConfig.perModelTokenLimits) {
-      const limits = routerConfig.perModelTokenLimits[selectedModelKey] || plusProTokenLimits[selectedModelKey];
-      if (limits) {
-        const tokenCheck = await checkTokenLimits(chatSupabase, user.id, selectedModelKey, limits);
-        if (!tokenCheck.allowed) {
-          console.log(`🚫 Plus Pro token limit reached for ${selectedModelKey}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
-          return NextResponse.json(
-            {
-              error: `You've reached the token limit for this model (${selectedModelKey}). Try a different model or wait for your quota to reset.`,
-              limitReached: true,
-              dailyResetAt: tokenCheck.dailyResetAt,
-              monthlyResetAt: tokenCheck.monthlyResetAt,
-            },
-            { status: 429 }
-          );
-        }
-      }
+      console.log(`🧠 Brain Router: ${brainResult.reason}`);
     }
 
     // ── Intent classification ─────────────────
@@ -545,25 +530,42 @@ export async function POST(req: NextRequest) {
       niModelRoute = routeTask(taskAnalysis);
       console.log(`🧠 NI Router: ${getRoutingExplanation(niModelRoute)} (confidence: ${taskAnalysis.confidence})`);
 
-      // ── Pro (NI): pre-flight per-LLM token limit check ──
-      // Uses the NI router's chosen model name as the model_key in token_usage.
+      // ── BRAIN ROUTER: Pro (NI) per-LLM token limit check with fallback ──
+      // The brain router checks if the NI router's chosen LLM has tokens
+      // remaining. If not, it automatically shifts to the next available LLM
+      // in the fallback chain (e.g. claude-opus-4.6 → claude-sonnet-4.6 → ...).
       if (userPlan === "pro") {
-        const proLimits = proTokenLimits[niModelRoute.model];
-        if (proLimits) {
-          const tokenCheck = await checkTokenLimits(chatSupabase, user.id, niModelRoute.model, proLimits);
-          if (!tokenCheck.allowed) {
-            console.log(`🚫 NI token limit reached for ${niModelRoute.model}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
-            return NextResponse.json(
-              {
-                error: `You've reached the token limit for this model. Try again later or use a different model.`,
-                limitReached: true,
-                dailyResetAt: tokenCheck.dailyResetAt,
-                monthlyResetAt: tokenCheck.monthlyResetAt,
-              },
-              { status: 429 }
-            );
-          }
+        const brainResult = await evaluateLimits(
+          chatSupabase,
+          user.id,
+          user.email || user.id,
+          userPlan,
+          "ni",
+          null,
+          niModelRoute.model
+        );
+
+        if (!brainResult.allowed) {
+          console.log(`🚫 Brain Router BLOCKED (NI): ${brainResult.reason}`);
+          return NextResponse.json(
+            {
+              error: brainResult.clientError || "You've reached the token limit for all available models. Your quota resets daily and monthly.",
+              limitReached: true,
+              dailyResetAt: brainResult.dailyResetAt,
+              monthlyResetAt: brainResult.monthlyResetAt,
+            },
+            { status: brainResult.statusCode }
+          );
         }
+
+        // ── Fallback: brain router shifted to a different LLM ──
+        if (brainResult.fallbackUsed && brainResult.modelName) {
+          console.log(`🔄 Brain Router NI fallback: ${brainResult.fallbackFrom} → ${brainResult.modelName}`);
+          // Update niModelRoute so the model loop uses the fallback LLM
+          niModelRoute = { ...niModelRoute, model: brainResult.modelName };
+        }
+
+        console.log(`🧠 Brain Router (NI): ${brainResult.reason}`);
       }
     }
 
