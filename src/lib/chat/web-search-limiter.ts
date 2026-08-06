@@ -41,7 +41,7 @@ export async function checkWebSearchLimit(
   const { data: rpcData, error: rpcError } = await supabase.rpc("check_web_search_limit", {
     p_user_id: userId,
     p_search_type: searchType,
-    p_limit: limit,
+    p_limit_val: limit,
     p_window_hours: windowHours,
   });
 

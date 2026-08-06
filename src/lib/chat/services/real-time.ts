@@ -1989,6 +1989,8 @@ export async function getCurrentTimeCard(zone?: string, userTimezone?: string): 
     utcDatetime: data.utcDatetime,
     timezone: data.timezone,
     label: data.label,
+    formattedTime: data.formattedTime,
+    formattedDate: data.formattedDate,
   };
   return `<!--WIDGET:CLOCK:${JSON.stringify(clockData)}-->`;
 }
@@ -2001,6 +2003,7 @@ export async function getCurrentCalendarCard(zone?: string, userTimezone?: strin
     utcDatetime: data.utcDatetime,
     timezone: data.timezone,
     label: data.label,
+    formattedDate: data.formattedDate,
   };
   return `<!--WIDGET:CALENDAR:${JSON.stringify(calData)}-->`;
 }

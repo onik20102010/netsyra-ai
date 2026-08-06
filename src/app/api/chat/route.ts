@@ -240,6 +240,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Chat-schema client for limit enforcement (tables + RPCs live in chat schema)
+    const chatSupabase = await createChatServerClient();
+
     // Detect user timezone from request headers
     const userTimezone = req.headers.get('x-user-timezone') || 
                         req.headers.get('timezone') || 
@@ -383,7 +386,7 @@ export async function POST(req: NextRequest) {
     // Atomic check-and-increment via RPC. Blocks the request if the daily
     // message limit for this tier is reached.
     if (userPlan === "free") {
-      const msgCheck = await checkAndIncrementMessageUsage(supabase, user.id, modelTier);
+      const msgCheck = await checkAndIncrementMessageUsage(chatSupabase, user.id, modelTier);
       if (!msgCheck.allowed) {
         console.log(`🚫 Free tier limit reached: ${modelTier} (${msgCheck.messagesSent})`);
         return NextResponse.json(
@@ -400,7 +403,7 @@ export async function POST(req: NextRequest) {
 
     // ── Go Plus: pre-flight token limit check (no message limit) ──
     if (userPlan === "go_plus" && modelTier === "go_plus") {
-      const tokenCheck = await checkTokenLimits(supabase, user.id, "go_plus", goPlusTokenLimits);
+      const tokenCheck = await checkTokenLimits(chatSupabase, user.id, "go_plus", goPlusTokenLimits);
       if (!tokenCheck.allowed) {
         console.log(`🚫 Go Plus token limit reached: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
         return NextResponse.json(
@@ -419,7 +422,7 @@ export async function POST(req: NextRequest) {
     if (userPlan === "plus_pro" && modelTier === "plus_pro" && routerConfig.perModelTokenLimits) {
       const limits = routerConfig.perModelTokenLimits[selectedModelKey] || plusProTokenLimits[selectedModelKey];
       if (limits) {
-        const tokenCheck = await checkTokenLimits(supabase, user.id, selectedModelKey, limits);
+        const tokenCheck = await checkTokenLimits(chatSupabase, user.id, selectedModelKey, limits);
         if (!tokenCheck.allowed) {
           console.log(`🚫 Plus Pro token limit reached for ${selectedModelKey}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
           return NextResponse.json(
@@ -547,7 +550,7 @@ export async function POST(req: NextRequest) {
       if (userPlan === "pro") {
         const proLimits = proTokenLimits[niModelRoute.model];
         if (proLimits) {
-          const tokenCheck = await checkTokenLimits(supabase, user.id, niModelRoute.model, proLimits);
+          const tokenCheck = await checkTokenLimits(chatSupabase, user.id, niModelRoute.model, proLimits);
           if (!tokenCheck.allowed) {
             console.log(`🚫 NI token limit reached for ${niModelRoute.model}: daily=${tokenCheck.dailyUsed}, monthly=${tokenCheck.monthlyUsed}`);
             return NextResponse.json(
@@ -660,6 +663,8 @@ export async function POST(req: NextRequest) {
               utcDatetime: timeData.utcDatetime,
               timezone: timeData.timezone,
               label: timeData.label,
+              formattedTime: timeData.formattedTime,
+              formattedDate: timeData.formattedDate,
             };
             responseData = `<!--WIDGET:CLOCK:${JSON.stringify(clockData)}-->`;
           } else {
@@ -681,6 +686,7 @@ export async function POST(req: NextRequest) {
               utcDatetime: timeData.utcDatetime,
               timezone: timeData.timezone,
               label: timeData.label,
+              formattedDate: timeData.formattedDate,
             };
             responseData = `<!--WIDGET:CALENDAR:${JSON.stringify(calData)}-->`;
           } else {
@@ -1100,7 +1106,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
       // ── Dive deep limit check (24h sliding window) ──
       const diveDeepCheck = await checkDiveDeepLimit(
-        supabase, user.id, routerConfig.diveDeepDailyLimit, routerConfig.diveDeepLimitHours
+        chatSupabase, user.id, routerConfig.diveDeepDailyLimit, routerConfig.diveDeepLimitHours
       );
       if (!diveDeepCheck.allowed) {
         console.log(`🚫 Dive deep limit reached: ${diveDeepCheck.used}/${routerConfig.diveDeepDailyLimit}`);
@@ -1119,7 +1125,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
 
       // Record the dive deep action after success
       if (searchResult.answer || searchResult.useLLM) {
-        await recordDiveDeep(supabase, user.id).catch(console.error);
+        await recordDiveDeep(chatSupabase, user.id).catch(console.error);
       }
 
       if (searchResult.answer && !searchResult.useLLM) {
@@ -1247,7 +1253,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
     if (shouldPerformWebSearch) {
       // ── Web search limit check (24h sliding window) ──
       const wsLimitCheck = await checkWebSearchLimit(
-        supabase, user.id, "web_search", routerConfig.webSearchDailyLimit, routerConfig.webSearchLimitHours
+        chatSupabase, user.id, "web_search", routerConfig.webSearchDailyLimit, routerConfig.webSearchLimitHours
       );
       if (!wsLimitCheck.allowed) {
         console.log(`🚫 Web search limit reached: ${wsLimitCheck.used}/${routerConfig.webSearchDailyLimit}`);
@@ -1272,7 +1278,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
             console.log(`✅ Web search results injected (${searchResult.length} chars, ${webSources.length} sources)`);
 
             // Record the web search action after success
-            await recordWebSearch(supabase, user.id, "web_search").catch(console.error);
+            await recordWebSearch(chatSupabase, user.id, "web_search").catch(console.error);
           } else {
             console.log(`⚠️ Web search skipped: ${searchResult?.slice(0, 100)}`);
           }
@@ -1430,7 +1436,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
           // Increment token usage for token-based tiers
           if (isTokenBasedTier) {
-            incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
+            incrementTokensForResponse(chatSupabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
           }
 
           if (!isTokenBasedTier) {
@@ -1578,7 +1584,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
                 // Increment token usage for token-based tiers
                 if (isTokenBasedTier) {
-                  incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
+                  incrementTokensForResponse(chatSupabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
                 }
 
                                 if (!isTokenBasedTier) {
@@ -1705,7 +1711,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
 
               // Increment token usage for token-based tiers
               if (isTokenBasedTier) {
-                incrementTokensForResponse(supabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
+                incrementTokensForResponse(chatSupabase, user.id, userPlan, modelTier, actualModelKeyUsed, modelConfig.modelName, finalContent).catch(console.error);
               }
 
               // Trigger user summary generation (async, non-blocking, Free plan only)

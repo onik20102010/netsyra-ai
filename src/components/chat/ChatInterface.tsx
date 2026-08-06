@@ -628,7 +628,10 @@ export default function ChatInterface({
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
         body: JSON.stringify({
           messages: contextMessages.map(m => ({ role: m.role, content: m.content })),
           modelTier: selectedModel,
