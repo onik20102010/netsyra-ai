@@ -11,7 +11,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatInterface from "@/components/chat/ChatInterface";
-import NetsyraLogo from "@/components/chat/NetsyraLogo";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getAllowedTiers } from "@/lib/plan-access";
@@ -148,19 +147,18 @@ function ChatContent() {
   }
 
   return (
-    <div className="chat-layout flex h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
-      {!sidebarOpen && (
-        <div
-          className="hidden lg:block fixed left-0 top-0 bottom-0 z-20 w-3"
-          onMouseEnter={handleHoverEnter}
-        />
-      )}
-
+    <div className="chat-layout flex flex-col lg:flex-row h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
+      {/* ── Sidebar ──
+          Desktop: always visible as a flex item. Narrow strip when closed
+                   (just the Netsyra logo), full width when open.
+          Mobile: top bar when closed (logo only, messages flow below),
+                  overlay sidebar when open. */}
       <div
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72 transform transition-transform duration-200 ease-out bg-white ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        onMouseLeave={handleSidebarMouseLeave}
+        className={`${
+          sidebarOpen
+            ? "fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72 bg-white"
+            : "relative lg:w-auto bg-white border-b lg:border-b-0 lg:border-r border-gray-200 z-10"
+        } transition-all duration-200 ease-out`}
       >
         <ChatSidebar
           open={sidebarOpen}
@@ -168,6 +166,7 @@ function ChatContent() {
             setHoverOpened(false);
             setSidebarOpen(open);
           }}
+          onToggleSidebar={toggleSidebar}
           onNewChat={handleNewChat}
           onHistory={handleHistory}
           onSelectConversation={handleSelectConversation}
@@ -182,6 +181,7 @@ function ChatContent() {
         />
       </div>
 
+      {/* Mobile overlay backdrop when sidebar is open */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
@@ -192,12 +192,8 @@ function ChatContent() {
         />
       )}
 
+      {/* ── Main chat content ── */}
       <div className="flex flex-1 min-w-0 flex-col relative">
-        {/* Netsyra logo — top-left corner, toggles sidebar on click */}
-        <div className="absolute top-3 left-4 sm:left-5 z-50">
-          <NetsyraLogo onClick={toggleSidebar} size="sm" />
-        </div>
-
         <div className="flex-1 min-h-0">
           <ChatInterface
             conversationId={conversationId}

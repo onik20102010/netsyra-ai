@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ChatSidebar from "@/components/chat/ChatSidebar";
-import NetsyraLogo from "@/components/chat/NetsyraLogo";
 import { createChatClient } from "@/lib/supabase/client";
 
 export default function ChatThreadPage() {
@@ -81,15 +80,21 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <div className="chat-layout flex h-dvh bg-white text-gray-900 relative overflow-hidden">
-      {/* Top bar – Netsyra logo (always visible, toggles sidebar) */}
-      <div className="absolute top-3 left-4 sm:left-5 z-20 select-none">
-        <NetsyraLogo onClick={() => setSidebarOpen((prev) => !prev)} size="sm" />
-      </div>
-      <div className="flex flex-1 pt-12">
+    <div className="chat-layout flex flex-col lg:flex-row h-dvh bg-white text-gray-900 overflow-hidden">
+      {/* ── Sidebar ──
+          Desktop: always visible, narrow strip when closed, full when open.
+          Mobile: top bar when closed, overlay when open. */}
+      <div
+        className={`${
+          sidebarOpen
+            ? "fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72 bg-white"
+            : "relative lg:w-auto bg-white border-b lg:border-b-0 lg:border-r border-gray-200 z-10"
+        } transition-all duration-200 ease-out`}
+      >
         <ChatSidebar
           open={sidebarOpen}
           setOpen={setSidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           onNewChat={handleNewChat}
           onHistory={handleHistory}
           onSelectConversation={handleSelectConversation}
@@ -97,17 +102,27 @@ export default function ChatThreadPage() {
           diveDeep={diveDeep}
           setDiveDeep={setDiveDeep}
         />
-        <div className="flex-1 flex flex-col" key={conversationId}>
-          <ChatInterface
-            conversationId={conversationId}
-            setConversationId={() => {}}
-            diveDeep={diveDeep}
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            isPro={isPro}
-            sidebarOpen={sidebarOpen}
-          />
-        </div>
+      </div>
+
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Main chat content ── */}
+      <div className="flex flex-1 min-w-0 flex-col relative" key={conversationId}>
+        <ChatInterface
+          conversationId={conversationId}
+          setConversationId={() => {}}
+          diveDeep={diveDeep}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          isPro={isPro}
+          sidebarOpen={sidebarOpen}
+        />
       </div>
     </div>
   );

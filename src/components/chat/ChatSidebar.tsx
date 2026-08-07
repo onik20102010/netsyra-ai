@@ -6,21 +6,20 @@ import {
   MessageSquarePlus,
   History,
   BrainCircuit,
-  PanelLeftClose,
   MessageSquare,
   Search,
   Pin,
   Archive,
   Link,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { PLAN_DISPLAY_NAMES } from "@/lib/plan-access";
+import NetsyraLogo from "./NetsyraLogo";
 
 interface ChatSidebarProps {
   open: boolean;
   setOpen: (open: boolean) => void;
+  onToggleSidebar?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
   onSelectConversation: (id: string) => void;
@@ -42,6 +41,7 @@ type Conversation = {
 export default function ChatSidebar({
   open,
   setOpen,
+  onToggleSidebar,
   onNewChat,
   onHistory,
   onSelectConversation,
@@ -180,23 +180,21 @@ export default function ChatSidebar({
   const unpinnedConversations = filteredConversations.filter((c) => !c.pinned);
 
   return (
-    <motion.aside
-      animate={{ width: open ? 280 : 0 }}
-      transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="h-full bg-gray-50 border-r border-gray-200 flex flex-col overflow-hidden"
-    >
+    <div className={`bg-gray-50 border-r border-gray-200 flex flex-col overflow-hidden ${open ? "h-full" : "h-auto lg:h-full"}`}>
+      {/* ── Netsyra Logo — always visible at top, toggles sidebar ── */}
+      <div className="flex items-center px-4 py-3 border-b border-gray-200 flex-shrink-0">
+        <NetsyraLogo
+          onClick={onToggleSidebar || (() => setOpen(!open))}
+          size="sm"
+        />
+      </div>
+
+      {/* ── Sidebar content — only visible when open ── */}
       {open && (
         <>
-          {/* Header */}
-          <div className="p-4 flex items-center gap-2 border-b border-gray-200">
-            <button
-              onClick={() => setOpen(false)}
-              className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition flex-shrink-0 touch-manipulation"
-              aria-label="Close sidebar"
-            >
-              <PanelLeftClose className="h-5 w-5" />
-            </button>
-            <div className="relative flex-1">
+          {/* Search bar — below the logo */}
+          <div className="p-3 flex-shrink-0">
+            <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -217,7 +215,7 @@ export default function ChatSidebar({
           </div>
 
           {/* Nav */}
-          <div className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
+          <div className="flex-1 px-3 space-y-1 overflow-y-auto sidebar-scroll">
             <button
               onClick={onNewChat}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"
@@ -347,7 +345,7 @@ export default function ChatSidebar({
           </div>
 
           {/* User footer – now navigates to /profile */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 flex-shrink-0">
             <button
               onClick={() => router.push("/profile")}
               className="w-full hover:bg-gray-100 transition text-left rounded-lg p-2 -m-2"
@@ -381,6 +379,6 @@ export default function ChatSidebar({
           </div>
         </>
       )}
-    </motion.aside>
+    </div>
   );
 }
