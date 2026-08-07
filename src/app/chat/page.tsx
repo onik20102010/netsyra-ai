@@ -156,9 +156,14 @@ function ChatContent() {
       <div
         className={`${
           sidebarOpen
-            ? "fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72 bg-white"
-            : "relative lg:w-auto bg-white border-b lg:border-b-0 lg:border-r border-gray-200 z-10"
+            ? "fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72"
+            : "relative lg:w-auto border-b lg:border-b-0 lg:border-r border-gray-200/60 z-10"
         } transition-all duration-200 ease-out`}
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.72)",
+          backdropFilter: "blur(16px) saturate(180%)",
+          WebkitBackdropFilter: "blur(16px) saturate(180%)",
+        }}
       >
         <ChatSidebar
           open={sidebarOpen}

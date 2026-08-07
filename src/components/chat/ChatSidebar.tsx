@@ -180,7 +180,14 @@ export default function ChatSidebar({
   const unpinnedConversations = filteredConversations.filter((c) => !c.pinned);
 
   return (
-    <div className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden ${open ? "h-full" : "h-auto lg:h-full"}`}>
+    <div
+      className={`flex flex-col overflow-hidden border-r border-gray-200/60 ${open ? "h-full" : "h-auto lg:h-full"}`}
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.72)",
+        backdropFilter: "blur(16px) saturate(180%)",
+        WebkitBackdropFilter: "blur(16px) saturate(180%)",
+      }}
+    >
       {/* ── Netsyra Logo — always visible at top, toggles sidebar ── */}
       <div className="flex items-center px-4 py-3 border-b border-gray-200 flex-shrink-0">
         <NetsyraLogo
@@ -201,7 +208,7 @@ export default function ChatSidebar({
                 placeholder="Search chats..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-sm text-gray-700 outline-none focus:border-indigo-300 transition"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/60 border border-gray-200/60 text-sm text-gray-700 outline-none focus:border-indigo-300 transition"
               />
               {searchQuery && (
                 <button
@@ -218,13 +225,13 @@ export default function ChatSidebar({
           <div className="flex-1 px-3 space-y-1 overflow-y-auto sidebar-scroll">
             <button
               onClick={onNewChat}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-black/5 transition"
             >
               <MessageSquarePlus className="h-5 w-5 text-indigo-600" /> New Chat
             </button>
             <button
               onClick={onHistory}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-200/50 transition"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-black/5 transition"
             >
               <History className="h-5 w-5 text-indigo-600" /> History
             </button>
@@ -235,14 +242,14 @@ export default function ChatSidebar({
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
                 diveDeep
                   ? "bg-cyan-100 text-cyan-700 font-medium"
-                  : "text-gray-600 hover:bg-gray-200/50"
+                  : "text-gray-600 hover:bg-black/5"
               }`}
               title="Enable real-time web search for any model"
             >
               <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-cyan-600" : "text-gray-400"}`} />
               Deep Dive
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                diveDeep ? "bg-cyan-600 text-white" : "bg-gray-200 text-gray-500"
+                diveDeep ? "bg-cyan-600 text-white" : "bg-black/10 text-gray-500"
               }`}>
                 {diveDeep ? "ON" : "OFF"}
               </span>
@@ -274,21 +281,21 @@ export default function ChatSidebar({
                     <span className="truncate flex-1">{conv.title}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); copyLink(conv.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                       aria-label="Copy link"
                     >
                       <Link className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                       aria-label="Toggle pin"
                     >
                       <Pin className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                       aria-label="Archive"
                     >
                       <Archive className="w-3 h-3" />
@@ -317,21 +324,21 @@ export default function ChatSidebar({
                 <span className="truncate flex-1">{conv.title}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); copyLink(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                   aria-label="Copy link"
                 >
                   <Link className="w-3 h-3" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                   aria-label="Toggle pin"
                 >
                   <Pin className="w-3 h-3" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
                   aria-label="Archive"
                 >
                   <Archive className="w-3 h-3" />
@@ -348,7 +355,7 @@ export default function ChatSidebar({
           <div className="p-4 border-t border-gray-200 flex-shrink-0">
             <button
               onClick={() => router.push("/profile")}
-              className="w-full hover:bg-gray-100 transition text-left rounded-lg p-2 -m-2"
+              className="w-full hover:bg-black/5 transition text-left rounded-lg p-2 -m-2"
             >
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -371,7 +378,7 @@ export default function ChatSidebar({
                       {displayName || user?.email?.split("@")[0] || "User"}
                     </p>
                   ) : (
-                    <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
+                    <div className="w-20 h-4 bg-black/10 rounded animate-pulse" />
                   )}
                 </div>
               </div>
