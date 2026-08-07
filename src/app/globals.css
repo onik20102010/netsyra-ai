@@ -169,7 +169,7 @@
   }
 
   /* ── Mobile chat layout: use dvh for keyboard-aware height ── */
-  @media (max-width: 768px) {
+  @media (max-width: 1023px) {
     .chat-layout {
       position: fixed;
       top: 0;
@@ -178,14 +178,24 @@
       height: 100dvh;
       overflow: hidden;
     }
-    /* Input bar uses sticky positioning within the flex column.
-       Do NOT use position:fixed here — it detaches from the flex
-       flow and causes the hamburger/nav to be pushed off-screen
-       when the mobile keyboard opens. */
+    /* Input bar sticks to the bottom of the visible area.
+       When the mobile keyboard opens, 100dvh shrinks to the visible
+       viewport, so the input bar stays above the keyboard naturally.
+       Using sticky (not fixed) keeps it in the flex flow. */
     .chat-input-bar {
       position: sticky;
       bottom: 0;
       z-index: 10;
+      flex-shrink: 0;
+    }
+    /* The chat messages scroll area must flex to fill remaining space
+       after the logo bar and input bar. This prevents displacement
+       when the keyboard opens. */
+    .chat-scroll-area {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
   }
 }
@@ -215,6 +225,15 @@
   transition: opacity 0.2s ease;
 }
 
+/* Fallback for browsers without background-clip:text support */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .netsyra-logo {
+    background: none;
+    color: #088395;
+    -webkit-text-fill-color: #088395;
+  }
+}
+
 .netsyra-logo:hover {
   opacity: 0.85;
 }
@@ -231,12 +250,20 @@ button:active > .netsyra-logo {
   opacity: 0.7;
 }
 
-/* Responsive sizing */
+/* Responsive sizing — scales down for small mobile screens */
 .netsyra-logo-sm {
-  font-size: 22px;
+  font-size: 20px;
 }
 .netsyra-logo-md {
-  font-size: 28px;
+  font-size: 26px;
+}
+@media (min-width: 375px) {
+  .netsyra-logo-sm { font-size: 22px; }
+  .netsyra-logo-md { font-size: 28px; }
+}
+@media (min-width: 640px) {
+  .netsyra-logo-sm { font-size: 22px; }
+  .netsyra-logo-md { font-size: 28px; }
 }
 @media (min-width: 1024px) {
   .netsyra-logo-sm { font-size: 24px; }

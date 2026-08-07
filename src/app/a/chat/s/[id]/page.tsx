@@ -88,7 +88,7 @@ export default function ChatThreadPage() {
         className={`${
           sidebarOpen
             ? "fixed lg:relative inset-y-0 left-0 z-40 w-[85vw] max-w-[320px] lg:w-72"
-            : "relative lg:w-auto border-b lg:border-b-0 lg:border-r border-white/40 z-10"
+            : "relative lg:w-auto lg:h-full border-b lg:border-b-0 lg:border-r border-white/40 z-10 flex-shrink-0"
         } transition-all duration-200 ease-out`}
         style={{
           backgroundColor: "rgba(255, 255, 255, 0.72)",
@@ -118,7 +118,7 @@ export default function ChatThreadPage() {
       )}
 
       {/* ── Main chat content ── */}
-      <div className="flex flex-1 min-w-0 flex-col relative" key={conversationId}>
+      <div className="flex flex-1 min-h-0 min-w-0 flex-col relative" key={conversationId}>
         <ChatInterface
           conversationId={conversationId}
           setConversationId={() => {}}
