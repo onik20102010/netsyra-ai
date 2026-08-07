@@ -112,6 +112,16 @@ const ChevronLeftIcon = () => (
   </svg>
 );
 
+/** Globe – for Web Search toggle */
+const GlobeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="8" cy="8" r="6.5" />
+    <ellipse cx="8" cy="8" rx="3" ry="6.5" />
+    <line x1="1.5" y1="8" x2="14.5" y2="8" />
+    <line x1="8" y1="1.5" x2="8" y2="14.5" />
+  </svg>
+);
+
 // ── Model definitions ──────────────────────────────
 const basicModels = [
   { id: "auto", name: "Auto", icon: AutoIcon, desc: "Picks the best model" },
@@ -135,12 +145,16 @@ export default function ModelSelector({
   upward = false,
   isPro = false,
   allowedTiers,
+  webSearchEnabled = false,
+  onToggleWebSearch,
 }: {
   selected: string;
   onSelect: (id: string) => void;
   upward?: boolean;
   isPro?: boolean;
   allowedTiers?: string[];
+  webSearchEnabled?: boolean;
+  onToggleWebSearch?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -288,6 +302,33 @@ export default function ModelSelector({
                   </>
                 )}
               </>
+            )}
+
+            {onToggleWebSearch && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={onToggleWebSearch}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                    webSearchEnabled
+                      ? "bg-black text-white font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  } ${isMobile ? "py-3 text-base" : ""}`}
+                  title={webSearchEnabled ? "Web search is ON" : "Enable web search"}
+                >
+                  <GlobeIcon />
+                  <div className="text-left flex-1">
+                    <div className="font-medium text-xs sm:text-sm">Web Search</div>
+                    <div className={`text-[10px] sm:text-xs ${webSearchEnabled ? "text-gray-300" : "text-gray-400"}`}>
+                      {webSearchEnabled ? "ON" : "Search the web"}
+                    </div>
+                  </div>
+                  {/* Toggle switch */}
+                  <span className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors ${webSearchEnabled ? "bg-white/30" : "bg-gray-200"}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${webSearchEnabled ? "translate-x-4" : "translate-x-0.5"} ${webSearchEnabled ? "mt-0.5" : "mt-0.5"}`} />
+                  </span>
+                </button>
+              </div>
             )}
           </motion.div>
         )}

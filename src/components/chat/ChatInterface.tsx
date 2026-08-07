@@ -17,7 +17,8 @@ import {
   Paperclip,
   Image as ImageIcon,
   XCircle,
-  Globe,
+  Mic,
+  Square,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -232,6 +233,9 @@ export default function ChatInterface({
   const [attachedImages, setAttachedImages] = useState<{ id: string; file: File; url: string; name: string }[]>([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef("");
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -767,6 +771,54 @@ export default function ChatInterface({
       setSearching(false);
     }
   };
+
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    finalTranscriptRef.current = input.trim() ? input.trim() + " " : "";
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscriptRef.current += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      setInput((finalTranscriptRef.current + interim).replace(/\s+/g, " ").trimStart());
+    };
+    recognition.onend = () => {
+      setIsRecording(false);
+      // Ensure final transcript is committed to input
+      setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
+    };
+    recognition.onerror = (event: any) => {
+      setIsRecording(false);
+      if (event.error && event.error !== "aborted" && event.error !== "no-speech") {
+        toast.error("Speech recognition error: " + event.error);
+      }
+    };
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+    } catch {
+      setIsRecording(false);
+    }
+  }, [isRecording, input]);
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -1513,9 +1565,17 @@ export default function ChatInterface({
               </div>
             )}
 
-            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] bg-white px-3 sm:px-4 py-3 sm:py-4 shadow-sm focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] bg-white px-3 sm:px-4 py-3 sm:py-4 shadow-sm focus-within:ring-1 focus-within:ring-black transition-all">
               <div className="flex-shrink-0 flex items-center">
-                <ModelSelector selected={selectedModel} onSelect={(id) => { setSelectedModel(id); setAutoTiersUsed([]); }} upward isPro={isPro} allowedTiers={allowedTiers} />
+                <ModelSelector
+                  selected={selectedModel}
+                  onSelect={(id) => { setSelectedModel(id); setAutoTiersUsed([]); }}
+                  upward
+                  isPro={isPro}
+                  allowedTiers={allowedTiers}
+                  webSearchEnabled={webSearchEnabled}
+                  onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                />
               </div>
 
               {/* Attachment Button - only enabled when N Plus is selected */}
@@ -1564,35 +1624,34 @@ export default function ChatInterface({
                 }}
               />
 
-              {/* Web Search Toggle Button */}
-              <div className="flex-shrink-0 flex items-center">
+              {(!input.trim() && attachedImages.length === 0 && !isProcessingImage) || isRecording ? (
                 <button
                   type="button"
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    webSearchEnabled
-                      ? "bg-black text-white shadow-sm border border-gray-600 hover:bg-gray-800"
-                      : "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+                  onClick={toggleRecording}
+                  className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                    isRecording
+                      ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                      : "bg-black text-white hover:bg-gray-800"
                   }`}
-                  title={webSearchEnabled ? "Web search is ON" : "Enable web search"}
+                  aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                  title={isRecording ? "Stop recording" : "Voice input"}
                 >
-                  <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-gray-300" : "text-gray-400"}`} />
-                  <span className="hidden sm:inline">Web Search</span>
+                  {isRecording ? <Square className="w-3.5 h-3.5 fill-white" /> : <Mic className="w-4 h-4" />}
                 </button>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
-                className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
-                aria-label="Send message"
-              >
-                {isProcessingImage ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isLoading || (!input.trim() && attachedImages.length === 0) || isProcessingImage}
+                  className="flex-shrink-0 h-9 w-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:hover:bg-black transition-all shadow-sm"
+                  aria-label="Send message"
+                >
+                  {isProcessingImage ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              )}
             </div>
 
             <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-tight">
