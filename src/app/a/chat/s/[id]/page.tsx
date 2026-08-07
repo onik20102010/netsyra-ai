@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ChatSidebar from "@/components/chat/ChatSidebar";
+import NetsyraLogo from "@/components/chat/NetsyraLogo";
 import { createChatClient } from "@/lib/supabase/client";
 
 export default function ChatThreadPage() {
@@ -81,17 +82,9 @@ export default function ChatThreadPage() {
 
   return (
     <div className="chat-layout flex h-dvh bg-white text-gray-900 relative overflow-hidden">
-      {/* Top bar – show logo only when sidebar is closed */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 md:px-4 py-2 bg-white border-b border-gray-200 select-none">
-        {!sidebarOpen && (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-black flex items-center justify-center p-0.5">
-              <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-lg font-bold text-indigo-600">Netsyra</span>
-          </div>
-        )}
-        <div />
+      {/* Top bar – Netsyra logo (always visible, toggles sidebar) */}
+      <div className="absolute top-3 left-4 sm:left-5 z-20 select-none">
+        <NetsyraLogo onClick={() => setSidebarOpen((prev) => !prev)} size="sm" />
       </div>
       <div className="flex flex-1 pt-12">
         <ChatSidebar
@@ -112,6 +105,7 @@ export default function ChatThreadPage() {
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
             isPro={isPro}
+            sidebarOpen={sidebarOpen}
           />
         </div>
       </div>

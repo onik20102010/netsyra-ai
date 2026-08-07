@@ -11,7 +11,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatInterface from "@/components/chat/ChatInterface";
-import { Menu, Loader2 } from "lucide-react";
+import NetsyraLogo from "@/components/chat/NetsyraLogo";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getAllowedTiers } from "@/lib/plan-access";
 
@@ -192,13 +193,10 @@ function ChatContent() {
       )}
 
       <div className="flex flex-1 min-w-0 flex-col relative">
-        <button
-          onClick={toggleSidebar}
-          aria-label="Toggle sidebar"
-          className="absolute top-3 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-sm border border-gray-200/50"
-        >
-          <Menu className="h-5 w-5" strokeWidth={2.2} />
-        </button>
+        {/* Netsyra logo — top-left corner, toggles sidebar on click */}
+        <div className="absolute top-3 left-4 sm:left-5 z-50">
+          <NetsyraLogo onClick={toggleSidebar} size="sm" />
+        </div>
 
         <div className="flex-1 min-h-0">
           <ChatInterface
@@ -211,6 +209,7 @@ function ChatContent() {
             setSelectedModel={setSelectedModel}
             isPro={isPro}
             allowedTiers={allowedTiers}
+            sidebarOpen={sidebarOpen}
           />
         </div>
       </div>

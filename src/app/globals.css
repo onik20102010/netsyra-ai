@@ -190,6 +190,86 @@
   }
 }
 
+/* ── Netsyra Logo: space nebula gradient clipped to text ── */
+.netsyra-logo {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  /* Space nebula gradient — teal, deep cyan, navy, purple */
+  background: linear-gradient(
+    135deg,
+    #088395 0%,
+    #051923 30%,
+    #3a0ca3 60%,
+    #00b4d8 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Subtle edge enhancement */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
+  user-select: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.netsyra-logo:hover {
+  opacity: 0.85;
+}
+
+.netsyra-logo:active {
+  opacity: 0.7;
+}
+
+/* When hovering the button, dim the logo span inside */
+button:hover > .netsyra-logo {
+  opacity: 0.85;
+}
+button:active > .netsyra-logo {
+  opacity: 0.7;
+}
+
+/* Responsive sizing */
+.netsyra-logo-sm {
+  font-size: 22px;
+}
+.netsyra-logo-md {
+  font-size: 28px;
+}
+@media (min-width: 1024px) {
+  .netsyra-logo-sm { font-size: 24px; }
+  .netsyra-logo-md { font-size: 32px; }
+}
+
+/* ── Responsive chat centering with fluid margins ── */
+/* When the sidebar closes, the main content re-centers smoothly.
+   The max-width is capped for optimal reading line length (60-80 chars). */
+.chat-content-center {
+  width: 100%;
+  max-width: 768px;
+  margin-left: auto;
+  margin-right: auto;
+  transition: max-width 0.3s ease-in-out, padding 0.3s ease-in-out;
+}
+/* On wider screens, allow slightly more breathing room */
+@media (min-width: 1280px) {
+  .chat-content-center {
+    max-width: 800px;
+  }
+}
+/* When sidebar is open on desktop, the available area shrinks —
+   reduce max-width slightly so margins stay balanced */
+.chat-content-center.sidebar-open {
+  max-width: 720px;
+}
+@media (min-width: 1280px) {
+  .chat-content-center.sidebar-open {
+    max-width: 768px;
+  }
+}
+
 /* ── Aurora blob for animated backgrounds ── */
 .aurora-blob {
   background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.3), transparent 70%),
