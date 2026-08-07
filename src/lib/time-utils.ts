@@ -2,6 +2,76 @@
 
 const HOLIDAY_API = "https://date.nager.at/api/v3";
 
+// ── Region auto-detection (used when user doesn't mention a location) ──
+// Tries IP-based geolocation first, then falls back to deriving a city from
+// the user's IANA timezone (e.g. "Asia/Karachi" → "Karachi").
+export async function detectUserRegion(
+  req: any,
+  userTimezone?: string
+): Promise<{ city: string; country?: string; source: string }> {
+  // 1. Try IP-based geolocation (free, no API key required)
+  try {
+    // Get client IP — check forwarded headers first (for proxies/Vercel)
+    const forwarded = req?.headers?.get?.("x-forwarded-for");
+    const realIp = req?.headers?.get?.("x-real-ip");
+    const ip = forwarded?.split(",")[0]?.trim() || realIp || "";
+
+    // ip-api.com is free for non-commercial use, returns city/country
+    // Use the IP if available, otherwise it detects the caller's IP
+    const ipParam = ip && ip !== "::1" && ip !== "127.0.0.1" ? `&ip=${ip}` : "";
+    const res = await fetch(`https://ip-api.com/json/?fields=status,city,country,countryCode${ipParam}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === "success" && data.city) {
+        return {
+          city: data.city,
+          country: data.country,
+          source: "ip-geolocation",
+        };
+      }
+    }
+  } catch {
+    // fall through to timezone-based detection
+  }
+
+  // 2. Fallback: derive city name from IANA timezone
+  if (userTimezone) {
+    // "Asia/Karachi" → "Karachi", "America/New_York" → "New York"
+    const cityPart = userTimezone.split("/").pop() || "";
+    const cityName = cityPart.replace(/_/g, " ");
+    if (cityName && cityName !== "UTC") {
+      return { city: cityName, source: "timezone-fallback" };
+    }
+  }
+
+  // 3. Ultimate fallback
+  return { city: "Lahore", source: "default" };
+}
+
+// ── Extract mentioned city from user message ──
+// Returns null if no city is mentioned, so the caller can auto-detect.
+export function extractMentionedCity(message: string): string | null {
+  // Match "in <City>", "for <City>", "at <City>", "<City> weather"
+  const patterns = [
+    /\b(?:in|at|for)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)/,
+    /^([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\s+(?:weather|temperature|forecast)/,
+  ];
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match?.[1]) {
+      const city = match[1].trim();
+      // Filter out common false positives
+      const lower = city.toLowerCase();
+      if (lower.length > 1 && !["the", "my", "this", "that", "today", "tomorrow", "here"].includes(lower)) {
+        return city;
+      }
+    }
+  }
+  return null;
+}
+
 // ── Weather data interface (matches WeatherWidget exactly) ──
 export interface WeatherData {
   city: string;
@@ -14,6 +84,12 @@ export interface WeatherData {
   visibility?: string;   // km, as a string (e.g. "10.0")
   pressure?: number;     // hPa
   cloudiness?: number;   // %
+  country?: string;      // Country name
+  date?: string;         // Formatted date string for the widget header
+  tempMin?: number;      // Min temp (for range display)
+  tempMax?: number;      // Max temp (for range display)
+  isNight?: boolean;     // Whether it's nighttime (for icon selection)
+  detected?: boolean;    // Whether the location was auto-detected
 }
 
 // ── Open‑Meteo weather codes → condition descriptions ──
@@ -203,14 +279,15 @@ export async function getUpcomingHolidays(countryCode: string): Promise<string[]
 // ── Core weather fetcher – returns full WeatherData ──
 export async function getWeatherData(
   cityOrTimezone: string,
-  countryCode?: string
+  countryCode?: string,
+  options?: { detected?: boolean }
 ): Promise<WeatherData | null> {
   try {
     // 1. Resolve coordinates + timezone from city name or IANA timezone
-    const { latitude, longitude, timezone, cityName } = await resolveLocation(cityOrTimezone);
+    const { latitude, longitude, timezone, cityName, country } = await resolveLocation(cityOrTimezone);
 
-    // 2. Fetch comprehensive weather from Open‑Meteo
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=relativehumidity_2m,visibility,pressure_msl,cloudcover&timezone=${encodeURIComponent(timezone)}&forecast_days=1`;
+    // 2. Fetch comprehensive weather from Open‑Meteo (include daily min/max temps)
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=relativehumidity_2m,visibility,pressure_msl,cloudcover&daily=temperature_2m_max,temperature_2m_min&timezone=${encodeURIComponent(timezone)}&forecast_days=1`;
     const res = await fetch(weatherUrl);
     if (!res.ok) return null;
     const data = await res.json();
@@ -241,13 +318,29 @@ export async function getWeatherData(
       }
     }
 
+    // 4. Extract daily min/max temperatures
+    let tempMin: number | undefined, tempMax: number | undefined;
+    if (data.daily) {
+      tempMax = data.daily.temperature_2m_max?.[0] != null ? Math.round(data.daily.temperature_2m_max[0]) : undefined;
+      tempMin = data.daily.temperature_2m_min?.[0] != null ? Math.round(data.daily.temperature_2m_min[0]) : undefined;
+    }
+
     const weatherCode = current.weathercode;
     const condition = WMO_CODES[weatherCode] || "Unknown";
     const isDay = current.is_day === 1; // Open‑Meteo provides is_day
     const icon = getOpenWeatherIconFromWmo(weatherCode, isDay);
 
+    // 5. Format date for the widget header (in the location's timezone)
+    const dateStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      month: "numeric",
+      day: "numeric",
+    }).format(now);
+
     return {
       city: cityName,
+      country: country,
       temp: Math.round(current.temperature),
       condition,
       humidity: Math.round(humidity),
@@ -257,6 +350,11 @@ export async function getWeatherData(
       visibility, // string like "10.0"
       pressure: Math.round(pressure),
       cloudiness: Math.round(cloudiness),
+      date: dateStr,
+      tempMin,
+      tempMax,
+      isNight: !isDay,
+      detected: options?.detected,
     };
   } catch {
     return null;
@@ -269,15 +367,18 @@ async function resolveLocation(cityOrTimezone: string): Promise<{
   longitude: number;
   timezone: string;
   cityName: string;
+  country?: string;
 }> {
   // If already a full IANA timezone (e.g. "Asia/Karachi"), use hardcoded fallback
   const hardcoded = getCityCoordinates(cityOrTimezone);
   if (hardcoded.latitude !== 0 || hardcoded.longitude !== 0) {
+    const cityPart = cityOrTimezone.split("/").pop() || cityOrTimezone;
     return {
       latitude: hardcoded.latitude,
       longitude: hardcoded.longitude,
       timezone: cityOrTimezone,
-      cityName: cityOrTimezone.split("/").pop() || cityOrTimezone,
+      cityName: cityPart.replace(/_/g, " "),
+      country: hardcoded.country,
     };
   }
 
@@ -293,7 +394,8 @@ async function resolveLocation(cityOrTimezone: string): Promise<{
           latitude: result.latitude,
           longitude: result.longitude,
           timezone: result.timezone,
-          cityName: result.name + (result.country ? `, ${result.country}` : ""),
+          cityName: result.name,
+          country: result.country,
         };
       }
     }
@@ -309,25 +411,25 @@ async function resolveLocation(cityOrTimezone: string): Promise<{
 }
 
 // ── Hardcoded city/timezone → coordinates (extended) ──
-export function getCityCoordinates(tz: string): { latitude: number; longitude: number } {
-  const coords: Record<string, { latitude: number; longitude: number }> = {
-    "Asia/Karachi": { latitude: 24.8607, longitude: 67.0011 },
-    "Asia/Tokyo": { latitude: 35.6762, longitude: 139.6503 },
-    "Europe/London": { latitude: 51.5074, longitude: -0.1278 },
-    "America/New_York": { latitude: 40.7128, longitude: -74.006 },
-    "America/Los_Angeles": { latitude: 34.0522, longitude: -118.2437 },
-    "Europe/Paris": { latitude: 48.8566, longitude: 2.3522 },
-    "Europe/Berlin": { latitude: 52.52, longitude: 13.405 },
-    "Asia/Dubai": { latitude: 25.2048, longitude: 55.2708 },
-    "Australia/Sydney": { latitude: -33.8688, longitude: 151.2093 },
-    "America/Toronto": { latitude: 43.6532, longitude: -79.3832 },
-    "Asia/Kolkata": { latitude: 22.5726, longitude: 88.3639 },
-    "Asia/Shanghai": { latitude: 31.2304, longitude: 121.4737 },
-    "Europe/Moscow": { latitude: 55.7558, longitude: 37.6173 },
-    "Asia/Seoul": { latitude: 37.5665, longitude: 126.978 },
-    "Asia/Singapore": { latitude: 1.3521, longitude: 103.8198 },
-    "Asia/Hong_Kong": { latitude: 22.3193, longitude: 114.1694 },
-    "Europe/Istanbul": { latitude: 41.0082, longitude: 28.9784 },
+export function getCityCoordinates(tz: string): { latitude: number; longitude: number; country?: string } {
+  const coords: Record<string, { latitude: number; longitude: number; country?: string }> = {
+    "Asia/Karachi": { latitude: 24.8607, longitude: 67.0011, country: "Pakistan" },
+    "Asia/Tokyo": { latitude: 35.6762, longitude: 139.6503, country: "Japan" },
+    "Europe/London": { latitude: 51.5074, longitude: -0.1278, country: "United Kingdom" },
+    "America/New_York": { latitude: 40.7128, longitude: -74.006, country: "United States" },
+    "America/Los_Angeles": { latitude: 34.0522, longitude: -118.2437, country: "United States" },
+    "Europe/Paris": { latitude: 48.8566, longitude: 2.3522, country: "France" },
+    "Europe/Berlin": { latitude: 52.52, longitude: 13.405, country: "Germany" },
+    "Asia/Dubai": { latitude: 25.2048, longitude: 55.2708, country: "UAE" },
+    "Australia/Sydney": { latitude: -33.8688, longitude: 151.2093, country: "Australia" },
+    "America/Toronto": { latitude: 43.6532, longitude: -79.3832, country: "Canada" },
+    "Asia/Kolkata": { latitude: 22.5726, longitude: 88.3639, country: "India" },
+    "Asia/Shanghai": { latitude: 31.2304, longitude: 121.4737, country: "China" },
+    "Europe/Moscow": { latitude: 55.7558, longitude: 37.6173, country: "Russia" },
+    "Asia/Seoul": { latitude: 37.5665, longitude: 126.978, country: "South Korea" },
+    "Asia/Singapore": { latitude: 1.3521, longitude: 103.8198, country: "Singapore" },
+    "Asia/Hong_Kong": { latitude: 22.3193, longitude: 114.1694, country: "Hong Kong" },
+    "Europe/Istanbul": { latitude: 41.0082, longitude: 28.9784, country: "Turkey" },
     // ... add more as needed from your existing list
   };
   return coords[tz] || { latitude: 0, longitude: 0 };

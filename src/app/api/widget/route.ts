@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getWeatherData } from "@/lib/time-utils";
+import { getWeatherData, detectUserRegion, extractMentionedCity } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard } from "@/lib/chat/services/real-time";
 
 const VALID_TYPES = new Set(["weather", "time", "calendar", "date"]);
@@ -25,8 +25,18 @@ export async function GET(req: NextRequest) {
 
   let result = "";
   if (type === "weather") {
-    const city = query.replace(/weather|temperature|rain|forecast|in /gi, "").trim() || "Lahore";
-    const weatherData = await getWeatherData(city);
+    // If user mentioned a city → use it; otherwise auto-detect region
+    const mentionedCity = extractMentionedCity(query);
+    let city: string;
+    let detected = false;
+    if (mentionedCity) {
+      city = mentionedCity;
+    } else {
+      const region = await detectUserRegion(req);
+      city = region.city;
+      detected = true;
+    }
+    const weatherData = await getWeatherData(city, undefined, { detected });
     if (weatherData) {
       result = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
     }

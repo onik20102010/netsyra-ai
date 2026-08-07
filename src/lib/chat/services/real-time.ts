@@ -1999,11 +1999,17 @@ export async function getCurrentTimeCard(zone?: string, userTimezone?: string): 
 export async function getCurrentCalendarCard(zone?: string, userTimezone?: string): Promise<string> {
   const data = await fetchTimeData(zone, userTimezone);
   if (!data) return "";
+  // Detect calendar system from the user's timezone
+  const { detectCalendar } = await import("../calendar-detector");
+  const calInfo = detectCalendar(data.timezone);
   const calData = {
     utcDatetime: data.utcDatetime,
     timezone: data.timezone,
     label: data.label,
     formattedDate: data.formattedDate,
+    calendar: calInfo.primary,
+    calendarLabel: calInfo.primaryLabel,
+    showGregorian: calInfo.showGregorian,
   };
   return `<!--WIDGET:CALENDAR:${JSON.stringify(calData)}-->`;
 }

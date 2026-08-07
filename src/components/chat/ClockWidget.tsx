@@ -12,7 +12,10 @@ interface ClockData {
 }
 
 // Reliable timezone-aware time extraction using formatToParts
-function getTimeInTimezone(timezone: string): { h: number; m: number; s: number; h12: number; ampm: string; dateStr: string } {
+function getTimeInTimezone(timezone: string): {
+  h: number; m: number; s: number; h12: number; ampm: string;
+  dayAbbr: string; monthAbbr: string; dayNum: string;
+} {
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -20,9 +23,8 @@ function getTimeInTimezone(timezone: string): { h: number; m: number; s: number;
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    weekday: "long",
-    year: "numeric",
-    month: "long",
+    weekday: "short",
+    month: "short",
     day: "numeric",
   }).formatToParts(now);
 
@@ -32,77 +34,12 @@ function getTimeInTimezone(timezone: string): { h: number; m: number; s: number;
   const s = parseInt(get("second"), 10);
   const h12 = h % 12 || 12;
   const ampm = h >= 12 ? "PM" : "AM";
-  const dateStr = `${get("weekday")}, ${get("month")} ${get("day")}, ${get("year")}`;
-  return { h, m, s, h12, ampm, dateStr };
-}
-
-function AnalogClock({ h, m, s }: { h: number; m: number; s: number }) {
-  const hAngle = (h % 12) * 30 + m * 0.5;
-  const mAngle = m * 6 + s * 0.1;
-  const sAngle = s * 6;
-
-  return (
-    <svg width="140" height="140" viewBox="0 0 150 150" className="drop-shadow-sm">
-      <defs>
-        <radialGradient id="clockFace" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#f0f4f8" />
-        </radialGradient>
-        <linearGradient id="clockBezel" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#e2e8f0" />
-          <stop offset="50%" stopColor="#cbd5e1" />
-          <stop offset="100%" stopColor="#94a3b8" />
-        </linearGradient>
-      </defs>
-      {/* Outer bezel */}
-      <circle cx="75" cy="75" r="72" fill="url(#clockBezel)" />
-      <circle cx="75" cy="75" r="68" fill="url(#clockFace)" stroke="#e2e8f0" strokeWidth="1" />
-      {/* Hour ticks */}
-      {Array.from({ length: 12 }, (_, i) => i + 1).map((i) => {
-        const ang = (i * 30 * Math.PI) / 180;
-        const x = 75 + 58 * Math.sin(ang);
-        const y = 75 - 58 * Math.cos(ang);
-        return (
-          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="600" fill="#475569">
-            {i}
-          </text>
-        );
-      })}
-      {/* Minute dots */}
-      {Array.from({ length: 60 }, (_, i) => i).filter(i => i % 5 !== 0).map((i) => {
-        const ang = (i * 6 * Math.PI) / 180;
-        const x = 75 + 64 * Math.sin(ang);
-        const y = 75 - 64 * Math.cos(ang);
-        return <circle key={i} cx={x} cy={y} r="1" fill="#cbd5e1" />;
-      })}
-      {/* Hour hand */}
-      <line
-        x1="75" y1="75"
-        x2={75 + 33 * Math.sin((hAngle * Math.PI) / 180)}
-        y2={75 - 33 * Math.cos((hAngle * Math.PI) / 180)}
-        stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round"
-        style={{ transition: "all 0.3s cubic-bezier(0.4, 2, 0.6, 1)" }}
-      />
-      {/* Minute hand */}
-      <line
-        x1="75" y1="75"
-        x2={75 + 48 * Math.sin((mAngle * Math.PI) / 180)}
-        y2={75 - 48 * Math.cos((mAngle * Math.PI) / 180)}
-        stroke="#475569" strokeWidth="3" strokeLinecap="round"
-        style={{ transition: "all 0.3s cubic-bezier(0.4, 2, 0.6, 1)" }}
-      />
-      {/* Second hand — smooth sweep */}
-      <line
-        x1="75" y1="80"
-        x2={75 + 55 * Math.sin((sAngle * Math.PI) / 180)}
-        y2={75 - 55 * Math.cos((sAngle * Math.PI) / 180)}
-        stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round"
-        style={{ transition: "all 0.15s cubic-bezier(0.4, 2, 0.6, 1)" }}
-      />
-      <circle cx="75" cy="75" r="5" fill="#1e293b" />
-      <circle cx="75" cy="75" r="2.5" fill="#ef4444" />
-    </svg>
-  );
+  return {
+    h, m, s, h12, ampm,
+    dayAbbr: get("weekday").toUpperCase(),
+    monthAbbr: get("month").toUpperCase(),
+    dayNum: get("day"),
+  };
 }
 
 export default function ClockWidget({ data }: { data: ClockData }) {
@@ -113,58 +50,128 @@ export default function ClockWidget({ data }: { data: ClockData }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Use the server-provided formatted time as a base, then tick client-side
   const timeInfo = useMemo(() => {
-    void tick; // recompute every tick
-    const live = getTimeInTimezone(data.timezone);
-    const digital = `${live.h12}:${String(live.m).padStart(2, "0")}:${String(live.s).padStart(2, "0")} ${live.ampm}`;
-    const dateStr = data.formattedDate || live.dateStr;
-    return { ...live, digital, dateStr };
-  }, [tick, data.timezone, data.formattedDate]);
+    void tick;
+    return getTimeInTimezone(data.timezone);
+  }, [tick, data.timezone]);
+
+  const timeStr = `${timeInfo.h12}:${String(timeInfo.m).padStart(2, "0")}`;
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.85, y: 20 }}
+      initial={{ opacity: 0, scale: 0.9, y: 16 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.05 }}
-      className="my-4 max-w-xs"
+      transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.05 }}
+      className="my-4 w-[280px]"
     >
-      <div className="rounded-3xl overflow-hidden shadow-xl bg-white border border-gray-100">
-        {/* Header gradient bar */}
-        <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-        {/* Body */}
-        <div className="p-5 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <motion.span
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="text-xl"
+      <div
+        className="relative rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: "#0a0a0f" }}
+      >
+        {/* ── Carbon fiber dot matrix background ── */}
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: `radial-gradient(circle, #1a1a2e 1px, transparent 1px)`,
+            backgroundSize: "6px 6px",
+          }}
+        />
+
+        {/* ── Top neon wave (purple/blue) ── */}
+        <div className="absolute top-0 left-0 right-0 h-24 overflow-hidden pointer-events-none">
+          <motion.div
+            className="absolute -top-8 -left-20 w-[200%] h-32"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.35) 30%, rgba(59,130,246,0.45) 50%, rgba(139,92,246,0.35) 70%, transparent 100%)",
+              filter: "blur(20px)",
+              borderRadius: "50%",
+            }}
+            animate={{ x: ["-10%", "10%", "-10%"] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        {/* ── Bottom neon wave ── */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 overflow-hidden pointer-events-none">
+          <motion.div
+            className="absolute -bottom-6 -left-20 w-[200%] h-28"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, rgba(168,85,247,0.25) 30%, rgba(99,102,241,0.35) 50%, rgba(168,85,247,0.25) 70%, transparent 100%)",
+              filter: "blur(18px)",
+              borderRadius: "50%",
+            }}
+            animate={{ x: ["10%", "-10%", "10%"] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        {/* ── Content ── */}
+        <div className="relative px-6 py-5 z-10">
+          {/* Date row: SAT, JAN 14 */}
+          <div
+            className="text-[15px] tracking-wide uppercase"
+            style={{ fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}
+          >
+            <span
+              className="font-bold"
+              style={{ color: "#00E676" }}
             >
-              🕐
-            </motion.span>
-            <h3 className="text-base font-semibold text-gray-700">{data.label}</h3>
+              {timeInfo.dayAbbr},
+            </span>{" "}
+            <span
+              className="font-normal"
+              style={{ color: "rgba(255,255,255,0.85)" }}
+            >
+              {timeInfo.monthAbbr} {timeInfo.dayNum}
+            </span>
           </div>
 
-          {/* Digital time */}
+          {/* Time: 12:45 — oversized */}
           <motion.div
-            key={timeInfo.digital.slice(0, 5)}
-            initial={{ opacity: 0.7 }}
+            key={timeStr}
+            initial={{ opacity: 0.8 }}
             animate={{ opacity: 1 }}
-            className="text-3xl font-bold text-gray-900 tabular-nums tracking-tight mb-1"
+            transition={{ duration: 0.3 }}
+            className="font-bold tabular-nums mt-1"
+            style={{
+              color: "#ffffff",
+              fontSize: "64px",
+              lineHeight: 1,
+              letterSpacing: "-2px",
+              fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+              fontWeight: 700,
+              textShadow: "0 0 30px rgba(139,92,246,0.3)",
+            }}
           >
-            {timeInfo.digital}
+            {timeStr}
           </motion.div>
 
-          {/* Date */}
-          <p className="text-xs text-gray-500 mb-3">{timeInfo.dateStr}</p>
-
-          {/* Analog clock */}
-          <div className="flex justify-center">
-            <AnalogClock h={timeInfo.h} m={timeInfo.m} s={timeInfo.s} />
+          {/* AM/PM + seconds — subtle */}
+          <div className="flex items-baseline gap-2 mt-1">
+            <span
+              className="text-xs font-semibold tracking-wider"
+              style={{ color: "#00E676" }}
+            >
+              {timeInfo.ampm}
+            </span>
+            <span
+              className="text-xs font-mono tabular-nums"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
+              :{String(timeInfo.s).padStart(2, "0")}
+            </span>
           </div>
 
           {/* Timezone footer */}
-          <p className="text-[10px] text-gray-400 mt-2 font-mono">{data.timezone}</p>
+          <div
+            className="text-[10px] font-mono mt-3 pt-2"
+            style={{
+              color: "rgba(255,255,255,0.3)",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            {data.label} · {data.timezone}
+          </div>
         </div>
       </div>
     </motion.div>

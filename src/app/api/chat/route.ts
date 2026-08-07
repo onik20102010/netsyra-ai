@@ -4,7 +4,7 @@ import { createChatServerClient, createServerSupabaseClient } from "@/lib/supaba
 import { aaiRuntime } from "@/lib/chat/aai";
 import { tiers } from "@/lib/chat/model-registry";
 import { classifyIntent } from "@/lib/intent-classifier";
-import { getWeatherData, getCurrentTimeAndLocation } from "@/lib/time-utils";
+import { getWeatherData, getCurrentTimeAndLocation, detectUserRegion, extractMentionedCity } from "@/lib/time-utils";
 import { getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData } from "@/lib/chat/services/real-time";
 import { performNLiveSearch } from "@/lib/chat/services/live-data";
 import { getRouterConfig } from "@/lib/routers/router-factory";
@@ -247,6 +247,18 @@ export async function POST(req: NextRequest) {
     const userTimezone = req.headers.get('x-user-timezone') || 
                         req.headers.get('timezone') || 
                         Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // ── Weather location resolver ──
+    // If the user mentions a city → use it (no detection).
+    // If not → auto-detect the user's region via IP geolocation (fallback: timezone).
+    async function resolveWeatherLocation(message: string): Promise<{ city: string; detected: boolean }> {
+      const mentioned = extractMentionedCity(message);
+      if (mentioned) {
+        return { city: mentioned, detected: false };
+      }
+      const region = await detectUserRegion(req, userTimezone);
+      return { city: region.city, detected: true };
+    }
 
     const body = await req.json();
     const {
@@ -646,8 +658,8 @@ export async function POST(req: NextRequest) {
       let responseData = "";
 
       if (isWeatherQuery) {
-        const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-        const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+        const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+        const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
         if (weatherData) {
           if (canUseWidgets) {
             responseData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
@@ -683,12 +695,17 @@ export async function POST(req: NextRequest) {
         const timeData = await fetchTimeData(undefined, userTimezone);
         if (timeData) {
           if (canUseWidgets) {
-            // N Pro: Format as widget
+            // N Pro: Format as widget — detect calendar system from user's timezone
+            const { detectCalendar } = await import("@/lib/chat/calendar-detector");
+            const calInfo = detectCalendar(timeData.timezone);
             const calData = {
               utcDatetime: timeData.utcDatetime,
               timezone: timeData.timezone,
               label: timeData.label,
               formattedDate: timeData.formattedDate,
+              calendar: calInfo.primary,
+              calendarLabel: calInfo.primaryLabel,
+              showGregorian: calInfo.showGregorian,
             };
             responseData = `<!--WIDGET:CALENDAR:${JSON.stringify(calData)}-->`;
           } else {
@@ -780,8 +797,8 @@ export async function POST(req: NextRequest) {
 
         if (isWidgetQuery) {
           if (isWeatherQuery) {
-            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+            const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
             if (weatherData) {
               liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
             }
@@ -989,8 +1006,8 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       if (isWidgetQuery) {
         if (canUseWidgets) {
           if (isWeatherQuery) {
-            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+            const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
             if (weatherData) {
               liveData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
             }
@@ -1001,8 +1018,8 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
           }
         } else {
           if (isWeatherQuery) {
-            const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-            const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+            const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+            const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
             if (weatherData) {
               liveData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
             }
@@ -1056,8 +1073,8 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       if (isWidgetQuery && canUseWidgets) {
         // N Pro: Use widgets for time/weather/date, NO web search for pure widget queries
         if (isWeatherQuery) {
-          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+          const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
           if (weatherData) {
             widgetData = `<!--WIDGET:WEATHER:${JSON.stringify(weatherData)}-->`;
           }
@@ -1078,8 +1095,8 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
       } else if (isWidgetQuery && !canUseWidgets) {
         // For non-Pro tiers, use API-based responses without widgets (no Tavily/Wikipedia for time/weather/date)
         if (isWeatherQuery) {
-          const cityMatch = userMessage.match(/in\s+([A-Za-z\s]+?)(\?|$)/i);
-          const weatherData = await getWeatherData(cityMatch?.[1]?.trim() || "Lahore");
+          const { city: weatherCity, detected: weatherDetected } = await resolveWeatherLocation(userMessage);
+          const weatherData = await getWeatherData(weatherCity, undefined, { detected: weatherDetected });
           if (weatherData) {
             widgetData = `🌡️ ${weatherData.temp}°C, ${weatherData.condition}, 💧 ${weatherData.humidity}%, 🌬️ ${weatherData.windSpeed} m/s, 👁️ ${weatherData.visibility} km, 📊 ${weatherData.pressure} hPa, ☁️ ${weatherData.cloudiness}%`;
           }
