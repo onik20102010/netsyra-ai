@@ -1513,7 +1513,7 @@ export default function ChatInterface({
               </div>
             )}
 
-            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] border border-gray-300 bg-white px-3 sm:px-4 py-3 sm:py-4 shadow-sm focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
+            <div className="flex items-end gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] bg-white px-3 sm:px-4 py-3 sm:py-4 shadow-sm focus-within:ring-1 focus-within:ring-indigo-300 transition-all">
               <div className="flex-shrink-0 flex items-center">
                 <ModelSelector selected={selectedModel} onSelect={(id) => { setSelectedModel(id); setAutoTiersUsed([]); }} upward isPro={isPro} allowedTiers={allowedTiers} />
               </div>

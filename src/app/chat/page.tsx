@@ -148,6 +148,14 @@ function ChatContent() {
 
   return (
     <div className="chat-layout flex flex-col lg:flex-row h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
+      {/* Hover strip — left edge of screen, opens sidebar on mouse enter (desktop only) */}
+      {!sidebarOpen && (
+        <div
+          className="hidden lg:block fixed left-0 top-0 bottom-0 z-20 w-3"
+          onMouseEnter={handleHoverEnter}
+        />
+      )}
+
       {/* ── Sidebar ──
           Desktop: always visible as a flex item. Narrow strip when closed
                    (just the Netsyra logo), full width when open.
@@ -164,6 +172,7 @@ function ChatContent() {
           backdropFilter: "blur(16px) saturate(180%)",
           WebkitBackdropFilter: "blur(16px) saturate(180%)",
         }}
+        onMouseLeave={handleSidebarMouseLeave}
       >
         <ChatSidebar
           open={sidebarOpen}
