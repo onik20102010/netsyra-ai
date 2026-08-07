@@ -1061,7 +1061,7 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+    <div className="flex flex-col h-full bg-white overflow-hidden">
       <div className="relative flex-1 min-h-0">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto overscroll-contain chat-scroll-area">
           <div className={`chat-content-center ${sidebarOpen ? "sidebar-open" : ""} px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-[140px] sm:pb-0 space-y-4 sm:space-y-6`}>
