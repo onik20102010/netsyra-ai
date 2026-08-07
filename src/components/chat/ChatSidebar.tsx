@@ -180,7 +180,7 @@ export default function ChatSidebar({
   const unpinnedConversations = filteredConversations.filter((c) => !c.pinned);
 
   return (
-    <div className={`bg-gray-50 border-r border-gray-200 flex flex-col overflow-hidden ${open ? "h-full" : "h-auto lg:h-full"}`}>
+    <div className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden ${open ? "h-full" : "h-auto lg:h-full"}`}>
       {/* ── Netsyra Logo — always visible at top, toggles sidebar ── */}
       <div className="flex items-center px-4 py-3 border-b border-gray-200 flex-shrink-0">
         <NetsyraLogo
