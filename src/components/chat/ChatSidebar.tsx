@@ -181,7 +181,7 @@ export default function ChatSidebar({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden border-r border-gray-200/60 ${open ? "h-full" : "h-auto lg:h-full"}`}
+      className={`flex flex-col overflow-hidden border-r border-white/40 ${open ? "h-full" : "h-auto lg:h-full"}`}
       style={{
         backgroundColor: "rgba(255, 255, 255, 0.72)",
         backdropFilter: "blur(16px) saturate(180%)",
@@ -189,7 +189,7 @@ export default function ChatSidebar({
       }}
     >
       {/* ── Netsyra Logo — always visible at top, toggles sidebar ── */}
-      <div className="flex items-center px-4 py-3 border-b border-gray-200 flex-shrink-0">
+      <div className="flex items-center px-4 py-3 border-b border-white/40 flex-shrink-0">
         <NetsyraLogo
           onClick={onToggleSidebar || (() => setOpen(!open))}
           size="sm"
@@ -208,7 +208,7 @@ export default function ChatSidebar({
                 placeholder="Search chats..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/60 border border-gray-200/60 text-sm text-gray-700 outline-none focus:border-indigo-300 transition"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/60 border border-white/40 text-sm text-gray-700 outline-none focus:border-indigo-300 transition"
               />
               {searchQuery && (
                 <button
@@ -255,7 +255,7 @@ export default function ChatSidebar({
               </span>
             </button>
 
-            <div className="my-3 border-t border-gray-200" />
+            <div className="my-3 border-t border-white/40" />
 
             {/* Pinned section */}
             {pinnedConversations.length > 0 && (
@@ -302,7 +302,7 @@ export default function ChatSidebar({
                     </button>
                   </div>
                 ))}
-                <div className="my-2 border-t border-gray-100" />
+                <div className="my-2 border-t border-white/30" />
               </>
             )}
 
@@ -352,7 +352,7 @@ export default function ChatSidebar({
           </div>
 
           {/* User footer – now navigates to /profile */}
-          <div className="p-4 border-t border-gray-200 flex-shrink-0">
+          <div className="p-4 border-t border-white/40 flex-shrink-0">
             <button
               onClick={() => router.push("/profile")}
               className="w-full hover:bg-black/5 transition text-left rounded-lg p-2 -m-2"
