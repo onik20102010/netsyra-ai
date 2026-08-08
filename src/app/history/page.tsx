@@ -93,7 +93,6 @@ export default function HistoryPage() {
   const handleDelete = useCallback(
     async (id: string) => {
       if (!supabase) return;
-      // Delete messages first (foreign key), then conversation
       await supabase.from("messages").delete().eq("conversation_id", id);
       const { error } = await supabase.from("conversations").delete().eq("id", id);
       if (error) {
@@ -161,7 +160,7 @@ export default function HistoryPage() {
 
   if (loading || !user || !clientReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#071927]">
+      <div className="min-h-screen flex items-center justify-center bg-[#02121c]">
         <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -173,7 +172,6 @@ export default function HistoryPage() {
   // ── Reusable sidebar content ──
   const sidebarContent = (
     <>
-      {/* Back to Chat */}
       <Link
         href="/chat"
         className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors mb-4"
@@ -189,7 +187,6 @@ export default function HistoryPage() {
         Back to Chat
       </Link>
 
-      {/* Nav items */}
       <nav className="flex flex-col gap-1 flex-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -237,7 +234,6 @@ export default function HistoryPage() {
         })}
       </nav>
 
-      {/* Footer glow */}
       <div className="mt-auto pt-4">
         <div
           className="h-px w-full"
@@ -265,16 +261,11 @@ export default function HistoryPage() {
   };
 
   return (
-    <div
-      className="min-h-screen w-full flex relative overflow-hidden"
-      style={{
-        backgroundColor: "#020d12",
-      }}
-    >
+    <div className="min-h-screen w-full flex relative overflow-hidden bg-transparent">
       {/* ── 3D WebGL Neural Brain Background ── */}
       <NeuralBrainBackground />
 
-      {/* ── Desktop Sidebar (Glass Navigation, ≥768px) ── */}
+      {/* ── Desktop Sidebar ── */}
       <aside
         className="hidden md:flex relative z-10 flex-shrink-0 m-4 w-[240px] lg:w-[260px] flex-col rounded-2xl p-4"
         style={glassSidebarStyle}
@@ -282,15 +273,13 @@ export default function HistoryPage() {
         {sidebarContent}
       </aside>
 
-      {/* ── Mobile Drawer (overlay, <768px) ── */}
+      {/* ── Mobile Drawer ── */}
       {mobileNavOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black/60 md:hidden"
             onClick={() => setMobileNavOpen(false)}
           />
-          {/* Drawer */}
           <aside
             className="fixed top-0 left-0 h-full w-[260px] max-w-[80vw] z-50 flex flex-col rounded-r-2xl p-4 md:hidden animate-[slideInLeft_0.2s_ease]"
             style={glassSidebarStyle}
@@ -318,7 +307,6 @@ export default function HistoryPage() {
       {/* ── Main Content Area ── */}
       <div className="relative z-10 flex-1 overflow-y-auto p-3 sm:p-4 md:lg:p-6">
         <div className="max-w-5xl mx-auto">
-          {/* Mobile header with hamburger */}
           <div className="flex items-center gap-3 mb-4 md:hidden">
             <button
               onClick={() => setMobileNavOpen(true)}
@@ -328,13 +316,11 @@ export default function HistoryPage() {
                 border: "1px solid rgba(120, 220, 255, 0.2)",
                 background: "rgba(255, 255, 255, 0.05)",
               }}
-              aria-label="Open menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Header */}
           <h1
             className="text-xl sm:text-2xl lg:text-[2rem] font-bold mb-4 sm:mb-6"
             style={{
@@ -376,7 +362,6 @@ export default function HistoryPage() {
             </div>
           ) : (
             <>
-              {/* ── Featured Hero Card ── */}
               {heroConv && (
                 <div
                   className="rounded-xl sm:rounded-2xl p-4 sm:p-5 mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-all duration-300"
@@ -388,7 +373,6 @@ export default function HistoryPage() {
                     boxShadow: "0 8px 32px 0 rgba(0, 180, 216, 0.1)",
                   }}
                 >
-                  {/* Glowing brain icon */}
                   <div
                     className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center"
                     style={{
@@ -405,7 +389,6 @@ export default function HistoryPage() {
                     />
                   </div>
 
-                  {/* Title + date */}
                   <Link
                     href={`/chat?conversation=${heroConv.id}`}
                     className="flex-1 min-w-0"
@@ -461,7 +444,6 @@ export default function HistoryPage() {
                     )}
                   </Link>
 
-                  {/* Action buttons pill */}
                   {editingId !== heroConv.id && (
                     <div
                       className="flex items-center gap-1 rounded-xl px-2 py-1.5 self-end sm:self-auto"
@@ -500,7 +482,6 @@ export default function HistoryPage() {
                 </div>
               )}
 
-              {/* ── Grid of conversation cards ── */}
               {restConvs.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
                   {restConvs.map((conv) => (
@@ -530,7 +511,6 @@ export default function HistoryPage() {
                       }}
                     >
                       {editingId === conv.id ? (
-                        /* ── Inline rename mode ── */
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
@@ -558,7 +538,6 @@ export default function HistoryPage() {
                         </div>
                       ) : (
                         <>
-                          {/* Top row: icon + equalizer */}
                           <div className="flex items-start justify-between mb-3">
                             <Link
                               href={`/chat?conversation=${conv.id}`}
@@ -575,7 +554,6 @@ export default function HistoryPage() {
                                 {conv.title}
                               </p>
                             </Link>
-                            {/* Equalizer / status indicator */}
                             {hoveredId === conv.id ? (
                               <Equalizer />
                             ) : (
@@ -591,7 +569,6 @@ export default function HistoryPage() {
                             )}
                           </div>
 
-                          {/* Date row */}
                           <Link
                             href={`/chat?conversation=${conv.id}`}
                             className="block"
@@ -612,9 +589,7 @@ export default function HistoryPage() {
                             </div>
                           </Link>
 
-                          {/* Bottom row: msg count badge + hover actions */}
                           <div className="flex items-center justify-between mt-3">
-                            {/* Msg count badge */}
                             <span
                               className="text-[0.75rem] px-2 py-0.5 rounded-full"
                               style={{
@@ -627,7 +602,6 @@ export default function HistoryPage() {
                               {(conv.msgCount ?? 0) !== 1 ? "s" : ""}
                             </span>
 
-                            {/* Hover action controls (fade in on desktop, always visible on mobile) */}
                             <div
                               className="flex items-center gap-1 transition-opacity duration-200 card-actions"
                               style={{
