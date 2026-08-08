@@ -79,27 +79,56 @@ async function classifyTaskWithAI(
         messages: [
           {
             role: 'system',
-            content: `Classify the user's request. Return ONLY valid JSON:
+            content: `You are an expert task classifier for an AI model router. Analyze the user's request and classify it precisely.
+
+DECISION RULES:
+1. "type" is the broad legacy bucket: coding | reasoning | architecture | debugging | refactoring | image_analysis
+   - coding: writing, modifying, or reviewing code
+   - reasoning: logical/analytical thinking, math, explanations, comparisons, planning
+   - architecture: system design, tech stack decisions, infrastructure planning
+   - debugging: finding/fixing errors, tracing bugs, stack traces
+   - refactoring: restructuring existing code without changing behavior
+   - image_analysis: analyzing/extracting info from attached images
+2. "complexity" reflects effort needed: easy | medium | hard | very_hard
+   - easy: single-function, <50 lines, straightforward
+   - medium: multi-function or moderate logic, 50-200 lines
+   - hard: multi-file, architectural decisions, 200-500 lines
+   - very_hard: system-wide, security-critical, novel algorithms, 500+ lines
+3. "primaryCategory" is the fine-grained domain: coding | reasoning | creative | analysis | operations
+4. "primarySubType" is the most specific task type from the allowed list
+5. "secondarySubTypes" are up to 3 additional relevant sub-types
+6. "confidence" is how certain you are (0.0-1.0). Use 0.9+ for clear-cut cases, 0.5-0.7 for ambiguous ones.
+
+COMPLEXITY SIGNALS TO CONSIDER:
+- Message length and detail level
+- Number of distinct requirements
+- Whether multiple files/systems are involved
+- Whether architectural decisions are needed
+- Whether security/safety is at stake
+- Whether novel algorithms or math are required
+- Code block size and count in the message
+
+Return ONLY valid JSON, no markdown:
 {
   "type": "coding|reasoning|architecture|debugging|refactoring|image_analysis",
   "complexity": "easy|medium|hard|very_hard",
-  "confidence": 0.0–1.0,
+  "confidence": 0.0,
   "primaryCategory": "coding|reasoning|creative|analysis|operations",
   "primarySubType": "feature-implementation|bug-fix|code-review|optimization|testing|api-integration|database-operations|documentation|refactoring|algorithm-design|problem-solving|explanation|comparison|planning|content-generation|design|brainstorming|storytelling|data-analysis|log-analysis|performance-analysis|security-audit|deployment|configuration|debugging|monitoring|troubleshooting",
-  "secondarySubTypes": ["array of up to 3 additional sub-types from the same list"]
+  "secondarySubTypes": ["up to 3 sub-types from the same list"]
 }`,
           },
           {
             role: 'user',
             content: `Message: "${message}"${
               context?.conversationHistoryLength
-                ? `\nHistory: ${context.conversationHistoryLength} messages`
+                ? `\nConversation history: ${context.conversationHistoryLength} messages`
                 : ''
-            }${context?.hasAttachedImages ? '\nImages attached' : ''}`,
+            }${context?.hasAttachedImages ? '\nImages attached: yes' : ''}`,
           },
         ],
         temperature: 0.1,
-        max_tokens: 150,
+        max_tokens: 200,
         response_format: { type: 'json_object' },
       }),
     });
@@ -112,7 +141,32 @@ async function classifyTaskWithAI(
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
     console.log(`✅ LLM Response: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Provider: groq | Content length: ${content.length} chars`);
-    return JSON.parse(content);
+
+    const parsed = JSON.parse(content);
+
+    // Validate and clamp the AI response to prevent bad data from propagating
+    const validTypes: TaskType[] = ['coding', 'reasoning', 'architecture', 'debugging', 'refactoring', 'image_analysis'];
+    const validComplexities: TaskComplexity[] = ['easy', 'medium', 'hard', 'very_hard'];
+    const validCategories: PrimaryCategory[] = ['coding', 'reasoning', 'creative', 'analysis', 'operations'];
+    const validSubTypes: SubType[] = [
+      'feature-implementation', 'bug-fix', 'code-review', 'optimization', 'testing',
+      'api-integration', 'database-operations', 'documentation', 'refactoring',
+      'algorithm-design', 'problem-solving', 'explanation', 'comparison', 'planning',
+      'content-generation', 'design', 'brainstorming', 'storytelling',
+      'data-analysis', 'log-analysis', 'performance-analysis', 'security-audit',
+      'deployment', 'configuration', 'debugging', 'monitoring', 'troubleshooting',
+    ];
+
+    return {
+      type: validTypes.includes(parsed.type) ? parsed.type : 'coding',
+      complexity: validComplexities.includes(parsed.complexity) ? parsed.complexity : 'medium',
+      confidence: typeof parsed.confidence === 'number' ? Math.min(1, Math.max(0, parsed.confidence)) : 0.5,
+      primaryCategory: validCategories.includes(parsed.primaryCategory) ? parsed.primaryCategory : undefined,
+      primarySubType: validSubTypes.includes(parsed.primarySubType) ? parsed.primarySubType : undefined,
+      secondarySubTypes: Array.isArray(parsed.secondarySubTypes)
+        ? parsed.secondarySubTypes.filter((st: string) => validSubTypes.includes(st as SubType)).slice(0, 3) as SubType[]
+        : undefined,
+    };
   } catch (error) {
     console.warn(`❌ LLM Error: groq/compound-mini (NI classifier) | API Key: GROQ_API_KEY_4 | Provider: groq | Error: ${error}`);
     return null;
@@ -220,22 +274,30 @@ function detectTypeAndComplexityFallback(
   else if (wordCount <= 80) score += 30;
   else score += 40;
 
-  // 3.2 Code blocks present?
-  const codeBlockCount = (message.match(/```[\s\S]*?```/g) || []).length;
-  score += Math.min(codeBlockCount * 15, 30);
+  // 3.2 Code blocks present + size
+  const codeBlocks = message.match(/```[\s\S]*?```/g) || [];
+  const codeBlockCount = codeBlocks.length;
+  score += Math.min(codeBlockCount * 12, 30);
+  // Large code blocks add more complexity
+  const totalCodeChars = codeBlocks.reduce((sum, b) => sum + b.length, 0);
+  if (totalCodeChars > 2000) score += 15;
+  else if (totalCodeChars > 500) score += 8;
 
   // 3.3 Technical keyword density
   const techKeywords = [
     'async', 'await', 'function', 'class', 'interface', 'database', 'api',
     'server', 'client', 'endpoint', 'sql', 'query', 'migration', 'deploy',
-    'config', 'environment', 'production', 'staging', 'rollback'
+    'config', 'environment', 'production', 'staging', 'rollback',
+    'kubernetes', 'docker', 'redis', 'queue', 'webhook', 'oauth', 'jwt',
+    'grpc', 'websocket', 'microservice', 'distributed', 'concurrency',
   ];
   const techCount = techKeywords.filter(kw => lower.includes(kw)).length;
-  if (techCount > 8) score += 20;
-  else if (techCount > 4) score += 10;
+  if (techCount > 10) score += 25;
+  else if (techCount > 6) score += 18;
+  else if (techCount > 3) score += 10;
 
   // 3.4 Risk / operational complexity indicators
-  const riskWords = ['production', 'critical', 'urgent', 'security', 'crash', 'data loss', 'sensitive'];
+  const riskWords = ['production', 'critical', 'urgent', 'security', 'crash', 'data loss', 'sensitive', 'vulnerability', 'breach', 'compliance', 'gdpr', 'pci'];
   if (riskWords.some(rw => lower.includes(rw))) score += 15;
 
   // 3.5 Multiple files / modules mentioned
@@ -249,6 +311,25 @@ function detectTypeAndComplexityFallback(
 
   // 3.7 Multistep / sequential instructions
   if (/(\d\.\s|step\s|first\s|then\s|next\s|finally\s)/i.test(message)) score += 10;
+
+  // 3.8 Math / algorithm complexity
+  const mathSignals = (message.match(/\b(algorithm|complexity|big o|recursive|dynamic programming|graph|tree|sort|search|hash|traverse|dp|memoiz)\b/gi) || []).length;
+  if (mathSignals > 2) score += 15;
+  else if (mathSignals > 0) score += 8;
+
+  // 3.9 Multi-language / polyglot context
+  const langSignals = (message.match(/\b(python|javascript|typescript|rust|go|java|c\+\+|ruby|swift|kotlin|scala|elixir|haskell)\b/gi) || []).length;
+  if (langSignals > 2) score += 12; // Multiple languages mentioned = harder
+
+  // 3.10 Architecture / system design signals
+  const archSignals = (message.match(/\b(architecture|design pattern|microservice|monolith|scalability|distributed|system design|infrastructure|load balancer|sharding|replication|consensus)\b/gi) || []).length;
+  if (archSignals > 1) score += 15;
+  else if (archSignals > 0) score += 8;
+
+  // 3.11 Question marks (multiple questions = more complex)
+  const questionCount = (message.match(/\?/g) || []).length;
+  if (questionCount > 3) score += 8;
+  else if (questionCount > 1) score += 4;
 
   // Clamp to 0–100
   score = Math.min(100, Math.max(0, score));
@@ -266,8 +347,8 @@ function detectTypeAndComplexityFallback(
   const typeMap: Record<PrimaryCategory, TaskType> = {
     coding: 'coding',
     reasoning: 'reasoning',
-    creative: 'reasoning',
-    analysis: 'image_analysis',
+    creative: 'reasoning',       // creative tasks use reasoning-capable models
+    analysis: 'reasoning',       // FIX: analysis is reasoning, NOT image_analysis
     operations: 'debugging',
   };
 
@@ -281,7 +362,15 @@ function detectTypeAndComplexityFallback(
   };
 
   // ─── 5. Confidence calculation based on pattern matches ───────
-  const confidence = Math.min(0.6, matched.length * 0.15);
+  // Higher confidence when multiple patterns agree and top match has high weight
+  const topWeight = matched[0]?.weight ?? 0;
+  const matchCount = matched.length;
+  let confidence = 0.35; // base
+  confidence += Math.min(topWeight * 0.08, 0.25);  // up to +0.24 for weight-3 matches
+  confidence += Math.min(matchCount * 0.05, 0.15); // up to +0.15 for multiple matches
+  // Strong signal: high-weight match + multiple corroborating patterns
+  if (topWeight >= 3 && matchCount >= 2) confidence += 0.1;
+  confidence = Math.min(0.75, confidence); // cap below AI's potential max of 1.0
 
   return {
     type: typeMap[primaryCategory] || 'coding',
@@ -311,23 +400,66 @@ export async function analyzeTask(
 
   const fallback = detectTypeAndComplexityFallback(message);
 
-  // Determine which classifier to use based on AI confidence
-  const useAI = ai && ai.confidence > 0.6;
-  const selected = useAI ? ai : fallback;
+  // ── Confidence-weighted blending ──
+  // Instead of a hard threshold, we pick the classifier with higher confidence.
+  // When both agree, we trust AI more (it understands nuance). When they disagree,
+  // the higher-confidence one wins. If AI fails entirely, fallback is used.
+  let selected: typeof fallback;
+  let blendedConfidence: number;
+
+  if (!ai) {
+    // AI classifier failed — use fallback
+    selected = fallback;
+    blendedConfidence = fallback.confidence;
+  } else if (ai.confidence >= fallback.confidence) {
+    // AI is more confident (or equal) — prefer AI for nuance
+    selected = ai;
+    blendedConfidence = ai.confidence;
+    // Boost confidence if both classifiers agree on type and complexity
+    if (ai.type === fallback.type && ai.complexity === fallback.complexity) {
+      blendedConfidence = Math.min(1, blendedConfidence + 0.1);
+    }
+  } else {
+    // Fallback is more confident (rare — AI returned low confidence)
+    selected = fallback;
+    blendedConfidence = fallback.confidence;
+  }
+
+  // ── Image override: if images are attached, force image_analysis type ──
+  const hasImages = context?.hasAttachedImages || false;
+  if (hasImages) {
+    selected = {
+      ...selected,
+      type: 'image_analysis',
+      primaryCategory: 'analysis',
+    };
+  }
+
+  // ── Context-aware complexity boost ──
+  // Long conversations and large code inputs increase effective complexity
+  let effectiveComplexity = selected.complexity;
+  const historyLen = context?.conversationHistoryLength ?? 0;
+  const codeLen = context?.codeLength ?? 0;
+  if (historyLen > 20 && effectiveComplexity === 'easy') effectiveComplexity = 'medium';
+  if (historyLen > 50 && effectiveComplexity === 'medium') effectiveComplexity = 'hard';
+  if (codeLen > 500 && effectiveComplexity === 'easy') effectiveComplexity = 'medium';
+  if (codeLen > 2000 && effectiveComplexity !== 'very_hard') {
+    effectiveComplexity = codeLen > 5000 ? 'very_hard' : 'hard';
+  }
 
   return {
     type: selected.type,
-    complexity: selected.complexity,
+    complexity: effectiveComplexity,
     estimatedLines: context?.codeLength ?? 50,
     estimatedFiles: context?.fileCount ?? 1,
     requiresReasoning: selected.type === 'reasoning' || selected.type === 'architecture',
     requiresArchitecture: selected.type === 'architecture',
     isDebugging: selected.type === 'debugging',
     isRefactoring: selected.type === 'refactoring',
-    hasImages: context?.hasAttachedImages || false,
+    hasImages,
     imageCount: context?.imageCount || 0,
-    confidence: selected.confidence,
-    // Advanced analysis fields - use AI's if available, otherwise fallback's
+    confidence: blendedConfidence,
+    // Advanced analysis fields — prefer AI's, fall back to regex's
     primaryCategory: selected.primaryCategory || fallback.primaryCategory,
     primarySubType: selected.primarySubType || fallback.primarySubType,
     secondarySubTypes: selected.secondarySubTypes || fallback.secondarySubTypes,
@@ -336,26 +468,49 @@ export async function analyzeTask(
 
 // ── Estimate tokens needed for a task ───────────────────
 export function estimateTokensNeeded(analysis: TaskAnalysis): number {
-  const { complexity, estimatedLines, estimatedFiles } = analysis;
-  
-  // Base token estimation
-  let tokens = 500; // Base tokens for any request
-  
+  const { complexity, estimatedLines, estimatedFiles, primarySubType, primaryCategory } = analysis;
+
+  // Base token estimation — varies by category
+  let tokens = 500;
+  if (primaryCategory === 'creative') tokens = 700;       // creative needs more output room
+  else if (primaryCategory === 'reasoning') tokens = 600; // reasoning needs thinking space
+  else if (primaryCategory === 'analysis') tokens = 800;  // analysis needs structured output
+  else if (primaryCategory === 'operations') tokens = 550;
+
+  // Sub-type-specific base adjustments
+  const subTypeBoosts: Partial<Record<SubType, number>> = {
+    'algorithm-design': 400,
+    'security-audit': 500,
+    'data-analysis': 300,
+    'content-generation': 300,
+    'storytelling': 400,
+    'planning': 250,
+    'documentation': 200,
+  };
+  if (primarySubType && subTypeBoosts[primarySubType]) {
+    tokens += subTypeBoosts[primarySubType]!;
+  }
+
   // Add tokens based on estimated lines
   if (estimatedLines) {
     tokens += estimatedLines * 2; // ~2 tokens per line of code
   }
-  
+
   // Add tokens based on file count
   if (estimatedFiles && estimatedFiles > 1) {
     tokens += estimatedFiles * 100; // Context overhead for multiple files
   }
-  
+
+  // Add tokens for images
+  if (analysis.hasImages && analysis.imageCount) {
+    tokens += analysis.imageCount * 250; // ~250 tokens per image
+  }
+
   // Add complexity multiplier
-  if (complexity === 'very_hard') tokens *= 2;
-  else if (complexity === 'hard') tokens *= 1.5;
-  else if (complexity === 'medium') tokens *= 1.2;
-  
+  if (complexity === 'very_hard') tokens *= 2.2;
+  else if (complexity === 'hard') tokens *= 1.6;
+  else if (complexity === 'medium') tokens *= 1.25;
+
   return Math.ceil(tokens);
 }
 
@@ -363,60 +518,163 @@ export function estimateTokensNeeded(analysis: TaskAnalysis): number {
 export function routeTask(analysis: TaskAnalysis): ModelRoute {
   const { type, complexity, primarySubType, primaryCategory } = analysis;
 
+  // ── Image analysis: always Gemini ──
   if (type === 'image_analysis')
-    return { model: 'gemini-flash-lite', provider: 'google', reason: 'Image analysis' };
-
-  // Reasoning, planning, creative, teaching tasks - use GPT-5
-  if (primaryCategory === 'reasoning' || primaryCategory === 'creative' ||
-      analysis.requiresReasoning || analysis.requiresArchitecture) {
     return {
-      model: 'gpt-5',
-      provider: 'openai',
-      reason: 'Reasoning/creative task - using GPT-5 for advanced capabilities',
+      model: 'gemini-flash-lite',
+      provider: 'google',
+      reason: 'Image analysis — Gemini Flash Lite for multimodal input',
+      fallback: { model: 'gpt-5', provider: 'openai', reason: 'Fallback: GPT-5 for image reasoning' },
     };
-  }
 
-  // Security-audit tasks always get highest priority (use Opus)
+  // ── Security audits: always Opus (highest accuracy) ──
   if (primarySubType === 'security-audit' && complexity !== 'easy') {
     return {
       model: 'claude-opus-4.6',
       provider: 'anthropic',
-      reason: 'Security audit - using Claude Opus 4.6 for maximum accuracy',
+      reason: 'Security audit — Claude Opus 4.6 for maximum accuracy and thoroughness',
+      fallback: { model: 'gpt-5', provider: 'openai', reason: 'Fallback: GPT-5 for security reasoning' },
     };
   }
 
-  // Very hard coding tasks - use Opus 4.6
-  if (complexity === 'very_hard' && (analysis.isDebugging || analysis.isRefactoring)) {
+  // ── Architecture / system design: GPT-5 with Opus fallback ──
+  if (analysis.requiresArchitecture || primarySubType === 'planning') {
     return {
-      model: 'claude-opus-4.6',
-      provider: 'anthropic',
-      reason: 'Very hard coding task - using Claude Opus 4.6',
+      model: 'gpt-5',
+      provider: 'openai',
+      reason: 'Architecture/planning — GPT-5 for system design reasoning',
+      fallback: { model: 'claude-opus-4.6', provider: 'anthropic', reason: 'Fallback: Opus 4.6 for deep architecture' },
     };
   }
 
-  // Hard tasks - use Sonnet 4.6
-  if (complexity === 'hard') {
+  // ── Algorithm design: GPT-5 (strong at math/algorithms) ──
+  if (primarySubType === 'algorithm-design') {
     return {
-      model: 'claude-sonnet-4.6',
-      provider: 'anthropic',
-      reason: 'Hard task - using Claude Sonnet 4.6',
+      model: 'gpt-5',
+      provider: 'openai',
+      reason: 'Algorithm design — GPT-5 for mathematical reasoning',
+      fallback: { model: 'claude-opus-4.6', provider: 'anthropic', reason: 'Fallback: Opus 4.6 for algorithm verification' },
     };
   }
 
-  // Medium tasks - use DeepSeek V4 Pro
-  if (complexity === 'medium' || (analysis.estimatedLines && analysis.estimatedLines > 100)) {
+  // ── Creative tasks: GPT-5 (best at nuanced creative writing) ──
+  if (primaryCategory === 'creative') {
+    return {
+      model: 'gpt-5',
+      provider: 'openai',
+      reason: 'Creative task — GPT-5 for nuanced creative generation',
+      fallback: { model: 'claude-sonnet-4.6', provider: 'anthropic', reason: 'Fallback: Sonnet 4.6 for creative writing' },
+    };
+  }
+
+  // ── Data/log/performance analysis: GPT-5 with Sonnet fallback ──
+  if (primaryCategory === 'analysis' && complexity !== 'easy') {
+    return {
+      model: 'gpt-5',
+      provider: 'openai',
+      reason: 'Data analysis — GPT-5 for analytical reasoning and pattern detection',
+      fallback: { model: 'claude-sonnet-4.6', provider: 'anthropic', reason: 'Fallback: Sonnet 4.6 for structured analysis' },
+    };
+  }
+
+  // ── Reasoning/explanation/comparison: GPT-5 ──
+  if (primaryCategory === 'reasoning' || analysis.requiresReasoning) {
+    if (complexity === 'very_hard') {
+      return {
+        model: 'gpt-5',
+        provider: 'openai',
+        reason: 'Very hard reasoning — GPT-5 for deep logical analysis',
+        fallback: { model: 'claude-opus-4.6', provider: 'anthropic', reason: 'Fallback: Opus 4.6 for complex reasoning' },
+      };
+    }
+    if (complexity === 'hard') {
+      return {
+        model: 'gpt-5',
+        provider: 'openai',
+        reason: 'Hard reasoning — GPT-5 for advanced reasoning',
+        fallback: { model: 'claude-sonnet-4.6', provider: 'anthropic', reason: 'Fallback: Sonnet 4.6 for reasoning' },
+      };
+    }
+    // Easy/medium reasoning — DeepSeek Pro is cost-effective
     return {
       model: 'deepseek-v4-pro',
       provider: 'deepseek',
-      reason: 'Medium complexity task - using DeepSeek V4 Pro',
+      reason: 'Medium reasoning — DeepSeek V4 Pro (cost-effective for reasoning)',
+      fallback: { model: 'gpt-5', provider: 'openai', reason: 'Fallback: GPT-5 for reasoning' },
     };
   }
 
-  // Easy tasks - use DeepSeek V4 Flash
+  // ── Coding tasks: route by complexity and sub-type ──
+  if (primaryCategory === 'coding' || type === 'coding' || type === 'debugging' || type === 'refactoring') {
+    // Very hard coding (debugging/refactoring multi-file) → Opus
+    if (complexity === 'very_hard') {
+      return {
+        model: 'claude-opus-4.6',
+        provider: 'anthropic',
+        reason: 'Very hard coding — Claude Opus 4.6 for complex debugging/refactoring',
+        fallback: { model: 'gpt-5', provider: 'openai', reason: 'Fallback: GPT-5 for complex code' },
+      };
+    }
+    // Hard coding → Sonnet (great at code, faster than Opus)
+    if (complexity === 'hard') {
+      // Code review specifically → Opus (better at catching subtle issues)
+      if (primarySubType === 'code-review') {
+        return {
+          model: 'claude-opus-4.6',
+          provider: 'anthropic',
+          reason: 'Hard code review — Opus 4.6 for catching subtle issues',
+          fallback: { model: 'claude-sonnet-4.6', provider: 'anthropic', reason: 'Fallback: Sonnet 4.6' },
+        };
+      }
+      return {
+        model: 'claude-sonnet-4.6',
+        provider: 'anthropic',
+        reason: 'Hard coding — Claude Sonnet 4.6 for complex implementation',
+        fallback: { model: 'deepseek-v4-pro', provider: 'deepseek', reason: 'Fallback: DeepSeek V4 Pro' },
+      };
+    }
+    // Medium coding → DeepSeek Pro (excellent at code, cost-effective)
+    if (complexity === 'medium' || (analysis.estimatedLines && analysis.estimatedLines > 100)) {
+      return {
+        model: 'deepseek-v4-pro',
+        provider: 'deepseek',
+        reason: 'Medium coding — DeepSeek V4 Pro (strong code, cost-effective)',
+        fallback: { model: 'claude-sonnet-4.6', provider: 'anthropic', reason: 'Fallback: Sonnet 4.6' },
+      };
+    }
+    // Easy coding → DeepSeek Flash
+    return {
+      model: 'deepseek-v4-flash',
+      provider: 'deepseek',
+      reason: 'Easy coding — DeepSeek V4 Flash (fast, cost-effective)',
+      fallback: { model: 'deepseek-v4-pro', provider: 'deepseek', reason: 'Fallback: DeepSeek V4 Pro' },
+    };
+  }
+
+  // ── Operations tasks ──
+  if (primaryCategory === 'operations') {
+    if (complexity === 'very_hard' || complexity === 'hard') {
+      return {
+        model: 'claude-sonnet-4.6',
+        provider: 'anthropic',
+        reason: 'Hard operations — Sonnet 4.6 for careful step-by-step procedures',
+        fallback: { model: 'gpt-5', provider: 'openai', reason: 'Fallback: GPT-5 for operations' },
+      };
+    }
+    return {
+      model: 'deepseek-v4-pro',
+      provider: 'deepseek',
+      reason: 'Medium operations — DeepSeek V4 Pro',
+      fallback: { model: 'deepseek-v4-flash', provider: 'deepseek', reason: 'Fallback: DeepSeek V4 Flash' },
+    };
+  }
+
+  // ── Default: easy task → DeepSeek Flash ──
   return {
     model: 'deepseek-v4-flash',
     provider: 'deepseek',
-    reason: 'Easy task - using DeepSeek V4 Flash',
+    reason: 'Easy task — DeepSeek V4 Flash (fast, cost-effective)',
+    fallback: { model: 'deepseek-v4-pro', provider: 'deepseek', reason: 'Fallback: DeepSeek V4 Pro' },
   };
 }
 
