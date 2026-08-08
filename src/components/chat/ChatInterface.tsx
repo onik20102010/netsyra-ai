@@ -18,7 +18,6 @@ import {
   Image as ImageIcon,
   XCircle,
   Mic,
-  MicOff,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -489,9 +488,13 @@ export default function ChatInterface({
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [micPermission, setMicPermission] = useState<"checking" | "granted" | "denied" | "unsupported" | "prompt">("checking");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef("");
+  // MediaRecorder fallback (for Firefox etc. that lack Web Speech API)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const typedBufferRef = useRef<string>("");
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -530,41 +533,6 @@ export default function ChatInterface({
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
     }
   }, [isMobileKeyboardOpen]);
-
-  // ── Check microphone permission on mount ──
-  useEffect(() => {
-    const checkPermission = async () => {
-      // First check if SpeechRecognition is even supported
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        setMicPermission("unsupported");
-        return;
-      }
-      if (!window.isSecureContext) {
-        setMicPermission("unsupported");
-        return;
-      }
-      // Try to check permission status via Permissions API
-      try {
-        if (navigator.permissions && navigator.permissions.query) {
-          const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
-          setMicPermission(result.state as "granted" | "denied" | "prompt");
-          // Listen for permission changes
-          result.onchange = () => {
-            setMicPermission(result.state as "granted" | "denied" | "prompt");
-          };
-        } else {
-          // Permissions API not available — assume prompt needed
-          setMicPermission("prompt");
-        }
-      } catch {
-        // Permissions API not supported for microphone — assume prompt needed
-        setMicPermission("prompt");
-      }
-    };
-    checkPermission();
-  }, []);
 
 
   const isSelfCreatedConv = useRef(false);
@@ -813,43 +781,26 @@ export default function ChatInterface({
     }
   };
 
-  // ── Request microphone permission (shows browser prompt) ──
-  const requestMicPermission = useCallback(async (): Promise<boolean> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop tracks immediately — SpeechRecognition will re-acquire the mic
-      stream.getTracks().forEach((t) => t.stop());
-      setMicPermission("granted");
-      return true;
-    } catch (err: any) {
-      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
-        setMicPermission("denied");
-        toast.error(
-          "Microphone access blocked. Click the camera/mic icon in your browser's address bar, allow microphone access, then click the mic button again.",
-          { duration: 7000 }
-        );
-      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
-        toast.error("No microphone found. Please connect a microphone and try again.", { duration: 6000 });
-      } else {
-        toast.error("Could not access microphone: " + (err?.message || err?.name || "unknown error"), { duration: 6000 });
-      }
-      return false;
-    }
+  // ── Check which speech recognition method is available ──
+  const getSpeechRecognition = useCallback((): any | null => {
+    if (typeof window === "undefined") return null;
+    return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
   }, []);
 
-  // ── Start speech recognition (assumes permission already granted) ──
-  const startRecognition = useCallback(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge.");
-      return;
-    }
+  // ── Method 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
+  const startWebSpeechRecognition = useCallback((stream: MediaStream) => {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) return false;
+
+    // Stop the getUserMedia stream — Web Speech API manages its own mic access
+    stream.getTracks().forEach((t) => t.stop());
+
     const recognition = new SpeechRecognition();
     recognition.lang = navigator.language || "en-US";
     recognition.continuous = true;
     recognition.interimResults = true;
     finalTranscriptRef.current = input.trim() ? input.trim() + " " : "";
+
     recognition.onresult = (event: any) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -862,17 +813,18 @@ export default function ChatInterface({
       }
       setInput((finalTranscriptRef.current + interim).replace(/\s+/g, " ").trimStart());
     };
+
     recognition.onend = () => {
       setIsRecording(false);
       setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
     };
+
     recognition.onerror = (event: any) => {
       setIsRecording(false);
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        setMicPermission("denied");
         toast.error(
-          "Microphone access was denied. Click the camera/mic icon in your browser's address bar, allow microphone access, then try again.",
+          "Microphone access was denied. Click the mic icon in your browser's address bar to allow access, then try again.",
           { duration: 7000 }
         );
         return;
@@ -886,50 +838,178 @@ export default function ChatInterface({
       const msg = errorMessages[event.error] || ("Speech recognition error: " + event.error);
       toast.error(msg, { duration: 6000 });
     };
+
     try {
       recognition.start();
       recognitionRef.current = recognition;
       setIsRecording(true);
+      return true;
     } catch {
       setIsRecording(false);
+      return false;
     }
+  }, [input, getSpeechRecognition]);
+
+  // ── Method 2: MediaRecorder + Groq Whisper (Firefox, etc.) — record then transcribe ──
+  const startMediaRecorderFallback = useCallback((stream: MediaStream) => {
+    // Pick the best supported audio format
+    const mimeTypes = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/mp4",
+      "audio/mpeg",
+    ];
+    let mimeType = "";
+    for (const type of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        mimeType = type;
+        break;
+      }
+    }
+
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    } catch {
+      toast.error("Could not start audio recording. Your browser may not support audio recording.", { duration: 6000 });
+      stream.getTracks().forEach((t) => t.stop());
+      return false;
+    }
+
+    audioChunksRef.current = [];
+    mediaStreamRef.current = stream;
+    mediaRecorderRef.current = recorder;
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        audioChunksRef.current.push(e.data);
+      }
+    };
+
+    recorder.onstop = async () => {
+      // Stop the mic stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
+
+      setIsRecording(false);
+
+      // If no audio was captured, do nothing
+      if (audioChunksRef.current.length === 0) return;
+
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || "audio/webm" });
+      audioChunksRef.current = [];
+
+      // If the recording is too short, skip it
+      if (audioBlob.size < 1000) return;
+
+      setIsTranscribing(true);
+      toast.loading("Transcribing your voice...", { id: "transcribing" });
+
+      try {
+        const formData = new FormData();
+        formData.append("audio", audioBlob, `recording.${mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm"}`);
+        formData.append("language", (navigator.language || "en-US").split("-")[0]);
+
+        const response = await fetch("/api/groq/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+
+        toast.dismiss("transcribing");
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          toast.error(errData.error || "Failed to transcribe audio. Please try again.", { duration: 6000 });
+          return;
+        }
+
+        const data = await response.json();
+        const transcript: string = data.transcript || "";
+
+        if (transcript.trim()) {
+          finalTranscriptRef.current = input.trim() ? input.trim() + " " : "";
+          finalTranscriptRef.current += transcript.trim();
+          setInput(finalTranscriptRef.current);
+        }
+      } catch (err) {
+        toast.dismiss("transcribing");
+        toast.error("Failed to transcribe audio. Please check your connection and try again.", { duration: 6000 });
+      } finally {
+        setIsTranscribing(false);
+      }
+    };
+
+    recorder.start();
+    setIsRecording(true);
+    return true;
   }, [input]);
 
-  // ── Main toggle: permission-first flow ──
+  // ── Main toggle: click → browser asks permission → start recording ──
   const toggleRecording = useCallback(async () => {
     // If already recording, stop
     if (isRecording) {
-      recognitionRef.current?.stop();
+      // Stop Web Speech API if active
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+        return;
+      }
+      // Stop MediaRecorder if active
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+        return;
+      }
+      setIsRecording(false);
       return;
     }
 
-    // Unsupported browser
-    if (micPermission === "unsupported") {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge on desktop, or Safari on iOS.", { duration: 7000 });
-      return;
-    }
-
-    // Permission denied — guide user to fix
-    if (micPermission === "denied") {
+    // Check secure context (HTTPS or localhost)
+    if (typeof window !== "undefined" && !window.isSecureContext) {
       toast.error(
-        "Microphone access is blocked. Click the camera/mic icon in your browser's address bar, allow microphone access, then click the mic button again.",
-        { duration: 7000 }
+        "Voice input requires HTTPS or localhost. The current page is served over HTTP, which blocks microphone access.",
+        { duration: 8000 }
       );
       return;
     }
 
-    // Permission not yet granted — request it FIRST (this shows the browser prompt)
-    if (micPermission === "prompt" || micPermission === "checking") {
-      const granted = await requestMicPermission();
-      if (!granted) return; // Browser prompt was denied or failed
-      // Permission granted — now start recognition
-      startRecognition();
+    // Check if getUserMedia is available at all
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Your browser does not support microphone access. Please try Chrome, Edge, Safari, or Firefox.", { duration: 7000 });
       return;
     }
 
-    // Permission already granted — start recognition directly
-    startRecognition();
-  }, [isRecording, micPermission, requestMicPermission, startRecognition]);
+    // ── Step 1: Ask for microphone permission (browser shows its native prompt) ──
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err: any) {
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+        toast.error(
+          "Microphone access was denied. Click the mic icon in your browser's address bar to allow access, then click the mic button again.",
+          { duration: 7000 }
+        );
+      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+        toast.error("No microphone found. Please connect a microphone and try again.", { duration: 6000 });
+      } else {
+        toast.error("Could not access microphone: " + (err?.message || err?.name || "unknown error"), { duration: 6000 });
+      }
+      return;
+    }
+
+    // ── Step 2: Permission granted! Now start recording ──
+    // Try Web Speech API first (Chrome, Edge, Safari) — gives live transcription
+    const SpeechRecognition = getSpeechRecognition();
+    if (SpeechRecognition) {
+      const started = startWebSpeechRecognition(stream);
+      if (started) return;
+    }
+
+    // Fallback: MediaRecorder + Groq Whisper (Firefox, etc.)
+    startMediaRecorderFallback(stream);
+  }, [isRecording, getSpeechRecognition, startWebSpeechRecognition, startMediaRecorderFallback]);
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -1741,27 +1821,20 @@ export default function ChatInterface({
                 }}
               />
 
-              {(!input.trim() && attachedImages.length === 0 && !isProcessingImage) || isRecording ? (
+              {(!input.trim() && attachedImages.length === 0 && !isProcessingImage) || isRecording || isTranscribing ? (
                 <button
                   type="button"
                   onClick={toggleRecording}
+                  disabled={isTranscribing}
                   className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all shadow-sm relative ${
                     isRecording
                       ? "bg-red-500 hover:bg-red-600"
-                      : micPermission === "denied"
-                        ? "bg-gray-300 text-gray-500 hover:bg-gray-400"
-                        : micPermission === "unsupported"
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-black text-white hover:bg-gray-800"
-                  }`}
-                  aria-label={isRecording ? "Stop recording" : "Start voice input"}
-                  title={
-                    isRecording ? "Stop recording"
-                    : micPermission === "unsupported" ? "Speech recognition not supported in this browser"
-                    : micPermission === "denied" ? "Microphone access blocked — click the mic icon in your browser's address bar to allow access"
-                    : micPermission === "prompt" || micPermission === "checking" ? "Click to enable microphone — browser will ask for permission"
-                    : "Voice input"
-                  }
+                      : isTranscribing
+                        ? "bg-blue-500 cursor-wait"
+                        : "bg-black text-white hover:bg-gray-800"
+                  } ${isTranscribing ? "opacity-80" : ""}`}
+                  aria-label={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Start voice input"}
+                  title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing your voice..." : "Voice input — click to start speaking"}
                 >
                   {isRecording ? (
                     <>
@@ -1774,9 +1847,9 @@ export default function ChatInterface({
                       {/* Red recording dot indicator */}
                       <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
                     </>
-                  ) : micPermission === "denied" ? (
-                    /* Show mic-off icon when permission is denied */
-                    <MicOff className="w-4 h-4" />
+                  ) : isTranscribing ? (
+                    /* Spinner while transcribing via Whisper */
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <Mic className="w-4 h-4 text-white" />
                   )}
