@@ -108,6 +108,9 @@ interface IdeStore {
   setSplitOrientation: (orientation: 'horizontal' | 'vertical') => void;
 }
 
+// --- Detect mobile for initial sidebar state ---
+const _isMobileInit = typeof window !== 'undefined' && window.innerWidth < 768;
+
 // --- Zustand Store Implementation ---
 export const useIdeStore = create<IdeStore>()(
   persist(
@@ -120,11 +123,11 @@ export const useIdeStore = create<IdeStore>()(
       splitEditorFileId: null,
       splitEditorOrientation: 'horizontal',
       sidebarView: 'explorer',
-      isSidebarOpen: true,
+      isSidebarOpen: !_isMobileInit, // closed on mobile, open on desktop
       bottomPanelView: 'terminal',
       isBottomPanelOpen: false,
       rightPanelView: null,
-      isRightPanelOpen: false,
+      isRightPanelOpen: false, // always closed initially (both mobile + desktop)
       editorConfig: defaultEditorConfig,
       problems: {},
 
@@ -494,6 +497,13 @@ export const useIdeStore = create<IdeStore>()(
         sidebarView: state.sidebarView,
         isSidebarOpen: state.isSidebarOpen,
       }),
+      // After rehydrating from localStorage, close sidebar on mobile
+      onRehydrateStorage: () => (state) => {
+        if (state && typeof window !== 'undefined' && window.innerWidth < 768) {
+          state.isSidebarOpen = false;
+          state.isRightPanelOpen = false;
+        }
+      },
     }
   )
 );

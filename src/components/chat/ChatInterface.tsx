@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, memo, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -18,7 +18,6 @@ import {
   Image as ImageIcon,
   XCircle,
   Mic,
-  Square,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -205,6 +204,261 @@ function extractSources(content: string): {
   return { cleanContent, sources };
 }
 
+// ── MarkdownRenderer (top-level + memoized to prevent widget re-renders) ──
+// Defined outside ChatInterface so it doesn't get recreated on every parent
+// re-render, which would unmount/remount all widgets (Clock, Weather, Calendar).
+const MarkdownRenderer = memo(function MarkdownRenderer({
+  content,
+  modelTier,
+}: {
+  content: string;
+  modelTier?: string;
+}) {
+  const clean = stripThinkTags(content);
+  const widgets: React.ReactNode[] = [];
+  const isProOrAAI = modelTier === "pro" || modelTier === "aai";
+  const isPlus = modelTier === "plus";
+
+  const processed = clean
+    .replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
+      try {
+        const data = JSON.parse(json);
+        const idx = widgets.length;
+        widgets.push(<WeatherWidget key={`w-${idx}`} data={data} />);
+        return `[[WIDGET:${idx}]]`;
+      } catch { return ""; }
+    })
+    .replace(/<!--WIDGET:CLOCK:(.*?)-->/g, (_, json) => {
+      try {
+        const data = JSON.parse(json);
+        const idx = widgets.length;
+        widgets.push(<ClockWidget key={`c-${idx}`} data={data} />);
+        return `[[WIDGET:${idx}]]`;
+      } catch { return ""; }
+    })
+    .replace(/<!--WIDGET:CALENDAR:(.*?)-->/g, (_, json) => {
+      try {
+        const data = JSON.parse(json);
+        const idx = widgets.length;
+        widgets.push(<CalendarWidget key={`cal-${idx}`} data={data} />);
+        return `[[WIDGET:${idx}]]`;
+      } catch { return ""; }
+    });
+
+  const parts = processed.split(/(\[\[WIDGET:\d+\]\])/);
+
+  return (
+    <div className={cn("space-y-2", isPlus ? "overflow-visible h-auto" : "")}>
+      {parts.map((part, i) => {
+        const match = part.match(/^\[\[WIDGET:(\d+)\]\]$/);
+        if (match) {
+          const widgetIdx = parseInt(match[1]);
+          return <span key={i}>{widgets[widgetIdx]}</span>;
+        }
+        if (!part.trim()) return null;
+        return (
+          <ReactMarkdown
+            key={i}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1({ children }: any) {
+                return <h1 className="text-2xl font-bold mt-6 mb-3 text-zinc-900">{children}</h1>;
+              },
+              h2({ children }: any) {
+                return <h2 className="text-xl font-bold mt-5 mb-2 text-zinc-900">{children}</h2>;
+              },
+              h3({ children }: any) {
+                return <h3 className="text-lg font-semibold mt-4 mb-2 text-zinc-900">{children}</h3>;
+              },
+              h4({ children }: any) {
+                return <h4 className="text-base font-semibold mt-3 mb-1 text-zinc-800">{children}</h4>;
+              },
+              h5({ children }: any) {
+                return <h5 className="text-sm font-semibold mt-3 mb-1 text-zinc-800">{children}</h5>;
+              },
+              h6({ children }: any) {
+                return <h6 className="text-sm font-medium mt-2 mb-1 text-zinc-700">{children}</h6>;
+              },
+              a({ href, children, ...props }: any) {
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              },
+              code({ node, inline, className, children, ...props }: any) {
+                const match = /language-(\w+)/.exec(className || "");
+                const codeString = String(children).replace(/\n$/, "");
+
+                if (!inline && match && match[1] === "mermaid") {
+                  if (
+                    !codeString.trim() ||
+                    !/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie)\b/m.test(codeString.trim()) ||
+                    !/-->|->>|-->>|-.->|==>/m.test(codeString.trim())
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <div className="my-4">
+                      <MermaidDiagram chart={codeString} />
+                    </div>
+                  );
+                }
+
+                if (!inline && match && match[1] === "ascii") {
+                  return (
+                    <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Diagram
+                        </span>
+                        <CopyButton code={codeString} variant="light" />
+                      </div>
+                      <div className="overflow-x-auto">
+                        <pre className="p-4 text-sm leading-relaxed text-gray-800 font-mono whitespace-pre">
+                          {codeString}
+                        </pre>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (!inline && match) {
+                  return (
+                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                      <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
+                        <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          {match[1]}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <CopyButton code={codeString} />
+                          {(match[1] === "html" || match[1] === "htm") && (
+                            <PreviewButton code={codeString} />
+                          )}
+                        </div>
+                      </div>
+                      <SyntaxHighlighter
+                        language={match[1]}
+                        style={vscDarkPlus}
+                        customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
+                        codeTagProps={{ className: "text-sm" }}
+                      >
+                        {codeString}
+                      </SyntaxHighlighter>
+                    </div>
+                  );
+                }
+                return (
+                  <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              table({ children }: any) {
+                return (
+                  <div className="overflow-x-auto my-4">
+                    <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                      {children}
+                    </table>
+                  </div>
+                );
+              },
+              th({ children }: any) {
+                return (
+                  <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
+                    {children}
+                  </th>
+                );
+              },
+              td({ children }: any) {
+                return (
+                  <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                    {children}
+                  </td>
+                );
+              },
+              hr({ node, ...props }: any) {
+                return <hr className="my-8 border-t border-gray-300" {...props} />;
+              },
+              ul({ node, children, ...props }: any) {
+                const depth = (node as any)?.depth ?? 0;
+                if (isProOrAAI) {
+                  return (
+                    <ul
+                      className="my-2 space-y-1 pl-5 list-disc list-outside"
+                      {...props}
+                    >
+                      {children}
+                    </ul>
+                  );
+                }
+                return (
+                  <ul
+                    className={cn(
+                      "my-2 space-y-1 pl-1",
+                      depth === 0 ? "list-none pl-0" : "list-none pl-4"
+                    )}
+                    {...props}
+                  >
+                    {children}
+                  </ul>
+                );
+              },
+              ol({ node, children, ...props }: any) {
+                return (
+                  <ol
+                    className="my-2 space-y-1 pl-1 list-decimal list-outside ml-5"
+                    {...props}
+                  >
+                    {children}
+                  </ol>
+                );
+              },
+              li({ node, children, ...props }: any) {
+                const depth = (node as any)?.depth ?? 0;
+                const parent = (node as any)?.parent;
+                const isOrdered = parent?.type === "list" && parent?.ordered;
+                const bulletChar = depth === 0 ? "•" : "◦";
+
+                if (isOrdered) {
+                  return (
+                    <li className="text-sm leading-relaxed text-zinc-800" {...props}>
+                      {children}
+                    </li>
+                  );
+                }
+
+                if (isProOrAAI) {
+                  return (
+                    <li className="list-item mb-1 text-sm leading-relaxed text-zinc-800" {...props}>
+                      {children}
+                    </li>
+                  );
+                }
+
+                return (
+                  <li className="flex gap-2 text-sm leading-relaxed text-zinc-800" {...props}>
+                    <span className="flex-shrink-0 select-none">{bulletChar}</span>
+                    <span className="flex-1">{children}</span>
+                  </li>
+                );
+              },
+            }}
+          >
+            {part}
+          </ReactMarkdown>
+        );
+      })}
+    </div>
+  );
+});
+
 export default function ChatInterface({
   conversationId,
   setConversationId,
@@ -363,256 +617,6 @@ export default function ChatInterface({
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
-
-  const MarkdownRenderer = ({ content, modelTier }: { content: string; modelTier?: string }) => {
-    const clean = stripThinkTags(content);
-    const widgets: React.ReactNode[] = [];
-    const isProOrAAI = modelTier === "pro" || modelTier === "aai";
-    const isPlus = modelTier === "plus";
-
-    const processed = clean
-      .replace(/<!--WIDGET:WEATHER:(.*?)-->/g, (_, json) => {
-        try {
-          const data = JSON.parse(json);
-          const idx = widgets.length;
-          widgets.push(<WeatherWidget key={`w-${idx}`} data={data} />);
-          return `[[WIDGET:${idx}]]`;
-        } catch { return ""; }
-      })
-      .replace(/<!--WIDGET:CLOCK:(.*?)-->/g, (_, json) => {
-        try {
-          const data = JSON.parse(json);
-          const idx = widgets.length;
-          widgets.push(<ClockWidget key={`c-${idx}`} data={data} />);
-          return `[[WIDGET:${idx}]]`;
-        } catch { return ""; }
-      })
-      .replace(/<!--WIDGET:CALENDAR:(.*?)-->/g, (_, json) => {
-        try {
-          const data = JSON.parse(json);
-          const idx = widgets.length;
-          widgets.push(<CalendarWidget key={`cal-${idx}`} data={data} />);
-          return `[[WIDGET:${idx}]]`;
-        } catch { return ""; }
-      });
-
-    const parts = processed.split(/(\[\[WIDGET:\d+\]\])/);
-
-    return (
-      <div className={cn("space-y-2", isPlus ? "overflow-visible h-auto" : "")}>
-        {parts.map((part, i) => {
-          const match = part.match(/^\[\[WIDGET:(\d+)\]\]$/);
-          if (match) {
-            const widgetIdx = parseInt(match[1]);
-            return <span key={i}>{widgets[widgetIdx]}</span>;
-          }
-          if (!part.trim()) return null;
-          return (
-            <ReactMarkdown
-              key={i}
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h1({ children }: any) {
-                  return <h1 className="text-2xl font-bold mt-6 mb-3 text-zinc-900">{children}</h1>;
-                },
-                h2({ children }: any) {
-                  return <h2 className="text-xl font-bold mt-5 mb-2 text-zinc-900">{children}</h2>;
-                },
-                h3({ children }: any) {
-                  return <h3 className="text-lg font-semibold mt-4 mb-2 text-zinc-900">{children}</h3>;
-                },
-                h4({ children }: any) {
-                  return <h4 className="text-base font-semibold mt-3 mb-1 text-zinc-800">{children}</h4>;
-                },
-                h5({ children }: any) {
-                  return <h5 className="text-sm font-semibold mt-3 mb-1 text-zinc-800">{children}</h5>;
-                },
-                h6({ children }: any) {
-                  return <h6 className="text-sm font-medium mt-2 mb-1 text-zinc-700">{children}</h6>;
-                },
-                a({ href, children, ...props }: any) {
-                  return (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-bold text-black dark:text-white underline decoration-dotted underline-offset-2"
-                      {...props}
-                    >
-                      {children}
-                    </a>
-                  );
-                },
-                code({ node, inline, className, children, ...props }: any) {
-                  const match = /language-(\w+)/.exec(className || "");
-                  const codeString = String(children).replace(/\n$/, "");
-
-                  if (!inline && match && match[1] === "mermaid") {
-                    if (
-                      !codeString.trim() ||
-                      !/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie)\b/m.test(codeString.trim()) ||
-                      !/-->|->>|-->>|-.->|==>/m.test(codeString.trim())
-                    ) {
-                      return null;
-                    }
-                    return (
-                      <div className="my-4">
-                        <MermaidDiagram chart={codeString} />
-                      </div>
-                    );
-                  }
-
-                  if (!inline && match && match[1] === "ascii") {
-                    return (
-                      <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-hidden">
-                        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Diagram
-                          </span>
-                          <CopyButton code={codeString} variant="light" />
-                        </div>
-                        <div className="overflow-x-auto">
-                          <pre className="p-4 text-sm leading-relaxed text-gray-800 font-mono whitespace-pre">
-                            {codeString}
-                          </pre>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (!inline && match) {
-                    return (
-                      <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
-                        <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
-                          <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            {match[1]}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <CopyButton code={codeString} />
-                            {(match[1] === "html" || match[1] === "htm") && (
-                              <PreviewButton code={codeString} />
-                            )}
-                          </div>
-                        </div>
-                        <SyntaxHighlighter
-                          language={match[1]}
-                          style={vscDarkPlus}
-                          customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                          codeTagProps={{ className: "text-sm" }}
-                        >
-                          {codeString}
-                        </SyntaxHighlighter>
-                      </div>
-                    );
-                  }
-                  return (
-                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-                table({ children }: any) {
-                  return (
-                    <div className="overflow-x-auto my-4">
-                      <table className="min-w-full border-collapse border border-gray-300 text-sm">
-                        {children}
-                      </table>
-                    </div>
-                  );
-                },
-                th({ children }: any) {
-                  return (
-                    <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
-                      {children}
-                    </th>
-                  );
-                },
-                td({ children }: any) {
-                  return (
-                    <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                      {children}
-                    </td>
-                  );
-                },
-                hr({ node, ...props }: any) {
-                  return <hr className="my-8 border-t border-gray-300" {...props} />;
-                },
-                ul({ node, children, ...props }: any) {
-                  const depth = (node as any)?.depth ?? 0;
-                  // For N Pro and N AAI: use standard list styling with bullets
-                  if (isProOrAAI) {
-                    return (
-                      <ul
-                        className="my-2 space-y-1 pl-5 list-disc list-outside"
-                        {...props}
-                      >
-                        {children}
-                      </ul>
-                    );
-                  }
-                  // For N Fast and others: keep existing custom styling
-                  return (
-                    <ul
-                      className={cn(
-                        "my-2 space-y-1 pl-1",
-                        depth === 0 ? "list-none pl-0" : "list-none pl-4"
-                      )}
-                      {...props}
-                    >
-                      {children}
-                    </ul>
-                  );
-                },
-                ol({ node, children, ...props }: any) {
-                  return (
-                    <ol
-                      className="my-2 space-y-1 pl-1 list-decimal list-outside ml-5"
-                      {...props}
-                    >
-                      {children}
-                    </ol>
-                  );
-                },
-                li({ node, children, ...props }: any) {
-                  const depth = (node as any)?.depth ?? 0;
-                  const parent = (node as any)?.parent;
-                  const isOrdered = parent?.type === "list" && parent?.ordered;
-                  const bulletChar = depth === 0 ? "•" : "◦";
-
-                  if (isOrdered) {
-                    return (
-                      <li className="text-sm leading-relaxed text-zinc-800" {...props}>
-                        {children}
-                      </li>
-                    );
-                  }
-
-                  // For N Pro and N AAI: use block-level list items (vertical stack)
-                  if (isProOrAAI) {
-                    return (
-                      <li className="list-item mb-1 text-sm leading-relaxed text-zinc-800" {...props}>
-                        {children}
-                      </li>
-                    );
-                  }
-
-                  // For N Fast and others: keep existing flex layout
-                  return (
-                    <li className="flex gap-2 text-sm leading-relaxed text-zinc-800" {...props}>
-                      <span className="flex-shrink-0 select-none">{bulletChar}</span>
-                      <span className="flex-1">{children}</span>
-                    </li>
-                  );
-                },
-              }}
-            >
-              {part}
-            </ReactMarkdown>
-          );
-        })}
-      </div>
-    );
-  };
 
   const sendMessage = async (userContent: string, contextMessages: Message[]) => {
     setIsLoading(true);
@@ -807,9 +811,17 @@ export default function ChatInterface({
     };
     recognition.onerror = (event: any) => {
       setIsRecording(false);
-      if (event.error && event.error !== "aborted" && event.error !== "no-speech") {
-        toast.error("Speech recognition error: " + event.error);
-      }
+      if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
+      const errorMessages: Record<string, string> = {
+        "not-allowed": "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again. Note: speech recognition requires HTTPS.",
+        "service-not-allowed": "Microphone access blocked by browser settings. Please allow microphone permission and try again.",
+        "audio-capture": "No microphone found. Please connect a microphone and try again.",
+        "network": "Network error during speech recognition. Check your internet connection and try again.",
+        "bad-grammar": "Speech recognition grammar error. Please try again.",
+        "language-not-supported": "The detected language is not supported for speech recognition.",
+      };
+      const msg = errorMessages[event.error] || ("Speech recognition error: " + event.error);
+      toast.error(msg, { duration: 6000 });
     };
     try {
       recognition.start();
@@ -1199,29 +1211,35 @@ export default function ChatInterface({
                       )}
                     >
                       {isEditing ? (
-                        <div className="flex items-start gap-2">
+                        <div className="flex flex-col gap-2 w-full">
                           <textarea
                             ref={editInputRef}
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
                             onKeyDown={handleEditKeyDown}
-                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
-                            rows={4}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:border-gray-400 transition-colors"
+                            rows={3}
+                            autoFocus
                           />
-                          <button
-                            onClick={() => saveEdit(msg)}
-                            className="text-indigo-600 hover:text-indigo-800 transition p-1"
-                            title="Save edit"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-400 hover:text-gray-600 transition p-1"
-                            title="Cancel"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">
+                              Enter to save · Esc to cancel
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={cancelEditing}
+                                className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:bg-gray-100 transition"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => saveEdit(msg)}
+                                className="px-4 py-1.5 rounded-full text-xs font-medium bg-black text-white hover:bg-gray-800 transition"
+                              >
+                                Save & Send
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : isUser ? (
                         <div>
@@ -1628,15 +1646,28 @@ export default function ChatInterface({
                 <button
                   type="button"
                   onClick={toggleRecording}
-                  className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                  className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all shadow-sm relative ${
                     isRecording
-                      ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                      ? "bg-red-500 hover:bg-red-600"
                       : "bg-black text-white hover:bg-gray-800"
                   }`}
                   aria-label={isRecording ? "Stop recording" : "Start voice input"}
                   title={isRecording ? "Stop recording" : "Voice input"}
                 >
-                  {isRecording ? <Square className="w-3.5 h-3.5 fill-white" /> : <Mic className="w-4 h-4" />}
+                  {isRecording ? (
+                    <>
+                      {/* Animated sound waves ring */}
+                      <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
+                      {/* Real microphone icon with recording dot */}
+                      <span className="relative flex items-center justify-center">
+                        <Mic className="w-4 h-4 text-white" />
+                      </span>
+                      {/* Red recording dot indicator */}
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
+                    </>
+                  ) : (
+                    <Mic className="w-4 h-4 text-white" />
+                  )}
                 </button>
               ) : (
                 <button

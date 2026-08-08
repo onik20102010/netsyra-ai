@@ -34,7 +34,7 @@ export function ActivityBar() {
 
   return (
     <div
-      className="hidden md:flex flex-col w-[50px] bg-[#0d1117] h-full items-center shrink-0 border-r border-[#1f2428]"
+      className="flex flex-col w-[44px] md:w-[50px] bg-[#0d1117] h-full items-center shrink-0 border-r border-[#1f2428] z-50"
       role="toolbar"
       aria-label="Activity Bar"
       aria-orientation="vertical"
@@ -44,7 +44,7 @@ export function ActivityBar() {
         {/* Explorer */}
         <button
           onClick={() => handleViewClick("explorer")}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "explorer" && isSidebarOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -53,7 +53,8 @@ export function ActivityBar() {
           aria-label="Explorer"
           aria-pressed={sidebarView === "explorer" && isSidebarOpen}
         >
-          <Files size={22} />
+          <Files size={20} className="md:hidden" />
+          <Files size={22} className="hidden md:block" />
           {sidebarView === "explorer" && isSidebarOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
@@ -62,7 +63,7 @@ export function ActivityBar() {
         {/* Search */}
         <button
           onClick={() => handleViewClick("search")}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "search" && isSidebarOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -71,7 +72,8 @@ export function ActivityBar() {
           aria-label="Search"
           aria-pressed={sidebarView === "search" && isSidebarOpen}
         >
-          <Search size={22} />
+          <Search size={20} className="md:hidden" />
+          <Search size={22} className="hidden md:block" />
           {sidebarView === "search" && isSidebarOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
@@ -80,7 +82,7 @@ export function ActivityBar() {
         {/* Extensions */}
         <button
           onClick={() => handleViewClick("extensions")}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "extensions" && isSidebarOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -89,7 +91,8 @@ export function ActivityBar() {
           aria-label="Extensions"
           aria-pressed={sidebarView === "extensions" && isSidebarOpen}
         >
-          <Puzzle size={22} />
+          <Puzzle size={20} className="md:hidden" />
+          <Puzzle size={22} className="hidden md:block" />
           {sidebarView === "extensions" && isSidebarOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
@@ -98,7 +101,7 @@ export function ActivityBar() {
         {/* AI Assistant */}
         <button
           onClick={() => handleViewClick("ai-chat")}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             isRightPanelOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -107,7 +110,8 @@ export function ActivityBar() {
           aria-label="AI Assistant"
           aria-pressed={isRightPanelOpen}
         >
-          <Bot size={22} />
+          <Bot size={20} className="md:hidden" />
+          <Bot size={22} className="hidden md:block" />
           {isRightPanelOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
@@ -124,7 +128,7 @@ export function ActivityBar() {
             setBottomPanelView("terminal");
             if (!isBottomPanelOpen) toggleBottomPanel();
           }}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] ${
             isBottomPanelOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -133,7 +137,8 @@ export function ActivityBar() {
           aria-label="Toggle Terminal"
           aria-pressed={isBottomPanelOpen}
         >
-          <TerminalSquare size={22} />
+          <TerminalSquare size={20} className="md:hidden" />
+          <TerminalSquare size={22} className="hidden md:block" />
           {isBottomPanelOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}
@@ -142,7 +147,7 @@ export function ActivityBar() {
         {/* Settings */}
         <button
           onClick={() => handleViewClick("settings")}
-          className={`relative w-full h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
+          className={`relative w-full h-[40px] md:h-[42px] flex items-center justify-center transition-colors hover:bg-[#161b22] group ${
             sidebarView === "settings" && isSidebarOpen
               ? "text-[#34e8bb] bg-[#161b22]"
               : "text-[#6e7681] hover:text-[#e6edf3]"
@@ -151,7 +156,8 @@ export function ActivityBar() {
           aria-label="Settings"
           aria-pressed={sidebarView === "settings" && isSidebarOpen}
         >
-          <Settings size={22} />
+          <Settings size={20} className="md:hidden" />
+          <Settings size={22} className="hidden md:block" />
           {sidebarView === "settings" && isSidebarOpen && (
             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#34e8bb]" />
           )}

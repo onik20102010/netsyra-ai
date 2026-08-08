@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createIdeServerClient } from '@/lib/supabase/server';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const TIMEOUT_MS = 30000;
 const MAX_CONTENT_LENGTH = 12000;
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY = 2000;
+
+// ── IDE model mapping (separate from Netsyra chat models) ──
+// These are Groq models used exclusively by the IDE agent.
+// The Netsyra chat uses different models via GROQ_API_KEY.
+const IDE_MODEL_MAP: Record<string, string> = {
+  auto:  'llama-3.3-70b-versatile',     // Default — capable all-rounder
+  fast:  'llama-3.1-8b-instant',         // Quick responses
+  pro:   'llama-3.3-70b-versatile',      // Most capable (same Groq model, different key)
+  code:  'qwen-2.5-coder-32b-instruct',  // Code-optimized
+};
+const DEFAULT_IDE_MODEL = 'llama-3.3-70b-versatile';
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant']);
 
@@ -108,9 +118,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, temperature, json_mode, stream } = body;
+    const { messages, temperature, json_mode, stream, model: requestedModel } = body;
 
     // SECURITY: Only use GROQ_API_KEY_2 from server-side env
+    // This is a SEPARATE key from the Netsyra chat (which uses GROQ_API_KEY)
     const groqApiKey = process.env.GROQ_API_KEY_2;
 
     if (!groqApiKey) {
@@ -127,6 +138,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Map IDE model ID to actual Groq model name
+    const groqModel = IDE_MODEL_MAP[requestedModel] || DEFAULT_IDE_MODEL;
+
     // Sanitize messages
     const sanitizedMessages = messages.map((msg: any) => {
       const role = typeof msg.role === 'string' && VALID_ROLES.has(msg.role) ? msg.role : 'user';
@@ -135,7 +149,7 @@ export async function POST(request: NextRequest) {
     });
 
     const requestBody: Record<string, any> = {
-      model: GROQ_MODEL,
+      model: groqModel,
       messages: sanitizedMessages,
       max_tokens: 4096,
       temperature: typeof temperature === 'number' ? temperature : 0.1,

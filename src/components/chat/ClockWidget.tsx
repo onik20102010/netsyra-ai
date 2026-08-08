@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import { motion } from "framer-motion";
 
 interface ClockData {
@@ -42,7 +42,7 @@ function getTimeInTimezone(timezone: string): {
   };
 }
 
-export default function ClockWidget({ data }: { data: ClockData }) {
+const ClockWidget = memo(function ClockWidget({ data }: { data: ClockData }) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -176,4 +176,6 @@ export default function ClockWidget({ data }: { data: ClockData }) {
       </div>
     </motion.div>
   );
-}
+});
+
+export default ClockWidget;

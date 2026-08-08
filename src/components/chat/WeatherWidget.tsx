@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { getWeather3DIcon } from "./Weather3DIcons";
 
@@ -93,7 +94,7 @@ function StatChip({ icon, label, value }: { icon: string; label: string; value: 
   );
 }
 
-export default function WeatherWidget({ data }: { data: WeatherData }) {
+const WeatherWidget = memo(function WeatherWidget({ data }: { data: WeatherData }) {
   const IconComponent = getWeather3DIcon(data.icon, data.condition);
   const background = get3DBackground(data.icon, data.isNight);
   const accentGlow = getAccentGlow(data.icon, data.isNight);
@@ -219,4 +220,6 @@ export default function WeatherWidget({ data }: { data: WeatherData }) {
       </div>
     </motion.div>
   );
-}
+});
+
+export default WeatherWidget;

@@ -29,9 +29,9 @@ export function Sidebar() {
       <div className="h-[35px] flex items-center justify-between px-4 text-[11px] font-bold uppercase tracking-wider text-[#e6edf3] border-b border-[#1f2428] shrink-0 select-none">
         <span>{getHeaderTitle()}</span>
         <button
-          className="md:hidden p-1 rounded hover:bg-[#161b22] text-[#6e7681] hover:text-[#e6edf3] transition-colors"
+          className="p-1 rounded hover:bg-[#161b22] text-[#6e7681] hover:text-[#e6edf3] transition-colors"
           onClick={toggleSidebar}
-          title="Close"
+          title="Close Sidebar"
           aria-label="Close sidebar"
         >
           <X size={16} />

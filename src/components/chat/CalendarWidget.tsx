@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 
 interface CalendarData {
   timezone: string;
@@ -90,7 +90,7 @@ function getGregorianDateInfo(timezone: string) {
   return { year, month, day, weekday };
 }
 
-export default function CalendarWidget({ data }: { data: CalendarData }) {
+const CalendarWidget = memo(function CalendarWidget({ data }: { data: CalendarData }) {
   const calendarSystem = (data.calendar as CalendarSystem) || "gregory";
   const showGregorian = data.showGregorian ?? false;
 
@@ -237,4 +237,6 @@ export default function CalendarWidget({ data }: { data: CalendarData }) {
       </div>
     </motion.div>
   );
-}
+});
+
+export default CalendarWidget;

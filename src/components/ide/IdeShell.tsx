@@ -1,7 +1,7 @@
 // d:\netsyra\src\components\ide\IdeShell.tsx
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useIdeStore } from "@/ide";
 import { ActivityBar } from "./ActivityBar";
 import { Sidebar } from "./Sidebar";
@@ -25,20 +25,14 @@ export function IdeShell() {
   const activeFileId = useIdeStore((s) => s.activeFileId);
   const openFiles = useIdeStore((s) => s.openFiles);
 
-  // Auto-collapse panels on small screens
+  // Track mobile state for layout decisions
+  const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
-    const handleResize = () => {
-      const w = window.innerWidth;
-      if (w < 768) {
-        // On mobile, close both side panels by default
-        if (isSidebarOpen && window.innerWidth < 768) toggleSidebar();
-        if (isRightPanelOpen && window.innerWidth < 768) toggleRightPanel();
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Keyboard shortcut: Ctrl+` to toggle terminal
@@ -68,20 +62,33 @@ export function IdeShell() {
     <div className="flex flex-col h-dvh w-screen bg-[#0d1117] overflow-hidden select-none">
       {/* Command Palette overlay (Ctrl+Shift+P / Ctrl+P) */}
       <CommandPalette />
+
       {/* Top/Middle Section: ActivityBar + Sidebar + Editor + BottomPanel */}
       <div className="flex flex-1 min-h-0">
-        {/* Left-most Icon Bar */}
+        {/* Left-most Icon Bar — always visible (desktop + mobile) */}
         <ActivityBar />
 
-        {/* File Explorer / Search Sidebar */}
+        {/* ── Left Sidebar (Explorer / Search / Settings) ──
+            Desktop: inline, pushes editor right, slides in/out
+            Mobile: fixed overlay with backdrop, slides from left */}
         {isSidebarOpen && (
           <>
             {/* Mobile backdrop */}
+            {isMobile && (
+              <div
+                className="fixed inset-0 z-30 bg-black/50 animate-[fadeIn_0.15s_ease]"
+                onClick={toggleSidebar}
+              />
+            )}
             <div
-              className="fixed inset-0 z-30 bg-black/50 md:hidden"
-              onClick={toggleSidebar}
-            />
-            <div className="flex-shrink-0 w-[75vw] max-w-[280px] sm:w-[280px] h-full bg-[#0d1117] border-r border-[#1f2428] overflow-hidden z-40 fixed md:relative inset-y-0 left-0">
+              className={`
+                h-full bg-[#0d1117] border-r border-[#1f2428] overflow-hidden z-40
+                ${isMobile
+                  ? "fixed inset-y-0 left-[44px] w-[78vw] max-w-[280px] animate-[slideInLeft_0.2s_ease]"
+                  : "relative flex-shrink-0 w-[260px] lg:w-[280px] transition-[width] duration-200 ease-out"
+                }
+              `}
+            >
               <Sidebar />
             </div>
           </>
@@ -89,21 +96,33 @@ export function IdeShell() {
 
         {/* Center & Bottom Section */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0d1117]">
-          {/* Editor (Monaco) Area */}
+          {/* Editor (Monaco) Area + Right Panel */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row">
             <div className="flex-1 min-h-0">
               <EditorArea />
             </div>
 
-            {/* Right AI Chat Panel */}
+            {/* ── Right AI Chat Panel ──
+                Desktop: inline, pushes editor left, slides in/out
+                Mobile: fixed overlay with backdrop, slides from right */}
             {isRightPanelOpen && (
               <>
                 {/* Mobile backdrop */}
+                {isMobile && (
+                  <div
+                    className="fixed inset-0 z-30 bg-black/50 animate-[fadeIn_0.15s_ease]"
+                    onClick={toggleRightPanel}
+                  />
+                )}
                 <div
-                  className="fixed inset-0 z-30 bg-black/50 md:hidden"
-                  onClick={toggleRightPanel}
-                />
-                <div className="flex-shrink-0 w-[80vw] max-w-[400px] md:w-[400px] h-full md:h-auto bg-[#0d1117] border-l border-[#1f2428] overflow-hidden z-40 fixed md:relative inset-y-0 right-0">
+                  className={`
+                    h-full bg-[#0d1117] border-l border-[#1f2428] overflow-hidden z-40
+                    ${isMobile
+                      ? "fixed inset-y-0 right-0 w-[85vw] max-w-[400px] animate-[slideInRight_0.2s_ease]"
+                      : "relative flex-shrink-0 w-[380px] lg:w-[420px] transition-[width] duration-200 ease-out"
+                    }
+                  `}
+                >
                   <AIChatPanel />
                 </div>
               </>
@@ -112,7 +131,7 @@ export function IdeShell() {
 
           {/* Bottom Terminal/Output Panel */}
           {isBottomPanelOpen && (
-            <div className="flex-shrink-0 h-[150px] sm:h-[200px] bg-[#0d1117] border-t border-[#1f2428] overflow-hidden">
+            <div className="flex-shrink-0 h-[160px] sm:h-[200px] bg-[#0d1117] border-t border-[#1f2428] overflow-hidden">
               <BottomPanel />
             </div>
           )}

@@ -239,6 +239,7 @@ export class AgentOrchestrator {
   private editIdCounter = 0;
   private lastError: string | null = null;
   private currentPlan: AgentPlan | null = null;
+  private model: string; // IDE model: 'auto' | 'fast' | 'pro' | 'code'
 
   constructor(
     db: NetsyraDB,
@@ -246,12 +247,14 @@ export class AgentOrchestrator {
     onToken?: StreamTokenCallback,
     onThought?: AgentThoughtCallback,
     onPlan?: AgentPlanCallback,
+    model?: string,
   ) {
     this.db = db;
     this.onStatus = onStatus || (() => {});
     this.onToken = onToken || null;
     this.onThought = onThought || null;
     this.onPlan = onPlan || null;
+    this.model = model || 'auto';
   }
 
   private emitThought(thought: Omit<AgentThought, 'timestamp'>) {
@@ -609,6 +612,7 @@ export class AgentOrchestrator {
           temperature: 0.3,
           stream: true,
           messages,
+          model: this.model,
         }),
       });
 

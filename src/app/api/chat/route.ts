@@ -349,9 +349,13 @@ export async function POST(req: NextRequest) {
     const routerConfig = getRouterConfig(userPlan);
 
     // ── Time/Weather/Date Query Detection (needed early for search decision) ──
-    const isWeatherQuery = /^(what'?s the )?weather|temperature|rain|forecast/i.test(userMessage.trim());
-    const isTimeQuery = /^(what( i|')?s the )?time|clock|what is it time/i.test(userMessage.trim());
-    const isDateQuery = /^(what( i|')?s (the )?date|today'?s date|what day)/i.test(userMessage.trim());
+    // Patterns are strictly anchored and length-limited to prevent false positives
+    // on long questions that merely contain weather/time/date keywords.
+    const _msg = userMessage.trim();
+    const _isShortQuery = _msg.length <= 80; // simple widget queries are short
+    const isWeatherQuery = _isShortQuery && /^(\b(what'?s the |how'?s the |current )?weather\b|\b(outdoor )?temperature\b(\s+(outside|right now|today))?$|what'?s the temperature|how (hot|cold) is it)/i.test(_msg);
+    const isTimeQuery = _isShortQuery && /^(\b(what( i|')?s the |current )?time\b(\s+(is it|now|right now))?$|what time is it)/i.test(_msg);
+    const isDateQuery = _isShortQuery && /^(\b(what( i|')?s (the )?date\b|today'?s date\b|what day is it(\s+today)?\b|what'?s today\b|date\b$))/i.test(_msg);
     const isWidgetQuery = isWeatherQuery || isTimeQuery || isDateQuery;
 
     // ── Dive Deep (no limits) ──

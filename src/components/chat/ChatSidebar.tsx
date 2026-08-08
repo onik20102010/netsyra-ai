@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import {
@@ -11,6 +11,11 @@ import {
   Pin,
   Archive,
   Link,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -164,6 +169,82 @@ export default function ChatSidebar({
     toast.success("Archived");
   };
 
+  // Hard delete: removes conversation AND all its messages from Supabase to free up space
+  const deleteConv = async (id: string) => {
+    // Delete all messages belonging to this conversation first
+    const { error: msgError } = await supabase
+      .from("messages")
+      .delete()
+      .eq("conversation_id", id);
+    if (msgError) {
+      console.error("Error deleting messages:", msgError);
+      toast.error("Failed to delete chat messages");
+      return;
+    }
+
+    // Then delete the conversation itself
+    const { error: convError } = await supabase
+      .from("conversations")
+      .delete()
+      .eq("id", id);
+    if (convError) {
+      console.error("Error deleting conversation:", convError);
+      toast.error("Failed to delete chat");
+      return;
+    }
+
+    // Remove from local state
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    toast.success("Chat deleted");
+
+    // If the deleted conversation was active, navigate to new chat
+    if (activeConversationId === id) {
+      onNewChat();
+    }
+  };
+
+  const renameConv = async (id: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    const { error } = await supabase
+      .from("conversations")
+      .update({ title: trimmed })
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to rename chat");
+      return;
+    }
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c))
+    );
+    toast.success("Chat renamed");
+  };
+
+  const copyChat = async (id: string, title: string) => {
+    // Fetch all messages for this conversation
+    const { data: messages, error } = await supabase
+      .from("messages")
+      .select("role, content, created_at")
+      .eq("conversation_id", id)
+      .order("created_at", { ascending: true });
+
+    if (error || !messages || messages.length === 0) {
+      toast.error("Failed to copy chat");
+      return;
+    }
+
+    // Format as readable text
+    const text = messages
+      .map((m) => {
+        const role = m.role === "user" ? "You" : "Netsyra";
+        return `${role}: ${m.content}`;
+      })
+      .join("\n\n");
+
+    await navigator.clipboard.writeText(`# ${title}\n\n${text}`);
+    toast.success("Chat copied to clipboard");
+  };
+
   const copyLink = (id: string) => {
     const link = `${window.location.origin}/chat?conversation=${id}`;
     navigator.clipboard.writeText(link);
@@ -265,42 +346,18 @@ export default function ChatSidebar({
                   <span>Pinned</span>
                 </div>
                 {pinnedConversations.map((conv) => (
-                  <div
+                  <ConversationItem
                     key={conv.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onSelectConversation(conv.id)}
-                    onKeyDown={(e) => { if (e.key === "Enter") onSelectConversation(conv.id); }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 group cursor-pointer ${
-                      activeConversationId === conv.id
-                        ? "bg-indigo-50 text-indigo-700 font-medium"
-                        : "text-gray-500 hover:text-gray-900"
-                    }`}
-                  >
-                    <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate flex-1">{conv.title}</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); copyLink(conv.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                      aria-label="Copy link"
-                    >
-                      <Link className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                      aria-label="Toggle pin"
-                    >
-                      <Pin className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                      aria-label="Archive"
-                    >
-                      <Archive className="w-3 h-3" />
-                    </button>
-                  </div>
+                    conv={conv}
+                    isActive={activeConversationId === conv.id}
+                    onSelect={onSelectConversation}
+                    onPin={togglePin}
+                    onArchive={archiveConv}
+                    onDelete={deleteConv}
+                    onRename={renameConv}
+                    onCopyChat={copyChat}
+                    onCopyLink={copyLink}
+                  />
                 ))}
                 <div className="my-2 border-t border-white/30" />
               </>
@@ -308,42 +365,18 @@ export default function ChatSidebar({
 
             {/* Unpinned conversations */}
             {unpinnedConversations.map((conv) => (
-              <div
+              <ConversationItem
                 key={conv.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelectConversation(conv.id)}
-                onKeyDown={(e) => { if (e.key === "Enter") onSelectConversation(conv.id); }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 group cursor-pointer ${
-                  activeConversationId === conv.id
-                    ? "bg-indigo-50 text-indigo-700 font-medium"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate flex-1">{conv.title}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); copyLink(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                  aria-label="Copy link"
-                >
-                  <Link className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.pinned); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                  aria-label="Toggle pin"
-                >
-                  <Pin className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); archiveConv(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 text-gray-400"
-                  aria-label="Archive"
-                >
-                  <Archive className="w-3 h-3" />
-                </button>
-              </div>
+                conv={conv}
+                isActive={activeConversationId === conv.id}
+                onSelect={onSelectConversation}
+                onPin={togglePin}
+                onArchive={archiveConv}
+                onDelete={deleteConv}
+                onRename={renameConv}
+                onCopyChat={copyChat}
+                onCopyLink={copyLink}
+              />
             ))}
 
             {searchQuery.trim() && filteredConversations.length === 0 && (
@@ -386,6 +419,200 @@ export default function ChatSidebar({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── ConversationItem: chat history pill with ellipsis popup menu ──
+function ConversationItem({
+  conv,
+  isActive,
+  onSelect,
+  onPin,
+  onArchive,
+  onDelete,
+  onRename,
+  onCopyChat,
+  onCopyLink,
+}: {
+  conv: Conversation;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+  onPin: (id: string, current: boolean) => void;
+  onArchive: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, newTitle: string) => void;
+  onCopyChat: (id: string, title: string) => void;
+  onCopyLink: (id: string) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(conv.title);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const renameRef = useRef<HTMLInputElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  // Focus rename input when entering rename mode
+  useEffect(() => {
+    if (renaming) {
+      setTimeout(() => {
+        renameRef.current?.focus();
+        renameRef.current?.select();
+      }, 0);
+    }
+  }, [renaming]);
+
+  const handleRenameSubmit = () => {
+    onRename(conv.id, renameValue);
+    setRenaming(false);
+    setMenuOpen(false);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleRenameSubmit();
+    }
+    if (e.key === "Escape") {
+      setRenaming(false);
+      setRenameValue(conv.title);
+    }
+  };
+
+  const handleDelete = () => {
+    setMenuOpen(false);
+    if (confirm(`Delete "${conv.title}"? This will permanently remove the chat and all its messages.`)) {
+      onDelete(conv.id);
+    }
+  };
+
+  // Rename mode — inline input
+  if (renaming) {
+    return (
+      <div className="w-full px-3 py-1.5 flex items-center gap-2">
+        <input
+          ref={renameRef}
+          type="text"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={handleRenameKeyDown}
+          onBlur={handleRenameSubmit}
+          className="flex-1 bg-white border border-indigo-300 rounded-md px-2 py-1 text-sm outline-none focus:border-indigo-500"
+        />
+        <button
+          onClick={handleRenameSubmit}
+          className="p-1 rounded hover:bg-black/10 text-green-600"
+          aria-label="Confirm rename"
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(conv.id)}
+      onKeyDown={(e) => { if (e.key === "Enter") onSelect(conv.id); }}
+      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 group cursor-pointer ${
+        isActive
+          ? "bg-indigo-50 text-indigo-700 font-medium"
+          : "text-gray-500 hover:text-gray-900"
+      }`}
+    >
+      <MessageSquare className="w-4 h-4 flex-shrink-0" />
+      <span className="truncate flex-1">{conv.title}</span>
+
+      {/* Ellipsis button — always visible on active, hover on others */}
+      <div ref={menuRef} className="relative flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+          className={`p-1 rounded hover:bg-black/10 text-gray-400 hover:text-gray-700 transition ${
+            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          aria-label="More options"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+
+        {/* Popup menu */}
+        {menuOpen && (
+          <div
+            className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 py-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Rename */}
+            <button
+              onClick={() => { setRenaming(true); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+            >
+              <Pencil className="w-3.5 h-3.5 text-gray-400" />
+              Rename
+            </button>
+
+            {/* Copy chat */}
+            <button
+              onClick={() => { onCopyChat(conv.id, conv.title); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+            >
+              <Copy className="w-3.5 h-3.5 text-gray-400" />
+              Copy chat
+            </button>
+
+            {/* Copy link */}
+            <button
+              onClick={() => { onCopyLink(conv.id); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+            >
+              <Link className="w-3.5 h-3.5 text-gray-400" />
+              Copy link
+            </button>
+
+            {/* Pin / Unpin */}
+            <button
+              onClick={() => { onPin(conv.id, conv.pinned); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+            >
+              <Pin className="w-3.5 h-3.5 text-gray-400" />
+              {conv.pinned ? "Unpin" : "Pin"}
+            </button>
+
+            {/* Archive */}
+            <button
+              onClick={() => { onArchive(conv.id); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+            >
+              <Archive className="w-3.5 h-3.5 text-gray-400" />
+              Archive
+            </button>
+
+            {/* Divider */}
+            <div className="h-px bg-gray-100 my-1" />
+
+            {/* Delete — permanent, red */}
+            <button
+              onClick={handleDelete}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

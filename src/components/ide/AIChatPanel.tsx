@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useIdeStore, getDB } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder, Zap, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
+import { Send, X, Bot, Loader2, FileText, Folder, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
 import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought, type AgentPlan } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentMessageLimit } from "@/hooks/useAgentMessageLimit";
@@ -23,11 +23,12 @@ interface Message {
   plan?: AgentPlan;
 }
 
-// Available models for the selector pill (Windsurf style)
+// Available models for the IDE agent (separate from Netsyra chat models)
+// These map to Groq models via /api/groq/agent using GROQ_API_KEY_2
 const MODELS = [
-  { id: 'auto', label: 'Auto', desc: 'Automatically picks the best model' },
+  { id: 'auto', label: 'Auto', desc: 'Balanced — best all-rounder' },
   { id: 'fast', label: 'Fast', desc: 'Quick responses for simple tasks' },
-  { id: 'pro', label: 'Pro', desc: 'Most capable for complex tasks' },
+  { id: 'pro', label: 'Pro', desc: 'Most capable for complex reasoning' },
   { id: 'code', label: 'Code', desc: 'Optimized for code generation' },
 ];
 
@@ -204,7 +205,8 @@ export function AIChatPanel() {
         },
         (plan) => {
           setCurrentPlan(plan);
-        }
+        },
+        selectedModel,
       );
       agentRef.current = agent;
 
@@ -735,185 +737,273 @@ export function AIChatPanel() {
         </div>
       </div>
 
-      {/* Input — Windsurf style: rounded box, plus icon, teal send, mode toggle, model selector */}
+      {/* Input — Windsurf style: clean, calm, minimal. Plus icon opens mode/model menu */}
       <div
-        className={`bg-[#0d1117] border-t border-[#1f2428] p-3 flex flex-col gap-2 sticky bottom-0 shrink-0 transition-all duration-200 ease-in-out ${isDragging ? 'bg-[#161b22]' : ''}`}
+        className={`bg-[#0d1117] border-t border-[#1f2428] p-3 sticky bottom-0 shrink-0 transition-all duration-200 ease-in-out ${isDragging ? 'bg-[#161b22]' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="w-full flex flex-col gap-2">
-          {/* Context pills — show attached files persistently (Windsurf style) */}
-          {draggedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto pb-1">
-              {draggedFiles.map((file, index) => (
-                <div key={index} className="bg-[#161b22] text-[#8b949e] text-[11px] px-2 py-1 rounded-md border border-[#30363d] flex items-center gap-1.5">
-                  <FileText size={11} className="text-[#6e7681]" />
-                  <span className="truncate max-w-[120px]">{file.name}</span>
-                  <X size={11} className="cursor-pointer hover:text-[#f85149] transition-colors" onClick={() => removeDraggedFile(index)} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Queued messages indicator (Windsurf style) */}
-          {queuedMessages.length > 0 && (
-            <div className="flex items-center gap-1.5 text-[11px] text-[#6e7681] px-1">
-              <Loader2 size={11} className="animate-spin text-[#34e8bb]" />
-              <span>{queuedMessages.length} message{queuedMessages.length > 1 ? 's' : ''} queued</span>
-            </div>
-          )}
-
-          {/* Drag Overlay */}
-          {isDragging && (
-            <div className="absolute inset-0 bg-[#34e8bb]/10 border-2 border-dashed border-[#34e8bb]/40 rounded flex items-center justify-center pointer-events-none">
-              <span className="text-[#34e8bb] font-medium text-[13px]">Drop files here</span>
-            </div>
-          )}
-
-          {/* Input box — rounded, dark, with plus icon + textarea + send */}
-          <div className="relative flex items-end gap-2 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 focus-within:border-[#34e8bb]/40 transition-colors">
-            {/* Plus icon (Windsurf attachment style) */}
-            <button
-              className="flex items-center justify-center w-7 h-7 rounded-md text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors shrink-0"
-              title="Attach file (drag from Explorer)"
-              disabled={isLoading}
-            >
-              <Plus size={16} />
-            </button>
-
-            <div className="flex-1 flex flex-col gap-1.5 min-w-0 relative">
-              {/* Agent capability indicator + message limit — compact, muted */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#34e8bb] bg-[#34e8bb]/10 border border-[#34e8bb]/20">
-                  <Zap size={10} />
-                  Agent
-                </span>
-                {/* Message limit indicator */}
-                {user && limitStatus && (
-                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                    limitStatus.remaining <= 0
-                      ? 'text-[#f85149] bg-[#f85149]/10 border-[#f85149]/20'
-                      : limitStatus.remaining === 1
-                      ? 'text-[#d29922] bg-[#d29922]/10 border-[#d29922]/20'
-                      : 'text-[#6e7681] bg-[#161b22] border-[#30363d]'
-                  }`}>
-                    {limitStatus.remaining <= 0 ? (
-                      <>
-                        <AlertCircle size={10} />
-                        Limit reached
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare size={10} />
-                        {limitStatus.remaining}/3 left
-                      </>
-                    )}
-                  </span>
-                )}
-                {(errorCount > 0 || warningCount > 0) && (
-                  <button
-                    onClick={handleFixErrors}
-                    disabled={isLoading}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#f85149] bg-[#f85149]/10 border border-[#f85149]/20 hover:bg-[#f85149]/20 transition-colors disabled:opacity-50"
-                    title={`${errorCount} error(s), ${warningCount} warning(s) — Click to auto-fix`}
-                  >
-                    <AlertCircle size={10} />
-                    {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
-                  </button>
-                )}
+        {/* Context pills — show attached files (compact, above input) */}
+        {draggedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto pb-2">
+            {draggedFiles.map((file, index) => (
+              <div key={index} className="bg-[#161b22] text-[#8b949e] text-[11px] px-2 py-1 rounded-md border border-[#30363d] flex items-center gap-1.5">
+                <FileText size={11} className="text-[#6e7681]" />
+                <span className="truncate max-w-[120px]">{file.name}</span>
+                <X size={11} className="cursor-pointer hover:text-[#f85149] transition-colors" onClick={() => removeDraggedFile(index)} />
               </div>
+            ))}
+          </div>
+        )}
 
-              <textarea
-                id="chat-input"
-                ref={textareaRef}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                onInput={(e) => {
-                  const target = e.currentTarget;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                }}
-                placeholder={mode === 'chat'
-                  ? "Ask a question — I'll answer without editing files..."
-                  : draggedFiles.length > 0
-                    ? "Tell me what to build or fix with these files..."
-                    : "Ask anything, or tell me what to fix or build..."}
-                disabled={isLoading && queuedMessages.length === 0}
-                rows={1}
-                className="flex-1 w-full bg-transparent resize-none outline-none text-[#e6edf3] placeholder-[#484f58] text-[13px] leading-[1.5] min-h-[36px] max-h-[120px] overflow-hidden whitespace-pre-wrap break-words disabled:opacity-50"
-              />
+        {/* Queued messages indicator */}
+        {queuedMessages.length > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] text-[#6e7681] px-1 pb-2">
+            <Loader2 size={11} className="animate-spin text-[#34e8bb]" />
+            <span>{queuedMessages.length} message{queuedMessages.length > 1 ? 's' : ''} queued</span>
+          </div>
+        )}
 
-              {/* @-mention autocomplete dropdown (Windsurf style) */}
-              {mentionQuery !== null && mentionFiles.length > 0 && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#161b22] border border-[#30363d] rounded-md shadow-lg overflow-hidden z-20 max-h-[200px] overflow-y-auto">
-                  <div className="px-2 py-1 text-[10px] text-[#484f58] uppercase tracking-wider border-b border-[#21262d]">
-                    Files
-                  </div>
-                  {mentionFiles.map((file, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleMentionSelect(file.path)}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-[#1f2428] transition-colors text-left"
-                    >
-                      <FileText size={12} className="text-[#6e7681] shrink-0" />
-                      <span className="text-[12px] text-[#e6edf3] truncate">{file.path}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+        {/* Error/limit indicators — subtle, above input box */}
+        {(errorCount > 0 || warningCount > 0 || (user && limitStatus && limitStatus.remaining <= 0)) && (
+          <div className="flex items-center gap-1.5 pb-2 flex-wrap">
+            {user && limitStatus && limitStatus.remaining <= 0 && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#f85149] bg-[#f85149]/10 border border-[#f85149]/20">
+                <AlertCircle size={10} />
+                Limit reached
+              </span>
+            )}
+            {(errorCount > 0 || warningCount > 0) && (
+              <button
+                onClick={handleFixErrors}
+                disabled={isLoading}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#f85149] bg-[#f85149]/10 border border-[#f85149]/20 hover:bg-[#f85149]/20 transition-colors disabled:opacity-50"
+                title={`${errorCount} error(s), ${warningCount} warning(s) — Click to auto-fix`}
+              >
+                <AlertCircle size={10} />
+                {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Drag overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-[#34e8bb]/10 border-2 border-dashed border-[#34e8bb]/40 rounded flex items-center justify-center pointer-events-none z-20">
+            <span className="text-[#34e8bb] font-medium text-[13px]">Drop files here</span>
+          </div>
+        )}
+
+        {/* ── Clean input box — Windsurf style ──
+            Single rounded box: [+] icon (opens menu) + textarea + send button
+            Mode/Model selection is hidden inside the plus icon popover */}
+        <InputBox
+          input={input}
+          setInput={setInput}
+          textareaRef={textareaRef}
+          handleInputChange={handleInputChange}
+          handleKeyDown={handleKeyDown}
+          handleSend={handleSend}
+          isLoading={isLoading}
+          queuedMessages={queuedMessages}
+          mode={mode}
+          setMode={setMode}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          draggedFiles={draggedFiles}
+          mentionQuery={mentionQuery}
+          mentionFiles={mentionFiles}
+          handleMentionSelect={handleMentionSelect}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── InputBox: Windsurf-style clean input with plus icon popover ──
+// The plus icon opens a popover containing Write/Chat mode + model selector.
+// Everything is calm and minimal — no clutter around the textarea.
+
+function InputBox({
+  input, setInput, textareaRef, handleInputChange, handleKeyDown, handleSend,
+  isLoading, queuedMessages, mode, setMode, selectedModel, setSelectedModel,
+  draggedFiles, mentionQuery, mentionFiles, handleMentionSelect,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  handleSend: (override?: string) => void;
+  isLoading: boolean;
+  queuedMessages: string[];
+  mode: 'write' | 'chat';
+  setMode: (m: 'write' | 'chat') => void;
+  selectedModel: string;
+  setSelectedModel: (m: string) => void;
+  draggedFiles: Array<{ path: string; name: string; id: string }>;
+  mentionQuery: string | null;
+  mentionFiles: Array<{ name: string; path: string }>;
+  handleMentionSelect: (path: string) => void;
+}) {
+  const [plusOpen, setPlusOpen] = useState(false);
+  const plusRef = useRef<HTMLDivElement>(null);
+  const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+
+  // Close plus menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (plusRef.current && !plusRef.current.contains(e.target as Node)) setPlusOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative flex items-end gap-2 bg-[#161b22] border border-[#30363d] rounded-xl p-2 focus-within:border-[#34e8bb]/30 transition-colors">
+      {/* ── Plus icon — opens popover with mode + model selection ── */}
+      <div ref={plusRef} className="relative shrink-0">
+        <button
+          onClick={() => setPlusOpen(!plusOpen)}
+          className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
+            plusOpen
+              ? 'text-[#34e8bb] bg-[#34e8bb]/10'
+              : 'text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#21262d]'
+          }`}
+          title="Mode & Model settings"
+          disabled={isLoading}
+        >
+          <Plus size={16} />
+        </button>
+
+        {/* ── Popover: Mode toggle + Model selector (hidden inside plus icon) ── */}
+        {plusOpen && (
+          <div className="absolute bottom-full left-0 mb-2 w-[220px] bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl overflow-hidden z-30 animate-[fadeIn_0.12s_ease]">
+            {/* Mode section */}
+            <div className="p-2.5">
+              <div className="text-[10px] font-semibold text-[#484f58] uppercase tracking-wider mb-1.5 px-1">Mode</div>
+              <div className="flex gap-1 bg-[#0d1117] border border-[#21262d] rounded-lg p-0.5">
+                <button
+                  onClick={() => setMode('write')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                    mode === 'write'
+                      ? 'bg-[#34e8bb]/15 text-[#34e8bb]'
+                      : 'text-[#6e7681] hover:text-[#e6edf3]'
+                  }`}
+                  title="Write mode: agent can read, search, and edit files"
+                >
+                  <Wrench size={12} />
+                  Write
+                </button>
+                <button
+                  onClick={() => setMode('chat')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                    mode === 'chat'
+                      ? 'bg-[#34e8bb]/15 text-[#34e8bb]'
+                      : 'text-[#6e7681] hover:text-[#e6edf3]'
+                  }`}
+                  title="Chat mode: answer questions only, no file edits"
+                >
+                  <MessageSquare size={12} />
+                  Chat
+                </button>
+              </div>
             </div>
 
-            {/* Send button — teal accent, Windsurf style. In chat mode, always enabled while typing */}
-            <button
-              onClick={() => handleSend()}
-              disabled={(isLoading && queuedMessages.length === 0) || !input.trim()}
-              className="flex items-center justify-center w-7 h-7 bg-[#34e8bb] hover:bg-[#2dd4a8] text-[#0d1117] rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-              title={isLoading ? "Queue message" : "Send (Enter)"}
-            >
-              {isLoading ? (
-                <Plus size={15} />
-              ) : (
-                <Send size={15} />
-              )}
-            </button>
-          </div>
+            {/* Divider */}
+            <div className="h-px bg-[#21262d] mx-2.5" />
 
-          {/* Bottom bar: Write/Chat mode toggle + model selector (Windsurf style) */}
-          <div className="flex items-center justify-between gap-2">
-            {/* Mode toggle — Write | Chat */}
-            <div className="flex items-center bg-[#161b22] border border-[#30363d] rounded-md p-0.5">
-              <button
-                onClick={() => setMode('write')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                  mode === 'write'
-                    ? 'bg-[#34e8bb]/15 text-[#34e8bb]'
-                    : 'text-[#6e7681] hover:text-[#e6edf3]'
-                }`}
-                title="Write mode: agent can read, search, and edit files"
-              >
-                <Wrench size={11} />
-                Write
-              </button>
-              <button
-                onClick={() => setMode('chat')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                  mode === 'chat'
-                    ? 'bg-[#34e8bb]/15 text-[#34e8bb]'
-                    : 'text-[#6e7681] hover:text-[#e6edf3]'
-                }`}
-                title="Chat mode: answer questions only, no file edits"
-              >
-                <MessageSquare size={11} />
-                Chat
-              </button>
+            {/* Model section */}
+            <div className="p-2.5">
+              <div className="text-[10px] font-semibold text-[#484f58] uppercase tracking-wider mb-1.5 px-1">Model</div>
+              <div className="space-y-0.5">
+                {MODELS.map(model => (
+                  <button
+                    key={model.id}
+                    onClick={() => { setSelectedModel(model.id); }}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left ${
+                      model.id === selectedModel
+                        ? 'bg-[#34e8bb]/10 text-[#34e8bb]'
+                        : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#e6edf3]'
+                    }`}
+                  >
+                    <Brain size={13} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-medium">{model.label}</div>
+                      <div className="text-[10px] text-[#484f58] truncate">{model.desc}</div>
+                    </div>
+                    {model.id === selectedModel && <Check size={12} className="shrink-0" />}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            {/* Model selector pill */}
-            <ModelSelector selectedModel={selectedModel} onSelect={setSelectedModel} />
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* ── Textarea + mention dropdown ── */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <textarea
+          id="chat-input"
+          ref={textareaRef}
+          value={input}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onInput={(e) => {
+            const target = e.currentTarget;
+            target.style.height = 'auto';
+            target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+          }}
+          placeholder={mode === 'chat'
+            ? "Ask a question — I'll answer without editing files..."
+            : draggedFiles.length > 0
+              ? "Tell me what to build or fix with these files..."
+              : "Ask anything, or tell me what to fix or build..."}
+          disabled={isLoading && queuedMessages.length === 0}
+          rows={1}
+          className="w-full bg-transparent resize-none outline-none text-[#e6edf3] placeholder-[#484f58] text-[13px] leading-[1.5] min-h-[28px] max-h-[120px] overflow-hidden whitespace-pre-wrap break-words disabled:opacity-50 py-1"
+        />
+
+        {/* @-mention autocomplete dropdown */}
+        {mentionQuery !== null && mentionFiles.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#161b22] border border-[#30363d] rounded-md shadow-lg overflow-hidden z-20 max-h-[200px] overflow-y-auto">
+            <div className="px-2 py-1 text-[10px] text-[#484f58] uppercase tracking-wider border-b border-[#21262d]">
+              Files
+            </div>
+            {mentionFiles.map((file, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleMentionSelect(file.path)}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-[#1f2428] transition-colors text-left"
+              >
+                <FileText size={12} className="text-[#6e7681] shrink-0" />
+                <span className="text-[12px] text-[#e6edf3] truncate">{file.path}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Send button — minimal, calm ── */}
+      <button
+        onClick={() => handleSend()}
+        disabled={(isLoading && queuedMessages.length === 0) || !input.trim()}
+        className="flex items-center justify-center w-7 h-7 bg-[#34e8bb] hover:bg-[#2dd4a8] text-[#0d1117] rounded-lg transition-colors disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
+        title={isLoading ? "Queue message" : "Send (Enter)"}
+      >
+        {isLoading ? (
+          <Plus size={15} className="rotate-45" />
+        ) : (
+          <Send size={14} />
+        )}
+      </button>
+
+      {/* Subtle mode indicator — tiny text at bottom-right of input box */}
+      <div className="absolute -bottom-4 left-9 flex items-center gap-2 text-[9px] text-[#484f58] select-none pointer-events-none">
+        <span className={mode === 'write' ? 'text-[#34e8bb]/50' : ''}>{mode === 'write' ? 'Write' : 'Chat'}</span>
+        <span>·</span>
+        <span className={selectedModel === currentModel.id ? 'text-[#34e8bb]/50' : ''}>{currentModel.label}</span>
       </div>
     </div>
   );
@@ -1135,57 +1225,6 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
         >
           {expanded ? 'Show less' : `Show all ${diffLines.length} lines (+${addedCount} -${removedCount})`}
         </button>
-      )}
-    </div>
-  );
-}
-
-// --- Model selector pill (Windsurf style dropdown) ---
-
-function ModelSelector({ selectedModel, onSelect }: { selectedModel: string; onSelect: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const current = MODELS.find(m => m.id === selectedModel) || MODELS[0];
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 px-2 py-1 text-[11px] text-[#6e7681] hover:text-[#e6edf3] bg-[#161b22] border border-[#30363d] rounded-md transition-colors"
-        title="Select model"
-      >
-        <Brain size={11} />
-        <span>{current.label}</span>
-        <ChevronRight size={10} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute bottom-full right-0 mb-1 w-[180px] bg-[#161b22] border border-[#30363d] rounded-md shadow-lg overflow-hidden z-30">
-          {MODELS.map(model => (
-            <button
-              key={model.id}
-              onClick={() => { onSelect(model.id); setOpen(false); }}
-              className={`w-full flex items-start gap-2 px-2.5 py-2 hover:bg-[#1f2428] transition-colors text-left border-b border-[#21262d] last:border-0 ${
-                model.id === selectedModel ? 'bg-[#34e8bb]/5' : ''
-              }`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] font-medium text-[#e6edf3]">{model.label}</span>
-                  {model.id === selectedModel && <Check size={11} className="text-[#34e8bb]" />}
-                </div>
-                <div className="text-[10px] text-[#6e7681] mt-0.5">{model.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
