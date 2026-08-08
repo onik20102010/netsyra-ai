@@ -489,7 +489,6 @@ export default function ChatInterface({
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef("");
   // MediaRecorder fallback (for Firefox etc. that lack Web Speech API)
@@ -534,32 +533,6 @@ export default function ChatInterface({
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
     }
   }, [isMobileKeyboardOpen]);
-
-  // ── Check microphone permission status on mount ──
-  useEffect(() => {
-    const checkPermission = async () => {
-      if (typeof window === "undefined" || !navigator.permissions || !navigator.permissions.query) {
-        return;
-      }
-      try {
-        const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
-        if (result.state === "denied") {
-          setMicPermissionDenied(true);
-          toast.error(
-            "Microphone access is blocked. Look at the left side of your address bar for a mic/camera icon — click it and select 'Allow', then refresh the page.",
-            { duration: 10000 }
-          );
-        }
-        // Listen for permission changes
-        result.onchange = () => {
-          setMicPermissionDenied(result.state === "denied");
-        };
-      } catch {
-        // Permissions API not supported — ignore
-      }
-    };
-    checkPermission();
-  }, []);
 
 
   const isSelfCreatedConv = useRef(false);
@@ -863,7 +836,6 @@ export default function ChatInterface({
       setIsRecording(false);
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        setMicPermissionDenied(true);
         toast.error(
           "Microphone access was denied. Look at the left side of your address bar for a mic/camera icon — click it and select 'Allow', then refresh the page and try again.",
           { duration: 10000 }
@@ -1037,11 +1009,8 @@ export default function ChatInterface({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Permission granted — clear the denied state
-      setMicPermissionDenied(false);
     } catch (err: any) {
       if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
-        setMicPermissionDenied(true);
         toast.error(
           "Microphone access was denied. Look at the left side of your address bar for a mic/camera icon — click it and select 'Allow', then refresh the page and try again.",
           { duration: 10000 }
@@ -1888,12 +1857,10 @@ export default function ChatInterface({
                       ? "bg-red-500 hover:bg-red-600"
                       : isTranscribing
                         ? "bg-blue-500 cursor-wait"
-                        : micPermissionDenied
-                          ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-                          : "bg-black text-white hover:bg-gray-800"
+                        : "bg-black text-white hover:bg-gray-800"
                   } ${isTranscribing ? "opacity-80" : ""}`}
-                  aria-label={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : micPermissionDenied ? "Microphone access denied" : "Start voice input"}
-                  title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing your voice..." : micPermissionDenied ? "Microphone access denied — click the mic icon in your address bar to allow access" : "Voice input — click to start speaking"}
+                  aria-label={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Start voice input"}
+                  title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing your voice..." : "Voice input — click to start speaking"}
                 >
                   {isRecording ? (
                     <>
@@ -1909,9 +1876,6 @@ export default function ChatInterface({
                   ) : isTranscribing ? (
                     /* Spinner while transcribing via Whisper */
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : micPermissionDenied ? (
-                    /* X icon when permission denied */
-                    <span className="text-gray-600 text-lg font-bold">×</span>
                   ) : (
                     <Mic className="w-4 h-4 text-white" />
                   )}
