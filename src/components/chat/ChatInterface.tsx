@@ -834,22 +834,10 @@ export default function ChatInterface({
         mediaStreamRef.current = null;
       }
       setIsRecording(false);
+      // Silent — browser handles permission prompts natively
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        toast.error(
-          "Microphone access was denied. Look at the left side of your address bar for a mic/camera icon — click it and select 'Allow', then refresh the page and try again.",
-          { duration: 10000 }
-        );
-        return;
-      }
-      const errorMessages: Record<string, string> = {
-        "audio-capture": "No microphone found. Please connect a microphone and try again.",
-        "network": "Network error during speech recognition. Check your internet connection and try again.",
-        "bad-grammar": "Speech recognition grammar error. Please try again.",
-        "language-not-supported": "The detected language is not supported for speech recognition.",
-      };
-      const msg = errorMessages[event.error] || ("Speech recognition error: " + event.error);
-      toast.error(msg, { duration: 6000 });
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") return;
+      if (event.error === "audio-capture") return;
     };
 
     try {
@@ -989,37 +977,19 @@ export default function ChatInterface({
     }
 
     // Check secure context (HTTPS or localhost)
-    if (typeof window !== "undefined" && !window.isSecureContext) {
-      toast.error(
-        "Voice input requires HTTPS or localhost. The current page is served over HTTP, which blocks microphone access.",
-        { duration: 8000 }
-      );
-      return;
-    }
+    if (typeof window !== "undefined" && !window.isSecureContext) return;
 
     // Check if getUserMedia is available
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toast.error("Your browser does not support microphone access. Please try Chrome, Edge, Safari, or Firefox.", { duration: 7000 });
-      return;
-    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
 
-    // ── Step 1: Ask for microphone permission via getUserMedia ──
-    // This triggers the browser's native permission prompt.
-    // We KEEP the stream alive during recording (don't stop it immediately).
+    // ── Ask for microphone permission via getUserMedia ──
+    // Browser shows its native prompt: "Netsyra wants to use your microphone — Allow / Block"
+    // No toast messages — browser handles everything natively
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err: any) {
-      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
-        toast.error(
-          "Microphone access was denied. Look at the left side of your address bar for a mic/camera icon — click it and select 'Allow', then refresh the page and try again.",
-          { duration: 10000 }
-        );
-      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
-        toast.error("No microphone found. Please connect a microphone and try again.", { duration: 6000 });
-      } else {
-        toast.error("Could not access microphone: " + (err?.message || err?.name || "unknown error"), { duration: 6000 });
-      }
+    } catch {
+      // User denied or no mic — silent, browser already handled the prompt
       return;
     }
 
