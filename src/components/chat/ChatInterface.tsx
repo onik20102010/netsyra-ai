@@ -788,10 +788,15 @@ export default function ChatInterface({
   }, []);
 
   // ── Method 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
-  // No getUserMedia needed — SpeechRecognition triggers its own browser permission prompt
-  const startWebSpeechRecognition = useCallback((): boolean => {
+  // Requires a getUserMedia stream to be kept alive — Chrome's SpeechRecognition
+  // does NOT trigger its own permission prompt, it needs mic permission already granted.
+  // We keep the stream alive during recording and stop it when recording ends.
+  const startWebSpeechRecognition = useCallback((stream: MediaStream): boolean => {
     const SpeechRecognition = getSpeechRecognition();
     if (!SpeechRecognition) return false;
+
+    // Keep the stream alive — store it so we can stop it when recording ends
+    mediaStreamRef.current = stream;
 
     const recognition = new SpeechRecognition();
     recognition.lang = navigator.language || "en-US";
@@ -813,11 +818,21 @@ export default function ChatInterface({
     };
 
     recognition.onend = () => {
+      // Stop the mic stream when recognition ends
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
       setIsRecording(false);
       setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
     };
 
     recognition.onerror = (event: any) => {
+      // Stop the mic stream on error too
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
       setIsRecording(false);
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
@@ -843,6 +858,10 @@ export default function ChatInterface({
       setIsRecording(true);
       return true;
     } catch {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
       setIsRecording(false);
       return false;
     }
@@ -960,6 +979,11 @@ export default function ChatInterface({
         mediaRecorderRef.current.stop();
         return;
       }
+      // Fallback: stop any lingering stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
       setIsRecording(false);
       return;
     }
@@ -973,24 +997,15 @@ export default function ChatInterface({
       return;
     }
 
-    // ── Path 1: Web Speech API (Chrome, Edge, Safari) ──
-    // SpeechRecognition triggers its OWN browser permission prompt when .start() is called.
-    // No need for getUserMedia — that was causing the browser to auto-deny on repeat clicks
-    // because we grabbed the mic and immediately released it.
-    const SpeechRecognition = getSpeechRecognition();
-    if (SpeechRecognition) {
-      const started = startWebSpeechRecognition();
-      if (started) return;
-      // If SpeechRecognition failed to start, fall through to MediaRecorder fallback
-    }
-
-    // ── Path 2: MediaRecorder + Groq Whisper (Firefox, etc.) ──
-    // These browsers don't have SpeechRecognition, so we need getUserMedia to record audio
+    // Check if getUserMedia is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       toast.error("Your browser does not support microphone access. Please try Chrome, Edge, Safari, or Firefox.", { duration: 7000 });
       return;
     }
 
+    // ── Step 1: Ask for microphone permission via getUserMedia ──
+    // This triggers the browser's native permission prompt.
+    // We KEEP the stream alive during recording (don't stop it immediately).
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1008,6 +1023,17 @@ export default function ChatInterface({
       return;
     }
 
+    // ── Step 2: Permission granted! Start recording ──
+    // Try Web Speech API first (Chrome, Edge, Safari) — gives live transcription
+    // The stream is kept alive and stopped when recognition ends
+    const SpeechRecognition = getSpeechRecognition();
+    if (SpeechRecognition) {
+      const started = startWebSpeechRecognition(stream);
+      if (started) return;
+      // If SpeechRecognition failed to start, fall through to MediaRecorder
+    }
+
+    // Fallback: MediaRecorder + Groq Whisper (Firefox, etc.)
     startMediaRecorderFallback(stream);
   }, [isRecording, getSpeechRecognition, startWebSpeechRecognition, startMediaRecorderFallback]);
 
