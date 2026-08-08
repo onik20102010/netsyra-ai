@@ -155,6 +155,8 @@ export default function DashboardPage() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    // Disable 3D tilt on touch/mobile devices
+    if (window.matchMedia("(hover: none)").matches) return;
     const cards = cardRefs.current;
     const handlers: ((e: MouseEvent) => void)[] = [];
     cards.forEach((card, i) => {
@@ -184,25 +186,25 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-12 sm:space-y-16 px-4 sm:px-6 pt-20 sm:pt-24">
+    <div className="space-y-8 sm:space-y-12 md:space-y-16 pt-6 sm:pt-20 md:pt-24">
       {/* ── Dashboard hero ──────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] as const }}
-        className="text-center mb-24"
+        className="text-center mb-12 sm:mb-16 md:mb-24"
       >
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center p-2 ring-1 ring-purple-500/20 shadow-lg shadow-purple-500/5">
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black flex items-center justify-center p-2 ring-1 ring-purple-500/20 shadow-lg shadow-purple-500/5">
             <img src="/logo.png" alt="Netsyra" className="w-full h-full object-contain" />
           </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-light text-white mb-2">Welcome back</h1>
-        <p className="text-xs sm:text-sm text-white/30 mb-8 sm:mb-10">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white mb-2">Welcome back</h1>
+        <p className="text-xs sm:text-sm text-white/30 mb-6 sm:mb-8 md:mb-10">
           Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
         </p>
 
-        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4">
           <Link href="/">
             <motion.button
               whileHover={{ scale: 1.03 }}
@@ -236,7 +238,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ── Policy content ───────────────────────────────── */}
-      <div className="space-y-10 sm:space-y-16">
+      <div className="space-y-6 sm:space-y-10 md:space-y-16">
         {sections.map((section, idx) => (
           <motion.div
             key={idx}
@@ -245,9 +247,9 @@ export default function DashboardPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
-            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10 transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5"
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-10 transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5"
           >
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-3">
               {section.title}
             </h2>
             {section.subtitle && (
@@ -278,13 +280,13 @@ export default function DashboardPage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10"
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-10"
         >
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2 mb-6">
+          <h3 className="text-lg sm:text-xl font-semibold text-white flex items-center gap-2 mb-4 sm:mb-6">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Important Notes
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
             {[
               { icon: "M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zM18 16l-4-4 4-4 1.5 1.5L17 12l2.5 2.5z", label: "Please read carefully" },
               { icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", label: "Legally binding agreement" },
@@ -308,21 +310,21 @@ export default function DashboardPage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6"
         >
-          <div className="flex items-center gap-4">
-            <svg className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
             </svg>
             <div>
-              <h3 className="text-lg font-semibold text-white">Need Help?</h3>
-              <p className="text-gray-400 text-sm">
+              <h3 className="text-base sm:text-lg font-semibold text-white">Need Help?</h3>
+              <p className="text-gray-400 text-xs sm:text-sm">
                 If you have any questions, feel free to contact us.<br />
                 <a href="mailto:netsyraai@gmail.com" className="text-gray-300 hover:text-white transition">netsyraai@gmail.com</a>
               </p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-gray-600 to-gray-400 rounded-full text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+          <button className="flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-gray-600 to-gray-400 rounded-full text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-sm sm:text-base whitespace-nowrap">
             <span>I agree &amp; Continue</span>
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>

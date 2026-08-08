@@ -16,6 +16,7 @@ import {
   Code2,
   Brain,
   Clock,
+  Menu,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -45,6 +46,7 @@ export default function HistoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -167,6 +169,100 @@ export default function HistoryPage() {
   const heroConv = conversations[0] || null;
   const restConvs = conversations.slice(1);
 
+  // ── Reusable sidebar content ──
+  const sidebarContent = (
+    <>
+      {/* Back to Chat */}
+      <Link
+        href="/chat"
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors mb-4"
+        style={{ color: "#d0e6ff" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Chat
+      </Link>
+
+      {/* Nav items */}
+      <nav className="flex flex-col gap-1 flex-1">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const content = (
+            <span
+              className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-200"
+              style={{
+                background: item.active ? "rgba(0, 212, 255, 0.15)" : "transparent",
+                color: item.active ? "#ffffff" : "rgba(255, 255, 255, 0.65)",
+              }}
+              onMouseEnter={(e) => {
+                if (!item.active) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.color = "#ffffff";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!item.active) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.65)";
+                }
+              }}
+            >
+              <Icon
+                className="w-4 h-4"
+                style={{ stroke: item.active ? "#64dfdf" : "rgba(120, 220, 255, 0.6)" }}
+              />
+              {item.label}
+            </span>
+          );
+          return item.external ? (
+            <a
+              key={item.label}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {content}
+            </a>
+          ) : (
+            <Link key={item.label} href={item.href}>
+              {content}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer glow */}
+      <div className="mt-auto pt-4">
+        <div
+          className="h-px w-full"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent)",
+          }}
+        />
+        <p
+          className="text-xs mt-3 px-3"
+          style={{ color: "rgba(255, 255, 255, 0.35)" }}
+        >
+          Netsyra Neural Interface
+        </p>
+      </div>
+    </>
+  );
+
+  const glassSidebarStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.05)",
+    backdropFilter: "blur(16px) saturate(180%)",
+    WebkitBackdropFilter: "blur(16px) saturate(180%)",
+    border: "1px solid rgba(120, 220, 255, 0.2)",
+    boxShadow: "0 8px 32px 0 rgba(0, 180, 216, 0.15)",
+  };
+
   return (
     <div
       className="min-h-screen w-full flex relative overflow-hidden"
@@ -187,105 +283,69 @@ export default function HistoryPage() {
         }}
       />
 
-      {/* ── Left Sidebar (Glass Navigation) ── */}
+      {/* ── Desktop Sidebar (Glass Navigation, ≥768px) ── */}
       <aside
-        className="relative z-10 flex-shrink-0 m-4 w-[240px] lg:w-[260px] flex flex-col rounded-2xl p-4"
-        style={{
-          background: "rgba(255, 255, 255, 0.05)",
-          backdropFilter: "blur(16px) saturate(180%)",
-          WebkitBackdropFilter: "blur(16px) saturate(180%)",
-          border: "1px solid rgba(120, 220, 255, 0.2)",
-          boxShadow: "0 8px 32px 0 rgba(0, 180, 216, 0.15)",
-        }}
+        className="hidden md:flex relative z-10 flex-shrink-0 m-4 w-[240px] lg:w-[260px] flex-col rounded-2xl p-4"
+        style={glassSidebarStyle}
       >
-        {/* Back to Chat */}
-        <Link
-          href="/chat"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors mb-4"
-          style={{ color: "#d0e6ff" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Chat
-        </Link>
-
-        {/* Nav items */}
-        <nav className="flex flex-col gap-1 flex-1">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const content = (
-              <span
-                className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-200"
-                style={{
-                  background: item.active ? "rgba(0, 212, 255, 0.15)" : "transparent",
-                  color: item.active ? "#ffffff" : "rgba(255, 255, 255, 0.65)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!item.active) {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                    e.currentTarget.style.color = "#ffffff";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!item.active) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "rgba(255, 255, 255, 0.65)";
-                  }
-                }}
-              >
-                <Icon
-                  className="w-4 h-4"
-                  style={{ stroke: item.active ? "#64dfdf" : "rgba(120, 220, 255, 0.6)" }}
-                />
-                {item.label}
-              </span>
-            );
-            return item.external ? (
-              <a
-                key={item.label}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {content}
-              </a>
-            ) : (
-              <Link key={item.label} href={item.href}>
-                {content}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Footer glow */}
-        <div className="mt-auto pt-4">
-          <div
-            className="h-px w-full"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent)",
-            }}
-          />
-          <p
-            className="text-xs mt-3 px-3"
-            style={{ color: "rgba(255, 255, 255, 0.35)" }}
-          >
-            Netsyra Neural Interface
-          </p>
-        </div>
+        {sidebarContent}
       </aside>
 
+      {/* ── Mobile Drawer (overlay, <768px) ── */}
+      {mobileNavOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/60 md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          {/* Drawer */}
+          <aside
+            className="fixed top-0 left-0 h-full w-[260px] max-w-[80vw] z-50 flex flex-col rounded-r-2xl p-4 md:hidden animate-[slideInLeft_0.2s_ease]"
+            style={glassSidebarStyle}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span
+                className="text-sm font-bold"
+                style={{ color: "#ffffff" }}
+              >
+                Menu
+              </span>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.6)" }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+
       {/* ── Main Content Area ── */}
-      <div className="relative z-10 flex-1 overflow-y-auto p-4 lg:p-6">
+      <div className="relative z-10 flex-1 overflow-y-auto p-3 sm:p-4 md:lg:p-6">
         <div className="max-w-5xl mx-auto">
+          {/* Mobile header with hamburger */}
+          <div className="flex items-center gap-3 mb-4 md:hidden">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="p-2 rounded-lg transition-colors hover:bg-white/10"
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                border: "1px solid rgba(120, 220, 255, 0.2)",
+                background: "rgba(255, 255, 255, 0.05)",
+              }}
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+
           {/* Header */}
           <h1
-            className="text-2xl lg:text-[2rem] font-bold mb-6"
+            className="text-xl sm:text-2xl lg:text-[2rem] font-bold mb-4 sm:mb-6"
             style={{
               color: "#ffffff",
               textShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
@@ -297,7 +357,7 @@ export default function HistoryPage() {
 
           {conversations.length === 0 ? (
             <div
-              className="rounded-2xl p-12 text-center"
+              className="rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center"
               style={{
                 background: "rgba(255, 255, 255, 0.05)",
                 backdropFilter: "blur(16px)",
@@ -328,7 +388,7 @@ export default function HistoryPage() {
               {/* ── Featured Hero Card ── */}
               {heroConv && (
                 <div
-                  className="rounded-2xl p-5 mb-6 flex items-center gap-4 transition-all duration-300"
+                  className="rounded-xl sm:rounded-2xl p-4 sm:p-5 mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-all duration-300"
                   style={{
                     background: "rgba(15, 35, 55, 0.45)",
                     backdropFilter: "blur(20px)",
@@ -339,14 +399,14 @@ export default function HistoryPage() {
                 >
                   {/* Glowing brain icon */}
                   <div
-                    className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                    className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center"
                     style={{
                       background: "rgba(0, 212, 255, 0.1)",
                       border: "1px solid rgba(100, 223, 223, 0.3)",
                     }}
                   >
                     <Brain
-                      className="w-6 h-6"
+                      className="w-5 h-5 sm:w-6 sm:h-6"
                       style={{
                         stroke: "#64dfdf",
                         filter: "drop-shadow(0 0 4px rgba(100, 223, 223, 0.5))",
@@ -388,13 +448,13 @@ export default function HistoryPage() {
                     ) : (
                       <>
                         <p
-                          className="text-[1.25rem] font-semibold truncate"
+                          className="text-base sm:text-[1.25rem] font-semibold truncate"
                           style={{ color: "#ffffff" }}
                         >
                           {heroConv.title}
                         </p>
                         <p
-                          className="text-[0.85rem] mt-0.5"
+                          className="text-xs sm:text-[0.85rem] mt-0.5"
                           style={{ color: "#8ab4f8" }}
                         >
                           {formatDate(heroConv.created_at)}
@@ -413,7 +473,7 @@ export default function HistoryPage() {
                   {/* Action buttons pill */}
                   {editingId !== heroConv.id && (
                     <div
-                      className="flex items-center gap-1 rounded-xl px-2 py-1.5"
+                      className="flex items-center gap-1 rounded-xl px-2 py-1.5 self-end sm:self-auto"
                       style={{
                         background: "rgba(255, 255, 255, 0.08)",
                       }}
@@ -451,7 +511,7 @@ export default function HistoryPage() {
 
               {/* ── Grid of conversation cards ── */}
               {restConvs.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
                   {restConvs.map((conv) => (
                     <div
                       key={conv.id}
@@ -576,11 +636,11 @@ export default function HistoryPage() {
                               {(conv.msgCount ?? 0) !== 1 ? "s" : ""}
                             </span>
 
-                            {/* Hover action controls (fade in) */}
+                            {/* Hover action controls (fade in on desktop, always visible on mobile) */}
                             <div
-                              className="flex items-center gap-1 transition-opacity duration-200"
+                              className="flex items-center gap-1 transition-opacity duration-200 card-actions"
                               style={{
-                                opacity: hoveredId === conv.id ? 1 : 0,
+                                opacity: hoveredId === conv.id ? 1 : undefined,
                               }}
                             >
                               <button

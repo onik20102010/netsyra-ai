@@ -357,6 +357,20 @@ button:active > .netsyra-logo {
   50% { opacity: 1; }
 }
 
+/* ── History page: card actions visibility ── */
+/* On desktop (≥768px), hide card actions until hover (opacity set via JS) */
+@media (min-width: 768px) {
+  .card-actions:not([style*="opacity: 1"]) {
+    opacity: 0;
+  }
+}
+/* On mobile (<768px), always show card actions */
+@media (max-width: 767px) {
+  .card-actions {
+    opacity: 1 !important;
+  }
+}
+
 /* ── Prose‑chat for assistant messages ── */
 .prose-chat {
   @apply text-gray-800;

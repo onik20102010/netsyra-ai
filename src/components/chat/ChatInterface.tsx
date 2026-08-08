@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   XCircle,
   Mic,
+  MicOff,
 } from "lucide-react";
 import ModelSelector from "./ModelSelector";
 import MermaidDiagram from "./MermaidDiagram";
@@ -488,6 +489,7 @@ export default function ChatInterface({
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [micPermission, setMicPermission] = useState<"checking" | "granted" | "denied" | "unsupported" | "prompt">("checking");
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef("");
 
@@ -528,6 +530,41 @@ export default function ChatInterface({
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
     }
   }, [isMobileKeyboardOpen]);
+
+  // ── Check microphone permission on mount ──
+  useEffect(() => {
+    const checkPermission = async () => {
+      // First check if SpeechRecognition is even supported
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setMicPermission("unsupported");
+        return;
+      }
+      if (!window.isSecureContext) {
+        setMicPermission("unsupported");
+        return;
+      }
+      // Try to check permission status via Permissions API
+      try {
+        if (navigator.permissions && navigator.permissions.query) {
+          const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+          setMicPermission(result.state as "granted" | "denied" | "prompt");
+          // Listen for permission changes
+          result.onchange = () => {
+            setMicPermission(result.state as "granted" | "denied" | "prompt");
+          };
+        } else {
+          // Permissions API not available — assume prompt needed
+          setMicPermission("prompt");
+        }
+      } catch {
+        // Permissions API not supported for microphone — assume prompt needed
+        setMicPermission("prompt");
+      }
+    };
+    checkPermission();
+  }, []);
 
 
   const isSelfCreatedConv = useRef(false);
@@ -776,41 +813,36 @@ export default function ChatInterface({
     }
   };
 
-  const toggleRecording = useCallback(async () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      return;
-    }
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge.");
-      return;
-    }
-    // Check secure context — SpeechRecognition only works on HTTPS or localhost
-    if (!window.isSecureContext) {
-      toast.error(
-        "Speech recognition requires a secure context (HTTPS or localhost). The current page is served over HTTP, which blocks microphone access.",
-        { duration: 8000 }
-      );
-      return;
-    }
-    // Explicitly request microphone permission so the browser shows its prompt
+  // ── Request microphone permission (shows browser prompt) ──
+  const requestMicPermission = useCallback(async (): Promise<boolean> => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop the tracks immediately — SpeechRecognition will re-acquire the mic
+      // Stop tracks immediately — SpeechRecognition will re-acquire the mic
       stream.getTracks().forEach((t) => t.stop());
+      setMicPermission("granted");
+      return true;
     } catch (err: any) {
       if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+        setMicPermission("denied");
         toast.error(
-          "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again.",
-          { duration: 6000 }
+          "Microphone access blocked. Click the camera/mic icon in your browser's address bar, allow microphone access, then click the mic button again.",
+          { duration: 7000 }
         );
       } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
         toast.error("No microphone found. Please connect a microphone and try again.", { duration: 6000 });
       } else {
         toast.error("Could not access microphone: " + (err?.message || err?.name || "unknown error"), { duration: 6000 });
       }
+      return false;
+    }
+  }, []);
+
+  // ── Start speech recognition (assumes permission already granted) ──
+  const startRecognition = useCallback(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge.");
       return;
     }
     const recognition = new SpeechRecognition();
@@ -832,15 +864,20 @@ export default function ChatInterface({
     };
     recognition.onend = () => {
       setIsRecording(false);
-      // Ensure final transcript is committed to input
       setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
     };
     recognition.onerror = (event: any) => {
       setIsRecording(false);
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setMicPermission("denied");
+        toast.error(
+          "Microphone access was denied. Click the camera/mic icon in your browser's address bar, allow microphone access, then try again.",
+          { duration: 7000 }
+        );
+        return;
+      }
       const errorMessages: Record<string, string> = {
-        "not-allowed": "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again.",
-        "service-not-allowed": "Microphone access blocked by browser settings. Please allow microphone permission and try again.",
         "audio-capture": "No microphone found. Please connect a microphone and try again.",
         "network": "Network error during speech recognition. Check your internet connection and try again.",
         "bad-grammar": "Speech recognition grammar error. Please try again.",
@@ -856,7 +893,43 @@ export default function ChatInterface({
     } catch {
       setIsRecording(false);
     }
-  }, [isRecording, input]);
+  }, [input]);
+
+  // ── Main toggle: permission-first flow ──
+  const toggleRecording = useCallback(async () => {
+    // If already recording, stop
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    // Unsupported browser
+    if (micPermission === "unsupported") {
+      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge on desktop, or Safari on iOS.", { duration: 7000 });
+      return;
+    }
+
+    // Permission denied — guide user to fix
+    if (micPermission === "denied") {
+      toast.error(
+        "Microphone access is blocked. Click the camera/mic icon in your browser's address bar, allow microphone access, then click the mic button again.",
+        { duration: 7000 }
+      );
+      return;
+    }
+
+    // Permission not yet granted — request it FIRST (this shows the browser prompt)
+    if (micPermission === "prompt" || micPermission === "checking") {
+      const granted = await requestMicPermission();
+      if (!granted) return; // Browser prompt was denied or failed
+      // Permission granted — now start recognition
+      startRecognition();
+      return;
+    }
+
+    // Permission already granted — start recognition directly
+    startRecognition();
+  }, [isRecording, micPermission, requestMicPermission, startRecognition]);
 
   const handleSend = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -1675,10 +1748,20 @@ export default function ChatInterface({
                   className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all shadow-sm relative ${
                     isRecording
                       ? "bg-red-500 hover:bg-red-600"
-                      : "bg-black text-white hover:bg-gray-800"
+                      : micPermission === "denied"
+                        ? "bg-gray-300 text-gray-500 hover:bg-gray-400"
+                        : micPermission === "unsupported"
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-black text-white hover:bg-gray-800"
                   }`}
                   aria-label={isRecording ? "Stop recording" : "Start voice input"}
-                  title={isRecording ? "Stop recording" : "Voice input"}
+                  title={
+                    isRecording ? "Stop recording"
+                    : micPermission === "unsupported" ? "Speech recognition not supported in this browser"
+                    : micPermission === "denied" ? "Microphone access blocked — click the mic icon in your browser's address bar to allow access"
+                    : micPermission === "prompt" || micPermission === "checking" ? "Click to enable microphone — browser will ask for permission"
+                    : "Voice input"
+                  }
                 >
                   {isRecording ? (
                     <>
@@ -1691,6 +1774,9 @@ export default function ChatInterface({
                       {/* Red recording dot indicator */}
                       <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
                     </>
+                  ) : micPermission === "denied" ? (
+                    /* Show mic-off icon when permission is denied */
+                    <MicOff className="w-4 h-4" />
                   ) : (
                     <Mic className="w-4 h-4 text-white" />
                   )}
