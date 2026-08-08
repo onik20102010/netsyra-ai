@@ -11,6 +11,8 @@ export default function NeuralBrainBackground() {
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
+        filter: "blur(18px)",
+        transform: "scale(1.1)",
       }}
     />
   );
