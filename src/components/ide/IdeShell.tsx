@@ -1,7 +1,7 @@
 // d:\netsyra\src\components\ide\IdeShell.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useIdeStore } from "@/ide";
 import { ActivityBar } from "./ActivityBar";
 import { Sidebar } from "./Sidebar";
@@ -10,6 +10,12 @@ import { BottomPanel } from "./BottomPanel";
 import { StatusBar } from "./StatusBar";
 import { AIChatPanel } from "./AIChatPanel";
 import { CommandPalette } from "./CommandPalette";
+
+// Resizable panel constraints
+const SIDEBAR_MIN = 180;
+const SIDEBAR_MAX = 500;
+const RIGHT_MIN = 280;
+const RIGHT_MAX = 700;
 
 export function IdeShell() {
   const isSidebarOpen = useIdeStore((s) => s.isSidebarOpen);
@@ -27,6 +33,50 @@ export function IdeShell() {
 
   // Track mobile state for layout decisions
   const [isMobile, setIsMobile] = useState(false);
+
+  // Resizable panel widths (desktop only)
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [rightWidth, setRightWidth] = useState(420);
+
+  // Drag state
+  const dragRef = useRef<"sidebar" | "right" | null>(null);
+
+  const startDrag = useCallback((which: "sidebar" | "right") => {
+    return (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragRef.current = which;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      if (dragRef.current === "sidebar") {
+        // ActivityBar is 44px; sidebar starts at x=44
+        const w = e.clientX - 44;
+        setSidebarWidth(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, w)));
+      } else if (dragRef.current === "right") {
+        // Right panel width = window.innerWidth - e.clientX
+        const w = window.innerWidth - e.clientX;
+        setRightWidth(Math.max(RIGHT_MIN, Math.min(RIGHT_MAX, w)));
+      }
+    };
+    const handleMouseUp = () => {
+      if (dragRef.current) {
+        dragRef.current = null;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -85,12 +135,21 @@ export function IdeShell() {
                 h-full bg-[#0d1117] border-r border-[#1f2428] overflow-hidden z-40
                 ${isMobile
                   ? "fixed inset-y-0 left-[44px] w-[78vw] max-w-[280px] animate-[slideInLeft_0.2s_ease]"
-                  : "relative flex-shrink-0 w-[260px] lg:w-[280px] transition-[width] duration-200 ease-out"
+                  : "relative flex-shrink-0"
                 }
               `}
+              style={isMobile ? undefined : { width: sidebarWidth }}
             >
               <Sidebar />
             </div>
+            {/* Resize handle for sidebar (desktop only) */}
+            {!isMobile && (
+              <div
+                onMouseDown={startDrag("sidebar")}
+                className="relative flex-shrink-0 w-[3px] cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors z-50"
+                title="Drag to resize"
+              />
+            )}
           </>
         )}
 
@@ -107,6 +166,14 @@ export function IdeShell() {
                 Mobile: fixed overlay with backdrop, slides from right */}
             {isRightPanelOpen && (
               <>
+                {/* Resize handle for right panel (desktop only) */}
+                {!isMobile && (
+                  <div
+                    onMouseDown={startDrag("right")}
+                    className="relative flex-shrink-0 w-[3px] cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors z-50"
+                    title="Drag to resize"
+                  />
+                )}
                 {/* Mobile backdrop */}
                 {isMobile && (
                   <div
@@ -119,9 +186,10 @@ export function IdeShell() {
                     h-full bg-[#0d1117] border-l border-[#1f2428] overflow-hidden z-40
                     ${isMobile
                       ? "fixed inset-y-0 right-0 w-[85vw] max-w-[400px] animate-[slideInRight_0.2s_ease]"
-                      : "relative flex-shrink-0 w-[380px] lg:w-[420px] transition-[width] duration-200 ease-out"
+                      : "relative flex-shrink-0"
                     }
                   `}
+                  style={isMobile ? undefined : { width: rightWidth }}
                 >
                   <AIChatPanel />
                 </div>

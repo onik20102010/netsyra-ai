@@ -345,6 +345,18 @@ button:active > .netsyra-logo {
   50% { opacity: 0.8; }
 }
 
+/* ── History page: equalizer / audio bars ── */
+@keyframes eq-bar {
+  0%, 100% { height: 3px; }
+  50% { height: 12px; }
+}
+
+/* ── History page: neural glow pulse ── */
+@keyframes neural-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
 /* ── Prose‑chat for assistant messages ── */
 .prose-chat {
   @apply text-gray-800;

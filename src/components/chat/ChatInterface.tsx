@@ -776,7 +776,7 @@ export default function ChatInterface({
     }
   };
 
-  const toggleRecording = useCallback(() => {
+  const toggleRecording = useCallback(async () => {
     if (isRecording) {
       recognitionRef.current?.stop();
       return;
@@ -784,7 +784,33 @@ export default function ChatInterface({
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser.");
+      toast.error("Speech recognition is not supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    // Check secure context — SpeechRecognition only works on HTTPS or localhost
+    if (!window.isSecureContext) {
+      toast.error(
+        "Speech recognition requires a secure context (HTTPS or localhost). The current page is served over HTTP, which blocks microphone access.",
+        { duration: 8000 }
+      );
+      return;
+    }
+    // Explicitly request microphone permission so the browser shows its prompt
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Stop the tracks immediately — SpeechRecognition will re-acquire the mic
+      stream.getTracks().forEach((t) => t.stop());
+    } catch (err: any) {
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+        toast.error(
+          "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again.",
+          { duration: 6000 }
+        );
+      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+        toast.error("No microphone found. Please connect a microphone and try again.", { duration: 6000 });
+      } else {
+        toast.error("Could not access microphone: " + (err?.message || err?.name || "unknown error"), { duration: 6000 });
+      }
       return;
     }
     const recognition = new SpeechRecognition();
@@ -813,7 +839,7 @@ export default function ChatInterface({
       setIsRecording(false);
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
       const errorMessages: Record<string, string> = {
-        "not-allowed": "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again. Note: speech recognition requires HTTPS.",
+        "not-allowed": "Microphone access blocked. Click the camera/mic icon in your browser's address bar and allow microphone access, then try again.",
         "service-not-allowed": "Microphone access blocked by browser settings. Please allow microphone permission and try again.",
         "audio-capture": "No microphone found. Please connect a microphone and try again.",
         "network": "Network error during speech recognition. Check your internet connection and try again.",
