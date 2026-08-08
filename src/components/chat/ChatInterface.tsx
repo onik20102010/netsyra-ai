@@ -815,24 +815,28 @@ export default function ChatInterface({
     };
 
     recognition.onend = () => {
+      console.log("[Mic] recognition.onend fired");
       setIsRecording(false);
       setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
     };
 
     recognition.onerror = (event: any) => {
+      console.log("[Mic] recognition.onerror fired:", event.error);
       setIsRecording(false);
-      // Silent — browser handles permission prompts natively
       if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") return;
       if (event.error === "audio-capture") return;
     };
 
     try {
+      console.log("[Mic] calling recognition.start()...");
       recognition.start();
+      console.log("[Mic] recognition.start() succeeded");
       recognitionRef.current = recognition;
       setIsRecording(true);
       return true;
-    } catch {
+    } catch (err: any) {
+      console.log("[Mic] recognition.start() threw error:", err?.name, err?.message);
       setIsRecording(false);
       return false;
     }
