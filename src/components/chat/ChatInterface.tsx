@@ -805,19 +805,32 @@ export default function ChatInterface({
     recognition.lang = navigator.language || "en-US";
     recognition.continuous = true;
     recognition.interimResults = true;
-    finalTranscriptRef.current = input.trim() ? input.trim() + " " : "";
+
+    // Track the base text (existing input) and processed final results
+    const baseText = input.trim() ? input.trim() + " " : "";
+    finalTranscriptRef.current = baseText;
+    let lastProcessedIndex = -1; // Track which results we've already added as final
 
     recognition.onresult = (event: any) => {
+      // Build the full transcript from ALL results — this avoids duplication
+      // because we reconstruct from scratch each time instead of appending
+      let finalText = baseText;
       let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+
+      for (let i = 0; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscriptRef.current += transcript;
+          finalText += transcript;
         } else {
           interim += transcript;
         }
       }
-      setInput((finalTranscriptRef.current + interim).replace(/\s+/g, " ").trimStart());
+
+      const fullText = (finalText + interim).replace(/\s+/g, " ").trimStart();
+      setInput(fullText);
+
+      // Update the final transcript ref with just the final parts
+      finalTranscriptRef.current = finalText;
     };
 
     recognition.onend = () => {

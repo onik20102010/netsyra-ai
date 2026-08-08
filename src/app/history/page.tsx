@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createChatClient } from "@/lib/supabase/client";
+import NeuralBrainBackground from "@/components/history/NeuralBrainBackground";
 import {
   MessageSquare,
   Trash2,
@@ -267,21 +268,11 @@ export default function HistoryPage() {
     <div
       className="min-h-screen w-full flex relative overflow-hidden"
       style={{
-        background:
-          "radial-gradient(circle at center, #0e3b52 0%, #061522 100%)",
+        backgroundColor: "#020d12",
       }}
     >
-      {/* ── Neural network backdrop overlay ── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 20% 30%, rgba(0, 212, 255, 0.08) 0%, transparent 40%),
-            radial-gradient(circle at 80% 70%, rgba(100, 223, 223, 0.06) 0%, transparent 40%),
-            radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.4) 0%, transparent 100%)
-          `,
-        }}
-      />
+      {/* ── 3D WebGL Neural Brain Background ── */}
+      <NeuralBrainBackground />
 
       {/* ── Desktop Sidebar (Glass Navigation, ≥768px) ── */}
       <aside
