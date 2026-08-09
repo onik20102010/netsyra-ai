@@ -124,8 +124,8 @@ export default function RootLayout({
             default-src 'self';
             script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.paddle.com blob:;
             style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://sandbox-cdn.paddle.com https://cdn.paddle.com;
-            connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://sandbox-api.paddle.com https://cdn.paddle.com;
-            frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com;
+            connect-src 'self' https://cdn.jsdelivr.net https://*.netsyraai.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://sandbox-api.paddle.com https://api.paddle.com https://cdn.paddle.com;
+            frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com https://buy.paddle.com https://sandbox-checkout-service.paddle.com;
             img-src 'self' data: https:;
             font-src 'self' data: https://cdn.jsdelivr.net https://cdn.paddle.com;
           "

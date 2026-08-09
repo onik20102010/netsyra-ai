@@ -80,7 +80,7 @@ export default function PricingPage() {
         // Initialize Paddle
         const paddleInstance = await initializePaddle({
           token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-          environment: (process.env.PADDLE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+          environment: (process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
         });
 
         if (!paddleInstance) {
