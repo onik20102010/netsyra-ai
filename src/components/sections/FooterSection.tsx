@@ -38,6 +38,7 @@ export default function FooterSection() {
             <ul className="space-y-2">
               <li><Link href="/about" className="text-white/30 hover:text-white/70 transition text-sm">About Us</Link></li>
               <li><Link href="/goal" className="text-white/30 hover:text-white/70 transition text-sm">Our Goal</Link></li>
+              <li><Link href="/brand" className="text-white/30 hover:text-white/70 transition text-sm">Brand Assets</Link></li>
               <li><Link href="/legal" className="text-white/30 hover:text-white/70 transition text-sm">Legal Notice</Link></li>
               <li><Link href="/terms" className="text-white/30 hover:text-white/70 transition text-sm">Terms of Service</Link></li>
               <li><Link href="/privacy" className="text-white/30 hover:text-white/70 transition text-sm">Privacy Policy</Link></li>

@@ -7,7 +7,7 @@ import CTASection from "@/components/sections/CTASection";
 import CodeShowcaseSection from "@/components/sections/CodeShowcaseSection";
 import FooterSection from "@/components/sections/FooterSection";
 import JsonLd from "@/components/JsonLd";
-import { webPageJsonLd } from "@/lib/structured-data";
+import { webPageJsonLd, breadcrumbJsonLd } from "@/lib/structured-data";
 import { createMetadata } from "@/lib/seo";
 
 const title = "Netsyra AI – Advanced Multi-Model AI Assistant";
@@ -25,14 +25,37 @@ export const metadata: Metadata = createMetadata({
     "netsyra ai",
     "netsyraai.com",
     "NetsyraAI.com",
+    "what is netsyra ai",
+    "netsyra ai assistant",
+    "netsyraai platform",
   ],
 });
 
 export default function Home() {
   return (
     <>
-      <JsonLd data={webPageJsonLd({ path: "/", title, description })} />
+      <JsonLd
+        data={[
+          webPageJsonLd({ path: "/", title, description }),
+          breadcrumbJsonLd({ path: "/", title: "Home" }),
+        ]}
+      />
       <main className="relative overflow-hidden bg-[#050505]">
+        {/* SEO: Brand-rich intro paragraph (visible, crawlable) */}
+        <section className="sr-only">
+          <h2>About Netsyra AI</h2>
+          <p>
+            Netsyra AI, also known as NetsyraAI or netsyraai, is an advanced
+            multi-model AI assistant platform available at netsyraai.com. It
+            intelligently routes every prompt to the best AI model for the task,
+            offering real-time web search, AI coding assistance via the built-in
+            web IDE, deep reasoning with autonomous agent intelligence (AAI),
+            and up to 70% cost savings compared to single-model AI assistants.
+            Netsyra AI supports multiple model tiers including N Fast, N Plus,
+            N Pro, N Code, N Live, and N AAI, powered by providers like Groq,
+            Google Gemini, Cerebras, DeepSeek, Anthropic, and OpenAI.
+          </p>
+        </section>
       {/* Global background */}
       <div className="fixed inset-0 pointer-events-none -z-10">
         <div className="absolute inset-0 bg-[#050505]" />

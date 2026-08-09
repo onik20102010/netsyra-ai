@@ -45,6 +45,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     host: "https://netsyraai.com",
-    sitemap: "https://netsyraai.com/sitemap.xml",
+    sitemap: ["https://netsyraai.com/sitemap.xml", "https://netsyraai.com/image-sitemap.xml"],
   };
 }

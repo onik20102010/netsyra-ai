@@ -14,6 +14,9 @@ export const keywords = [
   "netsyra ai",
   "netsyraai.com",
   "NetsyraAI.com",
+  "what is netsyra ai",
+  "netsyra ai assistant",
+  "netsyraai platform",
   "AI assistant",
   "AI orchestration",
   "multi-model AI",
@@ -30,10 +33,10 @@ export const defaultOpenGraph = {
   type: "website" as const,
   images: [
     {
-      url: "/logo.png",
-      width: 512,
-      height: 512,
-      alt: "Netsyra AI logo",
+      url: "https://netsyraai.com/og-image.png",
+      width: 1200,
+      height: 630,
+      alt: "Netsyra AI – Advanced Multi-Model AI Assistant",
     },
   ],
 };
@@ -85,7 +88,7 @@ export function createMetadata({
       card: "summary_large_image",
       title: `${title} | Netsyra AI`,
       description: description || defaultDescription,
-      images: ["/logo.png"],
+      images: ["https://netsyraai.com/og-image.png"],
     },
   };
 }

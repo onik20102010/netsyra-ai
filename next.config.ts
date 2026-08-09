@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Content-Type", value: "application/xml" }],
       },
       {
+        source: "/image-sitemap.xml",
+        headers: [{ key: "Content-Type", value: "application/xml" }],
+      },
+      {
         source: "/robots.txt",
         headers: [{ key: "Content-Type", value: "text/plain" }],
       },

@@ -8,6 +8,7 @@ import {
   organizationJsonLd,
   websiteJsonLd,
   softwareApplicationJsonLd,
+  faqJsonLd,
 } from "@/lib/structured-data";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -29,8 +30,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://netsyraai.com"),
   title: {
-    default: "NetsyraAI",
-    template: "%s | NetsyraAI",
+    default: "Netsyra AI – Advanced Multi-Model AI Assistant | netsyraai.com",
+    template: "%s | Netsyra AI",
   },
   description:
     "Netsyra AI is an intelligent AI orchestration layer that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.",
@@ -41,6 +42,9 @@ export const metadata: Metadata = {
     "netsyra ai",
     "netsyraai.com",
     "NetsyraAI.com",
+    "what is netsyra ai",
+    "netsyra ai assistant",
+    "netsyraai platform",
     "AI assistant",
     "AI orchestration",
     "multi-model AI",
@@ -81,14 +85,14 @@ export const metadata: Metadata = {
     title: "Netsyra AI",
     description:
       "Netsyra AI routes every prompt to the best AI model. Real-time web search, coding, reasoning, and up to 70% cost savings.",
-    url: "https://www.netsyraai.com",
+    url: "https://netsyraai.com",
     siteName: "Netsyra AI",
     images: [
       {
-        url: "https://www.netsyraai.com/logo.png",
-        width: 512,
-        height: 512,
-        alt: "Netsyra AI logo",
+        url: "https://netsyraai.com/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Netsyra AI – Advanced Multi-Model AI Assistant",
       },
     ],
     locale: "en_US",
@@ -99,10 +103,13 @@ export const metadata: Metadata = {
     title: "Netsyra AI",
     description:
       "Netsyra AI routes every prompt to the best AI model with real-time web search and autonomous intelligence.",
-    images: ["https://www.netsyraai.com/logo.png"],
+    images: ["https://netsyraai.com/og-image.png"],
   },
   verification: {
-    // google: "YOUR_GOOGLE_SEARCH_CONSOLE_CODE",
+    google: "GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE",
+    other: {
+      "msvalidate.01": "BING_VERIFICATION_CODE",
+    },
   },
   other: {
     "msapplication-TileImage": "/web-app-manifest-192x192.png",
@@ -139,6 +146,7 @@ export default function RootLayout({
             organizationJsonLd(),
             websiteJsonLd(),
             softwareApplicationJsonLd(),
+            faqJsonLd(),
           ]}
         />
         <Providers>{children}</Providers>

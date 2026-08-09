@@ -1,0 +1,3565 @@
+netsyra/
+├── .agents/
+│   └── skills/
+│       └── paddle-checkout-web/
+│           └── SKILL.md
+├── public/
+│   ├── cv-builder/
+│   │   ├── css/ (features.css, responsive.css, style.css)
+│   │   ├── js/
+│   │   │   ├── app.js, cover-letter.js, custom-template.js, docx-export.js, export-utils.js, resume-scoring.js, self-made.js
+│   │   │   ├── pages/ (awards, certifications, conferences, custom, education, experience, interests, internships, languages, personal, projects, publications, references, skills, social, summary, volunteer .js)
+│   │   │   └── templates/ (boho-arched, classic-functional-cv, classic, dark-chevron-sidebar, early-career-functional, emerald-pill-sidebar, gradient-accent-resume, minimal, modern-pill-cards, modern-warm, modern, munich-executive, professional, split-charcoal, split-sidebar-functional, split-sidebar .js)
+│   │   └── index.html
+│   ├── apple-touch-icon.png, ast.worker.js, favicon-96x96.png, favicon.ico, favicon.svg, file.svg, globe.svg, lint.worker.js, logo.png, netsyra-bridge.js
+├── src/
+│   ├── agents/
+│   │   └── AgentOrchestrator.ts
+│   ├── app/
+│   │   ├── (auth)/ (forgot-password, login, register /page.tsx + layout.tsx)
+│   │   ├── a/chat/s/[id]/page.tsx
+│   │   ├── about/ (layout.tsx, page.tsx)
+│   │   ├── admin/page.tsx
+│   │   ├── api/
+│   │   │   ├── admin/ (stats, usage, user-data /route.ts)
+│   │   │   ├── chat/ (limit-status, route, search-limits, usage /route.ts)
+│   │   │   ├── country/route.ts
+│   │   │   ├── groq/ (agent, chat, image-process, transcribe /route.ts)
+│   │   │   ├── ide/ (debug, git, run-task, terminal /route.ts)
+│   │   │   ├── paddle/ (activate, portal, prices, subscribe, update-subscription, webhook /route.ts)
+│   │   │   ├── search/route.ts
+│   │   │   ├── user/preferences/route.ts
+│   │   │   └── widget/route.ts
+│   │   ├── billing/ (page.tsx, subscription/SubscriptionContent.tsx + page.tsx)
+│   │   ├── chat/ (layout.tsx, page.tsx)
+│   │   ├── dashboard/ (ThreeBackground.tsx, layout.tsx, page.tsx)
+│   │   ├── goal/ (layout.tsx, page.tsx)
+│   │   ├── history/page.tsx
+│   │   ├── ide/page.tsx
+│   │   ├── legal/ (layout.tsx, page.tsx)
+│   │   ├── pricing/ (PricingPage.tsx, page.tsx)
+│   │   ├── privacy/ (layout.tsx, page.tsx)
+│   │   ├── profile/page.tsx
+│   │   ├── term/ (layout.tsx, page.tsx)
+│   │   ├── terms/ (layout.tsx, page.tsx)
+│   │   ├── usage/page.tsx
+│   │   ├── welcome/page.tsx
+│   │   ├── favicon.ico, globals.css, layout.tsx, manifest.ts, page.tsx, robots.ts, sitemap.ts
+│   ├── components/
+│   │   ├── auth/ (AuthBackground, AuthCard, ForgotPasswordForm, GoogleButton, LoginForm, PasswordInput, RegisterForm .tsx)
+│   │   ├── chat/ (CalendarWidget, ChatInterface, ChatSidebar, ClockWidget, MermaidDiagram, ModelSelector, NetsyraLogo, ProfileModal, SourcesDropdown, SourcesPanel, Weather3DIcons, WeatherIcons, WeatherWidget, WebViewer .tsx)
+│   │   ├── ide/ (AIChatPanel, ActivityBar, BottomPanel, CommandPalette, DebugPanel, EditorArea, Explorer, IdeShell, MenuBar, OutputPanel, ProblemsPanel, RealTerminal, SearchPanel, SettingsPanel, Sidebar, SplitEditor, StatusBar, TabBar, TerminalPanel, TitleBar .tsx)
+│   │   ├── layout/TopNav.tsx
+│   │   ├── sections/ (CTASection, CodeShowcaseSection, DashboardPreviewSection, FeaturesSection, FooterSection, HeroSection, IntelligenceField, LiveRoutingSection, ModelShowcaseSection, TestimonialsSection, VideoDemoSection .tsx)
+│   │   ├── ui/ (AnimatedBackground, avatar, badge, button, card, input, separator, textarea .tsx)
+│   │   ├── AnimatedBackground.tsx, JsonLd.tsx, ProfileModal.tsx, Providers.tsx
+│   ├── context/
+│   │   └── AuthProvider.tsx
+│   ├── hooks/
+│   │   ├── useAgentMessageLimit.ts, useAuth.ts, useChatUsage.ts, useProjectIndexer.ts, useStylePrefs.ts
+│   ├── lib/
+│   │   ├── chat/aai/
+│   │   │   ├── agents/ (analyst, critic, designer, manager, memory-agent, planner-agent, programmer, researcher, teacher .ts)
+│   │   │   ├── core/ (attention, executive, goal-manager, learning, planner, reasoning, reflection, scheduler, task-manager, workspace, world-model .ts)
+│   │   │   ├── events/ (bus, event-types, listeners .ts)
+│   │   │   ├── learning/
+│   │   │   │   ├── evolution/ (adaptation, meta-learning, self-improvement, strategy .ts)
+│   │   │   │   ├── experience/ (analyzer, collector, ranking, recorder, replay .ts)
+│   │   │   │   ├── optimization/ (execution, memory, planner, policy, prompt, reasoning, workflow .ts)
+│   │   │   │   ├── patterns/ (anomaly, clustering, detector, prediction, sequence .ts)
+│   │   │   │   ├── policies/ (memory, planner, reasoning, routing, tool-selection .ts)
+│   │   │   │   ├── reflection/ (improvement, lesson-generator, mistake-analysis, reflection, self-review .ts)
+│   │   │   │   ├── rewards/ (evaluator, metrics, penalties, reward-model, scorer .ts)
+│   │   │   │   ├── simulation/ (benchmarking, experiments, sandbox, validation .ts)
+│   │   │   │   ├── skills/ (compiler, extractor, optimizer, registry, versioning .ts)
+│   │   │   │   ├── engine, evaluator, experience, index, learner, learning-policy, learning-session, learning-types, manager, memory-update, replay, rewards, self-improvement, skill-extraction .ts
+│   │   │   ├── llm/ (model-selector, openrouter, prompt-builder, providers, response-parser, router, streaming .ts)
+│   │   │   ├── memory/
+│   │   │   │   ├── compression/ (merge, prune, summarize .ts)
+│   │   │   │   ├── episodic/ (episodic, event-store, timeline .ts)
+│   │   │   │   ├── graph/ (edges, entities, graph .ts)
+│   │   │   │   ├── long-term/ (long-memory, retrieval, storage .ts)
+│   │   │   │   ├── procedural/ (procedures, skills, workflows .ts)
+│   │   │   │   ├── project/ (project-context, project-index, project-memory .ts)
+│   │   │   │   ├── semantic/ (concepts, relations, semantic .ts)
+│   │   │   │   ├── short-term/ (conversation-buffer, short-memory, summarizer .ts)
+│   │   │   │   ├── user/ (habits, permissions, preferences, profile .ts)
+│   │   │   │   ├── vector/ (embeddings, search, similarity .ts)
+│   │   │   │   ├── working/ (attention, working-context, working-memory .ts)
+│   │   │   │   ├── episodic, graph-memory, long-term, memory-compression, memory-factory, memory-manager, memory-router, memory-types, procedural, project-memory, semantic, short-term, skill-memory, user-memory, vector-memory, working-memory .ts
+│   │   │   ├── planner/
+│   │   │   │   ├── decomposition/ (dependency-builder, hierarchy, splitter, task-decomposer .ts)
+│   │   │   │   ├── execution/ (execution-plan, executor, monitor, retry, rollback, scheduler .ts)
+│   │   │   │   ├── goals/ (goal-lifecycle, goal-manager, goal-priority, goal-validator, goal .ts)
+│   │   │   │   ├── planning/ (backward, decision-engine, estimator, forward, goap-planner, heuristic, htn-planner, hybrid, meta-planner, optimizer, reflection-planner, template-manager, workflow-compiler .ts)
+│   │   │   │   ├── recovery/ (failure-analysis, fallback, replanner .ts)
+│   │   │   │   ├── validation/ (confidence, constraint-solver, feasibility, risk-analyzer, safety, verifier .ts)
+│   │   │   │   ├── backward, decomposition, execution-plan, executor, forward, optimizer, planner-manager, planner-types, planner .ts
+│   │   │   ├── reasoning/
+│   │   │   │   ├── domain/programming.ts
+│   │   │   │   ├── symbolic/ (abduction, causal, commonsense, deduction .ts)
+│   │   │   │   ├── abduction, analogy, causal, confidence, critic, deduction, induction, manager, mathematical, pipeline, probabilistic, selector, types, verifier .ts
+│   │   │   ├── safety/ (audit, hallucination, permissions, policy, sandbox, validation .ts)
+│   │   │   ├── tools/ (api, browser, code, filesystem, image, python, registry, search, supabase, terminal .ts)
+│   │   │   ├── utils/ (helpers, ids, logger, timers, tokenizer .ts)
+│   │   │   ├── config.ts, constants.ts, index.ts
+│   │   ├── supabase/ (client.ts, middleware.ts, server.ts)
+│   │   ├── auth.ts, query-rewriter.ts
+│   ├── types/
+│   │   ├── index.ts, wicg-file-system-access.d.ts
+├── .env.example, .gitignore
+├── AGENTS.md, ARCHITECTURE.md, CLAUDE.md, CODE_GENERATION_ENGINE_IMPLEMENTATION.md, CONTEXT_ENGINE_IMPLEMENTATION.md, INTENT_ENGINE_IMPLEMENTATION.md, PATCH_ENGINE_IMPLEMENTATION.md, PLANNING_ENGINE_IMPLEMENTATION.md, README.md, SCALING_ENV_SETUP.md, SCALING_IMPLEMENTATION_SUMMARY.md, SECURITY.md, STREAMING_ENGINE_IMPLEMENTATION.md, TOOL_RUNTIME_IMPLEMENTATION.md, VERIFICATION_ENGINE_IMPLEMENTATION.md, VNEXT_MIGRATION_SUMMARY.md
+├── build-webpack-output.log
+├── eslint.config.mjs, middleware.ts, next.config.ts, package.json, package-lock.json, postcss.config.mjs
+
+
+
+
+3m
+1m
+write the name of folders and files of the netsyra project just main with directories
+
+
+Command Get-ChildItem
+
+Get-ChildItem -Path D:\netsyra -Force | Select-Object Mode, Name | Format-Table -AutoSize
+Rejected background terminal command
+
+
+
+
+just analyze and write without running commands
+
+
+Searched* in /D:/netsyra
+Searched**/*.{ts,tsx,js,jsx,css} in /D:/netsyra/src
+Searched**/*.{ts,tsx} in /D:/netsyra/src
+Searched**/*.ts in /D:/netsyra/src/lib
+Based on my analysis, here's the main folder and file structure of the Netsyra project:
+
+
+
+netsyra/
+├── .agents/
+│   └── skills/
+│       └── paddle-checkout-web/
+│           └── SKILL.md
+├── public/
+│   ├── cv-builder/
+│   │   ├── css/ (features.css, responsive.css, style.css)
+│   │   ├── js/
+│   │   │   ├── app.js, cover-letter.js, custom-template.js, docx-export.js, export-utils.js, resume-scoring.js, self-made.js
+│   │   │   ├── pages/ (awards, certifications, conferences, custom, education, experience, interests, internships, languages, personal, projects, publications, references, skills, social, summary, volunteer .js)
+│   │   │   └── templates/ (boho-arched, classic-functional-cv, classic, dark-chevron-sidebar, early-career-functional, emerald-pill-sidebar, gradient-accent-resume, minimal, modern-pill-cards, modern-warm, modern, munich-executive, professional, split-charcoal, split-sidebar-functional, split-sidebar .js)
+│   │   └── index.html
+│   ├── apple-touch-icon.png, ast.worker.js, favicon-96x96.png, favicon.ico, favicon.svg, file.svg, globe.svg, lint.worker.js, logo.png, netsyra-bridge.js
+├── src/
+│   ├── agents/
+│   │   └── AgentOrchestrator.ts
+│   ├── app/
+│   │   ├── (auth)/ (forgot-password, login, register /page.tsx + layout.tsx)
+│   │   ├── a/chat/s/[id]/page.tsx
+│   │   ├── about/ (layout.tsx, page.tsx)
+│   │   ├── admin/page.tsx
+│   │   ├── api/
+│   │   │   ├── admin/ (stats, usage, user-data /route.ts)
+│   │   │   ├── chat/ (limit-status, route, search-limits, usage /route.ts)
+│   │   │   ├── country/route.ts
+│   │   │   ├── groq/ (agent, chat, image-process, transcribe /route.ts)
+│   │   │   ├── ide/ (debug, git, run-task, terminal /route.ts)
+│   │   │   ├── paddle/ (activate, portal, prices, subscribe, update-subscription, webhook /route.ts)
+│   │   │   ├── search/route.ts
+│   │   │   ├── user/preferences/route.ts
+│   │   │   └── widget/route.ts
+│   │   ├── billing/ (page.tsx, subscription/SubscriptionContent.tsx + page.tsx)
+│   │   ├── chat/ (layout.tsx, page.tsx)
+│   │   ├── dashboard/ (ThreeBackground.tsx, layout.tsx, page.tsx)
+│   │   ├── goal/ (layout.tsx, page.tsx)
+│   │   ├── history/page.tsx
+│   │   ├── ide/page.tsx
+│   │   ├── legal/ (layout.tsx, page.tsx)
+│   │   ├── pricing/ (PricingPage.tsx, page.tsx)
+│   │   ├── privacy/ (layout.tsx, page.tsx)
+│   │   ├── profile/page.tsx
+│   │   ├── term/ (layout.tsx, page.tsx)
+│   │   ├── terms/ (layout.tsx, page.tsx)
+│   │   ├── usage/page.tsx
+│   │   ├── welcome/page.tsx
+│   │   ├── favicon.ico, globals.css, layout.tsx, manifest.ts, page.tsx, robots.ts, sitemap.ts
+│   ├── components/
+│   │   ├── auth/ (AuthBackground, AuthCard, ForgotPasswordForm, GoogleButton, LoginForm, PasswordInput, RegisterForm .tsx)
+│   │   ├── chat/ (CalendarWidget, ChatInterface, ChatSidebar, ClockWidget, MermaidDiagram, ModelSelector, NetsyraLogo, ProfileModal, SourcesDropdown, SourcesPanel, Weather3DIcons, WeatherIcons, WeatherWidget, WebViewer .tsx)
+│   │   ├── ide/ (AIChatPanel, ActivityBar, BottomPanel, CommandPalette, DebugPanel, EditorArea, Explorer, IdeShell, MenuBar, OutputPanel, ProblemsPanel, RealTerminal, SearchPanel, SettingsPanel, Sidebar, SplitEditor, StatusBar, TabBar, TerminalPanel, TitleBar .tsx)
+│   │   ├── layout/TopNav.tsx
+│   │   ├── sections/ (CTASection, CodeShowcaseSection, DashboardPreviewSection, FeaturesSection, FooterSection, HeroSection, IntelligenceField, LiveRoutingSection, ModelShowcaseSection, TestimonialsSection, VideoDemoSection .tsx)
+│   │   ├── ui/ (AnimatedBackground, avatar, badge, button, card, input, separator, textarea .tsx)
+│   │   ├── AnimatedBackground.tsx, JsonLd.tsx, ProfileModal.tsx, Providers.tsx
+│   ├── context/
+│   │   └── AuthProvider.tsx
+│   ├── hooks/
+│   │   ├── useAgentMessageLimit.ts, useAuth.ts, useChatUsage.ts, useProjectIndexer.ts, useStylePrefs.ts
+│   ├── lib/
+│   │   ├── chat/aai/
+│   │   │   ├── agents/ (analyst, critic, designer, manager, memory-agent, planner-agent, programmer, researcher, teacher .ts)
+│   │   │   ├── core/ (attention, executive, goal-manager, learning, planner, reasoning, reflection, scheduler, task-manager, workspace, world-model .ts)
+│   │   │   ├── events/ (bus, event-types, listeners .ts)
+│   │   │   ├── learning/
+│   │   │   │   ├── evolution/ (adaptation, meta-learning, self-improvement, strategy .ts)
+│   │   │   │   ├── experience/ (analyzer, collector, ranking, recorder, replay .ts)
+│   │   │   │   ├── optimization/ (execution, memory, planner, policy, prompt, reasoning, workflow .ts)
+│   │   │   │   ├── patterns/ (anomaly, clustering, detector, prediction, sequence .ts)
+│   │   │   │   ├── policies/ (memory, planner, reasoning, routing, tool-selection .ts)
+│   │   │   │   ├── reflection/ (improvement, lesson-generator, mistake-analysis, reflection, self-review .ts)
+│   │   │   │   ├── rewards/ (evaluator, metrics, penalties, reward-model, scorer .ts)
+│   │   │   │   ├── simulation/ (benchmarking, experiments, sandbox, validation .ts)
+│   │   │   │   ├── skills/ (compiler, extractor, optimizer, registry, versioning .ts)
+│   │   │   │   ├── engine, evaluator, experience, index, learner, learning-policy, learning-session, learning-types, manager, memory-update, replay, rewards, self-improvement, skill-extraction .ts
+│   │   │   ├── llm/ (model-selector, openrouter, prompt-builder, providers, response-parser, router, streaming .ts)
+│   │   │   ├── memory/
+│   │   │   │   ├── compression/ (merge, prune, summarize .ts)
+│   │   │   │   ├── episodic/ (episodic, event-store, timeline .ts)
+│   │   │   │   ├── graph/ (edges, entities, graph .ts)
+│   │   │   │   ├── long-term/ (long-memory, retrieval, storage .ts)
+│   │   │   │   ├── procedural/ (procedures, skills, workflows .ts)
+│   │   │   │   ├── project/ (project-context, project-index, project-memory .ts)
+│   │   │   │   ├── semantic/ (concepts, relations, semantic .ts)
+│   │   │   │   ├── short-term/ (conversation-buffer, short-memory, summarizer .ts)
+│   │   │   │   ├── user/ (habits, permissions, preferences, profile .ts)
+│   │   │   │   ├── vector/ (embeddings, search, similarity .ts)
+│   │   │   │   ├── working/ (attention, working-context, working-memory .ts)
+│   │   │   │   ├── episodic, graph-memory, long-term, memory-compression, memory-factory, memory-manager, memory-router, memory-types, procedural, project-memory, semantic, short-term, skill-memory, user-memory, vector-memory, working-memory .ts
+│   │   │   ├── planner/
+│   │   │   │   ├── decomposition/ (dependency-builder, hierarchy, splitter, task-decomposer .ts)
+│   │   │   │   ├── execution/ (execution-plan, executor, monitor, retry, rollback, scheduler .ts)
+│   │   │   │   ├── goals/ (goal-lifecycle, goal-manager, goal-priority, goal-validator, goal .ts)
+│   │   │   │   ├── planning/ (backward, decision-engine, estimator, forward, goap-planner, heuristic, htn-planner, hybrid, meta-planner, optimizer, reflection-planner, template-manager, workflow-compiler .ts)
+│   │   │   │   ├── recovery/ (failure-analysis, fallback, replanner .ts)
+│   │   │   │   ├── validation/ (confidence, constraint-solver, feasibility, risk-analyzer, safety, verifier .ts)
+│   │   │   │   ├── backward, decomposition, execution-plan, executor, forward, optimizer, planner-manager, planner-types, planner .ts
+│   │   │   ├── reasoning/
+│   │   │   │   ├── domain/programming.ts
+│   │   │   │   ├── symbolic/ (abduction, causal, commonsense, deduction .ts)
+│   │   │   │   ├── abduction, analogy, causal, confidence, critic, deduction, induction, manager, mathematical, pipeline, probabilistic, selector, types, verifier .ts
+│   │   │   ├── safety/ (audit, hallucination, permissions, policy, sandbox, validation .ts)
+│   │   │   ├── tools/ (api, browser, code, filesystem, image, python, registry, search, supabase, terminal .ts)
+│   │   │   ├── utils/ (helpers, ids, logger, timers, tokenizer .ts)
+│   │   │   ├── config.ts, constants.ts, index.ts
+│   │   ├── supabase/ (client.ts, middleware.ts, server.ts)
+│   │   ├── auth.ts, query-rewriter.ts
+│   ├── types/
+│   │   ├── index.ts, wicg-file-system-access.d.ts
+├── .env.example, .gitignore
+├── AGENTS.md, ARCHITECTURE.md, CLAUDE.md, CODE_GENERATION_ENGINE_IMPLEMENTATION.md, CONTEXT_ENGINE_IMPLEMENTATION.md, INTENT_ENGINE_IMPLEMENTATION.md, PATCH_ENGINE_IMPLEMENTATION.md, PLANNING_ENGINE_IMPLEMENTATION.md, README.md, SCALING_ENV_SETUP.md, SCALING_IMPLEMENTATION_SUMMARY.md, SECURITY.md, STREAMING_ENGINE_IMPLEMENTATION.md, TOOL_RUNTIME_IMPLEMENTATION.md, VERIFICATION_ENGINE_IMPLEMENTATION.md, VNEXT_MIGRATION_SUMMARY.md
+├── build-webpack-output.log
+├── eslint.config.mjs, middleware.ts, next.config.ts, package.json, package-lock.json, postcss.config.mjs
+Note: The files redis-cache.ts, api-load-balancer.ts, and request-deduplication.ts shown in your open documents don't actually exist in the codebase yet — they appear to be planned files referenced from SCALING_IMPLEMENTATION_SUMMARY.md. Only query-rewriter.ts exists.
+
+
+
+
+
+
+now file of home page and related to this
+
+
+The home page is page.tsx. Let me find it and its related files.
+
+The home page imports from @/lib/structured-data and @/lib/seo which I didn't see before. Let me find them and confirm the related files.
+
+continue
+
+
+Here are the home page files and everything related to it:
+
+Main Home Page File
+page.tsx — The home page entry point. page.tsx
+
+Root Layout (wraps the home page)
+layout.tsx — Root layout with metadata, fonts, CSP, and JSON-LD. layout.tsx
+
+Section Components (imported by home page)
+The home page composes these sections in order:
+
+TopNav.tsx — Top navigation bar
+HeroSection.tsx — Hero section (imports IntelligenceField)
+LiveRoutingSection.tsx — Live model routing demo
+FeaturesSection.tsx — Features grid
+CodeShowcaseSection.tsx — Code showcase
+CTASection.tsx — Call-to-action
+FooterSection.tsx — Footer
+Supporting Components
+IntelligenceField.tsx — Animated background used by HeroSection
+JsonLd.tsx — JSON-LD structured data injector
+Providers.tsx — Context providers wrapper (in layout)
+Lib Files (imported by home page / layout)
+seo.ts — createMetadata() helper for page metadata
+structured-data.ts — webPageJsonLd(), organizationJsonLd(), websiteJsonLd(), softwareApplicationJsonLd()
+Other Related App Files
+globals.css — Global styles (imported by layout)
+manifest.ts — PWA manifest
+robots.ts — robots.txt generation
+sitemap.ts — sitemap generation
+Dependency Graph
+
+
+src/app/layout.tsx
+├── src/app/globals.css
+├── src/components/Providers.tsx
+├── src/components/JsonLd.tsx
+└── src/lib/structured-data.ts
+ 
+src/app/page.tsx
+├── src/components/layout/TopNav.tsx
+├── src/components/sections/HeroSection.tsx
+│   └── src/components/sections/IntelligenceField.tsx
+├── src/components/sections/LiveRoutingSection.tsx
+├── src/components/sections/FeaturesSection.tsx
+├── src/components/sections/CodeShowcaseSection.tsx
+├── src/components/sections/CTASection.tsx
+├── src/components/sections/FooterSection.tsx
+├── src/components/JsonLd.tsx
+├── src/lib/structured-data.ts
+└── src/lib/seo.ts
+Note: There are also other section components in sections not used by the home page: DashboardPreviewSection.tsx, ModelShowcaseSection.tsx, TestimonialsSection.tsx, and VideoDemoSection.tsx.
+
+
+
+
+
+
+
+Subscription Pages
+page.tsx — Redirects to /billing/subscription page.tsx
+page.tsx — Server component, gets user country from headers, wraps SubscriptionContent in Suspense page.tsx
+SubscriptionContent.tsx — Main client UI: plan cards, Paddle checkout, price fetching, subscription status display, activation flow SubscriptionContent.tsx
+Paddle API Routes
+route.ts — Creates a Paddle transaction and returns checkout URL route.ts
+route.ts — Verifies a completed transaction with Paddle and upserts subscription in Supabase route.ts
+route.ts — Receives Paddle webhooks (signature-verified), handles subscription.activated/updated/canceled and transaction.ready/completed events route.ts
+route.ts — Fetches pricing from Paddle API for the 3 paid plans route.ts
+route.ts — Creates a Paddle customer portal session for subscription management route.ts
+route.ts — Direct subscription update fallback (used when webhooks don't fire in sandbox) route.ts
+Plan / Access Logic
+plan-access.ts — Single source of truth for plan → tier mapping, derives from routerConfigs plan-access.ts
+router-config.ts — Defines the 4 plans (free, go_plus, pro, plus_pro) with model keys, token limits, web search limits, dive deep limits, image analysis limits router-config.ts
+Components Using Subscription State
+ModelSelector.tsx — Gating model selection by plan (lines 209-234)
+ProfileModal.tsx — Shows current plan (lines 241-243)
+ChatSidebar.tsx — Billing link (line 85)
+TopNav.tsx — Billing link (line 25)
+HeroSection.tsx — CTA to pricing (line 76)
+Pricing Page (related)
+page.tsx + PricingPage.tsx — Public pricing page
+Database Tables (referenced in code)
+subscriptions — subscription_id, customer_id, user_id, status, price_id, product_id, plan, current_period_end, updated_at
+customers — customer_id, email, updated_at
+profiles — subscription_tier column (updated on plan change)
+Plan → Price ID Mapping
+Plan	Price ID
+Go Plus	pri_01kzk7f0he4j0sjxtg0zf1k6qp
+Pro	pri_01kzk7hac9j383j19ffs0k2jwm
++ Pro	pri_01kzk7k5hr9wnfs70zd4a5zde9
+Flow Summary
+
+
+User visits /billing/subscription
+  → SubscriptionContent fetches prices from /api/paddle/prices
+  → User clicks "Subscribe" → Paddle Checkout overlay opens
+  → On success → redirect to /welcome with ?_ptxn=TXN_ID
+  → SubscriptionContent calls /api/paddle/activate with transactionId
+  → Activate route verifies with Paddle, upserts subscriptions table
+  → Paddle also fires webhook → /api/paddle/webhook (signature verified)
+  → Webhook upserts subscription + updates profiles.subscription_tier
+  → On period end → subscription.canceled webhook → status="cancelled", tier="free"
+
+
+
+
+
+
+  Informational Pages Overview
+Route	Page	Purpose
+/about	page.tsx	About Netsyra AI — features, stats, mission
+/goal	page.tsx	Goals & Mission — differentiators, philosophy
+/legal	page.tsx	Legal Notice — IP protection, rights
+/privacy	page.tsx	Privacy Policy — data collection, user rights
+/terms	page.tsx	Terms of Service — full legal terms
+/term	page.tsx	Terms (legacy/simple) — minimal placeholder
+Detailed Breakdown
+1. About Page — /about
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+Three.js particle nebula background with floating geometric shapes (icosahedron, torus, octahedron, dodecahedron)
+6 feature cards: Intelligent Routing, Cost Optimization, Privacy First, Real-Time Web Search, Developer-First API, Blazing Fast
+Stats: 70% cost savings, <7s response time, 50+ AI models, 99.9% uptime
+Framer Motion animations with staggered children
+Mobile menu support
+2. Goal Page — /goal
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+Same Three.js nebula background
+6 features: Intelligent by Design, Radically Efficient, Built for Builders, Privacy First, Blazing Fast, Context-Aware Memory
+Stats: 70% cost reduction, <7s response, 100+ provider models, 24/7 routing
+4 differentiators: Multi-Provider Routing, Developer-First API, Context-Aware Memory, Real-Time Web Search
+3. Legal Notice — /legal
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+IP protection statement
+Protected elements list (UI, routing algorithms, prompts, source code, branding, DB schemas, API design)
+Legal rights (DMCA, civil litigation)
+Infringement report contact: netsyraai@gmail.com
+4. Privacy Policy — /privacy
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+Data collected: account ID (name, email), service data (chat messages in Supabase)
+Google API usage (OAuth only, limited scope)
+Data protection (encrypted transit + at rest, no selling/sharing)
+User rights (access, correction, deletion)
+Contact: support@netsyraai.com
+5. Terms of Service — /terms (full version)
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+Introduction & eligibility (13+ years)
+Account terms (creation, security, responsibility)
+Acceptable use (prohibited conduct list)
+AI output disclaimer (no guaranteed accuracy, no professional advice)
+Indexed by search engines
+6. Terms (legacy) — /term
+Files:
+
+page.tsx page.tsx
+layout.tsx layout.tsx
+Content:
+
+Minimal placeholder (14 lines)
+noindexMetadata — NOT indexed by search engines
+Likely a legacy route superseded by /terms
+Shared Patterns
+All pages (except /term) share:
+
+seo.ts — createMetadata() for SEO
+structured-data.ts — webPageJsonLd() for structured data
+JsonLd.tsx — JSON-LD injector
+Three.js particle nebula background (about, goal, legal, privacy, terms)
+Framer Motion animations
+Dark theme (#050505 / #080809 backgrounds)
+Note: Duplicate Routes
+There are two terms routes:
+
+/term — legacy, minimal, noindex (not indexed)
+/terms — full legal terms, indexed
+You may want to redirect /term → /terms to consolidate.
+
+
+
+
+Chat Pages
+page.tsx — Main chat page (client component), manages conversation state, sidebar, model selection, plan/tier gating page.tsx
+layout.tsx — Chat layout with noindex metadata layout.tsx
+page.tsx — Chat history page
+page.tsx — Shared/agent chat route
+Chat API Routes
+route.ts — Main chat endpoint (streaming, routing, web search, memory, DB persistence) route.ts
+route.ts — Returns user's current usage limits
+route.ts — Returns token/message usage stats
+route.ts — Returns web search limit status
+route.ts — Groq chat endpoint
+route.ts — Groq agent endpoint
+route.ts — Image analysis via Groq
+route.ts — Audio transcription
+route.ts — Web search endpoint
+Chat UI Components (chat)
+ChatInterface.tsx — Main chat UI (messages, input, streaming, markdown rendering, code highlighting) ChatInterface.tsx
+ChatSidebar.tsx — Conversation list sidebar
+ModelSelector.tsx — Model tier picker (Auto, Fast, Plus, Pro, Code, Live, AAI, NI) — plan-gated
+MermaidDiagram.tsx — Mermaid diagram renderer
+SourcesPanel.tsx / SourcesDropdown.tsx — Web search sources display
+WeatherWidget.tsx / WeatherIcons.tsx / Weather3DIcons.tsx — Weather widgets
+ClockWidget.tsx — Clock widget
+CalendarWidget.tsx — Calendar widget
+WebViewer.tsx — In-app web page viewer
+NetsyraLogo.tsx — Logo component
+ProfileModal.tsx — User profile modal
+Core Chat Lib (chat)
+Routing & Models
+router.ts — Main model router (selects best model per request)
+ni-router.ts — NI (Neural Intelligence) router — analyzeTask, routeTask, getRoutingExplanation
+brain-router.ts — evaluateLimits — limit checking logic
+model-registry.ts — Model definitions, tiers, system prompts (tiers, getSystemPrompt)
+model-limits.ts — Per-model limit definitions
+token-usage.ts — Token tracking (incrementTokenUsage, goPlusTokenLimits, proTokenLimits, plusProTokenLimits)
+token-counter.ts — trimContextByTokens — context window management
+Memory & Context
+memory.ts — Basic memory system
+unified-memory.ts — Unified memory manager
+unified-classifier.ts — Unified intent classifier
+context-compression.ts — compressHistory — conversation compression
+conversation-summary.ts — Conversation summarization
+pro-conversation-summary.ts — Pro-tier conversation summary
+user-summary.ts — User profile summary (getUserSummary, generateUserSummary)
+pro-user-summary.ts — Pro-tier user summary
+Web Search & Tools
+web-search-decision.ts — shouldWebSearch — decides if web search is needed
+web-search-limiter.ts — checkWebSearchLimit, recordWebSearch, checkDiveDeepLimit, recordDiveDeep
+image-analysis-limiter.ts — Image analysis limit tracking
+semantic-cache.ts — checkCache, storeInCache — semantic response caching
+prompts.ts — System prompts and prompt templates
+calendar-detector.ts — Detects calendar-related queries
+Services (services)
+real-time.ts — Time/calendar cards (getCurrentTimeCard, getCurrentCalendarCard, fetchTimeData)
+live-data.ts — performNLiveSearch — N Live dive deep search
+search-planner.ts — Search query planning
+query-cleaner.ts — Query cleanup
+ambiguity-detector.ts — Detects ambiguous queries
+curated-router.ts / curated-sources.ts — Curated source routing (large file, 5849+ matches)
+wikipedia-search.ts — Wikipedia search
+scraper.ts / groq-scraper.ts / groq-extract.ts — Web scrapers
+firecrawl.ts — Firecrawl integration
+Tools (tools)
+execute-web-search.ts — executeWebSearch — runs web search
+web-search.ts — Web search utility
+Model Providers (models)
+claude.ts — Anthropic Claude integration
+gpt5.ts — OpenAI GPT-5 integration
+gemini.ts — Google Gemini integration
+deepseek.ts — DeepSeek integration
+gpt-image.ts — GPT image generation
+AAI Engine (aai)
+The autonomous AI agent system (used for the "N AAI" tier):
+
+index.ts — aaiRuntime entry point
+config.ts / constants.ts — Configuration
+prompt.ts — AAI prompt builder
+agents/ — 9 specialized agents: analyst, critic, designer, manager, memory-agent, planner-agent, programmer, researcher, teacher
+core/ — Cognitive core: attention, executive, goal-manager, learning, planner, reasoning, reflection, scheduler, task-manager, workspace, world-model
+events/ — Event bus, event types, listeners
+llm/ — LLM layer: model-selector, openrouter, prompt-builder, providers, response-parser, router, streaming
+memory/ — Memory systems: compression, episodic, graph, long-term, procedural, project, semantic, short-term, skill, user, vector, working
+planner/ — Planning: decomposition, execution, goals, planning (GOAP/HTN/hybrid), recovery, validation
+reasoning/ — Reasoning: abduction, analogy, causal, deduction, induction, probabilistic, mathematical, symbolic, domain
+safety/ — Safety: audit, hallucination, permissions, policy, sandbox, validation
+tools/ — Agent tools: api, browser, code, filesystem, image, python, registry, search, supabase, terminal
+utils/ — helpers, ids, logger, timers, tokenizer
+learning/ — Learning engine: evolution, experience, optimization, patterns, policies, reflection, rewards, simulation, skills
+Router Config (routers)
+router-config.ts — Plan configurations (free, go_plus, pro, plus_pro) with model keys, token limits, web search limits router-config.ts
+router-factory.ts — getRouterConfig — returns config for user's plan
+Supporting Lib (lib)
+intent-classifier.ts — classifyIntent — intent detection
+time-utils.ts — getWeatherData, getCurrentTimeAndLocation, detectUserRegion, extractMentionedCity
+safe-fetch.ts — safeFetch — safe HTTP fetch wrapper
+verifier.ts — verifyAnswer — answer verification
+scale.ts — getCachedReply, setCachedReply — scaling cache
+plan-access.ts — getAllowedTiers — plan → tier mapping
+query-rewriter.ts — Query rewriting (your active file)
+Hooks
+useAuth.ts — Auth state
+useChatUsage.ts — Chat usage tracking
+useAgentMessageLimit.ts — Agent message limits
+useStylePrefs.ts — Style preferences for responses
+Database Tables
+conversations — id, user_id, title
+messages — conversation_id, user_id, role, content
+subscriptions — Plan info for gating
+Model Tiers
+Tier	Display Name	Description
+auto	Auto	Router picks best model
+fast	N Fast	Small/cheap models
+plus	N Plus	Mid-tier models
+pro	N Pro	Premium models
+code	N Code	Coding-specialized
+live	N Live	Real-time web search (dive deep)
+aai	N AAI	Autonomous agent system
+ni	N NI	Neural Intelligence routing
+Request Flow
+
+
+User sends message in ChatInterface
+  → POST /api/chat/route.ts
+  → classifyIntent() — detect what user wants
+  → shouldWebSearch() — decide if web search needed
+  → routeModel() / ni-router — pick best model for the task
+  → checkCache() — semantic cache lookup
+  → trimContextByTokens() — manage context window
+  → compressHistory() — compress old messages
+  → getUserSummary() — inject user context
+  → Stream response from selected model provider
+  → verifyAnswer() — quality check
+  → storeInCache() — cache the response
+  → saveMessage() — persist to Supabase
+  → Stream tokens back to client
+
+
+
+
+  IDE Page
+page.tsx — Entry point, renders TitleBar + IdeShell in a full-screen layout page.tsx
+IDE Shell & Layout Components (ide)
+Component	Purpose
+IdeShell.tsx	Main layout container — resizable panels (sidebar, editor, right AI panel, bottom panel), drag handles, mobile detection IdeShell.tsx
+TitleBar.tsx	Top menu bar (File, Edit, Selection, View, Go, Run, Terminal, Help)
+MenuBar.tsx	Menu dropdown logic
+ActivityBar.tsx	Left icon strip (Explorer, Search, Extensions, Settings, AI Chat)
+Sidebar.tsx	Left sidebar container — switches between views
+Explorer.tsx	File tree explorer
+SearchPanel.tsx	VS Code-style code search
+SettingsPanel.tsx	IDE settings (font size, tab size, minimap, etc.)
+EditorArea.tsx	Monaco editor area with tabs
+SplitEditor.tsx	Split editor support
+TabBar.tsx	Open file tabs
+BottomPanel.tsx	Bottom panel container (terminal, output, problems, debug)
+TerminalPanel.tsx	Terminal UI (connects to local bridge)
+RealTerminal.tsx	Real terminal implementation
+OutputPanel.tsx	Build/lint/typecheck output
+ProblemsPanel.tsx	Diagnostics/problems list
+DebugPanel.tsx	Debug session UI
+StatusBar.tsx	Bottom status bar (git branch, language, line/col, errors/warnings)
+CommandPalette.tsx	Ctrl+Shift+P command palette
+AIChatPanel.tsx	Right panel — AI coding assistant chat
+IDE Core Library (ide)
+File	Purpose
+index.ts	Barrel export for all IDE modules index.ts
+types.ts	Type definitions: FileItem, OpenFile, EditorConfig, Workspace, SidebarView, BottomPanelView, Problem types.ts
+store.ts	Zustand store (persisted) — workspace, open files, tabs, split editor, layout state, problems, file CRUD actions store.ts
+workspace.ts	File System Access API — reads/writes to user's real filesystem via FileSystemDirectoryHandle workspace.ts
+file-utils.ts	Language mapping (ext → Monaco language), file utilities
+editor-config.ts	Builds Monaco editor options from EditorConfig
+theme.ts	Custom netsyra-dark Monaco theme
+theme-constants.ts	Theme color constants
+agent.ts	Agent file utilities — readFileLines, readFunction, readImports, findFileByPath, getActiveFileContext, getWorkspaceStructure agent.ts
+grok-api.ts	Groq API client for AI chat (callGroqAPI)
+db.ts	IndexedDB via Dexie — NetsyraDB with tables: files, symbols, imports, metadata, relations db.ts
+graph-query.ts	Symbol graph query engine — getSymbolContext, searchSymbols (finds definitions, callers, dependents) graph-query.ts
+search.ts	Code search engine — searchWorkspace, formatSearchResultForAgent (line-level matches with file path, line, column) search.ts
+debug-store.ts	Zustand debug store — DebugStatus, StackFrame, ScopeVariable, Breakpoint, DebugConsoleEntry debug-store.ts
+output-store.ts	Zustand output store — OutputChannel, OutputLine, TaskStatus (build/lint/typecheck channels) output-store.ts
+Agent Orchestrator
+AgentOrchestrator.ts — AI coding agent that orchestrates file operations AgentOrchestrator.ts
+Tools: read_file, edit_file, create_file, search_code, list_files, get_problems, answer, batch_edit
+Creates PendingEdit objects for user approval
+Uses getSymbolContext for code intelligence
+Uses searchWorkspace for code search
+IDE API Routes (ide)
+All routes are disabled server-side for security — execution happens on the user's machine via a local bridge:
+
+Route	Status	Purpose
+run-task/route.ts	503	Build/lint/typecheck — run via local bridge
+terminal/route.ts	503	Terminal — run via local bridge
+git/route.ts	200 (empty)	Git status — provided by local bridge
+debug/route.ts	503	Debugging — run via local bridge
+Hooks
+useProjectIndexer.ts — Indexes workspace files into IndexedDB (files, symbols, imports, relations) useProjectIndexer.ts
+useAuth.ts — Auth state for IDE
+Local Bridge
+netsyra-bridge.js — Client-side bridge script that runs on the user's machine to enable terminal, build tasks, git, and debugging
+Web Workers
+ast.worker.js — AST parsing worker (for symbol extraction)
+lint.worker.js — Linting worker (for problems panel)
+Architecture Overview
+
+
+User opens /ide
+  → IDEPage renders TitleBar + IdeShell
+  → IdeShell loads Zustand store (persisted)
+  → ActivityBar switches sidebar views
+  → Sidebar shows Explorer/Search/Settings/AIChat
+  → Explorer uses File System Access API to read real local files
+  → EditorArea opens Monaco editor with netsyra-dark theme
+  → useProjectIndexer indexes files into IndexedDB (Dexie)
+    → AST worker extracts symbols
+    → Lint worker checks for problems
+  → AIChatPanel lets user chat with AI agent
+    → AgentOrchestrator plans and executes tasks
+    → Uses graph-query for symbol context
+    → Uses search.ts for code search
+    → Produces PendingEdits for user approval
+  → BottomPanel: Terminal/Output/Problems/Debug
+    → All execution via local bridge (server routes disabled)
+  → StatusBar shows git, language, cursor, errors
+Key Design Decisions
+Local-first: All file operations use the browser's File System Access API — files stay on the user's machine
+No server execution: Terminal, build, git, and debug all run via the local bridge, not on Netsyra's servers
+IndexedDB persistence: Project symbols, imports, and relations are indexed in the browser via Dexie
+Monaco editor: Full VS Code editing experience with custom theme
+AI agent: Can read, search, edit, and create files with user approval (PendingEdit system)
+
+
+
+
+
+Overview
+The CV Builder is a standalone static web application served from cv-builder. It's accessible at /cv-builder/ and runs entirely client-side with vanilla JavaScript (no React/Next.js integration).
+
+Entry Point
+index.html — Single-page app shell with header, progress bar, main content area, navigation footer, and toast container index.html
+Stylesheets (css)
+File	Purpose
+style.css	Core styles — layout, header, footer, buttons, forms
+features.css	Feature-specific styles — templates, preview, export UI
+responsive.css	Mobile/tablet responsive breakpoints
+Main App Logic (js)
+File	Purpose
+app.js	Main app controller — page navigation, state management, progress bar, render orchestration
+export-utils.js	Export utilities — PDF/print, JSON save/load
+docx-export.js	DOCX (Word) document export
+cover-letter.js	Cover letter generator
+resume-scoring.js	Resume quality scoring/analysis
+custom-template.js	Custom template builder/editor
+self-made.js	"Self-made" template — user builds from scratch
+Data Entry Pages (pages)
+17-step wizard collecting CV data:
+
+File	Section
+personal.js	Personal info (name, contact, photo)
+summary.js	Professional summary
+experience.js	Work experience
+education.js	Education
+skills.js	Skills
+projects.js	Projects
+certifications.js	Certifications
+languages.js	Languages
+awards.js	Awards & honors
+volunteer.js	Volunteer experience
+internships.js	Internships
+publications.js	Publications
+conferences.js	Conferences attended
+references.js	References
+interests.js	Interests & hobbies
+social.js	Social media links
+custom.js	Custom section (user-defined)
+Resume Templates (templates)
+16 professionally designed templates:
+
+File	Template Style
+classic.js	Classic traditional layout
+modern.js	Modern clean design
+minimal.js	Minimalist layout
+professional.js	Professional corporate style
+modern-warm.js	Modern with warm color palette
+split-sidebar.js	Split layout with sidebar
+munich-executive.js	Executive-level Munich style
+boho-arched.js	Bohemian arched design
+split-charcoal.js	Split layout with charcoal theme
+early-career-functional.js	Functional layout for early career
+modern-pill-cards.js	Modern with pill-shaped cards
+classic-functional-cv.js	Classic functional CV
+split-sidebar-functional.js	Split sidebar functional layout
+gradient-accent-resume.js	Gradient accent design
+dark-chevron-sidebar.js	Dark theme with chevron sidebar
+emerald-pill-sidebar.js	Emerald-themed pill sidebar
+External Dependencies (CDN)
+Library	Purpose
+Inter (Google Fonts)	Typography
+Font Awesome 6.4.0	Icons
+JsBarcode 3.11.6	Barcode generation (for QR/link barcodes)
+qrcode-generator 1.4.4	QR code generation
+Features
+17-step wizard — Progressive data entry with progress bar, back/next/skip navigation
+16 templates — Professional, modern, minimal, functional, executive styles
+Custom template builder — User can create their own template
+Self-made mode — Build a resume from scratch
+Export options:
+PDF (via print)
+DOCX (Word document)
+JSON (save/load data)
+Cover letter generator — Generates cover letter from CV data
+Resume scoring — Quality analysis and scoring of the resume
+Barcode/QR code — Generate QR codes/barcodes for contact info
+Toast notifications — User feedback system
+Responsive — Works on mobile, tablet, and desktop
+Architecture
+
+
+User visits /cv-builder/
+  → index.html loads
+  → CSS (style, features, responsive)
+  → Page scripts (17 data entry pages)
+  → Template scripts (16 templates + custom + self-made)
+  → Utility scripts (docx-export, export-utils, cover-letter, resume-scoring)
+  → app.js initializes the wizard
+ 
+  Step 1: Personal info → Step 2: Summary → ... → Step 17: Custom
+  → User picks a template
+  → Preview renders with chosen template
+  → Export as PDF / DOCX / JSON
+  → Optional: Generate cover letter
+  → Optional: Get resume score
+Note
+The CV Builder is completely independent from the main Netsyra Next.js app — it's a vanilla JS static app in the public folder. It doesn't use React, Supabase, authentication, or any of the chat/AI features. It's served as-is at /cv-builder/.
+
+
+
+
+Here's the complete Netsyra models and LLM system:
+
+Model Registry — model-registry.ts
+The central model configuration file (~1987 lines). model-registry.ts
+
+System Prompt
+SYSTEM_PROMPT — Full 1600-line production system prompt (v3.0) defining Netsyra-AI's identity, safety, persona, tone, communication style, reasoning, math, coding, formatting rules
+getSystemPrompt(tier, message, extras) — Dynamic prompt builder — detects task category and sends only relevant sections (50-70% token savings)
+Tier Configuration (tiers export)
+Tier	Temperature	Max Tokens	Models	Use Case
+fast	0.3	200	6 fallback models	Quick/simple queries
+plus	0.5	800	5 fallback models	Mid-quality responses
+pro	0.7	1500	4 fallback models	High-quality reasoning
+live	0.3	400	2 models	Real-time web search (dive deep)
+code	0.2	1400	4 fallback models	Coding tasks
+aai	0.7	1700	2 models	Autonomous agent intelligence
+go_plus	0.5	5000	1 model	Go Plus subscription
+ni	0.7	9000	6 models	Pro subscription (Neural Intelligence)
+plus_pro	0.7	10000	3 models	Plus Pro subscription
+Models Per Tier
+N Fast (Groq, GROQ_API_KEY):
+
+llama-3.1-8b-instant — Primary
+groq/compound — Fallback
+groq/compound-mini — Fallback 4-6. Additional Groq fallbacks
+N Plus (Gemini + Groq, GEMINI_API_KEY):
+
+gemini-2.5-flash — Primary (Gemini) 2-5. Groq fallbacks
+N Pro (Gemini, GEMINI_API_KEY):
+
+gemini-3.1-flash-lite — Primary 2-4. Gemini/Groq fallbacks
+N Live (Groq, GROQ_API_KEY):
+
+groq/compound — Primary
+Fallback model
+N Code (Cerebras, CEREBRAS_API_KEY):
+
+gpt-oss-120b — Primary (Cerebras) 2-4. Fallbacks
+N AAI (Groq, GROQ_API_KEY):
+
+llama-3.3-70b-versatile — Primary
+Fallback
+N Go Plus (DeepSeek, MESH_API_KEY_1):
+
+deepseek-v4-flash — 1M context window
+N NI (Anthropic + OpenAI + DeepSeek, MESH_API_KEY_2):
+
+claude-opus-4.6 — 1M context (complex tasks)
+claude-sonnet-4.6 — 1M context (coding/reasoning)
+gpt-5 — 1.05M context (reasoning/planning/creative)
+gpt-5-mini — 131K context (fallback)
+deepseek-v4-pro — 1.05M context (coding fallback)
+deepseek-v4-flash — 1.05M context (easy tasks)
+N Plus Pro (Anthropic + OpenAI + DeepSeek, MESH_API_KEY_3):
+
+claude-opus-4.8 — 1M context (debugging/hard coding)
+gpt-5.6-luna — 1.05M context (general reasoning)
+deepseek-v4-pro — 1.05M context (large documents)
+Model Provider Integrations (models)
+File	Provider	Function	Models	API Key
+claude.ts	Anthropic	callClaude()	claude-sonnet-4.6-coding, claude-opus-4.6	MESH_API_KEY
+gpt5.ts	OpenAI	callGPT5()	gpt-5	MESH_API_KEY
+gemini.ts	Google	callGemini()	gemini-flash-lite (with image support)	MESH_API_KEY
+deepseek.ts	DeepSeek	callDeepSeek()	deepseek-v4-flash, deepseek-v4-pro	MESH_API_KEY
+gpt-image.ts	OpenAI	generateImage()	gpt-image-1 (image generation)	MESH_API_KEY
+Routing Engines
+Monster Router — router.ts
+router.ts
+
+Zero-token, deterministic, weighted multi-signal routing
+routeModel(message, opts) → returns { tier, reason, confidence, scores, signals, features, alternatives }
+Extracts features: word count, code fences, math, questions, structure, imperatives, brevity/depth hints
+Weighted signal table adds per-tier points
+Hard overrides for "be brief" / "think deeply" / "agent"
+Softmax-style confidence calculation
+Routable tiers: fast, plus, pro, code, aai
+NI Router — ni-router.ts
+ni-router.ts
+
+AI-based task classifier for Pro/NI subscribers
+analyzeTask(message, context) → TaskAnalysis with type, complexity, confidence
+routeTask(analysis) → ModelRoute with model, provider, reason, fallback
+Uses groq/compound-mini (GROQ_API_KEY_4) for classification
+Categories: coding, reasoning, creative, analysis, operations
+Subtypes: feature-implementation, bug-fix, code-review, optimization, testing, etc.
+Complexity levels: trivial → expert
+Brain Router — brain-router.ts
+evaluateLimits() — limit checking logic
+Token & Message Limits
+Free Plan — model-limits.ts
+model-limits.ts
+
+Message-based (no token limit)
+Per-tier per-24h limits: fast=15, plus=10, pro=5, code=5, aai=5, live=3
+checkAndIncrementMessageUsage() — atomic RPC (check_and_increment_message_usage)
+Fallback: direct read-write on user_message_usage table
+Paid Plans — token-usage.ts
+token-usage.ts
+
+Token-based (no message limit)
+Plan	Model Key	Daily Limit	Monthly Limit
+Go Plus	go_plus	317,000	9,523,810
+Pro	claude-opus-4.6	10,000	300,000
+Pro	claude-sonnet-4.6	16,000	480,000
+Pro	deepseek-v4-pro	34,000	1,020,000
+Pro	gpt-5	20,000	600,000
+Pro	gpt-5-mini	34,000	1,020,000
+Pro	deepseek-v4-flash	35,000	1,050,000
+Plus Pro	plus_pro_opus	27,778	833,333
+Plus Pro	plus_pro_luna	47,619	1,428,571
+Plus Pro	plus_pro_deepseek	204,342	6,130,268
+checkTokenLimits() — pre-flight RPC check
+incrementTokenUsage() — post-LLM call increment
+AAI LLM Layer (llm)
+File	Purpose
+model-selector.ts	Selects model within AAI engine
+openrouter.ts	OpenRouter provider integration
+prompt-builder.ts	AAI-specific prompt construction
+providers.ts	Provider definitions (empty file)
+response-parser.ts	Parses LLM responses for AAI
+router.ts	AAI internal model routing
+streaming.ts	Streaming response handling for AAI
+Groq API Routes (groq)
+Route	Model	API Key	Purpose
+chat/route.ts	llama-3.3-70b-versatile	GROQ_API_KEY_2	IDE AI chat
+agent/route.ts	Groq models	GROQ_API_KEY	Agent tasks
+image-process/route.ts	Groq vision	GROQ_API_KEY	Image analysis
+transcribe/route.ts	Groq Whisper	GROQ_API_KEY	Audio transcription
+API Keys (Environment Variables)
+Variable	Used For
+GROQ_API_KEY	N Fast, N Live, N AAI, N Code fallbacks
+GROQ_API_KEY_2	IDE AI chat (/api/groq/chat)
+GROQ_API_KEY_4	NI router classifier
+GEMINI_API_KEY	N Plus, N Pro
+CEREBRAS_API_KEY	N Code (primary)
+MESH_API_KEY	Direct model calls (claude.ts, gpt5.ts, etc.)
+MESH_API_KEY_1	N Go Plus (DeepSeek)
+MESH_API_KEY_2	N NI (Claude + GPT-5 + DeepSeek)
+MESH_API_KEY_3	N Plus Pro (Claude Opus 4.8 + GPT-5.6 Luna + DeepSeek)
+Context Window Sizes
+Model	Context Window
+llama-3.1-8b-instant	Default (8K)
+gemini-2.5-flash	Default (1M)
+gemini-3.1-flash-lite	Default (1M)
+gpt-oss-120b	Default (Cerebras)
+deepseek-v4-flash	1,049,000
+deepseek-v4-pro	1,050,000
+claude-opus-4.6	1,000,000
+claude-sonnet-4.6	1,000,000
+claude-opus-4.8	1,000,000
+gpt-5	1,050,000
+gpt-5-mini	131,000
+gpt-5.6-luna	1,050,000
+Routing Flow
+
+
+User sends message
+  → If "Auto" selected:
+    → Monster Router (router.ts) — zero-token heuristic routing
+      → Extracts features (code, math, length, questions, etc.)
+      → Weighted signal scoring per tier
+      → Returns best tier (fast/plus/pro/code/aai)
+  → If "NI" selected (Pro subscribers):
+    → NI Router (ni-router.ts) — AI-based classification
+      → classifyTaskWithAI() using groq/compound-mini
+      → Routes to specific LLM (Claude/GPT-5/DeepSeek)
+  → If manual tier selected:
+    → Uses that tier directly
+  → Model registry (model-registry.ts) provides fallback chain
+  → First available model in chain is used
+  → On failure, falls back to next model in chain
+
+
+
+  Models Used Per Tier
+N Fast (Free + all plans)
+#	Model	Provider	API Key	Context
+1	llama-3.1-8b-instant	Groq	GROQ_API_KEY	8K
+2	groq/compound	Groq	GROQ_API_KEY	8K
+3	groq/compound-mini	Groq	GROQ_API_KEY	8K
+4-6	Additional Groq fallbacks	Groq	GROQ_API_KEY	8K
+N Plus (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gemini-2.5-flash	Google	GEMINI_API_KEY	1M
+2-5	Groq fallbacks	Groq	GROQ_API_KEY	8K
+N Pro (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gemini-3.1-flash-lite	Google	GEMINI_API_KEY	1M
+2-4	Gemini/Groq fallbacks	Google/Groq	GEMINI_API_KEY	1M
+N Live (Free + all plans)
+#	Model	Provider	API Key	Context
+1	groq/compound	Groq	GROQ_API_KEY	8K
+2	Fallback	Groq	GROQ_API_KEY	8K
+N Code (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gpt-oss-120b	Cerebras	CEREBRAS_API_KEY	—
+2-4	Fallbacks	Cerebras/Groq	CEREBRAS_API_KEY	—
+N AAI (Free + all plans)
+#	Model	Provider	API Key	Context
+1	llama-3.3-70b-versatile	Groq	GROQ_API_KEY	8K
+2	Fallback	Groq	GROQ_API_KEY	8K
+N Go Plus (Go Plus subscription only)
+#	Model	Provider	API Key	Context
+1	deepseek-v4-flash	DeepSeek	MESH_API_KEY_1	1,049K
+N NI (Pro subscription only)
+#	Model	Provider	API Key	Context
+1	claude-opus-4.6	Anthropic	MESH_API_KEY_2	1,000K
+2	claude-sonnet-4.6	Anthropic	MESH_API_KEY_2	1,000K
+3	gpt-5	OpenAI	MESH_API_KEY_2	1,050K
+4	gpt-5-mini	OpenAI	MESH_API_KEY_2	131K
+5	deepseek-v4-pro	DeepSeek	MESH_API_KEY_2	1,050K
+6	deepseek-v4-flash	DeepSeek	MESH_API_KEY_2	1,049K
+N Plus Pro (+ Pro subscription only)
+#	Model	Provider	API Key	Context
+1	claude-opus-4.8	Anthropic	MESH_API_KEY_3	1,000K
+2	gpt-5.6-luna	OpenAI	MESH_API_KEY_3	1,050K
+3	deepseek-v4-pro	DeepSeek	MESH_API_KEY_3	1,050K
+Limits Per Plan
+Free Plan — Message Limits (per 24h, no token limit)
+Tier	Messages/24h
+N Fast	15
+N Plus	10
+N Pro	5
+N Code	5
+N AAI	5
+N Live	3
+Web Search	3/24h
+Dive Deep	3/24h
+Image Analysis	3/day (no monthly)
+Go Plus — Token Limits (no message limit)
+Model Key	Daily Tokens	Monthly Tokens
+go_plus (aggregate)	317,000	9,523,810
+Web Search	100/24h	—
+Dive Deep	100/24h	—
+Image Analysis	15/day	300/month
+Pro (NI) — Per-LLM Token Limits (no message limit)
+Model	Daily Tokens	Monthly Tokens
+claude-opus-4.6	10,000	300,000
+claude-sonnet-4.6	16,000	480,000
+deepseek-v4-pro	34,000	1,020,000
+gpt-5	20,000	600,000
+gpt-5-mini	34,000	1,020,000
+deepseek-v4-flash	35,000	1,050,000
+Web Search	200/24h	—
+Dive Deep	200/24h	—
+Image Analysis	30/day	600/month
+Plus Pro — Per-LLM Token Limits (no message limit)
+Model Key	Daily Tokens	Monthly Tokens
+plus_pro_opus (Claude Opus 4.8)	27,778	833,333
+plus_pro_luna (GPT-5.6 Luna)	47,619	1,428,571
+plus_pro_deepseek (DeepSeek V4 Pro)	204,342	6,130,268
+Web Search	250/24h	—
+Dive Deep	250/24h	—
+Image Analysis	30/day	600/month
+Summary Table — All Unique Models
+Model	Provider	Tiers Used In	Context Window
+llama-3.1-8b-instant	Groq	Fast	8K
+groq/compound	Groq	Fast, Live	8K
+groq/compound-mini	Groq	Fast, NI classifier	8K
+llama-3.3-70b-versatile	Groq	AAI, IDE chat	8K
+gemini-2.5-flash	Google	Plus	1M
+gemini-3.1-flash-lite	Google	Pro	1M
+gpt-oss-120b	Cerebras	Code	—
+deepseek-v4-flash	DeepSeek	Go Plus, NI	1,049K
+deepseek-v4-pro	DeepSeek	NI, Plus Pro	1,050K
+claude-opus-4.6	Anthropic	NI	1,000K
+claude-sonnet-4.6	Anthropic	NI	1,000K
+claude-opus-4.8	Anthropic	Plus Pro	1,000K
+gpt-5	OpenAI	NI	1,050K
+gpt-5-mini	OpenAI	NI	131K
+gpt-5.6-luna	OpenAI	Plus Pro	1,050K
+gpt-image-1	OpenAI	Image generation	—
+gemini-flash-lite	Google	Image analysis	—
+Total: 15 chat models + 2 image models across 6 providers (Groq, Google, Cerebras, DeepSeek, Anthropic, OpenAI)
+
+
+
+
+Here's the complete model and limit breakdown for Netsyra chat:
+
+Models Used Per Tier
+N Fast (Free + all plans)
+#	Model	Provider	API Key	Context
+1	llama-3.1-8b-instant	Groq	GROQ_API_KEY	8K
+2	groq/compound	Groq	GROQ_API_KEY	8K
+3	groq/compound-mini	Groq	GROQ_API_KEY	8K
+4-6	Additional Groq fallbacks	Groq	GROQ_API_KEY	8K
+N Plus (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gemini-2.5-flash	Google	GEMINI_API_KEY	1M
+2-5	Groq fallbacks	Groq	GROQ_API_KEY	8K
+N Pro (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gemini-3.1-flash-lite	Google	GEMINI_API_KEY	1M
+2-4	Gemini/Groq fallbacks	Google/Groq	GEMINI_API_KEY	1M
+N Live (Free + all plans)
+#	Model	Provider	API Key	Context
+1	groq/compound	Groq	GROQ_API_KEY	8K
+2	Fallback	Groq	GROQ_API_KEY	8K
+N Code (Free + all plans)
+#	Model	Provider	API Key	Context
+1	gpt-oss-120b	Cerebras	CEREBRAS_API_KEY	—
+2-4	Fallbacks	Cerebras/Groq	CEREBRAS_API_KEY	—
+N AAI (Free + all plans)
+#	Model	Provider	API Key	Context
+1	llama-3.3-70b-versatile	Groq	GROQ_API_KEY	8K
+2	Fallback	Groq	GROQ_API_KEY	8K
+N Go Plus (Go Plus subscription only)
+#	Model	Provider	API Key	Context
+1	deepseek-v4-flash	DeepSeek	MESH_API_KEY_1	1,049K
+N NI (Pro subscription only)
+#	Model	Provider	API Key	Context
+1	claude-opus-4.6	Anthropic	MESH_API_KEY_2	1,000K
+2	claude-sonnet-4.6	Anthropic	MESH_API_KEY_2	1,000K
+3	gpt-5	OpenAI	MESH_API_KEY_2	1,050K
+4	gpt-5-mini	OpenAI	MESH_API_KEY_2	131K
+5	deepseek-v4-pro	DeepSeek	MESH_API_KEY_2	1,050K
+6	deepseek-v4-flash	DeepSeek	MESH_API_KEY_2	1,049K
+N Plus Pro (+ Pro subscription only)
+#	Model	Provider	API Key	Context
+1	claude-opus-4.8	Anthropic	MESH_API_KEY_3	1,000K
+2	gpt-5.6-luna	OpenAI	MESH_API_KEY_3	1,050K
+3	deepseek-v4-pro	DeepSeek	MESH_API_KEY_3	1,050K
+Limits Per Plan
+Free Plan — Message Limits (per 24h, no token limit)
+Tier	Messages/24h
+N Fast	15
+N Plus	10
+N Pro	5
+N Code	5
+N AAI	5
+N Live	3
+Web Search	3/24h
+Dive Deep	3/24h
+Image Analysis	3/day (no monthly)
+Go Plus — Token Limits (no message limit)
+Model Key	Daily Tokens	Monthly Tokens
+go_plus (aggregate)	317,000	9,523,810
+Web Search	100/24h	—
+Dive Deep	100/24h	—
+Image Analysis	15/day	300/month
+Pro (NI) — Per-LLM Token Limits (no message limit)
+Model	Daily Tokens	Monthly Tokens
+claude-opus-4.6	10,000	300,000
+claude-sonnet-4.6	16,000	480,000
+deepseek-v4-pro	34,000	1,020,000
+gpt-5	20,000	600,000
+gpt-5-mini	34,000	1,020,000
+deepseek-v4-flash	35,000	1,050,000
+Web Search	200/24h	—
+Dive Deep	200/24h	—
+Image Analysis	30/day	600/month
+Plus Pro — Per-LLM Token Limits (no message limit)
+Model Key	Daily Tokens	Monthly Tokens
+plus_pro_opus (Claude Opus 4.8)	27,778	833,333
+plus_pro_luna (GPT-5.6 Luna)	47,619	1,428,571
+plus_pro_deepseek (DeepSeek V4 Pro)	204,342	6,130,268
+Web Search	250/24h	—
+Dive Deep	250/24h	—
+Image Analysis	30/day	600/month
+Summary Table — All Unique Models
+Model	Provider	Tiers Used In	Context Window
+llama-3.1-8b-instant	Groq	Fast	8K
+groq/compound	Groq	Fast, Live	8K
+groq/compound-mini	Groq	Fast, NI classifier	8K
+llama-3.3-70b-versatile	Groq	AAI, IDE chat	8K
+gemini-2.5-flash	Google	Plus	1M
+gemini-3.1-flash-lite	Google	Pro	1M
+gpt-oss-120b	Cerebras	Code	—
+deepseek-v4-flash	DeepSeek	Go Plus, NI	1,049K
+deepseek-v4-pro	DeepSeek	NI, Plus Pro	1,050K
+claude-opus-4.6	Anthropic	NI	1,000K
+claude-sonnet-4.6	Anthropic	NI	1,000K
+claude-opus-4.8	Anthropic	Plus Pro	1,000K
+gpt-5	OpenAI	NI	1,050K
+gpt-5-mini	OpenAI	NI	131K
+gpt-5.6-luna	OpenAI	Plus Pro	1,050K
+gpt-image-1	OpenAI	Image generation	—
+gemini-flash-lite	Google	Image analysis	—
+Total: 15 chat models + 2 image models across 6 providers (Groq, Google, Cerebras, DeepSeek, Anthropic, OpenAI)
+
+now all files like taliwant etc and server files
+
+
+Let me find Tailwind, PostCSS, and server-related config files.
+
+continue
+
+
+The scaling files (redis-cache, api-load-balancer, request-deduplication) appear to be empty or have read errors — they're likely planned but not yet implemented. Here's the complete config, server, and utility files breakdown:
+
+Configuration Files (Root)
+File	Purpose
+package.json	Dependencies, scripts (dev, build, start, lint, bundle:worker) package.json
+next.config.ts	Next.js config — CSP headers, redirects, security headers, noindex rules next.config.ts
+tsconfig.json	TypeScript config — @/* path alias to ./src/*, ES2017 target, strict mode tsconfig.json
+tailwind.config.ts	Tailwind config — dark mode, custom colors (HSL vars), animations (float, glow-pulse, gradient-rotate), typography plugin tailwind.config.ts
+postcss.config.mjs	PostCSS config — @tailwindcss/postcss plugin postcss.config.mjs
+eslint.config.mjs	ESLint config — Next.js core-web-vitals + TypeScript eslint.config.mjs
+.env.example	Environment variable template (59 lines) .env.example
+.gitignore	Git ignore rules
+Middleware
+File	Purpose
+middleware.ts (root)	Entry middleware — calls updateSession() middleware.ts
+middleware.ts	Session refresh, protected route gating, admin-only routes middleware.ts
+Protected Routes
+/dashboard, /chat, /history, /ide, /profile, /usage, /cv-builder
+
+Admin Routes
+/admin — restricted to ADMIN_EMAIL (default: onik20102010@gmail.com)
+
+Redirects (next.config.ts)
+/term → /terms
+/terms-of-service → /terms
+/privacy-policy → /privacy
+/legal-notice → /legal
+Supabase Server Files (supabase)
+File	Purpose
+client.ts	Browser client — createClient() (public), createChatClient() (chat), createIdeClient() (ide) client.ts
+server.ts	Server client — createServerSupabaseClient(), createChatServerClient(), createIdeServerClient() server.ts
+middleware.ts	Session refresh + route protection
+route-auth.ts	requireAuth() helper for API routes route-auth.ts
+Supabase Schemas
+public — Auth, profiles, subscriptions, customers
+chat — Conversations, messages, token usage, message usage (exposed via public wrappers)
+ide — IDE workspace data
+Core Lib Files (lib)
+File	Purpose
+auth.ts	Auth functions — signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword, updatePassword auth.ts
+seo.ts	SEO helpers — createMetadata(), noindexMetadata(), site URL, keywords seo.ts
+structured-data.ts	JSON-LD — organizationJsonLd(), websiteJsonLd(), webPageJsonLd(), softwareApplicationJsonLd() structured-data.ts
+utils.ts	cn() — Tailwind class merge utility utils.ts
+safe-fetch.ts	SSRF-safe fetch — blocks private IPs, localhost, checks redirects safe-fetch.ts
+verifier.ts	Answer verification — uses llama-3.1-8b-instant to verify factual claims verifier.ts
+scale.ts	Caching + key rotation + deduplication — getCachedReply, setCachedReply, getNextGroqKey, isDuplicateRequest scale.ts
+intent-classifier.ts	100+ intent categories — classifyIntent() intent-classifier.ts
+time-utils.ts	Time/region — detectUserRegion(), getWeatherData(), getCurrentTimeAndLocation(), extractMentionedCity() time-utils.ts
+query-rewriter.ts	Search query generation — generateSearchQueries() using Groq query-rewriter.ts
+plan-access.ts	Plan → tier mapping — getAllowedTiers(), canUseModel()
+Scaling Files (Planned/Incomplete)
+File	Status
+src/lib/redis-cache.ts	Empty/unreadable — planned Redis caching
+src/lib/api-load-balancer.ts	Empty/unreadable — planned API load balancing
+src/lib/request-deduplication.ts	Empty/unreadable — planned request deduplication
+These are referenced in SCALING_IMPLEMENTATION_SUMMARY.md but appear not yet implemented. The @upstash/redis dependency is in package.json.
+
+Scripts (scripts)
+File	Purpose
+bundle-eslint-worker.mjs	Bundles ESLint worker for the IDE lint worker
+eslint-worker-entry.js	ESLint worker entry point
+Package.json Scripts
+
+
+json
+{
+  "dev": "set NODE_OPTIONS=--max-old-space-size=8192 && next dev --turbopack",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint",
+  "bundle:worker": "node scripts/bundle-eslint-worker.mjs"
+}
+Key Dependencies
+Category	Packages
+Framework	next@16.2.6, react@19.2.4, react-dom@19.2.4
+Database	@supabase/ssr, @supabase/supabase-js, dexie (IndexedDB)
+AI/LLM	openai, @mendable/firecrawl-js
+Billing	@paddle/paddle-js, @paddle/paddle-node-sdk
+IDE	@monaco-editor/react, monaco-editor, @xterm/xterm, @xterm/addon-fit, @xterm/addon-web-links
+UI	framer-motion, lucide-react, tailwind-merge, class-variance-authority, @radix-ui/react-avatar, @radix-ui/react-slot
+Markdown	react-markdown, remark-gfm, rehype-raw, react-syntax-highlighter
+3D	three (particle nebula backgrounds)
+Diagrams	mermaid
+State	zustand
+Cache	@upstash/redis
+Monitoring	@sentry/nextjs
+Storage	idb-keyval
+Notifications	sonner
+Environment Variables (from .env.example)
+Category	Variables
+Supabase	NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+AI Providers	OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, GROQ_API_KEY_2-4, DEEPSEEK_API_KEY, CEREBRAS_API_KEY, MANUS_API_KEY
+Search/Tools	FIRECRAWL_API_KEY, TAVILY_API_KEY, GOOGLE_CSE_KEY, GOOGLE_CSE_ID, NEWSAPI_API_KEY, OPENWEATHER_API_KEY, TIMEZONEDB_API_KEY
+Sentry	NEXT_PUBLIC_SENTRY_DSN
+Admin	ADMIN_EMAIL, NEXT_PUBLIC_ADMIN_EMAIL
+App URL	NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_SITE_URL
+Paddle	NEXT_PUBLIC_PADDLE_CLIENT_TOKEN, NEXT_PUBLIC_PADDLE_ENVIRONMENT, PADDLE_API_KEY, PADDLE_WEBHOOK_SECRET, PADDLE_PORTAL_CONFIG_ID
+Local Agent	AGENT_TOKEN, AGENT_PORT, AGENT_HOST, AGENT_ALLOWED_ORIGINS, AGENT_TLS_CERT, AGENT_TLS_KEY
+Auth Toggles	REQUIRE_AUTH, DISABLE_SERVER_IDE
+Security Headers (next.config.ts)
+CSP — Strict Content-Security-Policy (self + Paddle + Supabase + Sentry)
+X-Frame-Options — DENY (no clickjacking)
+X-Content-Type-Options — nosniff
+Referrer-Policy — strict-origin-when-cross-origin
+Permissions-Policy — camera disabled, microphone self-only
+HSTS — 2 years, includeSubDomains, preload
+X-Robots-Tag — noindex, nofollow on all API/admin/private routes
+poweredByHeader — disabled
+
+
+
+
+
+
+
+Here's the complete web search system in Netsyra, covering all files and plan limits:
+
+Web Search Files Overview
+Core Search Files
+File	Purpose
+web-search.ts	Tool definitions — WEB_SEARCH_TOOL (OpenAI format) + GEMINI_WEB_SEARCH_TOOLS (Gemini format) web-search.ts
+execute-web-search.ts	Search execution — plan-aware provider cascade execute-web-search.ts
+web-search-decision.ts	Decision engine — regex-based intent detection (no LLM call) web-search-decision.ts
+web-search-limiter.ts	Limit enforcement — sliding 24h window, RPC + fallback web-search-limiter.ts
+search-planner.ts	AI search planner — entity classification, temporal relevance search-planner.ts
+live-data.ts	Search providers — Serper, Tavily, Wikipedia, N Live, Deep Search live-data.ts
+Search Provider Files
+File	Provider	API Key	Purpose
+live-data.ts	Serper / Tavily / Wikipedia	SERPER_API_KEY, TAVILY_API_KEY	Main search providers
+firecrawl.ts	Firecrawl	FIRECRAWL_API_KEY	URL scraping → markdown
+scraper.ts	Firecrawl + direct fetch	FIRECRAWL_API_KEY	URL scraping with fallback
+groq-scraper.ts	Groq	GROQ_API_KEY_4	LLM-powered content extraction
+groq-extract.ts	Groq	GROQ_API_KEY	Answer extraction from source
+wikipedia-search.ts	Wikipedia + Firecrawl + Groq	FIRECRAWL_API_KEY, GROQ_API_KEY_4	Wikipedia search + summarization
+query-cleaner.ts	Groq	GROQ_API_KEY_4	Query cleaning/optimization
+curated-sources.ts	—	—	Trusted URL knowledge base
+real-time.ts	Open-Meteo	—	Time/weather (city→timezone map)
+extract-summary.ts	Groq	GROQ_API_KEY	URL → 3-bullet summary
+API Routes
+Route	Method	Purpose
+route.ts	GET	Tavily → Google CSE fallback search route.ts
+route.ts	GET	Returns user's web search + dive deep usage/limits route.ts
+UI Components
+File	Purpose
+WebViewer.tsx	Weather widget display (NOT a web viewer — misnamed) WebViewer.tsx
+SearchPanel.tsx	IDE search panel (separate from chat web search)
+Search Provider Cascade (Per Plan)
+Free Plan
+
+
+Tavily → Wikipedia
+performTavilySearch() → performWikipediaSearch()
+Paid Plans (Go Plus, Pro, Plus Pro)
+
+
+Serper → Tavily → Wikipedia
+performSerperSearch() → performTavilySearch() → performWikipediaSearch()
+Search Decision Flow
+1. shouldWebSearch() — Fast regex-based decision (web-search-decision.ts)
+Explicit search patterns — "search the web", "google it", "look this up" → always search
+Intent keyword patterns — 11 categories:
+latest_news, current_events, product_research, company_information, local_search, sports, financial_data, government_info, releases, research_papers, community_opinions
+Returns { shouldSearch, reason, intent, explicitRequest }
+2. planSearch() — AI-based planner (search-planner.ts)
+Fast paths (no LLM call):
+Time/weather/date keywords → NO search (use API instead)
+Explicit search keywords → always search
+Obvious time-sensitive keywords → always search
+Obvious historical entities → no search (unless year reference)
+AI path (uses llama-3.1-8b-instant via GROQ_API_KEY_2):
+Entity understanding + temporal classification
+Query enrichment (e.g. "Ronaldo" → "Cristiano Ronaldo latest news, recent matches, goals")
+Returns { shouldSearch, searchQuery, reason }
+3. cleanSearchQueries() — Query optimization (query-cleaner.ts)
+Regex-based cleaning (removes filler words)
+Smart split on "and"/"also" for multi-topic queries
+Falls back to groq/compound-mini via GROQ_API_KEY_4 for complex queries
+4. executeWebSearch() — Execution (execute-web-search.ts)
+Calls provider cascade based on isPaidUser flag
+Parses markdown sources from results
+Returns { result, sources }
+Web Search & Dive Deep Limits (All Plans)
+From router-config.ts router-config.ts:
+
+Plan	Web Search / 24h	Dive Deep / 24h	Search Providers
+Free	3	3	Tavily → Wikipedia
+Go Plus	100	100	Serper → Tavily → Wikipedia
+Pro (NI)	200	200	Serper → Tavily → Wikipedia
+Plus Pro	250	250	Serper → Tavily → Wikipedia
+Limit Enforcement (web-search-limiter.ts)
+Sliding window: 24h for ALL plans
+Primary: Atomic RPC chat.check_web_search_limit (pre-flight) + chat.record_web_search (post-success)
+Fallback: Direct row count on web_search_usage table
+Fail-closed: Denies on DB error (limits enforced even if DB unreachable)
+Search types: web_search and dive_deep tracked separately
+Special Search Modes
+N Live Search (performNLiveSearch() in live-data.ts)
+Direct streaming without LLM processing
+Tavily answer → stream directly (useLLM: false)
+Wikipedia fallback → needs LLM formatting (useLLM: true)
+Returns { answer, sources, useLLM, platform }
+Deep Search (performDeepSearch() + performMultiDeepSearch())
+Tavily (advanced depth, include_answer) → Wikipedia
+Multi-query: runs multiple deep searches in parallel, combines with topic headers
+Curated Sources (curated-sources.ts)
+Trusted URL knowledge base (Wikipedia, news sites: NYT, BBC, CNN, Reuters, etc.)
+AI crawls these first when query matches via LLM router
+Falls back to live web search if no match
+Search-Related API Keys
+Variable	Used For
+TAVILY_API_KEY	Tavily search (free + paid)
+SERPER_API_KEY	Serper/Google search (paid only)
+GOOGLE_CSE_KEY + GOOGLE_CSE_ID	Google CSE fallback (/api/search route)
+FIRECRAWL_API_KEY	URL scraping → markdown
+GROQ_API_KEY	Query rewriter, verifier, extract-summary, groq-extract
+GROQ_API_KEY_2	Search planner (llama-3.1-8b-instant)
+GROQ_API_KEY_4	Query cleaner, Wikipedia summarizer, Groq scraper (groq/compound-mini)
+NEWSAPI_API_KEY	News API (in .env.example)
+OPENWEATHER_API_KEY	Weather data
+TIMEZONEDB_API_KEY	Time zone API
+Database Tables
+Table	Schema	Purpose
+web_search_usage	chat	Tracks web search + dive deep actions per user
+user_message_usage	chat	Free tier message counts per 24h
+RPCs
+chat.check_web_search_limit — pre-flight limit check
+chat.record_web_search — post-success recording
+chat.check_and_increment_message_usage — free tier message counting
+Search Flow Summary
+
+
+User message
+  → shouldWebSearch() [regex intent detection]
+    → If explicit search keywords → SEARCH
+    → If search-required intent → SEARCH
+    → Otherwise → NO SEARCH
+  → planSearch() [AI planner if needed]
+    → Time/weather/date → NO SEARCH (use API)
+    → Historical entity → NO SEARCH
+    → Active entity → SEARCH with enriched query
+  → cleanSearchQueries() [query optimization]
+  → checkWebSearchLimit() [limit check]
+    → If over limit → deny
+  → executeWebSearch() [provider cascade]
+    → Free: Tavily → Wikipedia
+    → Paid: Serper → Tavily → Wikipedia
+  → recordWebSearch() [post-success recording]
+  → Results fed back to LLM for answer generation
+
+
+
+
+
+  Here's the complete plans and Paddle system breakdown:
+
+Plans Overview
+Netsyra has 4 subscription plans:
+
+Plan	Key	Price ID	Display Name
+Free	free	—	Free
+Go Plus	go_plus	pri_01kzk7f0he4j0sjxtg0zf1k6qp	Go Plus
+Pro	pro	pri_01kzk7hac9j383j19ffs0k2jwm	Pro
++ Pro	plus_pro	pri_01kzk7k5hr9wnfs70zd4a5zde9	+ Pro
+All paid plans are 1-month non-renewing — after the period ends, Paddle fires subscription.canceled, the webhook sets status to cancelled, and the user reverts to Free. Users can repurchase immediately.
+
+Plans Files
+Plan Configuration
+File	Purpose
+router-config.ts	Master config — all plan limits (tokens, messages, web search, dive deep, image analysis, context window) router-config.ts
+router-factory.ts	getRouterConfig(plan) — normalizes plan name → returns RouterConfig router-factory.ts
+plan-access.ts	Plan → tier mapping — getAllowedTiers(), canUseModel(), PLAN_DISPLAY_NAMES plan-access.ts
+Plan → Tier Mapping (from router-config.ts)
+Plan	Allowed Model Keys	Limit Type
+Free	fast, plus, pro, code, live, aai	Message-based (per 24h)
+Go Plus	go_plus	Token-based (aggregate)
+Pro	ni	Token-based (per-LLM)
++ Pro	plus_pro	Token-based (per-LLM)
+Full Plan Limits Table (from router-config.ts)
+Feature	Free	Go Plus	Pro	+ Pro
+Model keys	fast, plus, pro, code, live, aai	go_plus	ni	plus_pro
+Daily tokens	0 (message-based)	317,000	0 (per-LLM)	279,739 (ref)
+Monthly tokens	0	9,523,810	0 (per-LLM)	8,392,172 (ref)
+Max history	5 messages	40	40	40
+Max tokens/request	2,000	3,000	3,000	4,000
+Context window	—	16,000	32,000	32,000
+Web search/24h	3	100	200	250
+Dive deep/24h	3	100	200	250
+Image generation	No	No	No	Yes
+Image analysis	Yes	Yes	Yes	Yes
+Image analysis model	gemini-2.5-flash-lite	gemini-2.5-flash	gemini-2.5-flash	gemini-2.5-flash
+Image analysis/day	3	15	30	30
+Image analysis/month	0 (no monthly)	300	600	600
+Per-LLM Token Limits (Pro plan — enforced via token-usage.ts)
+Model	Daily	Monthly
+claude-opus-4.6	10,000	300,000
+claude-sonnet-4.6	16,000	480,000
+deepseek-v4-pro	34,000	1,020,000
+gpt-5	20,000	600,000
+gpt-5-mini	34,000	1,020,000
+deepseek-v4-flash	35,000	1,050,000
+Per-LLM Token Limits (+ Pro plan — perModelTokenLimits)
+Model Key	Daily	Monthly
+plus_pro_opus (Claude Opus 4.8)	27,778	833,333
+plus_pro_luna (GPT-5.6 Luna)	47,619	1,428,571
+plus_pro_deepseek (DeepSeek V4 Pro)	204,342	6,130,268
+Free Plan Message Limits (from model-limits.ts)
+Tier	Messages / 24h
+fast	15
+plus	10
+pro	5
+code	5
+aai	5
+live	3
+Paddle Files
+Paddle API Routes (paddle)
+Route	Method	Purpose
+subscribe/route.ts	POST	Creates Paddle transaction → returns checkout URL route.ts
+activate/route.ts	POST	Verifies transaction with Paddle → upserts subscription in Supabase route.ts
+webhook/route.ts	POST	Paddle webhook receiver — signature verification, handles subscription.activated/updated/canceled + transaction.ready/completed route.ts
+portal/route.ts	GET	Creates Paddle customer portal session for subscription management route.ts
+prices/route.ts	GET	Fetches pricing from Paddle API for all 3 price IDs route.ts
+update-subscription/route.ts	POST	Direct subscription update (fallback for sandbox when webhooks don't fire) route.ts
+Billing Pages (billing)
+File	Purpose
+page.tsx	Redirects to /billing/subscription page.tsx
+subscription/page.tsx	Server component — passes user's country (from Vercel IP header) to client page.tsx
+subscription/SubscriptionContent.tsx	Main billing UI — Paddle checkout, pricing display, subscription status, expired banner SubscriptionContent.tsx
+Pricing Page (pricing)
+File	Purpose
+page.tsx	Wrapper → renders PricingPage page.tsx
+PricingPage.tsx	Legacy pricing page (uses placeholder price IDs pri_01h8x...) — appears to be an older template, NOT the active billing page PricingPage.tsx
+Welcome Page (welcome)
+File	Purpose
+page.tsx	Post-checkout success page — activates subscription via _ptxn query param page.tsx
+Country Detection
+File	Purpose
+route.ts	Returns user's country from Vercel/CF headers (for Paddle tax calculation) route.ts
+Paddle Integration Flow
+Subscription Purchase Flow
+
+
+1. User visits /billing/subscription
+2. SubscriptionContent.tsx initializes Paddle (NEXT_PUBLIC_PADDLE_CLIENT_TOKEN)
+3. Fetches prices from /api/paddle/prices
+4. User clicks "Subscribe" on a plan
+5. paddle.Checkout.open() with priceId + user_id custom data
+6. User completes payment in Paddle overlay
+7. Redirects to /welcome?_ptxn={transactionId}
+8. Welcome page calls /api/paddle/activate
+9. Activate route verifies transaction with Paddle API
+10. Upserts subscription in Supabase (status: active)
+11. Updates profiles.subscription_tier
+Webhook Flow (async, parallel)
+
+
+Paddle fires webhook → /api/paddle/webhook
+  → verifyPaddleSignature (HMAC-SHA256)
+  → If subscription.canceled:
+    → Mark subscription as "cancelled"
+    → Clear profiles.subscription_tier to "free"
+    → Preserve chat history
+  → If transaction.ready/completed:
+    → Determine plan from priceId
+    → Upsert subscription (status: active)
+    → Update profiles.subscription_tier
+  → If subscription.activated/updated:
+    → Same upsert logic
+Price ID → Plan Mapping (used in webhook, activate, update-subscription)
+Price ID	Plan
+pri_01kzk7f0he4j0sjxtg0zf1k6qp	go_plus
+pri_01kzk7hac9j383j19ffs0k2jwm	pro
+pri_01kzk7k5hr9wnfs70zd4a5zde9	plus_pro
+Fallback: product name matching ("go plus" → go_plus, "+pro"/"plus pro" → plus_pro, "pro" → pro)
+
+Paddle Environment Variables
+Variable	Purpose
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN	Client-side Paddle token (sandbox: test_..., production: live_...)
+NEXT_PUBLIC_PADDLE_ENVIRONMENT	sandbox or production
+PADDLE_API_KEY	Server-side API key (sandbox: pdl_sdbx_, production: pdl_live_)
+PADDLE_WEBHOOK_SECRET	Webhook signature verification secret
+PADDLE_PORTAL_CONFIG_ID	Customer portal configuration ID
+API Base URLs (environment-dependent)
+Sandbox: https://sandbox-api.paddle.com
+Production: https://api.paddle.com
+Paddle CSP Allowlist (in layout.tsx + next.config.ts)
+CSP Directive	Allowed Paddle Domains
+script-src	https://cdn.paddle.com
+style-src	https://sandbox-cdn.paddle.com, https://cdn.paddle.com
+connect-src	https://sandbox-api.paddle.com, https://api.paddle.com, https://cdn.paddle.com
+frame-src	https://sandbox-checkout.paddle.com, https://checkout.paddle.com, https://sandbox-buy.paddle.com, https://buy.paddle.com, https://sandbox-checkout-service.paddle.com
+font-src	https://cdn.paddle.com
+Note: /billing/:path* has CSP disabled in next.config.ts (to avoid Paddle iframe conflicts).
+
+Database Tables (Paddle-related)
+Table	Schema	Purpose
+subscriptions	public	subscription_id, customer_id, user_id, status, price_id, product_id, plan, current_period_end
+customers	public	customer_id, email
+profiles	public	subscription_tier (updated on subscribe/cancel)
+Paddle Dependencies (package.json)
+Package	Purpose
+@paddle/paddle-js	Client-side Paddle SDK (checkout, price preview)
+@paddle/paddle-node-sdk	Server-side Paddle SDK (not currently used — API calls use fetch directly)
+Key Notes
+Non-renewing plans — All paid plans are 1-month, non-renewing. Users must manually repurchase.
+Dual activation paths — Both webhook (/api/paddle/webhook) and manual activation (/api/paddle/activate) update subscriptions. This provides redundancy if webhooks fail in sandbox.
+update-subscription route — Fallback for sandbox environments where webhooks may not fire reliably.
+Pricing page (/pricing) — Legacy template with placeholder price IDs. The active billing page is /billing/subscription.
+History preservation — On cancellation, chat history is preserved (no cascade delete). Users can repurchase immediately.
+Plan normalization — router-factory.ts accepts both keys (go_plus) and display names (Go Plus) for backward compatibility.
+
+
+
+1. Chat System — Complete Breakdown
+Chat Pages (chat)
+File	Lines	Purpose
+page.tsx	242	Main chat page — sidebar + chat interface, auth guard, plan detection, model state page.tsx
+layout.tsx	7	Layout wrapper — noindexMetadata("AI Chat") layout.tsx
+Chat Page Features
+Auth guard — redirects to login if not authenticated
+Plan detection — fetches user's subscription, sets allowedTiers via getAllowedTiers(plan)
+Auto model selection — defaults to "auto" (router picks best model)
+Single-tier auto-select — if plan has only 1 tier (e.g. Go Plus), auto-selects it
+Sidebar behavior — desktop: hover-to-open strip + toggle; mobile: overlay with backdrop
+Conversation management — create, select, navigate via URL (?conversation={id})
+Dive Deep toggle — lifted state shared with sidebar and chat interface
+Chat API Routes (chat)
+Route	Method	Lines	Purpose
+route.ts	POST	1796	Main chat endpoint — the core LLM orchestrator route.ts
+limit-status/route.ts	GET	165	Returns per-plan limit status (free: message counts, paid: token usage) route.ts
+search-limits/route.ts	GET	45	Returns web search + dive deep usage/limits
+usage/route.ts	GET	15	Returns raw chat_usage table data
+checkout/	—	—	Empty directory (unused)
+Main Chat Route (route.ts) — Full Flow
+The 1796-line endpoint orchestrates the entire chat experience:
+
+1. Auth & Setup (lines 233-280)
+Verifies user via Supabase
+Creates chat-schema client for limit enforcement
+Detects user timezone from headers
+Parses request body: messages, modelTier, conversationId, diveDeep, webSearch
+2. Auto-Router (lines 286-332)
+If modelTier === "auto" → calls routeModel() (Monster Router)
+Low-confidence fallback (< 0.6): uses llama-3.1-8b-instant to re-classify
+Image analysis detection → forces plus tier (Gemini vision)
+3. Plan & Limit Detection (lines 337-395)
+Fetches user's subscription → determines userPlan, isPaidUser
+Gets routerConfig via getRouterConfig(userPlan)
+Detects widget queries (weather/time/date) — short queries only
+Dive Deep activation (skips greetings)
+Auto web search decision via shouldWebSearch()
+4. Plus Pro Model Selection (lines 376-395)
+Complexity-based selection from perModelTokenLimits
+Picks plus_pro_opus, plus_pro_luna, or plus_pro_deepseek
+5. NI Tier Enforcement (lines 516-583)
+Requires active Pro or Plus Pro subscription
+analyzeTask() → routeTask() (NI Router) picks best LLM
+Brain Router checks per-LLM token limits with automatic fallback chain
+If all LLMs exhausted → returns 402 with reset times
+6. Profile & Personalization (lines 590-627)
+Fetches user profile (name, goal, custom_instructions)
+Injects profile context into prompt
+Fetches user summary (Free plan only)
+7. Cache Check (lines 624-654)
+Skips cache for: dive deep, personalized, AAI, live, widget queries
+getCachedReply() — 10-min TTL, stopword-based fingerprinting
+Cache hit → streams cached response with typing effect
+8. Widget Queries (lines 656-798)
+Weather/time/date queries bypass search
+N Pro tier: returns <!--WIDGET:WEATHER:...--> markers for rich widgets
+Other tiers: returns plain text with emojis
+9. AAI Tier (lines 730-903)
+Calls aaiRuntime.processRequest() — full autonomous agent
+Injects profile, persona notes, live data, widget instructions
+Streams response with typing effect
+10. N Live / Dive Deep (lines 1060-1227)
+performNLiveSearch() — Tavily direct or Wikipedia fallback
+Dive deep limit check (24h sliding window)
+Tavily success → stream directly in italic
+Wikipedia → pass to LLM for formatting
+No results → error message
+11. Regular Tier Processing (lines 906-1000)
+Fetches user preferences (warmth, enthusiasm, formatting, conciseness)
+Context compression: compressHistory() for free tiers, full context for paid
+Dynamic system prompt: getSystemPrompt(modelTier, userMessage) — 50-70% token savings
+Injects: image analysis context, rolling summary, profile, preferences, tone
+12. Web Search Injection (lines 1266-1380)
+Triggered by: button toggle OR auto-intent detection
+Web search limit check (24h sliding window)
+executeWebSearch() — plan-aware provider cascade
+Search results injected into system prompt
+Sources passed via x-sources response header
+13. LLM Call with Fallback Chain (lines 1380-1796)
+Iterates through tier.models (fallback chain)
+Gemini non-streaming (image analysis) — :generateContent
+Gemini streaming — :streamGenerateContent with SSE
+OpenAI-compatible streaming — Groq, Cerebras, DeepSeek, Anthropic (via mesh)
+On failure → tries next model in chain
+Post-processing: verifyAnswer() if search was used
+Token usage increment for paid tiers
+Cache storage for cacheable responses
+Response headers: x-conversation-id, x-model-used, x-search-performed, x-sources
+Response Headers
+Header	Purpose
+x-conversation-id	Conversation UUID
+x-model-used	Tier that was used
+x-search-performed	"true" if web search ran
+x-sources	URL-encoded JSON array of sources
+x-cached	"true" if cache hit
+Limit Status Route (limit-status/route.ts)
+Returns per-plan status:
+
+Plan	Response Shape
+Free	tierStatus per tier with remaining, total, exhausted, resetsAt
+Go Plus	dailyUsed/Remaining, monthlyUsed/Remaining
+Pro	Per-LLM exhaustion count + earliest reset
+Plus Pro	Per-model exhaustion count + earliest reset
+Chat Components (chat)
+File	Lines	Purpose
+ChatInterface.tsx	1764	Main chat UI — message list, input, streaming, image upload, voice, copy, edit, regenerate, feedback ChatInterface.tsx
+ChatSidebar.tsx	571	Sidebar — conversations list, search, pin/archive, delete, new chat, dive deep toggle, plan badge ChatSidebar.tsx
+ModelSelector.tsx	308	Model picker dropdown — basic + advanced models, web search toggle, subscription gating ModelSelector.tsx
+ProfileModal.tsx	~200	Profile editor — name, goal, custom instructions, usage stats ProfileModal.tsx
+SourcesPanel.tsx	~80	Sources display — animated panel with source links
+SourcesDropdown.tsx	~60	Alternative sources display — dropdown style
+MermaidDiagram.tsx	~200	Mermaid diagram renderer — zoom, copy, download, rotate
+WeatherWidget.tsx	~120	3D weather widget — gradient backgrounds, 3D icons
+Weather3DIcons.tsx	—	3D weather icon components
+WeatherIcons.tsx	—	2D weather icon components
+ClockWidget.tsx	~100	Live clock widget — timezone-aware, analog-style
+CalendarWidget.tsx	~100	Calendar widget — multi-calendar support (Gregorian, Islamic, Hebrew, Indian, Chinese, Persian)
+WebViewer.tsx	44	Weather widget (legacy/simple version)
+NetsyraLogo.tsx	—	Netsyra brand logo SVG
+ChatInterface Features
+Message rendering — ReactMarkdown + remark-gfm + syntax highlighting (Prism/vscDarkPlus)
+Streaming — SSE parsing with typing effect
+Image upload — paperclip + image icon, Gemini vision analysis
+Voice input — microphone icon (Groq Whisper transcription)
+Message actions — copy, edit, regenerate, thumbs up/down
+Widget rendering — parses <!--WIDGET:WEATHER:...-->, <!--WIDGET:CLOCK:...-->, <!--WIDGET:CALENDAR:...--> markers
+Mermaid diagrams — auto-renders mermaid code blocks
+Sources display — SourcesPanel / SourcesDropdown from x-sources header
+Model label — shows which model was used (from x-model-used header)
+Style preferences — useStylePrefs hook for response formatting
+ModelSelector Models
+Basic models:
+
+ID	Name	Icon	Description
+auto	Auto	Compass	Picks the best model
+fast	N Fast	Lightning	Instant
+plus	N Plus	Chip	Balanced
+pro	N Pro	Brain	Deep reasoning
+go_plus	N Go Plus	Chip	Enhanced AI
+Advanced models:
+
+ID	Name	Icon	Description
+code	N Code	Brackets	Expert coding
+aai	N AAI	Star	Autonomous AI
+ni	N NI	Crown	Premium model
+plus_pro	N + Pro	Diamond	Ultimate AI
+Models are filtered by allowedTiers from the user's plan. NI is locked for non-Pro users.
+
+ChatSidebar Features
+Conversation list (20 most recent, non-archived)
+Search conversations
+Pin/archive/delete conversations
+Copy conversation
+New chat button
+History button → /history
+Dive Deep toggle
+Plan badge (Free/Go Plus/Pro/+ Pro)
+Netsyra logo
+Chat Data Flow Summary
+
+
+User types message in ChatInterface
+  → POST /api/chat with { messages, modelTier, conversationId, diveDeep, webSearch }
+  → Auth check (Supabase)
+  → Plan detection (subscriptions table)
+  → Auto-router (if "auto"): Monster Router → tier selection
+  → NI Router (if "ni"): analyzeTask → routeTask → specific LLM
+  → Brain Router (Pro): per-LLM token limit check + fallback
+  → Cache check (skip for personalized/live/AAI/widget)
+  → Widget query? → weather/time/date API → stream response
+  → AAI tier? → aaiRuntime.processRequest() → stream
+  → Dive Deep? → performNLiveSearch() → stream or pass to LLM
+  → Web search? (toggle or auto-intent) → executeWebSearch() → inject results
+  → Build messages: system prompt + compressed history + profile + preferences
+  → LLM call with fallback chain (Gemini streaming / OpenAI-compatible streaming)
+  → verifyAnswer() if search was used
+  → saveMessage() to Supabase
+  → incrementTokenUsage() for paid tiers
+  → setCachedReply() if cacheable
+  → Stream SSE response with headers
+  → ChatInterface renders streaming content + widgets + 
+
+
+
+
+
+
+
+
+  
+33m
+now which other left? tell me?
+
+
+Based on what we've covered so far, let me check what folders/files are still unexplored:
+
+Command cd in /D:/netsyra
+
+cd D:\netsyra && dir /b /ad src\app
+At line:1 char:15
++ cd D:\netsyra && dir /b /ad src\app
++               ~~
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+
+Command cd in /D:/netsyra
+
+cd D:\netsyra && dir /b /ad src\components
+At line:1 char:15
++ cd D:\netsyra && dir /b /ad src\components
++               ~~
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+
+Command cd in /D:/netsyra
+
+cd D:\netsyra && dir /b /ad src\lib
+At line:1 char:15
++ cd D:\netsyra && dir /b /ad src\lib
++               ~~
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+
+Command cd in /D:/netsyra
+
+cd D:\netsyra && dir /b /ad src
+At line:1 char:15
++ cd D:\netsyra && dir /b /ad src
++               ~~
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app -Directory -Name
+(auth)
+a
+about
+admin
+api
+billing
+chat
+dashboard
+goal
+history
+ide
+legal
+pricing
+privacy
+profile
+subscription
+term
+terms
+usage
+welcome
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\components -Directory -Name
+auth
+chat
+history
+ide
+layout
+sections
+ui
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\lib -Directory -Name
+chat
+memory
+routers
+search
+supabase
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src -Directory -Name
+agents
+app
+components
+context
+hooks
+ide
+lib
+types
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\api -Directory -Name
+admin
+chat
+country
+groq
+ide
+paddle
+search
+user
+widget
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\(auth) -Recurse -Name
+auth : The term 'auth' is not recognized as the name of a cmdlet, function, script file, or operable program. Check 
+the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:41
++ Get-ChildItem -Path D:\netsyra\src\app\(auth) -Recurse -Name
++                                         ~~~~
+    + CategoryInfo          : ObjectNotFound: (auth:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\hooks -Name
+useAgentMessageLimit.ts
+useAuth.ts
+useChatUsage.ts
+useProjectIndexer.ts
+useStylePrefs.ts
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\context -Name
+AuthProvider.tsx
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\types -Name
+index.ts
+wicg-file-system-access.d.ts
+
+Here's what's still unexplored — the areas we haven't covered yet:
+
+Already Covered ✅
+Home page + sections
+Subscription/billing + Paddle
+Informational pages (about, goal, legal, privacy, terms)
+IDE system
+CV Builder
+LLM/model configuration + routing
+Web search system
+Config files (tailwind, postcss, next.config, tsconfig, eslint)
+Supabase server files + middleware
+Core lib files (auth, seo, safe-fetch, etc.)
+Still Left to Cover ❌
+app pages
+Folder	Status
+(auth)/	Login/register/forgot-password pages
+a/	Unknown — possibly agent/AAGI page
+admin/	Admin dashboard
+chat/	Main chat page (the core app!)
+dashboard/	User dashboard
+history/	Chat history page
+profile/	User profile page
+subscription/	Subscription management page
+usage/	Usage tracking page
+api routes
+Folder	Status
+admin/	Admin API routes
+chat/	Main chat API (the core endpoint!)
+user/	User management API
+widget/	Widget API (chat widget?)
+components
+Folder	Status
+auth/	Auth components
+chat/	Chat UI components (sidebar, messages, input, model selector, etc.)
+history/	History UI components
+layout/	Layout components (navbar, footer wrappers)
+ui/	Shared UI primitives
+src top-level
+Folder	Status
+agents/	AgentOrchestrator (mentioned but not detailed)
+hooks/	useAuth, useChatUsage, useAgentMessageLimit, useProjectIndexer, useStylePrefs
+context/	AuthProvider.tsx
+types/	index.ts, wicg-file-system-access.d.ts
+lib
+Folder	Status
+chat/	Partially covered (models, router, search) — but has many more subfolders: aai/ (full agent system), memory/, prompts.ts, services/
+memory/	Memory system
+The biggest gaps are:
+
+chat — the main chat page (core product)
+chat — the main chat API endpoint
+chat — all chat UI components
+aai — the full AAI (Autonomous Agent Intelligence) system
+admin — admin panel
+Auth pages + components
+Dashboard/profile/usage/history pages
+Which one do you want me to cover next? I'd suggest the chat system (chat/ page + api/chat/ + components/chat/) since it's the core product, or the AAI system if you want the deep agent architecture.
+
+
+
+
+
+
+so start them one by one
+
+
+Let me start with #1 — the Chat System (the core product).
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\chat -Recurse -Name
+layout.tsx
+page.tsx
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\api\chat -Recurse -Name
+checkout
+limit-status
+search-limits
+usage
+route.ts
+limit-status\route.ts
+search-limits\route.ts
+usage\route.ts
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\components\chat -Name
+CalendarWidget.tsx
+ChatInterface.tsx
+ChatSidebar.tsx
+ClockWidget.tsx
+MermaidDiagram.tsx
+ModelSelector.tsx
+NetsyraLogo.tsx
+ProfileModal.tsx
+SourcesDropdown.tsx
+SourcesPanel.tsx
+Weather3DIcons.tsx
+WeatherIcons.tsx
+WeatherWidget.tsx
+WebViewer.tsx
+
+The main chat route is 1796 lines. Let me read the key sections and the chat components.
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\api\chat -Recurse -Name
+checkout
+limit-status
+search-limits
+usage
+route.ts
+limit-status\route.ts
+search-limits\route.ts
+usage\route.ts
+
+Command (Get-Content in /D:/netsyra
+
+(Get-Content D:\netsyra\src\components\chat\ChatInterface.tsx | Measure-Object -Line).Lines
+1764
+
+Command (Get-Content in /D:/netsyra
+
+(Get-Content D:\netsyra\src\components\chat\ChatSidebar.tsx | Measure-Object -Line).Lines
+571
+
+Command (Get-Content in /D:/netsyra
+
+(Get-Content D:\netsyra\src\components\chat\ModelSelector.tsx | Measure-Object -Line).Lines
+308
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\app\api\chat\checkout -Name
+Now let me read the remaining critical sections of the chat route to understand the full flow:
+
+I now have a thorough understanding of the chat system. Here's the complete breakdown:
+
+1. Chat System — Complete Breakdown
+Chat Pages (chat)
+File	Lines	Purpose
+page.tsx	242	Main chat page — sidebar + chat interface, auth guard, plan detection, model state @D:\netsyra\src\app\chat\page.tsx
+layout.tsx	7	Layout wrapper — noindexMetadata("AI Chat") @D:\netsyra\src\app\chat\layout.tsx
+Chat Page Features
+Auth guard — redirects to login if not authenticated
+Plan detection — fetches user's subscription, sets allowedTiers via getAllowedTiers(plan)
+Auto model selection — defaults to "auto" (router picks best model)
+Single-tier auto-select — if plan has only 1 tier (e.g. Go Plus), auto-selects it
+Sidebar behavior — desktop: hover-to-open strip + toggle; mobile: overlay with backdrop
+Conversation management — create, select, navigate via URL (?conversation={id})
+Dive Deep toggle — lifted state shared with sidebar and chat interface
+Chat API Routes (chat)
+Route	Method	Lines	Purpose
+route.ts	POST	1796	Main chat endpoint — the core LLM orchestrator @D:\netsyra\src\app\api\chat\route.ts
+limit-status/route.ts	GET	165	Returns per-plan limit status (free: message counts, paid: token usage) @D:\netsyra\src\app\api\chat\limit-status\route.ts
+search-limits/route.ts	GET	45	Returns web search + dive deep usage/limits
+usage/route.ts	GET	15	Returns raw chat_usage table data
+checkout/	—	—	Empty directory (unused)
+Main Chat Route (route.ts) — Full Flow
+The 1796-line endpoint orchestrates the entire chat experience:
+
+1. Auth & Setup (lines 233-280)
+Verifies user via Supabase
+Creates chat-schema client for limit enforcement
+Detects user timezone from headers
+Parses request body: messages, modelTier, conversationId, diveDeep, webSearch
+2. Auto-Router (lines 286-332)
+If modelTier === "auto" → calls routeModel() (Monster Router)
+Low-confidence fallback (< 0.6): uses llama-3.1-8b-instant to re-classify
+Image analysis detection → forces plus tier (Gemini vision)
+3. Plan & Limit Detection (lines 337-395)
+Fetches user's subscription → determines userPlan, isPaidUser
+Gets routerConfig via getRouterConfig(userPlan)
+Detects widget queries (weather/time/date) — short queries only
+Dive Deep activation (skips greetings)
+Auto web search decision via shouldWebSearch()
+4. Plus Pro Model Selection (lines 376-395)
+Complexity-based selection from perModelTokenLimits
+Picks plus_pro_opus, plus_pro_luna, or plus_pro_deepseek
+5. NI Tier Enforcement (lines 516-583)
+Requires active Pro or Plus Pro subscription
+analyzeTask() → routeTask() (NI Router) picks best LLM
+Brain Router checks per-LLM token limits with automatic fallback chain
+If all LLMs exhausted → returns 402 with reset times
+6. Profile & Personalization (lines 590-627)
+Fetches user profile (name, goal, custom_instructions)
+Injects profile context into prompt
+Fetches user summary (Free plan only)
+7. Cache Check (lines 624-654)
+Skips cache for: dive deep, personalized, AAI, live, widget queries
+getCachedReply() — 10-min TTL, stopword-based fingerprinting
+Cache hit → streams cached response with typing effect
+8. Widget Queries (lines 656-798)
+Weather/time/date queries bypass search
+N Pro tier: returns <!--WIDGET:WEATHER:...--> markers for rich widgets
+Other tiers: returns plain text with emojis
+9. AAI Tier (lines 730-903)
+Calls aaiRuntime.processRequest() — full autonomous agent
+Injects profile, persona notes, live data, widget instructions
+Streams response with typing effect
+10. N Live / Dive Deep (lines 1060-1227)
+performNLiveSearch() — Tavily direct or Wikipedia fallback
+Dive deep limit check (24h sliding window)
+Tavily success → stream directly in italic
+Wikipedia → pass to LLM for formatting
+No results → error message
+11. Regular Tier Processing (lines 906-1000)
+Fetches user preferences (warmth, enthusiasm, formatting, conciseness)
+Context compression: compressHistory() for free tiers, full context for paid
+Dynamic system prompt: getSystemPrompt(modelTier, userMessage) — 50-70% token savings
+Injects: image analysis context, rolling summary, profile, preferences, tone
+12. Web Search Injection (lines 1266-1380)
+Triggered by: button toggle OR auto-intent detection
+Web search limit check (24h sliding window)
+executeWebSearch() — plan-aware provider cascade
+Search results injected into system prompt
+Sources passed via x-sources response header
+13. LLM Call with Fallback Chain (lines 1380-1796)
+Iterates through tier.models (fallback chain)
+Gemini non-streaming (image analysis) — :generateContent
+Gemini streaming — :streamGenerateContent with SSE
+OpenAI-compatible streaming — Groq, Cerebras, DeepSeek, Anthropic (via mesh)
+On failure → tries next model in chain
+Post-processing: verifyAnswer() if search was used
+Token usage increment for paid tiers
+Cache storage for cacheable responses
+Response headers: x-conversation-id, x-model-used, x-search-performed, x-sources
+Response Headers
+Header	Purpose
+x-conversation-id	Conversation UUID
+x-model-used	Tier that was used
+x-search-performed	"true" if web search ran
+x-sources	URL-encoded JSON array of sources
+x-cached	"true" if cache hit
+Limit Status Route (limit-status/route.ts)
+Returns per-plan status:
+
+Plan	Response Shape
+Free	tierStatus per tier with remaining, total, exhausted, resetsAt
+Go Plus	dailyUsed/Remaining, monthlyUsed/Remaining
+Pro	Per-LLM exhaustion count + earliest reset
+Plus Pro	Per-model exhaustion count + earliest reset
+Chat Components (chat)
+File	Lines	Purpose
+ChatInterface.tsx	1764	Main chat UI — message list, input, streaming, image upload, voice, copy, edit, regenerate, feedback @D:\netsyra\src\components\chat\ChatInterface.tsx
+ChatSidebar.tsx	571	Sidebar — conversations list, search, pin/archive, delete, new chat, dive deep toggle, plan badge @D:\netsyra\src\components\chat\ChatSidebar.tsx
+ModelSelector.tsx	308	Model picker dropdown — basic + advanced models, web search toggle, subscription gating @D:\netsyra\src\components\chat\ModelSelector.tsx
+ProfileModal.tsx	~200	Profile editor — name, goal, custom instructions, usage stats @D:\netsyra\src\components\chat\ProfileModal.tsx
+SourcesPanel.tsx	~80	Sources display — animated panel with source links
+SourcesDropdown.tsx	~60	Alternative sources display — dropdown style
+MermaidDiagram.tsx	~200	Mermaid diagram renderer — zoom, copy, download, rotate
+WeatherWidget.tsx	~120	3D weather widget — gradient backgrounds, 3D icons
+Weather3DIcons.tsx	—	3D weather icon components
+WeatherIcons.tsx	—	2D weather icon components
+ClockWidget.tsx	~100	Live clock widget — timezone-aware, analog-style
+CalendarWidget.tsx	~100	Calendar widget — multi-calendar support (Gregorian, Islamic, Hebrew, Indian, Chinese, Persian)
+WebViewer.tsx	44	Weather widget (legacy/simple version)
+NetsyraLogo.tsx	—	Netsyra brand logo SVG
+ChatInterface Features
+Message rendering — ReactMarkdown + remark-gfm + syntax highlighting (Prism/vscDarkPlus)
+Streaming — SSE parsing with typing effect
+Image upload — paperclip + image icon, Gemini vision analysis
+Voice input — microphone icon (Groq Whisper transcription)
+Message actions — copy, edit, regenerate, thumbs up/down
+Widget rendering — parses <!--WIDGET:WEATHER:...-->, <!--WIDGET:CLOCK:...-->, <!--WIDGET:CALENDAR:...--> markers
+Mermaid diagrams — auto-renders mermaid code blocks
+Sources display — SourcesPanel / SourcesDropdown from x-sources header
+Model label — shows which model was used (from x-model-used header)
+Style preferences — useStylePrefs hook for response formatting
+ModelSelector Models
+Basic models:
+
+ID	Name	Icon	Description
+auto	Auto	Compass	Picks the best model
+fast	N Fast	Lightning	Instant
+plus	N Plus	Chip	Balanced
+pro	N Pro	Brain	Deep reasoning
+go_plus	N Go Plus	Chip	Enhanced AI
+Advanced models:
+
+ID	Name	Icon	Description
+code	N Code	Brackets	Expert coding
+aai	N AAI	Star	Autonomous AI
+ni	N NI	Crown	Premium model
+plus_pro	N + Pro	Diamond	Ultimate AI
+Models are filtered by allowedTiers from the user's plan. NI is locked for non-Pro users.
+
+ChatSidebar Features
+Conversation list (20 most recent, non-archived)
+Search conversations
+Pin/archive/delete conversations
+Copy conversation
+New chat button
+History button → /history
+Dive Deep toggle
+Plan badge (Free/Go Plus/Pro/+ Pro)
+Netsyra logo
+Chat Data Flow Summary
+
+
+User types message in ChatInterface
+  → POST /api/chat with { messages, modelTier, conversationId, diveDeep, webSearch }
+  → Auth check (Supabase)
+  → Plan detection (subscriptions table)
+  → Auto-router (if "auto"): Monster Router → tier selection
+  → NI Router (if "ni"): analyzeTask → routeTask → specific LLM
+  → Brain Router (Pro): per-LLM token limit check + fallback
+  → Cache check (skip for personalized/live/AAI/widget)
+  → Widget query? → weather/time/date API → stream response
+  → AAI tier? → aaiRuntime.processRequest() → stream
+  → Dive Deep? → performNLiveSearch() → stream or pass to LLM
+  → Web search? (toggle or auto-intent) → executeWebSearch() → inject results
+  → Build messages: system prompt + compressed history + profile + preferences
+  → LLM call with fallback chain (Gemini streaming / OpenAI-compatible streaming)
+  → verifyAnswer() if search was used
+  → saveMessage() to Supabase
+  → incrementTokenUsage() for paid tiers
+  → setCachedReply() if cacheable
+  → Stream SSE response with headers
+  → ChatInterface renders streaming content + widgets + sources
+That's the complete chat system. Ready for #2 — the AAI system (aai)?
+
+
+
+
+
+
+yes
+
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\lib\chat\aai -Recurse -Name
+agents
+core
+events
+learning
+llm
+memory
+perception
+planner
+reasoning
+safety
+storage
+tools
+utils
+config.ts
+constants.ts
+index.ts
+prompt.ts
+runtime.ts
+types.ts
+agents\analyst.ts
+agents\critic.ts
+agents\designer.ts
+agents\manager.ts
+agents\memory-agent.ts
+agents\planner-agent.ts
+agents\programmer.ts
+agents\researcher.ts
+agents\teacher.ts
+core\attention.ts
+core\executive.ts
+core\goal-manager.ts
+core\learning.ts
+core\planner.ts
+core\reasoning.ts
+core\reflection.ts
+core\scheduler.ts
+core\task-manager.ts
+core\workspace.ts
+core\world-model.ts
+events\bus.ts
+events\event-types.ts
+events\listeners.ts
+learning\evolution
+learning\experience
+learning\optimization
+learning\patterns
+learning\policies
+learning\reflection
+learning\rewards
+learning\simulation
+learning\skills
+learning\engine.ts
+learning\evaluator.ts
+learning\experience.ts
+learning\index.ts
+learning\learner.ts
+learning\learning-policy.ts
+learning\learning-session.ts
+learning\learning-types.ts
+learning\manager.ts
+learning\memory-update.ts
+learning\replay.ts
+learning\rewards.ts
+learning\self-improvement.ts
+learning\skill-extraction.ts
+learning\evolution\adaptation.ts
+learning\evolution\meta-learning.ts
+learning\evolution\self-improvement.ts
+learning\evolution\strategy.ts
+learning\experience\analyzer.ts
+learning\experience\collector.ts
+learning\experience\ranking.ts
+learning\experience\recorder.ts
+learning\experience\replay.ts
+learning\optimization\execution.ts
+learning\optimization\memory.ts
+learning\optimization\planner.ts
+learning\optimization\policy.ts
+learning\optimization\prompt.ts
+learning\optimization\reasoning.ts
+learning\optimization\workflow.ts
+learning\patterns\anomaly.ts
+learning\patterns\clustering.ts
+learning\patterns\detector.ts
+learning\patterns\prediction.ts
+learning\patterns\sequence.ts
+learning\policies\memory.ts
+learning\policies\planner.ts
+learning\policies\reasoning.ts
+learning\policies\routing.ts
+learning\policies\tool-selection.ts
+learning\reflection\improvement.ts
+learning\reflection\lesson-generator.ts
+learning\reflection\mistake-analysis.ts
+learning\reflection\reflection.ts
+learning\reflection\self-review.ts
+learning\rewards\evaluator.ts
+learning\rewards\metrics.ts
+learning\rewards\penalties.ts
+learning\rewards\reward-model.ts
+learning\rewards\scorer.ts
+learning\simulation\benchmarking.ts
+learning\simulation\experiments.ts
+learning\simulation\sandbox.ts
+learning\simulation\validation.ts
+learning\skills\compiler.ts
+learning\skills\extractor.ts
+learning\skills\optimizer.ts
+learning\skills\registry.ts
+learning\skills\versioning.ts
+llm\model-selector.ts
+llm\openrouter.ts
+llm\prompt-builder.ts
+llm\providers.ts
+llm\response-parser.ts
+llm\router.ts
+llm\streaming.ts
+memory\compression
+memory\episodic
+memory\graph
+memory\long-term
+memory\procedural
+memory\project
+memory\semantic
+memory\short-term
+memory\user
+memory\vector
+memory\working
+memory\episodic.ts
+memory\graph-memory.ts
+memory\long-term.ts
+memory\memory-compression.ts
+memory\memory-factory.ts
+memory\memory-manager.ts
+memory\memory-router.ts
+memory\memory-types.ts
+memory\procedural.ts
+memory\project-memory.ts
+memory\semantic.ts
+memory\short-term.ts
+memory\skill-memory.ts
+memory\user-memory.ts
+memory\vector-memory.ts
+memory\working-memory.ts
+memory\compression\merge.ts
+memory\compression\prune.ts
+memory\compression\summarize.ts
+memory\episodic\episodic.ts
+memory\episodic\event-store.ts
+memory\episodic\timeline.ts
+memory\graph\edges.ts
+memory\graph\entities.ts
+memory\graph\graph.ts
+memory\long-term\long-memory.ts
+memory\long-term\retrieval.ts
+memory\long-term\storage.ts
+memory\procedural\procedures.ts
+memory\procedural\skills.ts
+memory\procedural\workflows.ts
+memory\project\project-context.ts
+memory\project\project-index.ts
+memory\project\project-memory.ts
+memory\semantic\concepts.ts
+memory\semantic\relations.ts
+memory\semantic\semantic.ts
+memory\short-term\conversation-buffer.ts
+memory\short-term\short-memory.ts
+memory\short-term\summarizer.ts
+memory\user\habits.ts
+memory\user\permissions.ts
+memory\user\preferences.ts
+memory\user\profile.ts
+memory\vector\embeddings.ts
+memory\vector\search.ts
+memory\vector\similarity.ts
+memory\working\attention.ts
+memory\working\working-context.ts
+memory\working\working-memory.ts
+perception\audio.ts
+perception\code.ts
+perception\document.ts
+perception\embeddings.ts
+perception\image.ts
+perception\text.ts
+planner\decomposition
+planner\execution
+planner\goals
+planner\planning
+planner\recovery
+planner\validation
+planner\backward.ts
+planner\decomposition.ts
+planner\execution-plan.ts
+planner\executor.ts
+planner\forward.ts
+planner\optimizer.ts
+planner\planner-manager.ts
+planner\planner-types.ts
+planner\planner.ts
+planner\decomposition\dependency-builder.ts
+planner\decomposition\hierarchy.ts
+planner\decomposition\splitter.ts
+planner\decomposition\task-decomposer.ts
+planner\execution\execution-plan.ts
+planner\execution\executor.ts
+planner\execution\monitor.ts
+planner\execution\retry.ts
+planner\execution\rollback.ts
+planner\execution\scheduler.ts
+planner\goals\goal-lifecycle.ts
+planner\goals\goal-manager.ts
+planner\goals\goal-priority.ts
+planner\goals\goal-validator.ts
+planner\goals\goal.ts
+planner\planning\backward.ts
+planner\planning\decision-engine.ts
+planner\planning\estimator.ts
+planner\planning\forward.ts
+planner\planning\goap-planner.ts
+planner\planning\heuristic.ts
+planner\planning\htn-planner.ts
+planner\planning\hybrid.ts
+planner\planning\meta-planner.ts
+planner\planning\optimizer.ts
+planner\planning\reflection-planner.ts
+planner\planning\template-manager.ts
+planner\planning\workflow-compiler.ts
+planner\recovery\failure-analysis.ts
+planner\recovery\fallback.ts
+planner\recovery\replanner.ts
+planner\validation\confidence.ts
+planner\validation\constraint-solver.ts
+planner\validation\feasibility.ts
+planner\validation\risk-analyzer.ts
+planner\validation\safety.ts
+planner\validation\verifier.ts
+reasoning\advanced
+reasoning\domain
+reasoning\symbolic
+reasoning\verification
+reasoning\abduction.ts
+reasoning\analogy.ts
+reasoning\causal.ts
+reasoning\confidence.ts
+reasoning\critic.ts
+reasoning\deduction.ts
+reasoning\induction.ts
+reasoning\manager.ts
+reasoning\mathematical.ts
+reasoning\pipeline.ts
+reasoning\probabilistic.ts
+reasoning\selector.ts
+reasoning\types.ts
+reasoning\verifier.ts
+reasoning\domain\programming.ts
+reasoning\symbolic\abduction.ts
+reasoning\symbolic\causal.ts
+reasoning\symbolic\commonsense.ts
+reasoning\symbolic\deduction.ts
+safety\audit.ts
+safety\hallucination.ts
+safety\permissions.ts
+safety\policy.ts
+safety\sandbox.ts
+safety\validation.ts
+storage\cache.ts
+storage\graph.ts
+storage\postgres.ts
+storage\redis.ts
+storage\vectors.ts
+tools\api.ts
+tools\browser.ts
+tools\code.ts
+tools\filesystem.ts
+tools\image.ts
+tools\python.ts
+tools\registry.ts
+tools\search.ts
+tools\supabase.ts
+tools\terminal.ts
+utils\helpers.ts
+utils\ids.ts
+utils\logger.ts
+utils\timers.ts
+utils\tokenizer.ts
+
+That's a massive system — ~160 files. Let me read the core entry points:
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\lib\chat\aai\agents -Name
+analyst.ts
+critic.ts
+designer.ts
+manager.ts
+memory-agent.ts
+planner-agent.ts
+programmer.ts
+researcher.ts
+teacher.ts
+
+Command Get-ChildItem in /D:/netsyra
+
+Get-ChildItem -Path D:\netsyra\src\lib\chat\aai -Recurse -File | Where-Object { $_.Length -gt 0 } | Select-Object -ExpandProperty FullName
+D:\netsyra\src\lib\chat\aai\config.ts
+D:\netsyra\src\lib\chat\aai\constants.ts
+D:\netsyra\src\lib\chat\aai\index.ts
+D:\netsyra\src\lib\chat\aai\prompt.ts
+D:\netsyra\src\lib\chat\aai\runtime.ts
+D:\netsyra\src\lib\chat\aai\types.ts
+D:\netsyra\src\lib\chat\aai\core\executive.ts
+D:\netsyra\src\lib\chat\aai\core\workspace.ts
+D:\netsyra\src\lib\chat\aai\learning\engine.ts
+D:\netsyra\src\lib\chat\aai\learning\index.ts
+D:\netsyra\src\lib\chat\aai\learning\learner.ts
+D:\netsyra\src\lib\chat\aai\learning\learning-policy.ts
+D:\netsyra\src\lib\chat\aai\learning\learning-session.ts
+D:\netsyra\src\lib\chat\aai\learning\learning-types.ts
+D:\netsyra\src\lib\chat\aai\learning\manager.ts
+D:\netsyra\src\lib\chat\aai\learning\evolution\adaptation.ts
+D:\netsyra\src\lib\chat\aai\learning\evolution\meta-learning.ts
+D:\netsyra\src\lib\chat\aai\learning\evolution\self-improvement.ts
+D:\netsyra\src\lib\chat\aai\learning\evolution\strategy.ts
+D:\netsyra\src\lib\chat\aai\learning\experience\analyzer.ts
+D:\netsyra\src\lib\chat\aai\learning\experience\collector.ts
+D:\netsyra\src\lib\chat\aai\learning\experience\ranking.ts
+D:\netsyra\src\lib\chat\aai\learning\experience\recorder.ts
+D:\netsyra\src\lib\chat\aai\learning\experience\replay.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\execution.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\memory.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\planner.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\policy.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\prompt.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\reasoning.ts
+D:\netsyra\src\lib\chat\aai\learning\optimization\workflow.ts
+D:\netsyra\src\lib\chat\aai\learning\patterns\anomaly.ts
+D:\netsyra\src\lib\chat\aai\learning\patterns\clustering.ts
+D:\netsyra\src\lib\chat\aai\learning\patterns\detector.ts
+D:\netsyra\src\lib\chat\aai\learning\patterns\prediction.ts
+D:\netsyra\src\lib\chat\aai\learning\patterns\sequence.ts
+D:\netsyra\src\lib\chat\aai\learning\policies\memory.ts
+D:\netsyra\src\lib\chat\aai\learning\policies\planner.ts
+D:\netsyra\src\lib\chat\aai\learning\policies\reasoning.ts
+D:\netsyra\src\lib\chat\aai\learning\policies\routing.ts
+D:\netsyra\src\lib\chat\aai\learning\policies\tool-selection.ts
+D:\netsyra\src\lib\chat\aai\learning\reflection\improvement.ts
+D:\netsyra\src\lib\chat\aai\learning\reflection\lesson-generator.ts
+D:\netsyra\src\lib\chat\aai\learning\reflection\mistake-analysis.ts
+D:\netsyra\src\lib\chat\aai\learning\reflection\reflection.ts
+D:\netsyra\src\lib\chat\aai\learning\reflection\self-review.ts
+D:\netsyra\src\lib\chat\aai\learning\rewards\evaluator.ts
+D:\netsyra\src\lib\chat\aai\learning\rewards\metrics.ts
+D:\netsyra\src\lib\chat\aai\learning\rewards\penalties.ts
+D:\netsyra\src\lib\chat\aai\learning\rewards\reward-model.ts
+D:\netsyra\src\lib\chat\aai\learning\rewards\scorer.ts
+D:\netsyra\src\lib\chat\aai\learning\simulation\benchmarking.ts
+D:\netsyra\src\lib\chat\aai\learning\simulation\experiments.ts
+D:\netsyra\src\lib\chat\aai\learning\simulation\sandbox.ts
+D:\netsyra\src\lib\chat\aai\learning\simulation\validation.ts
+D:\netsyra\src\lib\chat\aai\learning\skills\compiler.ts
+D:\netsyra\src\lib\chat\aai\learning\skills\extractor.ts
+D:\netsyra\src\lib\chat\aai\learning\skills\optimizer.ts
+D:\netsyra\src\lib\chat\aai\learning\skills\registry.ts
+D:\netsyra\src\lib\chat\aai\learning\skills\versioning.ts
+D:\netsyra\src\lib\chat\aai\llm\router.ts
+D:\netsyra\src\lib\chat\aai\memory\memory-manager.ts
+D:\netsyra\src\lib\chat\aai\memory\memory-types.ts
+D:\netsyra\src\lib\chat\aai\memory\working\working-memory.ts
+D:\netsyra\src\lib\chat\aai\planner\planner-types.ts
+D:\netsyra\src\lib\chat\aai\planner\planner.ts
+D:\netsyra\src\lib\chat\aai\planner\decomposition\dependency-builder.ts
+D:\netsyra\src\lib\chat\aai\planner\decomposition\splitter.ts
+D:\netsyra\src\lib\chat\aai\planner\decomposition\task-decomposer.ts
+D:\netsyra\src\lib\chat\aai\planner\goals\goal-lifecycle.ts
+D:\netsyra\src\lib\chat\aai\planner\goals\goal-manager.ts
+D:\netsyra\src\lib\chat\aai\planner\goals\goal-priority.ts
+D:\netsyra\src\lib\chat\aai\planner\goals\goal-validator.ts
+D:\netsyra\src\lib\chat\aai\planner\goals\goal.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\decision-engine.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\goap-planner.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\htn-planner.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\meta-planner.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\reflection-planner.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\template-manager.ts
+D:\netsyra\src\lib\chat\aai\planner\planning\workflow-compiler.ts
+D:\netsyra\src\lib\chat\aai\planner\recovery\replanner.ts
+D:\netsyra\src\lib\chat\aai\planner\validation\constraint-solver.ts
+D:\netsyra\src\lib\chat\aai\planner\validation\risk-analyzer.ts
+D:\netsyra\src\lib\chat\aai\reasoning\confidence.ts
+D:\netsyra\src\lib\chat\aai\reasoning\manager.ts
+D:\netsyra\src\lib\chat\aai\reasoning\pipeline.ts
+D:\netsyra\src\lib\chat\aai\reasoning\selector.ts
+D:\netsyra\src\lib\chat\aai\reasoning\types.ts
+D:\netsyra\src\lib\chat\aai\reasoning\domain\programming.ts
+D:\netsyra\src\lib\chat\aai\reasoning\symbolic\abduction.ts
+D:\netsyra\src\lib\chat\aai\reasoning\symbolic\causal.ts
+D:\netsyra\src\lib\chat\aai\reasoning\symbolic\commonsense.ts
+D:\netsyra\src\lib\chat\aai\reasoning\symbolic\deduction.ts
+
+Now I have the complete picture. Here's the full AAI system breakdown:
+
+2. AAI System — Autonomous Agent Intelligence
+Overview
+The AAI (Autonomous Agent Intelligence) is Netsyra's most complex subsystem — a cognitive architecture with ~160 files across 13 modules. It's designed as a multi-layer AI agent system with planning, memory, reasoning, learning, and self-improvement capabilities.
+
+Status: Partially implemented. ~90 files have content; ~70 are empty stubs (0 bytes) representing planned/scaffolded features.
+
+Entry Point
+File	Purpose
+index.ts	Main exports — 153 lines exporting all AAI components @D:\netsyra\src\lib\chat\aai\index.ts
+runtime.ts	AAIRuntime singleton — manages Executive instances per conversation @D:\netsyra\src\lib\chat\aai\runtime.ts
+types.ts	Core types — AAIRequest, AAIResponse, AAIMessage, ModelConfig, WorkspaceState, ExecutiveDecision @D:\netsyra\src\lib\chat\aai\types.ts
+config.ts	AAI_CONFIG — defaults, tier config accessor, feature flags @D:\netsyra\src\lib\chat\aai\config.ts
+constants.ts	Version, memory limits, token limits, tier names, temperature, timeout @D:\netsyra\src\lib\chat\aai\constants.ts
+prompt.ts	AAI_SYSTEM_PROMPT — 116-line reasoning protocol + formatting style guide @D:\netsyra\src\lib\chat\aai\prompt.ts
+Constants
+Version: 1.0.0
+Name: Netsyra AAI
+Max short-term memory: 100 items
+Max long-term memory: 10,000 items
+Max context tokens: 128,000
+Default max tokens: 4,096
+Default temperature: 0.7
+Default timeout: 60s
+Tiers: fast, plus, pro, live, code, aai, auto
+Architecture — 5 Layers
+Layer 1: Core (Executive Controller)
+File	Status	Purpose
+core/executive.ts	✅ 239 lines	The brain — orchestrates all AAI components @D:\netsyra\src\lib\chat\aai\core\executive.ts
+core/workspace.ts	✅ 81 lines	Conversation history + memory state manager @D:\netsyra\src\lib\chat\aai\core\workspace.ts
+core/attention.ts	❌ Empty	Planned attention mechanism
+core/goal-manager.ts	❌ Empty	Planned goal management
+core/learning.ts	❌ Empty	Planned core learning
+core/planner.ts	❌ Empty	Planned core planner
+core/reasoning.ts	❌ Empty	Planned core reasoning
+core/reflection.ts	❌ Empty	Planned reflection
+core/scheduler.ts	❌ Empty	Planned task scheduler
+core/task-manager.ts	❌ Empty	Planned task management
+core/world-model.ts	❌ Empty	Planned world model
+Executive Flow (executive.ts)
+
+
+processRequest()
+  1. Add user message to Workspace
+  2. Save to short-term memory
+  3. Planner.process() → analyze intent, create goal, generate plan
+  4. MemoryManager.retrieveRelevantContext() → get memory
+  5. ReasoningManager.reason() → analyze with reasoning engines
+  6. makeDecision() → select tier (auto-routing or specified)
+  7. Build system prompt: getSystemPrompt() + memory + reasoning steps
+  8. LLMRouter.callLLM() → call model with fallback chain
+  9. Save response to workspace + memory
+  10. extractAndSaveLongTermMemory() — regex-based fact extraction
+  11. Return AAIResponse with metadata
+Auto-Tier Selection (selectBestTier)
+"code/programming/function/debug" → code
+"live/current/today/news" → live
+"explain/detail/analysis" → pro
+Length > 100 chars → plus
+Default → fast
+Long-Term Memory Extraction
+Regex patterns detect: "my name is X", "I like Y", "I prefer Z", "I work at W" → saves as long-term memories
+
+Layer 2: LLM Integration
+File	Status	Purpose
+llm/router.ts	✅ 156 lines	LLM router with fallback chain @D:\netsyra\src\lib\chat\aai\llm\router.ts
+llm/model-selector.ts	❌ Empty	Planned model selection
+llm/openrouter.ts	❌ Empty	Planned OpenRouter integration
+llm/prompt-builder.ts	❌ Empty	Planned prompt building
+llm/providers.ts	❌ Empty	Planned provider definitions
+llm/response-parser.ts	❌ Empty	Planned response parsing
+llm/streaming.ts	❌ Empty	Planned streaming support
+LLMRouter Features
+Iterates through tierConfig.models (fallback chain)
+Supports openai provider (Groq, Cerebras) and gemini provider
+callOpenAICompatible() — standard OpenAI-format API
+callGemini() — Gemini-specific format with systemInstruction
+Returns { response, modelUsed }
+Layer 3: Planner (Cognitive Planning)
+File	Status	Purpose
+planner/planner.ts	✅ 192 lines	Main planner — intent analysis, goal creation, plan generation @D:\netsyra\src\lib\chat\aai\planner\planner.ts
+planner/planner-types.ts	✅ 349 lines	All planning types — Intent, Goal, Task, Strategy, Graph, DAG, etc. @D:\netsyra\src\lib\chat\aai\planner\planner-types.ts
+planner/goals/goal-manager.ts	✅	Goal CRUD operations
+planner/goals/goal.ts	✅	Goal factory
+planner/goals/goal-validator.ts	✅	Goal validation
+planner/goals/goal-priority.ts	✅	Priority management
+planner/goals/goal-lifecycle.ts	✅	Lifecycle management
+planner/decomposition/task-decomposer.ts	✅	Task decomposition
+planner/decomposition/splitter.ts	✅	Task splitting
+planner/decomposition/dependency-builder.ts	✅	Dependency graph builder
+planner/planning/meta-planner.ts	✅	Strategy selector
+planner/planning/decision-engine.ts	✅	Plan selection by utility
+planner/planning/workflow-compiler.ts	✅	DAG compiler
+planner/planning/htn-planner.ts	✅	HTN (Hierarchical Task Network) planner
+planner/planning/goap-planner.ts	✅	GOAP (Goal-Oriented Action Planning)
+planner/planning/reflection-planner.ts	✅	Reflection-based planning
+planner/planning/template-manager.ts	✅	Plan template management
+planner/recovery/replanner.ts	✅	Replanning on failure
+planner/validation/constraint-solver.ts	✅	Constraint satisfaction
+planner/validation/risk-analyzer.ts	✅	Risk assessment
+planner/planning/backward.ts	❌ Empty	Backward chaining
+planner/planning/forward.ts	❌ Empty	Forward chaining
+planner/planning/heuristic.ts	❌ Empty	Heuristic search
+planner/planning/hybrid.ts	❌ Empty	Hybrid planning
+planner/planning/optimizer.ts	❌ Empty	Plan optimization
+planner/planning/estimator.ts	❌ Empty	Cost estimation
+planner/recovery/failure-analysis.ts	❌ Empty	Failure analysis
+planner/recovery/fallback.ts	❌ Empty	Fallback strategies
+planner/validation/confidence.ts	❌ Empty	Confidence scoring
+planner/validation/feasibility.ts	❌ Empty	Feasibility checking
+planner/validation/safety.ts	❌ Empty	Safety validation
+planner/validation/verifier.ts	❌ Empty	Plan verification
+Intent Types
+simple_question, simple_task, build_software, debug_code, research, analysis, create_content, unknown
+
+Planning Levels
+Level	Description	Trigger
+0	Direct response	Simple questions
+1	Light planning	Research, analysis
+2	Medium planning	Debug tasks
+3	Heavy planning	Build/create tasks
+4	Very heavy	(reserved)
+Planning Strategies (20 types)
+htn, goap, forward, backward, hybrid, tree_search, graph_planning, constraint, monte_carlo, utility, risk, scenario, recursive, adaptive, experience, template, parallel, probabilistic, resource, deadline
+
+Task Types
+llm_call, tool_call, agent_task, memory_read, memory_write, plan_adjustment
+
+Task Assignment Capabilities
+llm, browser, terminal, memory, code, agent
+
+Layer 4: Memory System
+File	Status	Purpose
+memory/memory-manager.ts	✅ 199 lines	Central memory manager — retrieval pipeline @D:\netsyra\src\lib\chat\aai\memory\memory-manager.ts
+memory/memory-types.ts	✅	All memory type definitions @D:\netsyra\src\lib\chat\aai\memory\memory-types.ts
+memory/working/working-memory.ts	✅	Working memory (active context)
+memory/short-term.ts	❌ Empty	Short-term memory
+memory/long-term.ts	❌ Empty	Long-term memory
+memory/episodic.ts	❌ Empty	Episodic memory
+memory/semantic.ts	❌ Empty	Semantic memory
+memory/procedural.ts	❌ Empty	Procedural memory
+memory/user-memory.ts	❌ Empty	User memory
+memory/project-memory.ts	❌ Empty	Project memory
+memory/vector-memory.ts	❌ Empty	Vector memory
+memory/graph-memory.ts	❌ Empty	Graph memory
+memory/skill-memory.ts	❌ Empty	Skill memory
+memory/memory-compression.ts	❌ Empty	Memory compression
+memory/memory-factory.ts	❌ Empty	Memory factory
+memory/memory-router.ts	❌ Empty	Memory router
+All subdirectory files	❌ Empty	20+ stub files
+Memory Types (25 types)
+working, short-term, long-term, episodic, semantic, procedural, user, project, vector, graph, semantic-concept, semantic-relation, skill, procedure, workflow, user-preferences, user-profile, user-habit, user-permissions, project-context, project-index, vector-embedding, graph-entity, graph-edge
+
+Memory Manager Retrieval Pipeline
+
+
+retrieveRelevantContext(userMessage)
+  1. Get short-term memory (per conversation, last 50 messages)
+  2. Get long-term memory (keyword matching, per user)
+  3. Get user memory (stub — returns empty)
+  4. Get project memory (stub — returns empty)
+  5. Sort by importance
+  6. Format for LLM prompt (Recent Conversation + Known Information)
+Note: Currently uses in-memory Map stores. Comment says "will integrate with Supabase/Redis later."
+
+Layer 5: Reasoning System
+File	Status	Purpose
+reasoning/manager.ts	✅ 32 lines	Reasoning orchestrator @D:\netsyra\src\lib\chat\aai\reasoning\manager.ts
+reasoning/pipeline.ts	✅	Reasoning execution pipeline
+reasoning/selector.ts	✅	Selects reasoning types based on context
+reasoning/confidence.ts	✅	Confidence score calculation
+reasoning/types.ts	✅	22 reasoning types + context/result types @D:\netsyra\src\lib\chat\aai\reasoning\types.ts
+reasoning/symbolic/deduction.ts	✅	Deductive reasoning
+reasoning/symbolic/abduction.ts	✅	Abductive reasoning
+reasoning/symbolic/commonsense.ts	✅	Commonsense reasoning
+reasoning/symbolic/causal.ts	✅	Causal reasoning
+reasoning/domain/programming.ts	✅	Programming-specific reasoning
+reasoning/induction.ts	❌ Empty	Inductive reasoning
+reasoning/analogy.ts	❌ Empty	Analogical reasoning
+reasoning/mathematical.ts	❌ Empty	Mathematical reasoning
+reasoning/probabilistic.ts	❌ Empty	Probabilistic reasoning
+reasoning/critic.ts	❌ Empty	Self-criticism
+reasoning/verifier.ts	❌ Empty	Verification
+reasoning/advanced/*	❌ Empty	Advanced reasoning stubs
+Reasoning Types (22 types)
+deduction, induction, abduction, analogy, commonsense, causal, temporal, spatial, probabilistic, bayesian, uncertainty, mathematical, programming, scientific, legal, business, security, ethical, counterfactual, simulation, hypothesis, optimization
+
+Reasoning Flow
+
+
+ReasoningManager.reason(context)
+  1. selector.selectReasoningTypes(context) → pick relevant types
+  2. pipeline.execute(context, reasoningTypes) → run reasoning engines
+  3. confidenceEngine.calculate(result) → compute confidence scores
+  4. Return ReasoningResult with steps + confidence
+Layer 6: Learning & Self-Improvement (Phase 5)
+The most extensive subsystem — ~55 files, all with content. This is the autonomous learning layer.
+
+Subsystem	Files	Purpose
+Core	manager.ts, engine.ts, learner.ts, learning-policy.ts, learning-session.ts	Learning manager, engine, learner, policy, sessions
+Experience	recorder.ts, collector.ts, replay.ts, analyzer.ts, ranking.ts	Experience recording, collection, replay, analysis, ranking
+Reflection	reflection.ts, self-review.ts, mistake-analysis.ts, improvement.ts, lesson-generator.ts	Self-reflection, review, mistake analysis, improvement generation, lesson extraction
+Skills	extractor.ts, compiler.ts, registry.ts, optimizer.ts, versioning.ts	Skill extraction, compilation, registry, optimization, versioning
+Patterns	detector.ts, clustering.ts, sequence.ts, anomaly.ts, prediction.ts	Pattern detection, clustering, sequence analysis, anomaly detection, prediction
+Policies	routing.ts, planner.ts, reasoning.ts, memory.ts, tool-selection.ts	Learned policies for routing, planning, reasoning, memory, tool selection
+Rewards	reward-model.ts, scorer.ts, penalties.ts, evaluator.ts, metrics.ts	Reward modeling, scoring, penalties, evaluation, metrics
+Optimization	prompt.ts, workflow.ts, execution.ts, planner.ts, reasoning.ts, memory.ts, policy.ts	Prompt/workflow/execution/planner/reasoning/memory/policy optimization
+Simulation	sandbox.ts, experiments.ts, benchmarking.ts, validation.ts	Sandbox testing, A/B experiments, benchmarking, validation
+Evolution	strategy.ts, adaptation.ts, meta-learning.ts, self-improvement.ts	Strategy evolution, adaptation, meta-learning, evolution engine
+Learning Types (from learning-types.ts)
+Experience — recorded interaction with task, result, tool usage, mistakes, fixes
+Reflection — self-review with efficiency score, failures, lessons, improvements
+Lesson — extracted knowledge with conditions, applicability
+Pattern — detected pattern with conditions, confidence, frequency
+Policy — learned policy with rules, conditions, actions
+Reward / Penalty — reward/penalty breakdowns
+Optimization — optimization results
+Simulation — simulation configs, scenarios, results
+Evolution — evolution changes, validations
+LearningSession — session tracking
+LearningPolicy — policy configuration
+LearningMetrics / LearningMetricsDashboard — metrics tracking
+Other Modules (Mostly Stubs)
+Agents (agents/) — All Empty
+File	Status	Purpose
+manager.ts	❌ Empty	Agent manager
+analyst.ts	❌ Empty	Analyst agent
+critic.ts	❌ Empty	Critic agent
+designer.ts	❌ Empty	Designer agent
+memory-agent.ts	❌ Empty	Memory agent
+planner-agent.ts	❌ Empty	Planner agent
+programmer.ts	❌ Empty	Programmer agent
+researcher.ts	❌ Empty	Researcher agent
+teacher.ts	❌ Empty	Teacher agent
+Events (events/) — All Empty
+File	Status
+bus.ts	❌ Empty
+event-types.ts	❌ Empty
+listeners.ts	❌ Empty
+Perception (perception/) — All Empty
+File	Status
+audio.ts	❌ Empty
+code.ts	❌ Empty
+document.ts	❌ Empty
+embeddings.ts	❌ Empty
+image.ts	❌ Empty
+text.ts	❌ Empty
+Safety (safety/) — All Empty
+File	Status
+audit.ts	❌ Empty
+hallucination.ts	❌ Empty
+permissions.ts	❌ Empty
+policy.ts	❌ Empty
+sandbox.ts	❌ Empty
+validation.ts	❌ Empty
+Storage (storage/) — All Empty
+File	Status
+cache.ts	❌ Empty
+graph.ts	❌ Empty
+postgres.ts	❌ Empty
+redis.ts	❌ Empty
+vectors.ts	❌ Empty
+Tools (tools/) — All Empty
+File	Status
+api.ts	❌ Empty
+browser.ts	❌ Empty
+code.ts	❌ Empty
+filesystem.ts	❌ Empty
+image.ts	❌ Empty
+python.ts	❌ Empty
+registry.ts	❌ Empty
+search.ts	❌ Empty
+supabase.ts	❌ Empty
+terminal.ts	❌ Empty
+Utils (utils/) — All Empty
+File	Status
+helpers.ts	❌ Empty
+ids.ts	❌ Empty
+logger.ts	❌ Empty
+timers.ts	❌ Empty
+tokenizer.ts	❌ Empty
+AAI System Prompt (prompt.ts)
+The AAI system prompt defines:
+
+Reasoning Protocol — 7-step process (Understand → Decompose → First Principles → Multiple Perspectives → Counterfactual Check → Self-Critique → Output)
+Functional Fixedness Breaker — unconventional object uses
+Logic & Deduction — table-based constraint elimination
+Creativity & Knowledge Transfer — cross-domain idea combination
+Meta-Cognition — honest limitation acknowledgment
+Response Style — depth > breadth, structured sections, Mermaid diagrams
+Formatting Style — GPT 5.1 grade: bullets, headings, tables, bold, italics, blockquotes, code blocks, horizontal rules, links, emojis, paragraphs, response structure, adaptive length, transitions, decision tree
+Implementation Status Summary
+Module	Total Files	Implemented	Empty	Status
+Core (root)	6	6	0	✅ Complete
+Core (subdir)	11	2	9	🟡 Partial
+LLM	7	1	6	🟡 Partial
+Planner	30	17	13	🟢 Mostly done
+Memory	28	3	25	🔴 Stubs only
+Reasoning	16	10	6	🟢 Mostly done
+Learning	55	55	0	✅ Complete
+Agents	9	0	9	🔴 Stubs only
+Events	3	0	3	🔴 Stubs only
+Perception	6	0	6	🔴 Stubs only
+Safety	6	0	6	🔴 Stubs only
+Storage	5	0	5	🔴 Stubs only
+Tools	10	0	10	🔴 Stubs only
+Utils	5	0	5	🔴 Stubs only
+Total	~161	~94	~67	—
+AAI Request Flow (from Chat Route)
+
+
+Chat route (modelTier === "aai")
+  → aaiRuntime.processRequest({
+      userMessage: extendedMessage,  // includes profile, persona, live data
+      conversationHistory: history,
+      modelTier: "aai",
+      metadata: { conversationId, userId }
+    })
+  → AAIRuntime gets/creates Executive for conversation
+  → Executive.processRequest():
+    → Planner: analyzeIntent() → createGoal() → generate plan
+    → MemoryManager: retrieveRelevantContext()
+    → ReasoningManager: reason() with selected reasoning types
+    → makeDecision(): select tier (auto-routing)
+    → Build system prompt: getSystemPrompt() + memory + reasoning
+    → LLMRouter: callLLM() with fallback chain
+    → Save to workspace + memory
+    → Extract long-term memory (regex patterns)
+    → Return { response, modelUsed, tierUsed, metadata }
+  → Chat route streams response to client
+
+
+
+
+
+
+  3. Admin Panel & Authentication System
+Overview
+Netsyra uses Supabase Auth as its authentication backbone, with a custom admin panel gated by a hard-coded admin email + secondary password. The admin panel provides a 3-level drill-down (Users → Conversations → Messages) for support/monitoring.
+
+Authentication System
+Auth Provider (AuthProvider.tsx) AuthProvider.tsx
+Client-side React context that wraps the entire app:
+
+State: user, session, loading, authError
+On mount: supabase.auth.getSession() → recover existing session, then onAuthStateChange subscription for future changes
+signOut(): Calls supabase.auth.signOut() then redirects to /login
+Hook: useAuth() (useAuth.ts) — throws if used outside provider useAuth.ts
+Auth Library (auth.ts) auth.ts
+Thin wrappers around Supabase client methods:
+
+Function	Supabase Method	Redirect To
+signInWithEmail(email, password)	signInWithPassword	/dashboard
+signUpWithEmail(email, password, name)	signUp (with full_name metadata)	/ or /login
+signInWithGoogle()	signInWithOAuth({ provider: "google" })	/dashboard
+resetPassword(email)	resetPasswordForEmail	/login?password-reset=true
+updatePassword(newPassword)	updateUser({ password })	—
+Supabase Clients
+Client-side (client.ts) client.ts
+
+createClient() → public schema
+createChatClient() → chat schema
+createIdeClient() → ide schema
+Server-side (server.ts) server.ts
+
+createServerSupabaseClient() → public
+createChatServerClient() → uses public schema (chat schema exposed via wrapper views in migration 20250809_expose_chat_via_public_wrappers.sql)
+createIdeServerClient() → ide
+Middleware (middleware.ts) middleware.ts
+Runs on every request (except static assets):
+
+Refresh session via supabase.auth.getUser()
+Protected routes: /dashboard, /chat, /history, /ide, /profile, /usage, /cv-builder → redirect to /login?redirectTo=... if no user
+Admin routes: /admin* → redirect to /login if user email ≠ ADMIN_EMAIL (default: onik20102010@gmail.com)
+Auth Pages (Route Group (auth)/)
+Layout (layout.tsx) layout.tsx
+
+Full-screen black background with animated glowing orbs (AuthBackground)
+Centered AuthCard (max-w-md)
+noindexMetadata — auth pages are not indexed
+Page	Path	Component
+Login	/login	LoginForm
+Register	/register	RegisterForm
+Forgot Password	/forgot-password	ForgotPasswordForm
+Auth Components (auth)
+Component	Purpose
+AuthBackground.tsx AuthBackground.tsx	Animated purple/blue glowing orbs + subtle grid (framer-motion)
+AuthCard.tsx AuthCard.tsx	Glass-morphism card with logo, gradient title, glow effect
+LoginForm.tsx LoginForm.tsx	Email + password, Google button, toast notifications
+RegisterForm.tsx RegisterForm.tsx	Name + email + password + confirm + ToS checkbox + Google
+ForgotPasswordForm.tsx ForgotPasswordForm.tsx	Email input → sends reset link → success state
+PasswordInput.tsx PasswordInput.tsx	Reusable password input with show/hide toggle (Eye icon)
+GoogleButton.tsx GoogleButton.tsx	Google OAuth button with 4-color Google logo SVG
+Admin Panel
+Frontend (page.tsx) page.tsx
+A single 612-line client component with three layers of access control:
+
+Access Control (3 gates)
+Middleware gate: /admin route checks user.email === ADMIN_EMAIL — non-admins redirected to /login
+Client-side gate: useEffect redirects non-admin users to /dashboard
+Password gate: Even after email verification, requires secondary ADMIN_PASS password entered on the page
+State Management
+
+
+authenticated (bool)     → passed password gate
+stats (AdminStats)       → aggregate metrics
+users (AdminUser[])      → all users list
+selectedUser             → drill-down: user being inspected
+conversations            → drill-down: selected user's conversations
+selectedConversation     → drill-down: conversation being inspected
+messages                 → drill-down: messages in selected conversation
+Data Types
+
+
+typescript
+AdminUser:     { id, email, name, plan, subscriptionStatus, messagesToday, totalConversations, isActiveNow, joined, lastActive }
+AdminStats:    { totalUsers, activeToday, activeNow, paidUsers, freeUsers, totalMessages, messagesToday, planDistribution }
+AdminConversation: { id, title, created_at, messageCount }
+AdminMessage:  { id, role, content, created_at }
+UI — 3 Views (drill-down navigation with breadcrumbs)
+View 1: Dashboard Overview
+
+4 primary stat cards: Total Users, Active Today, Active Now, Paid Users
+4 secondary stats: Messages Today, Total Messages, Free Users, Plan Distribution
+Users table (desktop) / cards (mobile) with: User, Plan, Messages Today, Conversations, Status (active indicator), Joined date
+Click user row → View 2
+View 2: User Conversations
+
+Shows all conversations for selected user
+Each conversation shows: title, created date, message count
+Click conversation → View 3
+View 3: Conversation Messages
+
+Shows all messages in selected conversation
+Each message shows: role (user/assistant), content, timestamp
+Full conversation inspection for support/debugging
+Plan Display
+Plan	Color	Label
+free	white/50	Free
+go_plus	blue-400	Go Plus
+pro	purple-400	Pro
+plus_pro	amber-400	+ Pro
+StatCard Component
+Inline component with color variants: blue, green, amber, purple, gray — each with matching icon background and text color.
+
+Admin API Routes (admin)
+1. POST /api/admin/stats route.ts
+Purpose: Returns all users + aggregate stats. Also serves as the password verification endpoint.
+
+Auth flow:
+
+supabase.auth.getUser() → must be logged in
+user.email !== ADMIN_EMAIL → 401 Unauthorized
+password !== ADMIN_PASS → 403 Forbidden
+Data aggregation (7 queries):
+
+auth.admin.listUsers() → all auth users (with emails) — requires SERVICE_ROLE_KEY
+profiles table → all profiles
+subscriptions table → all subscriptions (plan, status)
+conversations table → all conversations
+messages (today) → messages since midnight
+messages (last 5 min) → active now detection
+messages (count) → total messages
+Fallback: If no SERVICE_ROLE_KEY, builds user list from profiles only (emails hidden as "(hidden)")
+
+Returns:
+
+
+
+json
+{
+  "users": [{ id, email, name, plan, subscriptionStatus, messagesToday, totalConversations, isActiveNow, joined, lastActive }],
+  "stats": { totalUsers, activeToday, activeNow, paidUsers, freeUsers, totalMessages, messagesToday, planDistribution }
+}
+2. GET /api/admin/user-data?userId=xxx[&conversationId=yyy] route.ts
+Purpose: Drill-down data for user inspection.
+
+Auth: Same 3-gate (email check + x-admin-pass header)
+
+Two modes:
+
+?userId=xxx → Returns user's conversations with message counts
+?userId=xxx&conversationId=yyy → Returns all messages in that conversation + conversation metadata
+3. GET /api/admin/usage route.ts
+Purpose: Lightweight usage endpoint (informational only — text LLM limits were removed).
+
+Returns: { totalMessagesToday: number }
+
+Security Notes
+Aspect	Implementation
+Admin email	Env var ADMIN_EMAIL (default: onik20102010@gmail.com) — hard-coded fallback
+Admin password	Env var ADMIN_PASS — secondary gate beyond Supabase auth
+Service role	Env var SUPABASE_SERVICE_ROLE_KEY — bypasses RLS for full data access; falls back to user session (RLS-limited) if not set
+RLS bypass	Admin routes use createClient(SUPABASE_URL, SERVICE_ROLE_KEY) to read all users/conversations/messages
+Route protection	Middleware + client-side + API-level (triple check)
+Session refresh	Middleware calls getUser() on every request to refresh JWT
+Auth Flow Diagram
+
+
+User visits /login
+  → LoginForm.submit()
+    → signInWithEmail(email, password)
+      → supabase.auth.signInWithPassword()
+    → Success → router.push("/dashboard")
+ 
+User visits /register
+  → RegisterForm.submit()
+    → signUpWithEmail(email, password, name)
+      → supabase.auth.signUp({ data: { full_name } })
+    → If session → router.push("/")
+    → If no session (email confirmation) → toast + redirect to /login after 2s
+ 
+Google OAuth
+  → signInWithGoogle()
+    → supabase.auth.signInWithOAuth({ provider: "google" })
+    → Redirect to Google → back to /dashboard
+ 
+Middleware (every request)
+  → supabase.auth.getUser() (refresh session)
+  → If protected route && !user → redirect /login
+  → If /admin && email ≠ ADMIN_EMAIL → redirect /login
+ 
+Admin access
+  → User logged in as ADMIN_EMAIL
+  → Visit /admin → password gate
+  → Enter ADMIN_PASS → POST /api/admin/stats
+  → Verified → dashboard with user list
+  → Click user → GET /api/admin/user-data?userId=xxx
+  → Click conversation → GET /api/admin/user-data?userId=xxx&conversationId=yyy
+  → View messages → full conversation inspection for support/debugging
+
+
+
+
+  4. IDE Feature — AI-Native Web IDE (/ide)
+Overview
+Netsyra IDE is a browser-based, AI-native code editor that runs entirely in the browser using the File System Access API. It features a VS Code-like layout, an AI coding agent (AgentOrchestrator), a real terminal via a local WebSocket bridge, and a client-side code intelligence engine (IndexedDB + symbol graph). All file operations happen on the user's own machine — the Netsyra server never touches user code.
+
+Security Model: Server-side execution is DISABLED. All 4 IDE API routes return 503. Terminal, build, lint, typecheck, and debug tasks run on the user's own machine via a local WebSocket bridge (netsyra-bridge.js on localhost:19823).
+
+IDE Page (ide)
+File	Purpose
+page.tsx	Server component — renders TitleBar + IdeShell, SEO metadata @D:\netsyra\src\app\ide\page.tsx
+IDE Components (components/ide) — 20 files
+Component	Purpose
+TitleBar.tsx	Top menu bar (File, Edit, Selection, View, Go, Run, Terminal, Help)
+MenuBar.tsx	Dropdown menus for TitleBar
+ActivityBar.tsx	Left-most icon strip (Explorer, Search, Extensions, Settings, AI Chat)
+Sidebar.tsx	Left panel container — switches between views
+Explorer.tsx	File tree explorer — create/rename/delete files & folders
+SearchPanel.tsx	Global search across workspace files
+SettingsPanel.tsx	Editor settings (font, tab size, minimap, word wrap, auto-save)
+EditorArea.tsx	Monaco editor with tabs
+SplitEditor.tsx	Split editor view (side-by-side files)
+TabBar.tsx	Editor tabs (open files, dirty indicators)
+BottomPanel.tsx	Bottom panel container — switches between views
+TerminalPanel.tsx	Terminal panel wrapper
+RealTerminal.tsx	xterm.js terminal — connects to local WebSocket bridge
+OutputPanel.tsx	Build/typecheck/lint/dev server output channels
+ProblemsPanel.tsx	Diagnostics panel (errors, warnings, info)
+DebugPanel.tsx	Debug panel — breakpoints, call stack, variables, watch
+StatusBar.tsx	Bottom status bar (branch, errors/warnings, language, cursor position)
+CommandPalette.tsx	Ctrl+Shift+P command palette
+AIChatPanel.tsx	Right panel — AI coding agent chat (Windsurf-style)
+IdeShell.tsx	Main layout — resizable panels, keyboard shortcuts, mobile detection
+
+IdeShell Layout
+┌─────────────────────────────────────────────────────────┐
+│ TitleBar (File Edit View Run Terminal Help)             │
+├──┬────────────┬──────────────────────┬──────────────────┤
+│A │            │                      │                  │
+│c │  Sidebar   │   EditorArea         │   AIChatPanel    │
+│t │  (Explorer/│   (Monaco + Tabs)    │   (Agent Chat)   │
+│i │  Search/   │   + SplitEditor      │                  │
+│v │  Settings) │                      │                  │
+│t │            │                      │                  │
+│B │            │                      │                  │
+│a │            │                      │                  │
+│r │            │                      │                  │
+├──┴────────────┴──────────────────────┴──────────────────┤
+│ BottomPanel (Terminal / Output / Problems / Debug)      │
+├─────────────────────────────────────────────────────────┤
+│ StatusBar (branch, errors, language, cursor)            │
+└─────────────────────────────────────────────────────────┘
+
+Resizable Panels
+Sidebar: 180-500px (default 280px)
+Right panel (AI Chat): 280-700px (default 420px)
+Drag handles with col-resize cursor
+Mobile (< 768px): sidebar closed by default, right panel hidden
+
+Keyboard Shortcuts
+Ctrl+` → Toggle terminal panel
+Ctrl+Shift+P → Command palette
+
+IDE Core Library (ide/) — 16 files
+File	Purpose
+index.ts	Barrel export — re-exports all IDE modules @D:\netsyra\src\ide\index.ts
+types.ts	Core types — FileItem, OpenFile, EditorConfig, Workspace, SidebarView, BottomPanelView, Problem @D:\netsyra\src\ide\types.ts
+store.ts	Zustand store with persist middleware — workspace, open files, tabs, layout, problems @D:\netsyra\src\ide\store.ts
+workspace.ts	File System Access API — open/save/create/rename/delete files on disk @D:\netsyra\src\ide\workspace.ts
+db.ts	Dexie (IndexedDB) — files, symbols, imports, relations, metadata tables @D:\netsyra\src\ide\db.ts
+agent.ts	Agent helpers — readFileLines, readFunction, readImports, findFileByPath, searchFiles, getActiveFileContext, getWorkspaceStructure @D:\netsyra\src\ide\agent.ts
+graph-query.ts	Symbol graph query engine — getSymbolContext, getDependentsOfFile, getDependenciesOfFile, searchSymbols, getCallGraph @D:\netsyra\src\ide\graph-query.ts
+search.ts	Code search engine — workspace-wide keyword search
+grok-api.ts	Grok API integration (legacy/unused)
+debug-store.ts	Zustand store — debug session state (breakpoints, call stack, variables, watch, console) @D:\netsyra\src\ide\debug-store.ts
+output-store.ts	Zustand store — output channels (build, typecheck, lint, dev) with line history @D:\netsyra\src\ide\output-store.ts
+theme.ts	Theme system
+theme-constants.ts	Theme constants
+editor-config.ts	Editor configuration helpers
+file-utils.ts	File utility functions (getLanguageFromPath)
+agent-system-prompt.md	Agent system prompt (markdown) @D:\netsyra\src\ide\agent-system-prompt.md
+
+State Management (store.ts)
+Zustand store with persist middleware (localStorage key: "netsyra-ide-storage"):
+
+State:
+- workspace: Workspace | null
+- openFiles: OpenFile[] (open tabs)
+- activeFileId: string | null
+- splitEditorFileId: string | null (split view)
+- sidebarView: 'explorer' | 'search' | 'extensions' | 'settings' | 'ai-chat'
+- isSidebarOpen, isBottomPanelOpen, isRightPanelOpen
+- bottomPanelView: 'terminal' | 'output' | 'problems' | 'debug'
+- editorConfig: EditorConfig (font, tab size, minimap, etc.)
+- problems: Record<fileId, Problem[]>
+
+Actions:
+- Workspace: openWorkspace, closeWorkspace, setLoading
+- File Tree: createFile, renameItem, deleteItem, updateFileContent
+- Tabs: openFile, closeFile, setActiveTab, setFileContent, saveFile, saveAllFiles
+- Layout: toggleSidebar, toggleBottomPanel, toggleRightPanel, setSidebarView, setBottomPanelView
+- Split: splitEditor, closeSplitEditor, setSplitOrientation
+- Problems: setProblems, mergeProblems, clearProblems
+
+Persistence: Only openFiles (without dirty state), activeFileId, sidebarView, isSidebarOpen are persisted.
+
+File System Access API (workspace.ts)
+Uses browser's File System Access API (showDirectoryPicker) — requires Chromium-based browser (Chrome/Edge) over HTTPS or localhost.
+
+Functions:
+- openWorkspaceFromDisk() → showDirectoryPicker() → recursively reads directory → loads into store
+- saveFileToDisk(path, content) → writes to real file via cached FileSystemFileHandle
+- createFileOnDisk(parentPath, name, content) → creates new file on disk
+- createDirectoryOnDisk(parentPath, dirName) → creates new directory
+- renameItemOnDisk(oldPath, newName) → renames file/directory on disk
+- deleteItemOnDisk(path) → deletes file/directory
+- getFileContentFromDisk(path) → re-reads file from disk
+
+File handle cache: Map<path, FileSystemFileHandle> — cached during workspace open for fast save operations.
+Root directory handle: stored in rootDirectoryHandle variable.
+
+IndexedDB Database (db.ts)
+Dexie database (NetsyraDB) — per-user isolation (dbName = userId or 'local'):
+
+Table	Indexes	Purpose
+files	id, path, hash, lastModified	File content cache with hash for incremental indexing
+symbols	++, name, kind, filePath	Symbol definitions (functions, classes, variables)
+imports	++, filePath	Import declarations per file
+metadata	id	Indexing metadata (lastIndexed, fileCount)
+relations	++, symbolName, callerFilePath, calleeFilePath, calleeSymbolName	Call graph — who calls whom
+
+Schema versions:
+v1: Initial (files, symbols, imports, embeddings, metadata)
+v2: Added relations table
+v3: Removed embeddings table (no longer used)
+
+Symbol Graph Query Engine (graph-query.ts)
+Client-side code intelligence — queries IndexedDB for symbol relationships:
+
+Function	Returns
+getSymbolContext(db, symbolName)	Definition + all callers + all dependents + related files
+getDependentsOfFile(db, filePath)	Files that import the given file
+getDependenciesOfFile(db, filePath)	Files that the given file imports
+searchSymbols(db, query, limit)	Fuzzy symbol name search
+getCallGraph(db, filePath, depth)	Call graph traversal (BFS up to N depth)
+
+Project Indexer (useProjectIndexer hook)
+Runs on workspace change:
+1. Flatten workspace file tree
+2. Filter to indexable files (.ts, .tsx, .js, .jsx, .mjs)
+3. Compute SHA-256 hash of each file
+4. Compare with IndexedDB — only re-index changed files (incremental)
+5. Detect deleted files (in DB but not in workspace) → clean up DB
+6. Send new/changed files to AST worker (public/ast.worker.js) for parsing
+7. Store symbols, imports, and relations in IndexedDB
+
+Agent Message Limits (useAgentMessageLimit hook)
+- Calls Supabase RPC: get_agent_message_limit_status(p_user_id, p_limit=3, p_window_hours=24)
+- Returns: { messagesSent, remaining, windowStart, windowEnd, resetInSeconds }
+- Limit: 3 agent messages per 24 hours (sliding window)
+
+AI Coding Agent (AgentOrchestrator.ts) @D:\netsyra\src\agents\AgentOrchestrator.ts
+A mini-agent embedded in the IDE — NOT a full autonomous developer. Limited tool set for safety.
+
+Agent Identity:
+- Expert software engineer (React, Next.js, TypeScript, Node.js)
+- Context-aware: receives workspace structure, active file, dragged files
+- Plan-first approach: analyzes before suggesting changes
+- Incremental guidance: step-by-step, never full implementations
+
+Tools (8 available):
+Tool	Purpose	Args
+read_file	Read file content	{ path, startLine?, endLine? }
+edit_file	Edit file (search-and-replace preferred)	{ path, searchMatch, replaceWith } OR { path, startLine, endLine, newText }
+create_file	Create new file	{ path, content }
+search_code	Search across all workspace files	{ query }
+list_files	List open files + workspace structure	{}
+get_problems	Get IDE diagnostics	{ severity?: "error"|"warning"|"info" }
+batch_edit	Multiple edits to same file	{ path, edits: [{ searchMatch, replaceWith }] }
+answer	Respond to user with text	{ content }
+
+Agent Execution Flow:
+1. User sends message (with optional @file mentions or dragged files)
+2. Planning phase: LLM generates a plan (3-8 steps)
+3. Tool loop (max 20 rounds):
+   a. LLM responds with <tool> JSON tags
+   b. Orchestrator parses tool calls
+   c. Executes tools (read/edit/create/search)
+   d. Returns results to LLM
+   e. Repeat until "answer" tool or limit reached
+4. Edits queued as PendingEdit (not applied immediately)
+5. User reviews pending edits → Accept / Reject / Undo
+6. Accepted edits applied to workspace + saved to disk
+
+Constants:
+- MAX_TOOL_ROUNDS = 20
+- MAX_CONTEXT_CHARS = 60,000 (trims conversation history)
+- TOOL_RETRY_LIMIT = 2
+
+Agent Models (AIChatPanel.tsx):
+Model ID	Label	Description
+auto	Auto	Balanced — best all-rounder
+fast	Fast	Quick responses for simple tasks
+pro	Pro	Most capable for complex reasoning
+code	Code	Optimized for code generation
+
+All models route through /api/groq/agent using GROQ_API_KEY_2.
+
+Agent System Prompt (agent-system-prompt.md):
+- Context-aware analysis (workspace, active file, dragged files)
+- Symptom validation (check if request matches dragged files)
+- Plan-first approach (analyze before suggesting)
+- Incremental guidance (step-by-step, no full implementations)
+- Read only necessary sections (specific lines, functions)
+- Code generation policy: guidance, not full implementations
+
+IDE API Routes (api/ide/) — ALL DISABLED
+Route	Method	Status	Purpose (original)
+terminal/route.ts	POST/GET/DELETE	503	Was: shell command execution. Now: "Server-side terminal is disabled. Use the local bridge."
+run-task/route.ts	POST/DELETE	503	Was: build/lint/typecheck tasks. Now: "Server-side task execution is disabled."
+git/route.ts	GET	200 (empty)	Was: git status. Now: returns { branch: null, hasGit: false }.
+debug/route.ts	POST/GET	503	Was: debug session management. Now: "Server-side debugging is disabled."
+
+All routes have comments: "SECURITY: This route no longer spawns processes on the server. [Task] happens on the user's own machine via the local bridge."
+
+Groq API Routes (api/groq/) — IDE-specific
+Route	Model	API Key	Purpose
+chat/route.ts	llama-3.3-70b-versatile	GROQ_API_KEY_2	IDE AI chat (direct, non-agent)
+agent/route.ts	Groq models	GROQ_API_KEY_2	Agent tasks (tool use loop)
+image-process/route.ts	Groq vision	GROQ_API_KEY	Image analysis
+transcribe/route.ts	Groq Whisper	GROQ_API_KEY	Audio transcription
+
+Agent route config:
+- GROQ_API_URL: https://api.groq.com/openai/v1/chat/completions
+- TIMEOUT_MS: 30,000 (30s)
+- MAX_CONTENT_LENGTH: 12,000 chars
+- MAX_RETRIES: 3
+- RETRY_BASE_DELAY: 2,000ms (exponential backoff)
+
+Local WebSocket Bridge (netsyra-bridge.js) @D:\netsyra\public\netsyra-bridge.js
+A Node.js script the user runs on their OWN machine to enable the real terminal.
+
+How it works:
+1. User runs: node netsyra-bridge.js (or node netsyra-bridge.js --https for WSS)
+2. Starts WebSocket server on localhost:19823
+3. IDE's RealTerminal.tsx connects to ws://localhost:19823 (or wss:// for HTTPS)
+4. Terminal commands sent via WebSocket → executed on user's machine → output streamed back
+
+Security:
+- Only listens on 127.0.0.1 (localhost) — NOT accessible from internet
+- No commands run on any remote server
+- User has full control — kill process anytime to disconnect
+- Self-signed certificate auto-generated for WSS (using selfsigned npm package)
+
+Prerequisites: npm install ws selfsigned
+
+IDE Database Schema (Supabase — ide schema)
+Created by migration: 20250713_000002_create_ide_schema.sql
+
+Table	Purpose	Key Columns
+ide.ide_token_usage	Token tracking per user	user_id, tokens_used, requests_count, reset_at
+ide.ide_files	File content cache	user_id, path, content, updated_at
+ide.ide_file_chunks	File chunks with embeddings	user_id, path, content, embedding (vector 768), chunk_index
+ide.project_memory	Project-specific memory	user_id, project_id, memory (jsonb)
+ide.user_folder_structure	Folder structure cache	user_id, structure
+
+RPC Functions:
+- ide.ide_increment_token_usage(p_user_id, p_tokens, p_limit=100000) → boolean (atomic increment with limit check)
+- ide.reset_daily_tokens() → void (resets tokens older than 24h)
+
+RLS: All tables have row-level security — users can only access their own data.
+
+Agent Message Limits (Supabase)
+Table: ide.ide_agent_message_limits (created by migration 20250804_create_ide_agent_message_limits.sql)
+RPC: get_agent_message_limit_status(p_user_id, p_limit, p_window_hours)
+Limit: 3 messages per 24 hours (sliding window)
+
+IDE Flow Summary
+
+User opens /ide
+  → TitleBar + IdeShell rendered
+  → ActivityBar shows icons (Explorer, Search, Settings, AI Chat)
+  → Sidebar shows file explorer (empty — no workspace)
+
+User clicks "Open Folder"
+  → openWorkspaceFromDisk() → showDirectoryPicker()
+  → User selects folder → recursively read all files
+  → File handles cached for save operations
+  → Workspace loaded into Zustand store
+  → useProjectIndexer runs:
+    → Flattens file tree
+    → Hashes each file (SHA-256)
+    → Incremental: only re-indexes changed files
+    → AST worker parses files → extracts symbols, imports, relations
+    → Stores in IndexedDB (Dexie)
+
+User opens a file
+  → Click file in Explorer → openFile(fileId) → new tab in EditorArea
+  → Monaco editor renders with syntax highlighting
+  → Language detected from file extension
+
+User edits a file
+  → Monaco onChange → setFileContent (marks dirty)
+  → Ctrl+S → saveFile → saveFileToDisk (writes to real file via File System Access API)
+
+User uses AI Agent
+  → Opens AIChatPanel (right panel)
+  → Types request or drags files into chat
+  → AgentOrchestrator.processMessage():
+    → Planning phase: LLM generates step-by-step plan
+    → Tool loop (max 20 rounds):
+      → LLM responds with <tool> tags
+      → Orchestrator parses + executes tools
+      → read_file, search_code, edit_file, create_file, etc.
+      → Results returned to LLM
+    → Edits queued as PendingEdit
+    → User reviews → Accept/Reject
+    → Accepted edits applied to workspace + disk
+  → Agent message limit checked (3/24h via Supabase RPC)
+
+User opens terminal
+  → Bottom panel → Terminal tab
+  → RealTerminal connects to ws://localhost:19823
+  → If bridge not running → shows "connection failed" message
+  → If bridge running → xterm.js terminal with full shell access
+  → Commands execute on USER'S machine, not server
+
+User runs build/lint/typecheck
+  → Commands sent to local bridge via WebSocket
+  → Output streamed back to OutputPanel
+  → Results displayed in output channels (build, typecheck, lint, dev)
+
+User views problems
+  → ProblemsPanel shows diagnostics from Monaco + AST worker
+  → mergeProblems() merges from multiple sources
+  → Click problem → jumps to file/line in editor
+
+Browser Requirements
+- Chromium-based browser (Chrome, Edge) — required for File System Access API
+- HTTPS or localhost — required for File System Access API permissions
+- WebSocket support — for local terminal bridge
+- IndexedDB — for client-side code intelligence

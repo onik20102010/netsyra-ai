@@ -56,12 +56,12 @@ export default function HeroSection() {
           <div className="space-y-6 sm:space-y-10">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
               <span className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-transparent">
-                NetsyraAI is the Advanced AI in this Era
+                Netsyra AI — The Advanced AI Assistant
               </span>
             </h1>
 
             <p className="text-base sm:text-lg text-white/50 leading-relaxed max-w-lg">
-              Feature extraction, weighted signal scoring, and hard overrides for user preferences. Netsyra routes every prompt to the optimal model tier.
+              Netsyra AI (NetsyraAI) is an intelligent AI orchestration platform that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and autonomous intelligence — all in one AI assistant at netsyraai.com.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
