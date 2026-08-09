@@ -6,7 +6,6 @@ import {
   MessageSquarePlus,
   History,
   BrainCircuit,
-  MessageSquare,
   Search,
   Pin,
   Archive,
@@ -533,7 +532,6 @@ function ConversationItem({
           : "text-gray-500 hover:text-gray-900"
       }`}
     >
-      <MessageSquare className="w-4 h-4 flex-shrink-0" />
       <span className="truncate flex-1">{conv.title}</span>
 
       {/* Ellipsis button — always visible on active, hover on others (always visible on touch/mobile) */}

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createChatClient } from "@/lib/supabase/client";
 import {
-  MessageSquare,
   Trash2,
   Edit3,
   Check,
@@ -31,7 +30,7 @@ type Conversation = {
 const NAV_ITEMS = [
   { label: "Home", href: "/", icon: Home },
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Recent Chats", href: "/history", icon: MessageSquare, active: true },
+  { label: "Recent Chats", href: "/history", icon: Clock, active: true },
   { label: "CV Builder", href: "https://netsyraai.com/cv-builder/index.html", icon: FileText, external: true },
   { label: "IDE", href: "/ide", icon: Code2 },
 ];
@@ -266,7 +265,7 @@ export default function HistoryPage() {
 
           {conversations.length === 0 ? (
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
-              <MessageSquare
+              <Clock
                 className="w-12 h-12 mx-auto mb-4 text-gray-500"
               />
               <p className="text-gray-400">
@@ -284,7 +283,7 @@ export default function HistoryPage() {
               {heroConv && (
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-all duration-300 hover:border-white/20">
                   <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-white/5 border border-white/10">
-                    <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                   </div>
 
                   <Link
@@ -405,7 +404,6 @@ export default function HistoryPage() {
                               href={`/chat?conversation=${conv.id}`}
                               className="flex items-center gap-2.5 flex-1 min-w-0"
                             >
-                              <MessageSquare className="w-4 h-4 flex-shrink-0 text-gray-500" />
                               <p className="text-[1rem] font-medium truncate text-white">
                                 {conv.title}
                               </p>
