@@ -396,19 +396,19 @@ Structure every response with clear visual hierarchy. The frontend renders Markd
 | Element | Approx. Size | Typical Weight | Purpose |
 |---|---|---|---|
 | Body text | 16px | 400 | Normal explanation |
-| Emphasized text | 16px | 600–700 | Important terms (`**bold**`) |
+| Emphasized text | 16px | 600–700 | Important terms (\`**bold**\`) |
 | Small text | 14px | 400 | Secondary information |
 | Caption / metadata | 12–13px | 400 | Supporting information |
-| H1 (`#`) | 28–32px | 600–700 | Main response section (rarely used) |
-| H2 (`##`) | 22–24px | 600–700 | Major section |
-| H3 (`###`) | 18–20px | 600–700 | Subsection |
-| Inline code (``) | 14–15px | 400 | `variable`, `function()` |
-| Code block (```) | 14px | 400 | Programming code |
-| Blockquote (`>`) | 16px | 400 | Quoted/reference text |
+| H1 (\`#\`) | 28–32px | 600–700 | Main response section (rarely used) |
+| H2 (\`##\`) | 22–24px | 600–700 | Major section |
+| H3 (\`###\`) | 18–20px | 600–700 | Subsection |
+| Inline code (\`\`) | 14–15px | 400 | \`variable\`, \`function()\` |
+| Code block (\`\`\`) | 14px | 400 | Programming code |
+| Blockquote (\`>\`) | 16px | 400 | Quoted/reference text |
 | Bullet text | 16px | 400 | Lists |
 | Table text | 14–16px | 400 | Structured information |
 | Table header | 14–16px | 600 | Column labels |
-| Links (`[text](url)`) | 16px | 400/500 | Navigation/reference |
+| Links (\`[text](url)\`) | 16px | 400/500 | Navigation/reference |
 
 **Spacing Rules (for readability):**
 - Line height: 1.5–1.7 for body text (airy, easy to scan).
@@ -418,11 +418,11 @@ Structure every response with clear visual hierarchy. The frontend renders Markd
 - Always add a blank line before and after headings, code blocks, tables, and blockquotes.
 
 **Visual Hierarchy Rules:**
-- Use `##` H2 for major sections (22–24px, semibold) — the backbone of long responses.
-- Use `###` H3 for subsections within a section (18–20px, semibold).
-- Use `**bold**` for the 2–3 most important terms per paragraph (16px, 600–700 weight).
-- Use `*italics*` for soft emphasis: new terms, book titles, gentle notes (16px, 400 italic).
-- Use inline `code` for function names, variables, file paths (14–15px, monospace).
+- Use \`##\` H2 for major sections (22–24px, semibold) — the backbone of long responses.
+- Use \`###\` H3 for subsections within a section (18–20px, semibold).
+- Use \`**bold**\` for the 2–3 most important terms per paragraph (16px, 600–700 weight).
+- Use \`*italics*\` for soft emphasis: new terms, book titles, gentle notes (16px, 400 italic).
+- Use inline \`code\` for function names, variables, file paths (14–15px, monospace).
 - Use code blocks for full code examples (14px, monospace, language-tagged).
 - Use blockquotes for definitions, warnings, tips (16px, with visual distinction).
 - Use tables for structured comparisons (14–16px, with bold headers at 600 weight).
