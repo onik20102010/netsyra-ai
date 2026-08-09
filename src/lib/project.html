@@ -3223,6 +3223,8 @@ Admin access
 
 
 
+
+
   4. IDE Feature — AI-Native Web IDE (/ide)
 Overview
 Netsyra IDE is a browser-based, AI-native code editor that runs entirely in the browser using the File System Access API. It features a VS Code-like layout, an AI coding agent (AgentOrchestrator), a real terminal via a local WebSocket bridge, and a client-side code intelligence engine (IndexedDB + symbol graph). All file operations happen on the user's own machine — the Netsyra server never touches user code.
@@ -3563,3 +3565,64 @@ Browser Requirements
 - HTTPS or localhost — required for File System Access API permissions
 - WebSocket support — for local terminal bridge
 - IndexedDB — for client-side code intelligence
+
+
+
+
+
+Here are all the packages installed in the Netsyra project:
+
+Dependencies (34 packages)
+#	Package	Version	Purpose
+1	@mendable/firecrawl-js	^4.29.1	Web scraping/crawling
+2	@monaco-editor/react	^4.7.0	Monaco editor React wrapper (IDE)
+3	@paddle/paddle-js	^1.6.4	Paddle checkout client SDK
+4	@paddle/paddle-node-sdk	^3.8.0	Paddle server SDK
+5	@radix-ui/react-avatar	^1.1.11	Avatar UI component
+6	@radix-ui/react-slot	^1.2.4	Slot UI component
+7	@sentry/nextjs	^10.57.0	Error tracking/monitoring
+8	@supabase/ssr	^0.10.3	Supabase SSR client
+9	@supabase/supabase-js	^2.106.1	Supabase client library
+10	@tailwindcss/typography	^0.5.20	Tailwind typography plugin
+11	@upstash/redis	^1.38.0	Upstash Redis client
+12	@xterm/addon-fit	^0.11.0	xterm.js fit addon (terminal)
+13	@xterm/addon-web-links	^0.12.0	xterm.js web links addon
+14	@xterm/xterm	^6.0.0	Terminal emulator (IDE)
+15	class-variance-authority	^0.7.1	CSS class variant utility
+16	clsx	^2.1.1	Class name utility
+17	dexie	^4.4.4	IndexedDB wrapper (IDE code intelligence)
+18	framer-motion	^12.40.0	Animation library
+19	idb-keyval	^6.2.5	IndexedDB key-value store
+20	lucide-react	^1.16.0	Icon library
+21	mermaid	^11.16.0	Diagram rendering
+22	monaco-editor	^0.55.1	Monaco editor core (IDE)
+23	next	16.2.6	Next.js framework
+24	openai	^6.39.0	OpenAI SDK
+25	react	19.2.4	React
+26	react-dom	19.2.4	React DOM
+27	react-markdown	^10.1.0	Markdown renderer
+28	react-syntax-highlighter	^16.1.1	Code syntax highlighting
+29	rehype-raw	^7.0.0	Raw HTML in markdown
+30	remark-gfm	^4.0.1	GitHub Flavored Markdown
+31	sonner	^2.0.7	Toast notifications
+32	tailwind-merge	^3.6.0	Tailwind class merge utility
+33	three	^0.184.0	Three.js 3D graphics
+34	zustand	^5.0.14	State management
+DevDependencies (14 packages)
+#	Package	Version	Purpose
+1	@eslint/js	^9	ESLint JS config
+2	@tailwindcss/postcss	^4	Tailwind PostCSS plugin
+3	@types/node	^20	Node.js type definitions
+4	@types/react	^19	React type definitions
+5	@types/react-dom	^19	React DOM type definitions
+6	@types/react-syntax-highlighter	^15.5.13	Syntax highlighter types
+7	@types/three	^0.184.1	Three.js type definitions
+8	@typescript-eslint/eslint-plugin	^8.59.4	TypeScript ESLint plugin
+9	@typescript-eslint/parser	^8.59.4	TypeScript ESLint parser
+10	concurrently	^9.2.1	Run multiple commands
+11	esbuild	^0.28.1	JS bundler (worker bundling)
+12	eslint	^9	Linter
+13	eslint-config-next	16.2.6	Next.js ESLint config
+14	tailwindcss	^4	Tailwind CSS framework
+15	typescript	^5	TypeScript compiler
+Total: 49 packages (34 dependencies + 15 devDependencies)

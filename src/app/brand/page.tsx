@@ -273,6 +273,12 @@ export default function BrandPage() {
                 autonomous agent intelligence (AAI), and up to 70% cost savings
                 compared to single-model AI assistants.
               </p>
+              <p className="text-white/40 text-xs leading-relaxed mb-4">
+                The brand name &quot;Netsyra&quot; is a unique trademark of
+                netsyraai.com. It is not related to any other AI company or
+                product. Common alternative spellings include NetsyraAI,
+                netsyraai, and netsyra ai. The correct spelling is Netsyra AI.
+              </p>
               <div className="grid grid-cols-2 gap-4 mt-6">
                 <div className="bg-black/40 rounded-lg px-4 py-3 border border-white/5">
                   <div className="text-white/40 text-xs mb-1">Brand Name</div>

@@ -3,10 +3,20 @@ import { siteUrl } from "./seo";
 export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": ["Organization", "Brand"],
     name: "Netsyra AI",
-    alternateName: ["NetsyraAI", "netsyraai", "netsyra ai", "netsyraai.com"],
+    alternateName: [
+      "NetsyraAI",
+      "netsyraai",
+      "netsyra ai",
+      "netsyraai.com",
+      "Netsyra",
+      "Netsyra AI Assistant",
+    ],
     url: siteUrl,
+    slogan: "Advanced Multi-Model AI Assistant",
+    description:
+      "Netsyra AI is an intelligent AI orchestration platform that routes every prompt to the best AI model.",
     logo: {
       "@type": "ImageObject",
       url: `${siteUrl}/logo.png`,
@@ -17,6 +27,8 @@ export function organizationJsonLd() {
     image: `${siteUrl}/logo.png`,
     sameAs: [
       "https://netsyraai.com",
+      "https://netsyraai.com/brand",
+      "https://netsyraai.com/about",
     ],
     contactPoint: {
       "@type": "ContactPoint",
@@ -32,9 +44,21 @@ export function websiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Netsyra AI",
-    alternateName: ["NetsyraAI", "netsyraai", "netsyra ai", "netsyraai.com"],
+    alternateName: [
+      "NetsyraAI",
+      "netsyraai",
+      "netsyra ai",
+      "netsyraai.com",
+      "Netsyra",
+    ],
     url: siteUrl,
     image: `${siteUrl}/logo.png`,
+    publisher: {
+      "@type": "Organization",
+      name: "Netsyra AI",
+      url: siteUrl,
+      logo: `${siteUrl}/logo.png`,
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: `${siteUrl}/chat?q={search_term_string}`,
@@ -61,6 +85,12 @@ export function webPageJsonLd({
     isPartOf: {
       "@type": "WebSite",
       name: "Netsyra AI",
+      url: siteUrl,
+    },
+    about: {
+      "@type": "Brand",
+      name: "Netsyra AI",
+      alternateName: ["NetsyraAI", "netsyraai"],
       url: siteUrl,
     },
   };
@@ -143,6 +173,22 @@ export function faqJsonLd() {
         acceptedAnswer: {
           "@type": "Answer",
           text: "Yes, Netsyra AI includes a full browser-based IDE at netsyraai.com/ide with AI coding agent, file system access, terminal, debugging, and code intelligence — all running locally in your browser.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is Netsyra AI the same as Netstar AI?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "No. Netsyra AI (netsyraai.com) is a unique brand and is not related to any other AI product. The correct spelling is Netsyra AI or NetsyraAI. The official website is netsyraai.com.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How do you spell NetsyraAI?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The brand name is spelled Netsyra AI (two words) or NetsyraAI (one word). The domain is netsyraai.com. It is not Netstar, Netsira, or NetSyra — the correct spelling is Netsyra AI.",
         },
       },
     ],

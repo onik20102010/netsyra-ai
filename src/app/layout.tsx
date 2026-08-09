@@ -45,6 +45,10 @@ export const metadata: Metadata = {
     "what is netsyra ai",
     "netsyra ai assistant",
     "netsyraai platform",
+    "netsyra",
+    "Netsyra",
+    "netsyra ai chatbot",
+    "netsyraai assistant",
     "AI assistant",
     "AI orchestration",
     "multi-model AI",
@@ -114,6 +118,9 @@ export const metadata: Metadata = {
   other: {
     "msapplication-TileImage": "/web-app-manifest-192x192.png",
     "msapplication-TileColor": "#6366f1",
+    "application-name": "Netsyra AI",
+    "apple-mobile-web-app-title": "Netsyra AI",
+    "theme-color": "#050505",
   },
 };
 

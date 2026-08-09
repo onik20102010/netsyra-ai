@@ -15,7 +15,7 @@ const description =
   "Netsyra AI (NetsyraAI) is an intelligent AI orchestration platform at netsyraai.com that routes every prompt to the best AI model. Get real-time web search, coding, deep reasoning, and up to 70% cost savings.";
 
 export const metadata: Metadata = createMetadata({
-  title: "Netsyra AI – Advanced Multi-Model AI Assistant",
+  title: "Netsyra AI – Advanced Multi-Model AI Assistant | netsyraai.com",
   description,
   path: "/",
   keywords: [
@@ -28,6 +28,10 @@ export const metadata: Metadata = createMetadata({
     "what is netsyra ai",
     "netsyra ai assistant",
     "netsyraai platform",
+    "netsyra",
+    "Netsyra",
+    "netsyra ai chatbot",
+    "netsyraai assistant",
   ],
 });
 
@@ -54,6 +58,13 @@ export default function Home() {
             Netsyra AI supports multiple model tiers including N Fast, N Plus,
             N Pro, N Code, N Live, and N AAI, powered by providers like Groq,
             Google Gemini, Cerebras, DeepSeek, Anthropic, and OpenAI.
+          </p>
+          <p>
+            Netsyra AI is a brand name — it is sometimes written as NetsyraAI,
+            netsyraai, or netsyra ai. The official website is netsyraai.com.
+            Netsyra AI is not related to any other AI company or product with a
+            similar name. The name &quot;Netsyra&quot; is a unique brand
+            trademark of netsyraai.com.
           </p>
         </section>
       {/* Global background */}
