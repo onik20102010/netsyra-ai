@@ -3,24 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
-
-// 5-layer password verification — each layer must match
-const ADMIN_PASSWORDS = [
-  process.env.ADMIN_PASS_1,
-  process.env.ADMIN_PASS_2,
-  process.env.ADMIN_PASS_3,
-  process.env.ADMIN_PASS_4,
-  process.env.ADMIN_PASS_5,
-];
-
-function verifyPasswords(provided: string[]): boolean {
-  if (provided.length !== 5) return false;
-  for (let i = 0; i < 5; i++) {
-    if (!ADMIN_PASSWORDS[i]) return false;
-    if (provided[i] !== ADMIN_PASSWORDS[i]) return false;
-  }
-  return true;
-}
+const ADMIN_PASS = process.env.ADMIN_PASS;
 
 export async function POST(req: Request) {
   try {
@@ -33,9 +16,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { passwords } = body as { passwords: string[] };
+    const { password } = body as { password: string };
 
-    if (!verifyPasswords(passwords || [])) {
+    if (!ADMIN_PASS || password !== ADMIN_PASS) {
       return NextResponse.json({ error: "Authentication failed" }, { status: 403 });
     }
 

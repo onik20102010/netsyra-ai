@@ -314,26 +314,26 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       {/* Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
-          <div className="inline-flex items-center space-x-2 bg-white/[0.05] border border-white/[0.1] px-4 py-2 rounded-full mb-6">
-            <Sparkles className="w-4 h-4 text-blue-400" />
-            <span className="text-sm font-medium text-white/80">Netsyra Premium</span>
+        <div className="relative max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 py-10 xs:py-12 sm:py-16 lg:py-20 text-center">
+          <div className="inline-flex items-center space-x-2 bg-white/[0.05] border border-white/[0.1] px-3 xs:px-4 py-1.5 xs:py-2 rounded-full mb-4 xs:mb-6">
+            <Sparkles className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-blue-400" />
+            <span className="text-xs xs:text-sm font-medium text-white/80">Netsyra Premium</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl sm:text-5xl lg:text-6xl font-semibold mb-4">
+          <h1 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold mb-3 xs:mb-4 leading-tight">
             Unlock the full potential
           </h1>
-          <p className="text-base sm:text-lg text-white/50 max-w-2xl mx-auto">
+          <p className="text-sm xs:text-base sm:text-lg text-white/50 max-w-xl xs:max-w-2xl mx-auto px-2">
             Get unlimited access to all model tiers, priority routing, and advanced features
           </p>
           {isSuccess && (
-            <div className="mt-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+            <div className="mt-4 xs:mt-6 mx-2 xs:mx-4 p-3 xs:p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs xs:text-sm">
               ✅ Subscription successful! You now have access to all Pro features.
             </div>
           )}
           {isExpired && subscriptionEndDate && (
-            <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm max-w-2xl mx-auto">
+            <div className="mt-4 xs:mt-6 mx-2 xs:mx-4 p-3 xs:p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs xs:text-sm max-w-2xl mx-auto text-left">
               <p className="font-medium mb-1">Your subscription has ended</p>
-              <p className="text-amber-400/80">
+              <p className="text-amber-400/80 leading-relaxed">
                 Your plan expired on {new Date(subscriptionEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}.
                 You&apos;re now on the Free plan. Your chat history is preserved — you can repurchase any plan below to restore access.
               </p>
@@ -343,8 +343,8 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       </div>
 
       {/* Pricing Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+      <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 pb-12 xs:pb-16 sm:pb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
           {TIERS.map((tier) => {
             const priceId = (annual && tier.priceId.year && tier.priceId.year !== tier.priceId.month)
               ? tier.priceId.year
@@ -373,57 +373,57 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                     : isFree
                     ? 'bg-white/[0.03] border border-white/[0.08]'
                     : 'bg-white/[0.03] border border-white/[0.08]'
-                } rounded-2xl p-5 sm:p-8 relative`}
+                } rounded-2xl p-4 xs:p-5 sm:p-6 lg:p-8 relative flex flex-col`}
               >
                 {isPlusProTier && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-xs font-medium px-3 py-1 rounded-full">
+                  <div className="absolute -top-2.5 xs:-top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-[10px] xs:text-xs font-medium px-2.5 xs:px-3 py-0.5 xs:py-1 rounded-full whitespace-nowrap">
                     Best Value
                   </div>
                 )}
                 {isProTier && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-xs font-medium px-3 py-1 rounded-full">
+                  <div className="absolute -top-2.5 xs:-top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-[10px] xs:text-xs font-medium px-2.5 xs:px-3 py-0.5 xs:py-1 rounded-full whitespace-nowrap">
                     Most Popular
                   </div>
                 )}
-                <div className="mb-6">
-                  <h3 className="text-xl font-semibold mb-2">{tier.name}</h3>
-                  <p className="text-white/50 text-sm">{tier.description}</p>
+                <div className="mb-4 xs:mb-5 sm:mb-6">
+                  <h3 className="text-lg xs:text-xl font-semibold mb-1 xs:mb-2">{tier.name}</h3>
+                  <p className="text-white/50 text-xs xs:text-sm leading-snug">{tier.description}</p>
                 </div>
-                <div className="mb-6">
+                <div className="mb-4 xs:mb-5 sm:mb-6">
                   {isFree ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-4xl font-bold">$0</span>
-                      <span className="text-white/50">/month</span>
+                    <div className="flex items-baseline gap-1.5 xs:gap-2">
+                      <span className="text-3xl xs:text-4xl font-bold">$0</span>
+                      <span className="text-white/50 text-xs xs:text-sm">/month</span>
                     </div>
                   ) : priceLoading ? (
                     <div className="flex items-center gap-2">
-                      <Loader2 className="animate-spin w-6 h-6 text-blue-400" />
-                      <span className="text-white/50">Loading price...</span>
+                      <Loader2 className="animate-spin w-5 h-5 xs:w-6 xs:h-6 text-blue-400" />
+                      <span className="text-white/50 text-xs xs:text-sm">Loading price...</span>
                     </div>
                   ) : currentPrice ? (
-                    <>
-                      <span className="text-4xl font-bold">{currentPrice}</span>
-                      <span className="text-white/50">/{annual ? 'year' : 'month'}</span>
-                    </>
+                    <div className="flex items-baseline gap-1.5 xs:gap-2 flex-wrap">
+                      <span className="text-3xl xs:text-4xl font-bold">{currentPrice}</span>
+                      <span className="text-white/50 text-xs xs:text-sm">/{annual ? 'year' : 'month'}</span>
+                    </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-4xl font-bold">—</span>
-                      <span className="text-white/50">/{annual ? 'year' : 'month'}</span>
+                    <div className="flex items-baseline gap-1.5 xs:gap-2">
+                      <span className="text-3xl xs:text-4xl font-bold">—</span>
+                      <span className="text-white/50 text-xs xs:text-sm">/{annual ? 'year' : 'month'}</span>
                     </div>
                   )}
                 </div>
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-2 xs:space-y-2.5 sm:space-y-3 mb-6 xs:mb-7 sm:mb-8 flex-1">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-white/70">
-                      <Check className="w-4 h-4 text-green-400" />
-                      {feature}
+                    <li key={feature} className="flex items-start gap-2 xs:gap-3 text-xs xs:text-sm text-white/70 leading-snug">
+                      <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <button
                   onClick={() => !isFree && !isCurrentPlan && !isLocked && handleSubscribe(priceId)}
                   disabled={subscribing || isCurrentPlan || isFree || isLocked}
-                  className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:opacity-50 ${
+                  className={`w-full py-2.5 xs:py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 text-sm xs:text-base disabled:opacity-50 ${
                     isFree
                       ? 'bg-white/10 border border-white/20 text-white/50 cursor-not-allowed'
                       : isCurrentPlan
@@ -442,16 +442,16 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
                     : isLocked
                     ? 'Locked'
                     : subscribing
-                    ? <Loader2 className="animate-spin" size={18} />
-                    : <>Get Started <ArrowRight className="w-4 h-4" /></>}
+                    ? <Loader2 className="animate-spin" size={16} />
+                    : <>Get Started <ArrowRight className="w-3.5 h-3.5 xs:w-4 xs:h-4" /></>}
                 </button>
                 {isLocked && subscriptionEndDate && (
-                  <p className="text-[11px] text-white/30 text-center mt-2">
+                  <p className="text-[10px] xs:text-[11px] text-white/30 text-center mt-2 leading-tight">
                     Available after {formatDate(subscriptionEndDate)}
                   </p>
                 )}
                 {isCurrentPlan && subscriptionEndDate && (
-                  <p className="text-[11px] text-green-400/60 text-center mt-2">
+                  <p className="text-[10px] xs:text-[11px] text-green-400/60 text-center mt-2 leading-tight">
                     {isExpired ? 'Expired on' : 'Expires on'} {formatDate(subscriptionEndDate)}
                   </p>
                 )}
@@ -462,29 +462,29 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
       </div>
 
       {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/[0.08]">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-10 sm:mb-12">Why upgrade?</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+      <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 py-10 xs:py-12 sm:py-16 lg:py-20 border-t border-white/[0.08]">
+        <h2 className="text-xl xs:text-2xl sm:text-3xl font-semibold text-center mb-8 xs:mb-10 sm:mb-12">Why upgrade?</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           <div className="text-center">
-            <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-6 h-6 text-blue-400" />
+            <div className="w-10 h-10 xs:w-12 xs:h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mx-auto mb-3 xs:mb-4">
+              <Zap className="w-5 h-5 xs:w-6 xs:h-6 text-blue-400" />
             </div>
-            <h3 className="font-semibold mb-2">Faster Response</h3>
-            <p className="text-white/50 text-sm">Priority routing ensures your messages get processed first</p>
+            <h3 className="font-semibold mb-1.5 xs:mb-2 text-sm xs:text-base">Faster Response</h3>
+            <p className="text-white/50 text-xs xs:text-sm leading-relaxed">Priority routing ensures your messages get processed first</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-6 h-6 text-purple-400" />
+            <div className="w-10 h-10 xs:w-12 xs:h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mx-auto mb-3 xs:mb-4">
+              <Sparkles className="w-5 h-5 xs:w-6 xs:h-6 text-purple-400" />
             </div>
-            <h3 className="font-semibold mb-2">Advanced Models</h3>
-            <p className="text-white/50 text-sm">Access to the most powerful AI models for complex tasks</p>
+            <h3 className="font-semibold mb-1.5 xs:mb-2 text-sm xs:text-base">Advanced Models</h3>
+            <p className="text-white/50 text-xs xs:text-sm leading-relaxed">Access to the most powerful AI models for complex tasks</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-6 h-6 text-green-400" />
+            <div className="w-10 h-10 xs:w-12 xs:h-12 bg-green-600/20 rounded-xl flex items-center justify-center mx-auto mb-3 xs:mb-4">
+              <Shield className="w-5 h-5 xs:w-6 xs:h-6 text-green-400" />
             </div>
-            <h3 className="font-semibold mb-2">Enhanced Security</h3>
-            <p className="text-white/50 text-sm">Additional security features for your data and conversations</p>
+            <h3 className="font-semibold mb-1.5 xs:mb-2 text-sm xs:text-base">Enhanced Security</h3>
+            <p className="text-white/50 text-xs xs:text-sm leading-relaxed">Additional security features for your data and conversations</p>
           </div>
         </div>
       </div>

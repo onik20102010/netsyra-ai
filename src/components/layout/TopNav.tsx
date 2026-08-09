@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Sparkles, Code, Menu, X } from "lucide-react";
+import { LogOut, User, Sparkles, Code, Menu, X, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-access";
+
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "onik20102010@gmail.com";
 
 export default function TopNav() {
   const { user, loading, signOut } = useAuth();
@@ -103,6 +105,19 @@ export default function TopNav() {
                 <span>Code IDE</span>
               </Button>
             </Link>
+
+            {/* Admin link — only visible to admin email */}
+            {user?.email === ADMIN_EMAIL && (
+              <Link href="/admin">
+                <Button
+                  variant="ghost"
+                  className="text-white/80 hover:text-white hover:bg-white/10 rounded-full px-3 sm:px-4 text-sm transition-all"
+                >
+                  <Lock className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span>Admin</span>
+                </Button>
+              </Link>
+            )}
 
             {/* Current plan badge */}
             {isPro ? (
@@ -244,6 +259,14 @@ export default function TopNav() {
                     <span className="text-sm">Code IDE</span>
                   </div>
                 </Link>
+                {user?.email === ADMIN_EMAIL && (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition">
+                      <Lock className="w-4 h-4" />
+                      <span className="text-sm">Admin</span>
+                    </div>
+                  </Link>
+                )}
                 {user && (
                   <button
                     onClick={() => { signOut(); setMobileMenuOpen(false); }}

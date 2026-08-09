@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Admin-only routes
-  const adminEmail = process.env.ADMIN_EMAIL || "netsyraai@gmail.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
   if (request.nextUrl.pathname.startsWith("/admin") && (!user || user.email !== adminEmail)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

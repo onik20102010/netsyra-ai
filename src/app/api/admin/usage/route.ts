@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "netsyraai@gmail.com";
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "onik20102010@gmail.com";
 
   if (!user || user.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
