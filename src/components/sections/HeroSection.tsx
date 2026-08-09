@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Sparkles, Zap, Globe, Bot, ChevronRight } from 'lucide-react';
+import { ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import IntelligenceField from './IntelligenceField';
 
@@ -56,14 +56,12 @@ export default function HeroSection() {
           <div className="space-y-6 sm:space-y-10">
             <div className="inline-flex items-center space-x-2 bg-white/[0.03] border border-white/[0.08] px-3 sm:px-4 py-1.5 sm:py-2 rounded-full backdrop-blur-sm">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-xs sm:text-sm font-medium text-white/80">Auto Routing System</span>
+              <span className="text-xs sm:text-sm font-medium text-white/80">NetsyraAI is the Advanced AI in this Era</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
-              Multiple models 500+
-              <br />
               <span className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-transparent">
-                for each specific tasks.
+                NetsyraAI is the Advanced AI in this Era
               </span>
             </h1>
 
@@ -93,21 +91,6 @@ export default function HeroSection() {
                 <span>See How It Works</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4 sm:gap-8 pt-2">
-              <div className="flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-white/40" />
-                <span className="text-xs sm:text-sm text-white/40">Model Tiers</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Globe className="w-4 h-4 text-white/40" />
-                <span className="text-xs sm:text-sm text-white/40">Orchestrator AI</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Bot className="w-4 h-4 text-white/40" />
-                <span className="text-xs sm:text-sm text-white/40">Learning System</span>
-              </div>
             </div>
           </div>
 

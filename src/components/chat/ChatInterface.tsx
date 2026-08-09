@@ -1727,12 +1727,6 @@ export default function ChatInterface({
 
       <div className="chat-input-bar sticky bottom-0 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className={`chat-content-center ${sidebarOpen ? "sidebar-open" : ""} px-3 sm:px-4 md:px-6 pt-2 pb-3 sm:pb-4`}>
-          {selectedModel === "auto" && autoTiersUsed.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2 px-1">
-              <Sparkles className="w-3 h-3 text-indigo-500" />
-              <span>Auto‑routed via {autoTiersUsed.join(", ")}</span>
-            </div>
-          )}
           {selectedModel !== "auto" && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 px-1">
               <span>Using {MODEL_LABELS[selectedModel] || selectedModel}</span>

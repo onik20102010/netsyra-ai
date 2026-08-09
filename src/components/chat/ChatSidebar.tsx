@@ -536,12 +536,14 @@ function ConversationItem({
       <MessageSquare className="w-4 h-4 flex-shrink-0" />
       <span className="truncate flex-1">{conv.title}</span>
 
-      {/* Ellipsis button — always visible on active, hover on others */}
+      {/* Ellipsis button — always visible on active, hover on others (always visible on touch/mobile) */}
       <div ref={menuRef} className="relative flex-shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
           className={`p-1 rounded hover:bg-black/10 text-gray-400 hover:text-gray-700 transition ${
-            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            isActive
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 max-md:opacity-100"
           }`}
           aria-label="More options"
         >
