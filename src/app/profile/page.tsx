@@ -25,11 +25,11 @@ import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, setStylePrefs } 
 
 // ── Sidebar nav items (matches history page) ──
 const NAV_ITEMS = [
-  { label: "Home", href: "/", icon: Home },
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Recent Chats", href: "/history", icon: Clock },
-  { label: "CV Builder", href: "https://netsyraai.com/cv-builder/index.html", icon: FileText, external: true },
-  { label: "IDE", href: "/ide", icon: Code2 },
+  { label: "Home", href: "/", icon: Home, active: false },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, active: false },
+  { label: "Recent Chats", href: "/history", icon: Clock, active: false },
+  { label: "CV Builder", href: "https://netsyraai.com/cv-builder/index.html", icon: FileText, external: true, active: false },
+  { label: "IDE", href: "/ide", icon: Code2, active: false },
 ];
 
 export default function ProfilePage() {
