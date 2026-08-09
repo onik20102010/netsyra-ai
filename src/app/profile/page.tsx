@@ -4,18 +4,45 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Save,
+  Palette,
+  Home,
+  LayoutDashboard,
+  Clock,
+  FileText,
+  Code2,
+  Menu,
+  X,
+  User,
+  Target,
+  MessageSquare,
+} from "lucide-react";
 import { toast } from "sonner";
+import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, setStylePrefs } from "@/hooks/useStylePrefs";
+
+// ── Sidebar nav items (matches history page) ──
+const NAV_ITEMS = [
+  { label: "Home", href: "/", icon: Home },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Recent Chats", href: "/history", icon: Clock },
+  { label: "CV Builder", href: "https://netsyraai.com/cv-builder/index.html", icon: FileText, external: true },
+  { label: "IDE", href: "/ide", icon: Code2 },
+];
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
 
   const [displayName, setDisplayName] = useState("");
   const [userGoal, setUserGoal] = useState("");
   const [userInstructions, setUserInstructions] = useState("");
+  const [stylePrefs, setStylePrefs] = useState<StylePrefs>(DEFAULT_STYLE_PREFS);
   const [loading, setLoading] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Load profile data
   useEffect(() => {
@@ -31,6 +58,11 @@ export default function ProfilePage() {
         setUserGoal(data.goal || "");
         setUserInstructions(data.custom_instructions || "");
       }
+      // Style prefs come from localStorage (codebase-only, no DB)
+      try {
+        const raw = localStorage.getItem("netsyra_style_prefs");
+        if (raw) setStylePrefs({ ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) });
+      } catch {}
       setLoading(false);
     };
     loadProfile();
@@ -52,6 +84,8 @@ export default function ProfilePage() {
       toast.error("Failed to save profile.");
       return;
     }
+    // Style prefs saved to localStorage only (no DB)
+    setStylePrefs(stylePrefs);
     toast.success("Profile saved!");
   };
 
@@ -66,112 +100,299 @@ export default function ProfilePage() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  if (!user) return null;
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ── Reusable sidebar content ──
+  const sidebarContent = (
+    <>
+      <Link
+        href="/chat"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors mb-4"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Chat
+      </Link>
+
+      <nav className="flex flex-col gap-1 flex-1">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const content = (
+            <span
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                item.active
+                  ? "bg-white/5 text-white border border-white/10"
+                  : "text-gray-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {item.label}
+            </span>
+          );
+          return item.external ? (
+            <a
+              key={item.label}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {content}
+            </a>
+          ) : (
+            <Link key={item.label} href={item.href}>
+              {content}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto pt-4 border-t border-white/5">
+        <p className="text-xs mt-3 px-3 text-gray-500">Netsyra AI</p>
+      </div>
+    </>
+  );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 p-4 relative overflow-hidden">
-      {/* Decorative blobs */}
-      <div className="absolute -top-20 -right-20 w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-purple-300/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full flex relative overflow-hidden bg-black text-gray-300">
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden md:flex fixed top-0 left-0 h-full w-[260px] z-10 bg-black/80 backdrop-blur-xl border-r border-white/5 p-6 flex-col">
+        <div className="mb-8 pb-6 border-b border-white/5">
+          <Link
+            href="/"
+            className="text-2xl font-bold bg-gradient-to-r from-gray-200 to-white bg-clip-text text-transparent"
+          >
+            Netsyra AI
+          </Link>
+        </div>
+        {sidebarContent}
+      </aside>
 
-      <div className="w-full max-w-lg relative z-10">
-        {/* Glass card */}
-        <div className="bg-white/75 backdrop-blur-xl border border-white/50 rounded-3xl shadow-2xl shadow-indigo-500/10 p-7 md:p-8 space-y-6 transition-all duration-300 hover:shadow-indigo-500/20 hover:-translate-y-1">
-          {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => router.back()}
-                className="text-slate-500 hover:text-slate-800 flex items-center gap-1.5 text-sm font-medium transition-all hover:-translate-x-1"
+      {/* ── Mobile Drawer ── */}
+      {mobileNavOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="fixed top-0 left-0 h-full w-[260px] max-w-[80vw] z-50 bg-black/95 backdrop-blur-xl border-r border-white/10 p-6 flex flex-col md:hidden animate-[slideInLeft_0.2s_ease]">
+            <div className="mb-8 pb-6 border-b border-white/5 flex items-center justify-between">
+              <Link
+                href="/"
+                className="text-2xl font-bold bg-gradient-to-r from-gray-200 to-white bg-clip-text text-transparent"
               >
-                <ArrowLeft className="w-4 h-4" /> Back
+                Netsyra AI
+              </Link>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
               </button>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight mt-1">Profile</h1>
-              <p className="text-sm text-slate-500 font-medium -mt-0.5">Manage your personal preferences</p>
             </div>
-            {/* Avatar with ring */}
-            <div className="flex-shrink-0 p-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105 transition-transform duration-300 hover:-rotate-3">
-              <div className="w-[72px] h-[72px] md:w-[72px] md:h-[72px] rounded-full bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center text-2xl font-semibold text-indigo-600">
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+
+      {/* ── Main Content Area ── */}
+      <div className="md:ml-[260px] relative z-10 flex-1 overflow-y-auto min-h-screen">
+        {/* ── Header ── */}
+        <header className="sticky top-0 z-20 flex items-center justify-between md:justify-end px-4 sm:px-8 py-4 border-b border-white/5 backdrop-blur-sm bg-black/40">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="md:hidden p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-xs sm:text-sm text-white/40 truncate max-w-[140px] sm:max-w-none">
+            {user.email}
+          </span>
+        </header>
+
+        {/* ── Main ── */}
+        <main className="relative z-10 px-4 sm:px-8 py-6 sm:py-12 max-w-2xl mx-auto">
+          {/* ── Page Title + Avatar ── */}
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white">
+                Profile
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Manage your personal preferences
+              </p>
+            </div>
+            {/* Avatar */}
+            <div className="flex-shrink-0 p-0.5 rounded-full bg-gradient-to-r from-gray-400 to-gray-200">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-black flex items-center justify-center text-xl sm:text-2xl font-semibold text-gray-200">
                 {getInitials(displayName)}
               </div>
             </div>
           </div>
 
           {loading ? (
-            /* Loading skeleton */
-            <div className="space-y-4 pt-1 animate-pulse">
-              <div className="space-y-1.5">
-                <div className="h-4 bg-slate-200/70 rounded w-1/4" />
-                <div className="h-10 bg-slate-200/60 rounded-xl" />
+            /* ── Loading skeleton ── */
+            <div className="space-y-4 animate-pulse">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                <div className="h-4 bg-white/10 rounded w-1/4" />
+                <div className="h-10 bg-white/10 rounded-lg" />
               </div>
-              <div className="space-y-1.5">
-                <div className="h-4 bg-slate-200/70 rounded w-1/3" />
-                <div className="h-10 bg-slate-200/60 rounded-xl" />
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                <div className="h-4 bg-white/10 rounded w-1/3" />
+                <div className="h-10 bg-white/10 rounded-lg" />
               </div>
-              <div className="space-y-1.5">
-                <div className="h-4 bg-slate-200/70 rounded w-2/5" />
-                <div className="h-24 bg-slate-200/60 rounded-xl" />
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                <div className="h-4 bg-white/10 rounded w-2/5" />
+                <div className="h-24 bg-white/10 rounded-lg" />
               </div>
-              <div className="h-11 bg-slate-200/60 rounded-xl w-full" />
+              <div className="h-11 bg-white/10 rounded-xl w-full" />
             </div>
           ) : (
-            /* Form */
-            <div className="space-y-5 pt-1">
-              {/* Display Name */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            /* ── Form ── */
+            <div className="space-y-4 sm:space-y-6">
+              {/* ── Display Name ── */}
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 space-y-2.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                  <User className="w-4 h-4 text-gray-500" />
                   Display name
                 </label>
                 <input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-600 text-sm focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/20 transition"
                   placeholder="Your name"
                 />
               </div>
 
-              {/* Goal */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              {/* ── Goal ── */}
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 space-y-2.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                  <Target className="w-4 h-4 text-gray-500" />
                   Goal
                 </label>
                 <input
                   value={userGoal}
                   onChange={(e) => setUserGoal(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-600 text-sm focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/20 transition"
                   placeholder="e.g., Learn to code"
                 />
               </div>
 
-              {/* Custom Instructions */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg>
+              {/* ── Custom Instructions ── */}
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 space-y-2.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                  <MessageSquare className="w-4 h-4 text-gray-500" />
                   Custom instructions
                 </label>
                 <textarea
                   value={userInstructions}
                   onChange={(e) => setUserInstructions(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300/60 bg-white/70 backdrop-blur-sm text-slate-800 placeholder:text-slate-400 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-600 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/20 transition"
                   placeholder="Tell us how you'd like Netsyra to respond..."
                 />
               </div>
 
-              {/* Save Button */}
+              {/* ── Style Preferences ── */}
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 space-y-5">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-sm font-medium text-gray-200">Response Style</h3>
+                </div>
+
+                {/* Font Size */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-500">Font size</label>
+                  <div className="flex gap-2">
+                    {(["small", "medium", "large"] as FontSize[]).map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setStylePrefs({ ...stylePrefs, fontSize: size })}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition border ${
+                          stylePrefs.fontSize === size
+                            ? "bg-white/15 text-white border-white/30"
+                            : "bg-white/5 text-gray-400 border-white/10 hover:border-white/20 hover:text-gray-200"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table Edges */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-500">Table edges</label>
+                  <div className="flex gap-2">
+                    {(["sharp", "round"] as TableEdges[]).map((edge) => (
+                      <button
+                        key={edge}
+                        onClick={() => setStylePrefs({ ...stylePrefs, tableEdges: edge })}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition border ${
+                          stylePrefs.tableEdges === edge
+                            ? "bg-white/15 text-white border-white/30"
+                            : "bg-white/5 text-gray-400 border-white/10 hover:border-white/20 hover:text-gray-200"
+                        }`}
+                      >
+                        {edge}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section Spacing */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-500">Space between sections</label>
+                    <span className="text-xs text-gray-600">
+                      {stylePrefs.sectionSpacing < 33 ? "Compact" : stylePrefs.sectionSpacing > 66 ? "Spacious" : "Normal"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={stylePrefs.sectionSpacing}
+                    onChange={(e) => setStylePrefs({ ...stylePrefs, sectionSpacing: parseInt(e.target.value) })}
+                    className="w-full accent-gray-400"
+                  />
+                </div>
+
+                {/* Word Spacing */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-500">Space between words</label>
+                    <span className="text-xs text-gray-600">
+                      {stylePrefs.wordSpacing < 33 ? "Tight" : stylePrefs.wordSpacing > 66 ? "Wide" : "Normal"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={stylePrefs.wordSpacing}
+                    onChange={(e) => setStylePrefs({ ...stylePrefs, wordSpacing: parseInt(e.target.value) })}
+                    className="w-full accent-gray-400"
+                  />
+                </div>
+              </div>
+
+              {/* ── Save Button ── */}
               <button
                 onClick={handleSave}
-                className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-indigo-500/30 active:scale-95 relative overflow-hidden group"
+                className="w-full flex items-center justify-center gap-2.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white py-3 rounded-xl text-sm font-medium transition-all hover:scale-[1.01] active:scale-95"
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 <Save className="w-4 h-4" />
                 Save Profile
               </button>
             </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

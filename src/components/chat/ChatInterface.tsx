@@ -25,6 +25,7 @@ import WeatherWidget from "./WeatherWidget";
 import ClockWidget from "./ClockWidget";
 import CalendarWidget from "./CalendarWidget";
 import SourcesPanel from "./SourcesPanel";
+import { useStylePrefs, getStyleValues } from "@/hooks/useStylePrefs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -217,6 +218,8 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   const clean = stripThinkTags(content);
   const widgets: React.ReactNode[] = [];
   const isProOrAAI = modelTier === "pro" || modelTier === "aai";
+  const { prefs } = useStylePrefs();
+  const sv = getStyleValues(prefs);
   const isPlus = modelTier === "plus";
 
   const processed = clean
@@ -262,22 +265,25 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
             remarkPlugins={[remarkGfm]}
             components={{
               h1({ children }: any) {
-                return <h1 className="text-2xl font-bold mt-6 mb-3 text-zinc-900">{children}</h1>;
+                return <h1 className="text-2xl font-bold text-zinc-900" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h1>;
               },
               h2({ children }: any) {
-                return <h2 className="text-xl font-bold mt-5 mb-2 text-zinc-900">{children}</h2>;
+                return <h2 className="text-xl font-bold text-zinc-900" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h2>;
               },
               h3({ children }: any) {
-                return <h3 className="text-lg font-semibold mt-4 mb-2 text-zinc-900">{children}</h3>;
+                return <h3 className="text-lg font-semibold text-zinc-900" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h3>;
               },
               h4({ children }: any) {
-                return <h4 className="text-base font-semibold mt-3 mb-1 text-zinc-800">{children}</h4>;
+                return <h4 className="text-base font-semibold text-zinc-800" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h4>;
               },
               h5({ children }: any) {
-                return <h5 className="text-sm font-semibold mt-3 mb-1 text-zinc-800">{children}</h5>;
+                return <h5 className="text-sm font-semibold text-zinc-800" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h5>;
               },
               h6({ children }: any) {
-                return <h6 className="text-sm font-medium mt-2 mb-1 text-zinc-700">{children}</h6>;
+                return <h6 className="text-sm font-medium text-zinc-700" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h6>;
+              },
+              p({ children, ...props }: any) {
+                return <p style={{ wordSpacing: sv.wordSpacing, letterSpacing: sv.letterSpacing, fontSize: sv.fontSize, lineHeight: 1.7 }} {...props}>{children}</p>;
               },
               a({ href, children, ...props }: any) {
                 return (
@@ -363,7 +369,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
               table({ children }: any) {
                 return (
                   <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                    <table className="min-w-full border-collapse border border-gray-300 text-sm" style={{ borderRadius: sv.tableRadius, overflow: "hidden" }}>
                       {children}
                     </table>
                   </div>
@@ -371,14 +377,14 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
               },
               th({ children }: any) {
                 return (
-                  <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700">
+                  <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-medium text-gray-700" style={{ borderRadius: sv.cellRadius }}>
                     {children}
                   </th>
                 );
               },
               td({ children }: any) {
                 return (
-                  <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                  <td className="border border-gray-300 px-4 py-2 text-gray-700" style={{ borderRadius: sv.cellRadius }}>
                     {children}
                   </td>
                 );
@@ -428,7 +434,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
 
                 if (isOrdered) {
                   return (
-                    <li className="text-sm leading-relaxed text-zinc-800" {...props}>
+                    <li className="leading-relaxed text-zinc-800" style={{ fontSize: sv.fontSize, wordSpacing: sv.wordSpacing }} {...props}>
                       {children}
                     </li>
                   );
@@ -436,14 +442,14 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
 
                 if (isProOrAAI) {
                   return (
-                    <li className="list-item mb-1 text-sm leading-relaxed text-zinc-800" {...props}>
+                    <li className="list-item mb-1 leading-relaxed text-zinc-800" style={{ fontSize: sv.fontSize, wordSpacing: sv.wordSpacing }} {...props}>
                       {children}
                     </li>
                   );
                 }
 
                 return (
-                  <li className="flex gap-2 text-sm leading-relaxed text-zinc-800" {...props}>
+                  <li className="flex gap-2 leading-relaxed text-zinc-800" style={{ fontSize: sv.fontSize, wordSpacing: sv.wordSpacing }} {...props}>
                     <span className="flex-shrink-0 select-none">{bulletChar}</span>
                     <span className="flex-1">{children}</span>
                   </li>
