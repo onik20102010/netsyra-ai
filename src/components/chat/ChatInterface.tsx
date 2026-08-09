@@ -1076,9 +1076,6 @@ export default function ChatInterface({
       });
       const persistentImages = await Promise.all(imagePromises);
 
-      // Now safe to revoke blob URLs
-      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
-
       const userMessage: Message = {
         id: Date.now().toString(),
         role: "user",
@@ -1184,17 +1181,9 @@ export default function ChatInterface({
   // Clear attached images when switching away from N Plus
   useEffect(() => {
     if (!isImageAttachEnabled && attachedImages.length > 0) {
-      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
       setAttachedImages([]);
     }
   }, [isImageAttachEnabled]);
-
-  // Cleanup blob URLs on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1207,32 +1196,50 @@ export default function ChatInterface({
       return;
     }
 
-    const newImages = Array.from(files).map(file => ({
-      id: crypto.randomUUID(),
-      file,
-      url: URL.createObjectURL(file),
-      name: file.name
-    }));
+    const processImages = async () => {
+      const newImages: { id: string; file: File; url: string; name: string }[] = [];
 
-    if (attachedImages.length + newImages.length > maxImagesPerMessage) {
-      toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
-      // Revoke the blob URLs we just created since we won't use them
-      newImages.forEach(img => URL.revokeObjectURL(img.url));
+      for (const file of Array.from(files)) {
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          newImages.push({
+            id: crypto.randomUUID(),
+            file,
+            url: dataUrl,
+            name: file.name
+          });
+        } catch (error) {
+          console.error('Failed to create data URL for:', file.name, error);
+        }
+      }
+
+      if (newImages.length === 0) {
+        toast.error("Failed to load images. Please try again.");
+        e.target.value = "";
+        return;
+      }
+
+      if (attachedImages.length + newImages.length > maxImagesPerMessage) {
+        toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
+        e.target.value = "";
+        return;
+      }
+
+      setAttachedImages(prev => [...prev, ...newImages]);
+      // Reset input so the same file can be selected again
       e.target.value = "";
-      return;
-    }
+    };
 
-    setAttachedImages(prev => [...prev, ...newImages]);
-    // Reset input so the same file can be selected again
-    e.target.value = "";
+    processImages();
   };
 
   const removeAttachedImage = (id: string) => {
     setAttachedImages(prev => {
-      const image = prev.find(img => img.id === id);
-      if (image) {
-        URL.revokeObjectURL(image.url);
-      }
       return prev.filter(img => img.id !== id);
     });
   };
@@ -1253,22 +1260,41 @@ export default function ChatInterface({
 
     if (imageItems.length > 0) {
       e.preventDefault();
-      const newImages = imageItems.slice(0, maxImagesPerMessage - attachedImages.length).map((file, idx) => {
-        // Give pasted images a clean name
-        const ext = file.type.split('/')[1] || 'png';
-        const cleanName = file.name && file.name !== 'image.png'
-          ? file.name
-          : `pasted-image-${idx + 1}.${ext}`;
-        return {
-          id: crypto.randomUUID(),
-          file: new File([file], cleanName, { type: file.type }),
-          url: URL.createObjectURL(file),
-          name: cleanName
-        };
-      });
+      const newImages: { id: string; file: File; url: string; name: string }[] = [];
+      
+      for (let i = 0; i < Math.min(imageItems.length, maxImagesPerMessage - attachedImages.length); i++) {
+        const file = imageItems[i];
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          
+          const ext = file.type.split('/')[1] || 'png';
+          const cleanName = file.name && file.name !== 'image.png'
+            ? file.name
+            : `pasted-image-${i + 1}.${ext}`;
+          
+          newImages.push({
+            id: crypto.randomUUID(),
+            file: new File([file], cleanName, { type: file.type }),
+            url: dataUrl,
+            name: cleanName
+          });
+        } catch (error) {
+          console.error('Failed to create data URL for pasted image:', error);
+        }
+      }
+      
+      if (newImages.length === 0) {
+        toast.error("Failed to load pasted images");
+        return;
+      }
+      
       if (attachedImages.length + newImages.length > maxImagesPerMessage) {
         toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
-        newImages.forEach(img => URL.revokeObjectURL(img.url));
         return;
       }
       setAttachedImages(prev => [...prev, ...newImages]);
@@ -1307,11 +1333,19 @@ export default function ChatInterface({
         toast.error("The URL does not point to an image");
         return;
       }
+      
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
       const file = new File([blob], url.split('/').pop() || 'image-from-url.png', { type: blob.type });
       const newImage = {
         id: crypto.randomUUID(),
         file,
-        url: URL.createObjectURL(file),
+        url: dataUrl,
         name: file.name
       };
       setAttachedImages(prev => [...prev, newImage]);
