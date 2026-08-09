@@ -25,7 +25,7 @@
 //     Free 3, Go Plus 100, Pro 200, Plus Pro 250
 //
 //   Image analysis:
-//     Free 3/day (no monthly), Go Plus 15/day 300/month,
+//     Free 4/day (no monthly), Go Plus 15/day 300/month,
 //     Pro 30/day 600/month, Plus Pro 30/day 600/month
 
 export interface RouterConfig {
@@ -88,7 +88,7 @@ export const routerConfigs: Record<string, RouterConfig> = {
     imageGenerationEnabled: false,
     imageAnalysisEnabled: true,
     imageAnalysisModel: 'gemini-2.5-flash-lite',
-    imageAnalysisDailyLimit: 3,
+    imageAnalysisDailyLimit: 4,
     imageAnalysisMonthlyLimit: 0, // Free: no monthly limit, just daily count
   },
 

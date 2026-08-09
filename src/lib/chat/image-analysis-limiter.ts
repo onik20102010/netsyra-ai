@@ -2,7 +2,7 @@
 //
 // Image analysis limit enforcement — plan-aware daily + monthly limits.
 //
-//   Free:     3/day,  no monthly
+//   Free:     4/day,  no monthly
 //   Go Plus:  15/day, 300/month
 //   Pro:      30/day, 600/month
 //   Plus Pro: 30/day, 600/month
