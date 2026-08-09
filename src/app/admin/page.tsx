@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Lock, Users, Activity, DollarSign, MessageSquare, TrendingUp, Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Lock, Users, Activity, DollarSign, MessageSquare, TrendingUp, Loader2, ArrowLeft, Eye, EyeOff, ChevronRight } from "lucide-react";
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "onik20102010@gmail.com";
 
@@ -31,6 +31,20 @@ interface AdminStats {
   planDistribution: Record<string, number>;
 }
 
+interface AdminConversation {
+  id: string;
+  title: string;
+  created_at: string;
+  messageCount: number;
+}
+
+interface AdminMessage {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -45,6 +59,14 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [dataError, setDataError] = useState("");
+
+  // Drill-down state: null = user list, user = conversations, conversation = messages
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [conversations, setConversations] = useState<AdminConversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<AdminConversation | null>(null);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+  const [loadingDrill, setLoadingDrill] = useState(false);
+  const [drillError, setDrillError] = useState("");
 
   // Redirect non-admin users away
   useEffect(() => {
@@ -114,6 +136,67 @@ export default function AdminPage() {
     } finally {
       setLoadingData(false);
     }
+  };
+
+  // Fetch conversations for a user
+  const fetchConversations = async (u: AdminUser) => {
+    setSelectedUser(u);
+    setSelectedConversation(null);
+    setMessages([]);
+    setLoadingDrill(true);
+    setDrillError("");
+    try {
+      const res = await fetch(`/api/admin/user-data?userId=${u.id}`, {
+        headers: { "x-admin-pass": password },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      } else {
+        setDrillError("Failed to load conversations.");
+      }
+    } catch {
+      setDrillError("Network error.");
+    } finally {
+      setLoadingDrill(false);
+    }
+  };
+
+  // Fetch messages for a conversation
+  const fetchMessages = async (conv: AdminConversation) => {
+    if (!selectedUser) return;
+    setSelectedConversation(conv);
+    setLoadingDrill(true);
+    setDrillError("");
+    try {
+      const res = await fetch(`/api/admin/user-data?userId=${selectedUser.id}&conversationId=${conv.id}`, {
+        headers: { "x-admin-pass": password },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+      } else {
+        setDrillError("Failed to load messages.");
+      }
+    } catch {
+      setDrillError("Network error.");
+    } finally {
+      setLoadingDrill(false);
+    }
+  };
+
+  // Go back to user list
+  const backToUsers = () => {
+    setSelectedUser(null);
+    setSelectedConversation(null);
+    setConversations([]);
+    setMessages([]);
+  };
+
+  // Go back to conversation list
+  const backToConversations = () => {
+    setSelectedConversation(null);
+    setMessages([]);
   };
 
   // ── Loading state ──
@@ -217,24 +300,41 @@ export default function AdminPage() {
       {/* Header */}
       <div className="border-b border-white/[0.08]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-semibold">Admin Dashboard</h1>
-              <p className="text-xs text-white/40 hidden sm:block">Netsyra AI — Internal</p>
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-1 text-xs text-white/40 overflow-hidden">
+                <button onClick={backToUsers} className="hover:text-white/70 transition whitespace-nowrap">Users</button>
+                {selectedUser && (
+                  <>
+                    <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                    <button onClick={backToConversations} className="hover:text-white/70 transition truncate max-w-[120px] sm:max-w-[200px]">{selectedUser.email}</button>
+                  </>
+                )}
+                {selectedConversation && (
+                  <>
+                    <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate max-w-[100px] sm:max-w-[200px]">{selectedConversation.title}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={refreshData}
-              disabled={loadingData}
-              className="text-xs sm:text-sm text-white/60 hover:text-white border border-white/[0.1] hover:border-white/[0.2] px-3 py-1.5 sm:py-2 rounded-lg transition flex items-center gap-2 disabled:opacity-50"
-            >
-              {loadingData ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
-              Refresh
-            </button>
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {!selectedUser && (
+              <button
+                onClick={refreshData}
+                disabled={loadingData}
+                className="text-xs sm:text-sm text-white/60 hover:text-white border border-white/[0.1] hover:border-white/[0.2] px-3 py-1.5 sm:py-2 rounded-lg transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {loadingData ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                Refresh
+              </button>
+            )}
             <button
               onClick={() => router.push("/dashboard")}
               className="text-xs sm:text-sm text-white/60 hover:text-white border border-white/[0.1] hover:border-white/[0.2] px-3 py-1.5 sm:py-2 rounded-lg transition"
@@ -251,7 +351,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Stats grid */}
+      {/* ── VIEW 1: User list (stats + users table) ── */}
+      {!selectedUser && (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <StatCard
@@ -334,9 +435,9 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition">
+                  <tr key={u.id} onClick={() => fetchConversations(u)} className="border-b border-white/[0.03] hover:bg-white/[0.05] transition cursor-pointer">
                     <td className="px-4 sm:px-6 py-3">
-                      <div className="text-white/90">{u.email}</div>
+                      <div className="text-white/90 hover:text-blue-400 transition">{u.email}</div>
                       {u.name && <div className="text-xs text-white/40">{u.name}</div>}
                     </td>
                     <td className="px-4 py-3">
@@ -367,10 +468,10 @@ export default function AdminPage() {
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-white/[0.05]">
             {users.map((u) => (
-              <div key={u.id} className="px-4 py-4">
+              <div key={u.id} onClick={() => fetchConversations(u)} className="px-4 py-4 hover:bg-white/[0.05] transition cursor-pointer">
                 <div className="flex items-start justify-between mb-2">
                   <div className="min-w-0 flex-1">
-                    <div className="text-white/90 text-sm truncate">{u.email}</div>
+                    <div className="text-white/90 text-sm truncate hover:text-blue-400 transition">{u.email}</div>
                     {u.name && <div className="text-xs text-white/40 truncate">{u.name}</div>}
                   </div>
                   <span className={`text-xs font-medium ml-2 flex-shrink-0 ${planColors[u.plan] || "text-white/50"}`}>
@@ -396,6 +497,85 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* ── VIEW 2: Conversations list for selected user ── */}
+      {selectedUser && !selectedConversation && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          {drillError && <p className="text-red-400 text-sm mb-4">{drillError}</p>}
+          {loadingDrill ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-white/50" />
+            </div>
+          ) : conversations.length === 0 ? (
+            <p className="text-white/40 text-sm text-center py-12">No conversations found for this user.</p>
+          ) : (
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
+                <h2 className="text-sm sm:text-base font-semibold">
+                  Conversations <span className="text-white/40">({conversations.length})</span>
+                </h2>
+              </div>
+              <div className="divide-y divide-white/[0.05]">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => fetchMessages(conv)}
+                    className="px-4 sm:px-6 py-3 sm:py-4 hover:bg-white/[0.05] transition cursor-pointer flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-white/90 truncate hover:text-blue-400 transition">{conv.title}</div>
+                      <div className="text-xs text-white/40 mt-0.5">
+                        {conv.messageCount} messages · {new Date(conv.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── VIEW 3: Messages in selected conversation ── */}
+      {selectedUser && selectedConversation && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          {drillError && <p className="text-red-400 text-sm mb-4">{drillError}</p>}
+          {loadingDrill ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-white/50" />
+            </div>
+          ) : messages.length === 0 ? (
+            <p className="text-white/40 text-sm text-center py-12">No messages in this conversation.</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-xs text-white/40 mb-4">
+                {selectedConversation.title} · {messages.length} messages
+              </div>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${
+                      msg.role === "user"
+                        ? "bg-blue-600/20 border border-blue-500/20 text-white/90"
+                        : "bg-white/[0.05] border border-white/[0.08] text-white/80"
+                    }`}
+                  >
+                    <div className="text-xs text-white/30 mb-1">
+                      {msg.role === "user" ? "User" : "Assistant"} · {new Date(msg.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </div>
+                    <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
