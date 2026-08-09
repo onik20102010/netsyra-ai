@@ -21,7 +21,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
-import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, setStylePrefs } from "@/hooks/useStylePrefs";
+import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, setStylePrefs as persistStylePrefs } from "@/hooks/useStylePrefs";
 
 // ── Sidebar nav items (matches history page) ──
 const NAV_ITEMS = [
@@ -40,7 +40,7 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [userGoal, setUserGoal] = useState("");
   const [userInstructions, setUserInstructions] = useState("");
-  const [stylePrefs, setStylePrefs] = useState<StylePrefs>(DEFAULT_STYLE_PREFS);
+  const [stylePrefs, setLocalStylePrefs] = useState<StylePrefs>(DEFAULT_STYLE_PREFS);
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -61,7 +61,7 @@ export default function ProfilePage() {
       // Style prefs come from localStorage (codebase-only, no DB)
       try {
         const raw = localStorage.getItem("netsyra_style_prefs");
-        if (raw) setStylePrefs({ ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) });
+        if (raw) setLocalStylePrefs({ ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) });
       } catch {}
       setLoading(false);
     };
@@ -84,8 +84,8 @@ export default function ProfilePage() {
       toast.error("Failed to save profile.");
       return;
     }
-    // Style prefs saved to localStorage only (no DB)
-    setStylePrefs(stylePrefs);
+    // Style prefs saved to localStorage + dispatch event so chat updates live
+    persistStylePrefs(stylePrefs);
     toast.success("Profile saved!");
   };
 
@@ -312,7 +312,11 @@ export default function ProfilePage() {
                     {(["small", "medium", "large"] as FontSize[]).map((size) => (
                       <button
                         key={size}
-                        onClick={() => setStylePrefs({ ...stylePrefs, fontSize: size })}
+                        onClick={() => {
+                          const next = { ...stylePrefs, fontSize: size };
+                          setLocalStylePrefs(next);
+                          persistStylePrefs(next);
+                        }}
                         className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition border ${
                           stylePrefs.fontSize === size
                             ? "bg-white/15 text-white border-white/30"
@@ -332,7 +336,11 @@ export default function ProfilePage() {
                     {(["sharp", "round"] as TableEdges[]).map((edge) => (
                       <button
                         key={edge}
-                        onClick={() => setStylePrefs({ ...stylePrefs, tableEdges: edge })}
+                        onClick={() => {
+                          const next = { ...stylePrefs, tableEdges: edge };
+                          setLocalStylePrefs(next);
+                          persistStylePrefs(next);
+                        }}
                         className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition border ${
                           stylePrefs.tableEdges === edge
                             ? "bg-white/15 text-white border-white/30"
@@ -358,7 +366,11 @@ export default function ProfilePage() {
                     min={0}
                     max={100}
                     value={stylePrefs.sectionSpacing}
-                    onChange={(e) => setStylePrefs({ ...stylePrefs, sectionSpacing: parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      const next = { ...stylePrefs, sectionSpacing: parseInt(e.target.value) };
+                      setLocalStylePrefs(next);
+                      persistStylePrefs(next);
+                    }}
                     className="w-full accent-gray-400"
                   />
                 </div>
@@ -376,7 +388,11 @@ export default function ProfilePage() {
                     min={0}
                     max={100}
                     value={stylePrefs.wordSpacing}
-                    onChange={(e) => setStylePrefs({ ...stylePrefs, wordSpacing: parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      const next = { ...stylePrefs, wordSpacing: parseInt(e.target.value) };
+                      setLocalStylePrefs(next);
+                      persistStylePrefs(next);
+                    }}
                     className="w-full accent-gray-400"
                   />
                 </div>

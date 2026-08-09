@@ -20,6 +20,7 @@ export const DEFAULT_STYLE_PREFS: StylePrefs = {
 };
 
 const STORAGE_KEY = "netsyra_style_prefs";
+const STYLE_UPDATE_EVENT = "netsyra-style-update";
 
 // ── Derived CSS values ──
 export function getStyleValues(prefs: StylePrefs) {
@@ -94,14 +95,22 @@ export function StylePrefsProvider({ children }: { children: ReactNode }) {
     setPrefs(loadPrefs());
     setLoading(false);
 
-    // Sync across tabs / windows
+    // Sync across tabs / windows (native storage event)
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) {
         setPrefs(loadPrefs());
       }
     };
+    // Sync within same tab (custom event from setStylePrefs)
+    const onStyleUpdate = () => {
+      setPrefs(loadPrefs());
+    };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(STYLE_UPDATE_EVENT, onStyleUpdate as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(STYLE_UPDATE_EVENT, onStyleUpdate as EventListener);
+    };
   }, []);
 
   return (
@@ -118,8 +127,8 @@ export function useStylePrefs() {
 // ── Imperative setter (for profile page) ──
 export function setStylePrefs(prefs: StylePrefs) {
   savePrefs(prefs);
-  // Dispatch a custom event so the provider updates without a reload
+  // Dispatch custom event so the provider updates in the same tab
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY }));
+    window.dispatchEvent(new CustomEvent(STYLE_UPDATE_EVENT));
   }
 }
