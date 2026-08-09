@@ -1154,12 +1154,21 @@ export default function ChatInterface({
     }
   }, [isImageAttachEnabled]);
 
+  // Cleanup blob URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      attachedImages.forEach(img => URL.revokeObjectURL(img.url));
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     if (!isImageAttachEnabled) {
       toast.error("Image analysis is available with N Plus, Go Plus, Pro, and + Pro models");
+      // Reset input so the same file can be selected again later
+      e.target.value = "";
       return;
     }
 
@@ -1172,10 +1181,15 @@ export default function ChatInterface({
 
     if (attachedImages.length + newImages.length > maxImagesPerMessage) {
       toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
+      // Revoke the blob URLs we just created since we won't use them
+      newImages.forEach(img => URL.revokeObjectURL(img.url));
+      e.target.value = "";
       return;
     }
 
     setAttachedImages(prev => [...prev, ...newImages]);
+    // Reset input so the same file can be selected again
+    e.target.value = "";
   };
 
   const removeAttachedImage = (id: string) => {
@@ -1219,6 +1233,7 @@ export default function ChatInterface({
       });
       if (attachedImages.length + newImages.length > maxImagesPerMessage) {
         toast.error(`You can only attach up to ${maxImagesPerMessage} images at a time`);
+        newImages.forEach(img => URL.revokeObjectURL(img.url));
         return;
       }
       setAttachedImages(prev => [...prev, ...newImages]);
