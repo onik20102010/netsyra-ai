@@ -26,6 +26,9 @@ export const FORMAT_CORE = `FORMAT:
 - Casual chat → 1-2 sentences, no heavy formatting.
 Match response length to question complexity. Do not over-explain.`;
 
+// ── Typography & Visual Hierarchy (~80 tokens) ─────────────
+export const TYPOGRAPHY_RULES = `TYPOGRAPHY: Use clear visual hierarchy. H2 (##) for major sections ~22-24px semibold. H3 (###) for subsections ~18-20px. Body text 16px/400. Bold (**) for 2-3 key terms per paragraph only. Italics (*) for soft emphasis. Inline code for names/paths. Code blocks 14px monospace. Blockquotes (>) for definitions/warnings. Tables for comparisons with bold headers. Spacing: blank line before/after headings, code blocks, tables. Line height 1.5-1.7. Never bold entire paragraphs.`;
+
 // ── Code-specific (~50 tokens) ─────────────────────────────
 export const CODE_RULES = `CODE: Write clean, production-ready code. Use language-tagged fenced blocks. Minimal explanation unless asked. Prefer working solutions over pseudocode.`;
 
@@ -151,6 +154,7 @@ export type PromptSection =
   | 'code' | 'reasoning' | 'creative' | 'analysis' | 'operations'
   | 'memory' | 'tools' | 'truth' | 'decisions' | 'teaching'
   | 'bullets' | 'emojis' | 'widgets' | 'diagrams' | 'reflection' | 'proactive'
+  | 'typography'
   // Ultra-autonomous sections (v4.0)
   | 'self_audit' | 'metacognition' | 'reasoning_rigor' | 'planning'
   | 'architecture' | 'debugging' | 'optimization' | 'security'
@@ -178,6 +182,7 @@ const SECTION_MAP: Record<PromptSection, string> = {
   diagrams: DIAGRAM_RULES,
   reflection: REFLECTION_RULES,
   proactive: PROACTIVE_RULES,
+  typography: TYPOGRAPHY_RULES,
   // Ultra-autonomous
   self_audit: SELF_AUDIT_RULES,
   metacognition: METACOGNITION_RULES,
@@ -241,26 +246,26 @@ const TIER_BASE: Record<string, PromptSection[]> = {
   fast:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth'],
   live:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'tools', 'widgets'],
 
-  // ── ENTRY PAID (plus — adds memory + visual + tools) ──
-  plus:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools', 'diagrams'],
+  // ── ENTRY PAID (plus — adds memory + visual + tools + typography) ──
+  plus:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'diagrams'],
 
   // ── MID PAID (pro — adds decision-making + self-reflection + proactive) ──
-  pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets'],
+  pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets'],
 
   // ── DEVELOPER (code — adds code rules + testing + debugging) ──
-  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams'],
+  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams'],
 
   // ── ENHANCED DEV (go_plus — adds memory + tools + scaling awareness) ──
-  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams'],
+  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams'],
 
   // ── AUTONOMOUS (aai — adds reasoning + analysis + planning + self-audit) ──
-  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams'],
+  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams'],
 
   // ── PRO+ AUTONOMOUS (plus_pro — adds creative + teaching + architecture + security) ──
-  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets'],
+  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets'],
 
   // ── COMMERCIAL SCALE (ni — FULL ultra-autonomous, all sections) ──
-  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets'],
+  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets'],
 };
 
 /**
