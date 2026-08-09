@@ -18,28 +18,28 @@ export interface Tier {
 const TIERS: Tier[] = [
   {
     name: 'Free',
-    description: 'Perfect for getting started',
-    features: ['Everyday chat', 'Very cheapest', 'Document analysis', 'Brainstorming', 'Data formatting', 'Writing (emails, blogs, articles)', 'Homework help', 'Medium-length coding'],
+    description: 'Limited access on models',
+    features: ['Small and cheap models', 'Low reasoning', 'Few coding access', 'Low context window', 'Minimal web searching access', 'High limits'],
     priceId: { month: '', year: '' },
     isFree: true,
   },
   {
     name: 'Go Plus',
-    description: 'Enhanced AI capabilities',
-    features: ['DeepSeek-V4 Flash access', 'Strong reasoning', 'Web search (10/day)', '16K context window'],
-    priceId: { month: 'pri_01kyf27thzh41n39q3cja2cphq', year: 'pri_01kyf2d4q3h41n39q3cja2cphq' },
+    description: 'High quality with low limits',
+    features: ['Low limits', 'High quality', 'Image analyzing', 'Good web search and researching', 'Best in content writing', 'Good coding', 'High context window'],
+    priceId: { month: 'pri_01kzk7f0he4j0sjxtg0zf1k6qp', year: 'pri_01kzk7f0he4j0sjxtg0zf1k6qp' },
   },
   {
     name: 'Pro',
-    description: 'For professionals and developers',
-    features: ['Advanced AI models', 'Advanced analytics', 'High context window and memory', 'Models like Anthropic, GPT 5, Gemini, Deepseek', 'Best for coding, researching, designing', 'No image generation'],
-    priceId: { month: 'pri_01kyf2acjbxs0s8nytjae84ckm', year: 'pri_01kyf2d6c62mpde2s2rfmdjra4' },
+    description: 'Excellent coding and agentic',
+    features: ['All features in Go Plus', 'Very low limits', 'Few limits on Anthropic', 'Excellent coding and agentic', 'Master planner', 'Very large models', 'Excellent web searching', 'Good for heavy tasks'],
+    priceId: { month: 'pri_01kzk7hac9j383j19ffs0k2jwm', year: 'pri_01kzk7hac9j383j19ffs0k2jwm' },
   },
   {
     name: '+ Pro',
-    description: 'All the features in Pro',
-    features: ['All features in Pro', 'Image generation', 'All models in Pro', 'Best for everyday tasks and coding'],
-    priceId: { month: 'pri_01kyf2ckc62mpde2s2rfmdjra4', year: 'pri_01kyf2d8q3h41n39q3cja2cphq' },
+    description: 'Excellent in all tasks',
+    features: ['All features in Go Plus, Pro', 'Negligible limits', 'Excellent in all tasks', 'Very heavy models', 'Advanced AI features'],
+    priceId: { month: 'pri_01kzk7k5hr9wnfs70zd4a5zde9', year: 'pri_01kzk7k5hr9wnfs70zd4a5zde9' },
   },
 ];
 
@@ -53,7 +53,7 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
   const isSuccess = searchParams.get("success") === "true";
   const ptxn = searchParams.get("_ptxn");
 
-  const [annual, setAnnual] = useState(false);
+  const [annual] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
   const [paddle, setPaddle] = useState<any>(null);
@@ -340,22 +340,6 @@ export default function SubscriptionContent({ country }: SubscriptionContentProp
             </div>
           )}
         </div>
-      </div>
-
-      {/* Pricing Toggle */}
-      <div className="flex items-center justify-center gap-4 mb-12">
-        <span className={`text-sm ${!annual ? 'text-white' : 'text-white/50'}`}>Monthly</span>
-        <button
-          onClick={() => setAnnual(!annual)}
-          className={`relative w-14 h-7 rounded-full transition-colors ${annual ? 'bg-blue-600' : 'bg-white/20'}`}
-        >
-          <div
-            className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${annual ? 'translate-x-7' : 'translate-x-1'}`}
-          />
-        </button>
-        <span className={`text-sm ${annual ? 'text-white' : 'text-white/50'}`}>
-          Annual <span className="text-blue-400">-20%</span>
-        </span>
       </div>
 
       {/* Pricing Cards */}

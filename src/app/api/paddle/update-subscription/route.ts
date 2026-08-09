@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
     // Determine plan from price ID
     let plan = "free";
     const priceIdMap: Record<string, string> = {
-      'pri_01kyf27thzh41n39q3cja2cphq': 'go_plus',
-      'pri_01kyf2acjbxs0s8nytjae84ckm': 'pro',
-      'pri_01kyf2ckc62mpde2s2rfmdjra4': 'plus_pro',
+      'pri_01kzk7f0he4j0sjxtg0zf1k6qp': 'go_plus',
+      'pri_01kzk7hac9j383j19ffs0k2jwm': 'pro',
+      'pri_01kzk7k5hr9wnfs70zd4a5zde9': 'plus_pro',
     };
 
     plan = priceIdMap[priceId] || "free";

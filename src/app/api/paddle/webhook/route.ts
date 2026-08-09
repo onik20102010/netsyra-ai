@@ -136,9 +136,9 @@ export async function POST(req: NextRequest) {
     let txPlan = "free";
     if (txFirstItem?.price?.id) {
       const priceId = txFirstItem.price.id;
-      if (priceId === 'pri_01kyf27thzh41n39q3cja2cphq') txPlan = "go_plus";
-      else if (priceId === 'pri_01kyf2acjbxs0s8nytjae84ckm') txPlan = "pro";
-      else if (priceId === 'pri_01kyf2ckc62mpde2s2rfmdjra4') txPlan = "plus_pro";
+      if (priceId === 'pri_01kzk7f0he4j0sjxtg0zf1k6qp') txPlan = "go_plus";
+      else if (priceId === 'pri_01kzk7hac9j383j19ffs0k2jwm') txPlan = "pro";
+      else if (priceId === 'pri_01kzk7k5hr9wnfs70zd4a5zde9') txPlan = "plus_pro";
     }
 
     if (txPlan === "free" && txFirstItem?.product?.name) {
@@ -204,11 +204,11 @@ export async function POST(req: NextRequest) {
     const priceId = firstItem.price.id;
     console.log(`🔍 Webhook: priceId=${priceId}`);
     // Map price IDs to plans
-    if (priceId === 'pri_01kyf27thzh41n39q3cja2cphq') {
+    if (priceId === 'pri_01kzk7f0he4j0sjxtg0zf1k6qp') {
       plan = "go_plus";
-    } else if (priceId === 'pri_01kyf2acjbxs0s8nytjae84ckm') {
+    } else if (priceId === 'pri_01kzk7hac9j383j19ffs0k2jwm') {
       plan = "pro";
-    } else if (priceId === 'pri_01kyf2ckc62mpde2s2rfmdjra4') {
+    } else if (priceId === 'pri_01kzk7k5hr9wnfs70zd4a5zde9') {
       plan = "plus_pro";
     }
   }

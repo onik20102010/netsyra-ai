@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 
 const PRICE_IDS = [
-  "pri_01kyf27thzh41n39q3cja2cphq", // Go Plus monthly
-  "pri_01kyf2d4q3h41n39q3cja2cphq", // Go Plus yearly
-  "pri_01kyf2acjbxs0s8nytjae84ckm", // Pro monthly
-  "pri_01kyf2d6c62mpde2s2rfmdjra4", // Pro yearly
-  "pri_01kyf2ckc62mpde2s2rfmdjra4", // Plus Pro monthly
-  "pri_01kyf2d8q3h41n39q3cja2cphq", // Plus Pro yearly
+  "pri_01kzk7f0he4j0sjxtg0zf1k6qp", // Go Plus monthly
+  "pri_01kzk7hac9j383j19ffs0k2jwm", // Pro monthly
+  "pri_01kzk7k5hr9wnfs70zd4a5zde9", // Plus Pro monthly
 ];
 
 export async function GET() {

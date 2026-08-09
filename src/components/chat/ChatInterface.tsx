@@ -459,6 +459,14 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 });
 
+// ── Noise-suppressed audio constraints (matches Gemini-style noise cancellation) ──
+const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: 1,
+};
+
 export default function ChatInterface({
   conversationId,
   setConversationId,
@@ -788,12 +796,83 @@ export default function ChatInterface({
   }, []);
 
   // ── Method 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
-  // Chrome's SpeechRecognition does NOT trigger its own permission prompt.
-  // We must call getUserMedia first to grant permission, then stop the stream,
-  // wait 200ms for the mic to release, THEN start recognition.
-  const startWebSpeechRecognition = useCallback(async (stream: MediaStream): Promise<boolean> => {
+  // To avoid "double listening" (mic turning on → off → on), we try recognition.start()
+  // directly first. Chrome reuses cached mic permission without a second getUserMedia call.
+  // Only if that fails do we fall back to the getUserMedia permission-grant dance.
+  const startWebSpeechRecognition = useCallback(async (): Promise<boolean> => {
     const SpeechRecognition = getSpeechRecognition();
     if (!SpeechRecognition) return false;
+
+    const createRecognition = () => {
+      const recognition = new SpeechRecognition();
+      recognition.lang = navigator.language || "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      // Track the base text (existing input) and processed final results
+      const baseText = input.trim() ? input.trim() + " " : "";
+      finalTranscriptRef.current = baseText;
+
+      recognition.onresult = (event: any) => {
+        // Build the full transcript from ALL results — this avoids duplication
+        // because we reconstruct from scratch each time instead of appending
+        let finalText = baseText;
+        let interim = "";
+
+        for (let i = 0; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+
+        const fullText = (finalText + interim).replace(/\s+/g, " ").trimStart();
+        setInput(fullText);
+
+        // Update the final transcript ref with just the final parts
+        finalTranscriptRef.current = finalText;
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsRecording(false);
+        if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") return;
+        if (event.error === "audio-capture") return;
+      };
+
+      return recognition;
+    };
+
+    // ── Attempt 1: Try starting recognition directly (no double mic activation) ──
+    // Chrome caches mic permission after the first grant, so this usually works
+    // without needing a separate getUserMedia call.
+    try {
+      const recognition = createRecognition();
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+      return true;
+    } catch {
+      // recognition.start() threw — likely needs permission grant
+    }
+
+    // ── Attempt 2: Permission-grant dance (first-time use or permission revoked) ──
+    // Call getUserMedia to trigger the browser's native permission prompt,
+    // then stop the stream, wait for mic release, and try recognition again.
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+    } catch {
+      setIsRecording(false);
+      return false;
+    }
 
     // Stop the getUserMedia stream — we only needed it to grant permission
     stream.getTracks().forEach((t) => t.stop());
@@ -801,51 +880,8 @@ export default function ChatInterface({
     // Wait 200ms for the browser to fully release the microphone
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = navigator.language || "en-US";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    // Track the base text (existing input) and processed final results
-    const baseText = input.trim() ? input.trim() + " " : "";
-    finalTranscriptRef.current = baseText;
-    let lastProcessedIndex = -1; // Track which results we've already added as final
-
-    recognition.onresult = (event: any) => {
-      // Build the full transcript from ALL results — this avoids duplication
-      // because we reconstruct from scratch each time instead of appending
-      let finalText = baseText;
-      let interim = "";
-
-      for (let i = 0; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalText += transcript;
-        } else {
-          interim += transcript;
-        }
-      }
-
-      const fullText = (finalText + interim).replace(/\s+/g, " ").trimStart();
-      setInput(fullText);
-
-      // Update the final transcript ref with just the final parts
-      finalTranscriptRef.current = finalText;
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-      setInput((prev) => (finalTranscriptRef.current ? finalTranscriptRef.current.trim() : prev));
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsRecording(false);
-      if (!event.error || event.error === "aborted" || event.error === "no-speech") return;
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") return;
-      if (event.error === "audio-capture") return;
-    };
-
     try {
+      const recognition = createRecognition();
       recognition.start();
       recognitionRef.current = recognition;
       setIsRecording(true);
@@ -857,7 +893,15 @@ export default function ChatInterface({
   }, [input, getSpeechRecognition]);
 
   // ── Method 2: MediaRecorder + Groq Whisper (Firefox, etc.) — record then transcribe ──
-  const startMediaRecorderFallback = useCallback((stream: MediaStream) => {
+  const startMediaRecorderFallback = useCallback(async (): Promise<boolean> => {
+    // Get a fresh noise-suppressed stream for recording
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+    } catch {
+      toast.error("Could not access microphone. Please check your permissions.", { duration: 6000 });
+      return false;
+    }
     // Pick the best supported audio format
     const mimeTypes = [
       "audio/webm;codecs=opus",
@@ -953,7 +997,7 @@ export default function ChatInterface({
     return true;
   }, [input]);
 
-  // ── Main toggle: click → browser asks permission → start recording ──
+  // ── Main toggle: click → start recording (single mic activation, no double listening) ──
   const toggleRecording = useCallback(async () => {
     // If already recording, stop
     if (isRecording) {
@@ -983,33 +1027,18 @@ export default function ChatInterface({
     // Check if getUserMedia is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
 
-    // ── Step 1: getUserMedia — triggers browser's native permission prompt ──
-    // This grants mic permission for the page. Required by BOTH paths below.
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      // User denied or no mic — silent
-      return;
-    }
-
-    // ── Step 2: Start recording ──
-    // Path 1: Web Speech API (Chrome, Edge, Safari) — live transcription
-    // getUserMedia stream is stopped, 200ms wait, then recognition.start()
+    // ── Path 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
+    // Tries recognition.start() directly first (no double mic activation).
+    // Falls back to getUserMedia permission dance only if needed.
     const SpeechRecognition = getSpeechRecognition();
     if (SpeechRecognition) {
-      const started = await startWebSpeechRecognition(stream);
+      const started = await startWebSpeechRecognition();
       if (started) return;
-      // If SpeechRecognition failed, get a fresh stream for MediaRecorder
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch {
-        return;
-      }
     }
 
-    // Path 2: MediaRecorder + Groq Whisper (Firefox, etc.)
-    startMediaRecorderFallback(stream);
+    // ── Path 2: MediaRecorder + Groq Whisper (Firefox, etc.) ──
+    // Gets its own noise-suppressed stream internally.
+    await startMediaRecorderFallback();
   }, [isRecording, getSpeechRecognition, startWebSpeechRecognition, startMediaRecorderFallback]);
 
   const handleSend = async (e?: FormEvent) => {
