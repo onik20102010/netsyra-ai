@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type FontSize = "small" | "medium" | "large";
 export type TableEdges = "sharp" | "round";
@@ -58,7 +60,9 @@ export function getStyleValues(prefs: StylePrefs) {
   };
 }
 
-// ── localStorage helpers ──
+// ── Local cache ──
+// Supabase is the source of truth. localStorage is only a cache so preferences
+// paint instantly on load (and still work while signed out).
 function loadPrefs(): StylePrefs {
   if (typeof window === "undefined") return DEFAULT_STYLE_PREFS;
   try {
@@ -80,6 +84,22 @@ function savePrefs(prefs: StylePrefs) {
   }
 }
 
+// ── Supabase persistence ──
+/** Reads a user's saved preferences. Returns null when none are stored yet. */
+export async function fetchStylePrefs(userId: string): Promise<StylePrefs | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("style_prefs")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data?.style_prefs) return null;
+  const stored = data.style_prefs as Partial<StylePrefs>;
+  if (!stored || Object.keys(stored).length === 0) return null;
+  return { ...DEFAULT_STYLE_PREFS, ...stored };
+}
+
 interface StyleContextValue {
   prefs: StylePrefs;
   loading: boolean;
@@ -91,12 +111,13 @@ const StyleContext = createContext<StyleContextValue>({
 });
 
 export function StylePrefsProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [prefs, setPrefs] = useState<StylePrefs>(DEFAULT_STYLE_PREFS);
   const [loading, setLoading] = useState(true);
 
+  // 1. Paint immediately from the cache, and keep tabs/components in sync.
   useEffect(() => {
     setPrefs(loadPrefs());
-    setLoading(false);
 
     // Sync across tabs / windows (native storage event)
     const onStorage = (e: StorageEvent) => {
@@ -116,6 +137,34 @@ export function StylePrefsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // 2. Then load the authoritative copy from Supabase, so preferences follow
+  //    the user across devices and survive cleared browser storage.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const remote = await fetchStylePrefs(user.id);
+      if (cancelled) return;
+      if (remote) {
+        setPrefs(remote);
+        savePrefs(remote);
+        // Notify components that read the cache directly (e.g. the chat page's
+        // theme) so they pick up the freshly loaded values without a reload.
+        window.dispatchEvent(new CustomEvent(STYLE_UPDATE_EVENT));
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading]);
+
   return (
     <StyleContext.Provider value={{ prefs, loading }}>
       {children}
@@ -127,11 +176,33 @@ export function useStylePrefs() {
   return useContext(StyleContext);
 }
 
-// ── Imperative setter (for profile page) ──
-export function setStylePrefs(prefs: StylePrefs) {
+// ── Imperative setter (for the profile page) ──
+/**
+ * Saves preferences for the signed-in user.
+ *
+ * The local cache is updated first so the UI reflects the change instantly,
+ * then the values are persisted to the user's profile row. Pass a `userId` to
+ * persist; without one (signed out) the change stays local to this browser.
+ *
+ * Returns an error message when the remote save failed, otherwise null.
+ */
+export async function setStylePrefs(
+  prefs: StylePrefs,
+  userId?: string | null
+): Promise<string | null> {
   savePrefs(prefs);
   // Dispatch custom event so the provider updates in the same tab
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(STYLE_UPDATE_EVENT));
   }
+
+  if (!userId) return null;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ style_prefs: prefs })
+    .eq("user_id", userId);
+
+  return error ? error.message : null;
 }

@@ -145,6 +145,36 @@ export const TESTING_RULES = `TESTING: Write tests that would actually catch bug
 // ── Documentation & Knowledge Transfer (~50 tokens) ────────
 export const DOCUMENTATION_RULES = `DOCUMENTATION: Write docs you'd want to read. Lead with the answer, then explain why. Include runnable examples, not just descriptions. Document the "why" not just the "what". Keep docs next to the code. Update docs when behavior changes. A PR that changes behavior but not docs is incomplete.`;
 
+// ── Math Reasoning (~90 tokens) ─────────────────────────────
+export const MATH_REASONING_RULES = `MATH: Use Polya's 4‑step method: (1) Restate the problem, identify knowns/unknowns. (2) Plan strategy (formula, decomposition). (3) Execute with clear steps, intermediate values. (4) Verify: alternative method, extreme cases, dimensional analysis, or quick Python script. Always state the final answer with correct units and appropriate precision. For numeric computation, output a clean, runnable Python code block that produces the result. List all assumptions explicitly. Prefer exact forms over rounded decimals unless specified. Example: average speed = total distance / total time — watch for unequal time legs, not arithmetic mean.`;
+
+// ── Critical Thinking (~80 tokens) ─────────────────────────
+export const CRITICAL_THINKING_RULES = `CRITICAL THINKING: Use the CRITIC framework: Claim, Reasons/Evidence, Inference, Truth, Implications, Context. Distinguish correlation from causation. When statistics are given, question sample size and selection bias. Spot fallacies (hasty generalization, false dichotomy, cherry‑picking) and explain the logical flaw gently. If evidence is insufficient, state uncertainty and what would resolve it. Never accept a claim at face value — analyse evidence and consider alternative explanations.`;
+
+// ── Code Review (~60 tokens) ────────────────────────────────
+export const CODE_REVIEW_RULES = `CODE REVIEW: Review as an experienced engineer. Evaluate: correctness, readability, maintainability, simplicity, consistency, error handling, security, performance. Prioritize findings (critical, important, minor). Provide constructive explanations for each suggestion. Recognise good implementation when appropriate.`;
+
+// ── Refactoring (~60 tokens) ────────────────────────────────
+export const REFACTORING_RULES = `REFACTORING: Improve existing code without changing its external behaviour. Reduce unnecessary complexity and duplication. Simplify logic, improve organisation. Preserve existing conventions and compatibility. Explain significant changes and highlight improvements in readability, maintainability, or performance.`;
+
+// ── Cognitive Engine (~70 tokens) ───────────────────────────
+export const COGNITIVE_ENGINE_RULES = `COGNITIVE ENGINE: For complex tasks, silently use chain‑of‑thought to plan before answering. Dynamically adapt difficulty to the user's expertise (beginner: fundamentals, expert: deep technical). Maintain anti‑hallucination guard — never invent facts. Use user‑state awareness: reference goals and past context naturally.`;
+
+// ── Emotional Intelligence (~70 tokens) ─────────────────────
+export const EMOTIONAL_INTELLIGENCE_RULES = `EMOTIONAL INTELLIGENCE: When the user signals distress or frustration, immediately shift to a supportive tone. Use HEAR: Hear the emotion, Empathise briefly ("That sounds incredibly frustrating"), Assess risk (if self‑harm, provide crisis resources first), Respond gently. Never dismiss or minimise feelings. After acknowledgement, pivot to a practical, calm solution.`;
+
+// ── Graceful Refusal (~60 tokens) ───────────────────────────
+export const REFUSAL_RULES = `REFUSAL: When you must refuse a request, follow REFUSE + REFRAME: state the limit clearly and briefly, give a one‑sentence reason (without lecturing), then offer a related, safer, or more constructive alternative. If no safe alternative exists, explain the broader goal you can help with instead. Never bluntly say "I can't".`;
+
+// ── Cultural Dexterity (~60 tokens) ────────────────────────
+export const CULTURAL_RULES = `CULTURAL DEXTERITY: Adapt to the user's locale: use their spelling conventions, date formats, and measurement units (metric/imperial). Avoid stereotypes and Western‑centric defaults. Mirror the user's regional vocabulary (e.g., "lift" vs "elevator"). Use inclusive language. When time zones matter, ask if not known. Rotate examples across geographies.`;
+
+// ── Redundancy & Token Optimisation (~50 tokens) ────────────
+export const EFFICIENCY_RULES = `EFFICIENCY: Be maximally informative per token. Cut filler phrases ("Great question!", "I'd be happy to…"). Never parrot the system prompt. If a short answer is perfect, stop. Ensure each output element (table, diagram, text) adds unique value without redundancy.`;
+
+// ── Task Execution Protocols (~100 tokens) ──────────────────
+export const TASK_PROTOCOLS_RULES = `TASK PROTOCOLS: For non‑trivial tasks, (1) Determine objective, constraints, missing info. (2) Plan minimal steps. (3) Execute smallest necessary actions, using tools only when they add value. (4) Inspect every tool result. (5) If failure occurs, preserve evidence, classify root cause, change strategy — never repeat identical failed actions. (6) Verify result against objective. (7) Calibrate confidence: high/moderate/low. (8) Maintain internal task state (assumptions, pending, done). (9) Prefer evidence hierarchy: tool output > user info > official docs > model knowledge > assumption. (10) Clarify only when multiple interpretations yield materially different outcomes. (11) Self‑correct any material defect before output. For code tasks: inspect project structure, implement minimal change, run verification, fix root causes.`;
+
 // ────────────────────────────────────────────────────────────
 //  TIERED PROMPT ASSEMBLY
 // ────────────────────────────────────────────────────────────
@@ -158,7 +188,11 @@ export type PromptSection =
   // Ultra-autonomous sections (v4.0)
   | 'self_audit' | 'metacognition' | 'reasoning_rigor' | 'planning'
   | 'architecture' | 'debugging' | 'optimization' | 'security'
-  | 'scaling' | 'integration' | 'testing' | 'documentation';
+  | 'scaling' | 'integration' | 'testing' | 'documentation'
+  // Newly added sections (from full SYSTEM_PROMPT parity)
+  | 'math_reasoning' | 'critical_thinking' | 'code_review' | 'refactoring'
+  | 'cognitive' | 'emotional_intelligence' | 'refusal' | 'cultural'
+  | 'efficiency' | 'task_protocols';
 
 const SECTION_MAP: Record<PromptSection, string> = {
   identity: IDENTITY,
@@ -196,6 +230,17 @@ const SECTION_MAP: Record<PromptSection, string> = {
   integration: INTEGRATION_RULES,
   testing: TESTING_RULES,
   documentation: DOCUMENTATION_RULES,
+  // New sections
+  math_reasoning: MATH_REASONING_RULES,
+  critical_thinking: CRITICAL_THINKING_RULES,
+  code_review: CODE_REVIEW_RULES,
+  refactoring: REFACTORING_RULES,
+  cognitive: COGNITIVE_ENGINE_RULES,
+  emotional_intelligence: EMOTIONAL_INTELLIGENCE_RULES,
+  refusal: REFUSAL_RULES,
+  cultural: CULTURAL_RULES,
+  efficiency: EFFICIENCY_RULES,
+  task_protocols: TASK_PROTOCOLS_RULES,
 };
 
 // ── Task type → relevant prompt sections ────────────────────
@@ -207,21 +252,21 @@ export type TaskCategory =
   | 'scaling' | 'integration';
 
 const TASK_SECTIONS: Record<TaskCategory, PromptSection[]> = {
-  casual:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth'],
-  coding:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'testing'],
-  reasoning:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'decisions', 'truth', 'reflection', 'self_audit'],
+  casual:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'emotional_intelligence', 'refusal'],
+  coding:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'testing', 'code_review', 'refactoring'],
+  reasoning:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'decisions', 'truth', 'reflection', 'self_audit', 'math_reasoning', 'critical_thinking'],
   creative:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'creative', 'truth'],
-  analysis:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'analysis', 'truth', 'reflection', 'self_audit'],
-  operations:    ['identity', 'safety', 'persona', 'response_style', 'format_core', 'operations', 'truth', 'reflection', 'scaling'],
-  teaching:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'teaching', 'truth', 'reflection', 'documentation'],
-  agentic:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'proactive', 'planning'],
+  analysis:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'analysis', 'truth', 'reflection', 'self_audit', 'critical_thinking'],
+  operations:    ['identity', 'safety', 'persona', 'response_style', 'format_core', 'operations', 'truth', 'reflection', 'scaling', 'task_protocols'],
+  teaching:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'teaching', 'truth', 'reflection', 'documentation', 'emotional_intelligence', 'cultural'],
+  agentic:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'proactive', 'planning', 'task_protocols'],
   // Ultra-autonomous task types
-  architecture:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'architecture', 'reasoning', 'decisions', 'truth', 'reflection', 'self_audit', 'scaling', 'security', 'diagrams', 'documentation'],
-  debugging:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'debugging', 'code', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'testing', 'metacognition'],
-  optimization:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'optimization', 'analysis', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'scaling'],
-  security:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'security', 'analysis', 'truth', 'reflection', 'self_audit', 'testing'],
-  scaling:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'scaling', 'architecture', 'operations', 'optimization', 'truth', 'reflection', 'self_audit', 'security', 'diagrams'],
-  integration:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'integration', 'architecture', 'code', 'truth', 'reflection', 'self_audit', 'testing', 'documentation'],
+  architecture:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'architecture', 'reasoning', 'decisions', 'truth', 'reflection', 'self_audit', 'scaling', 'security', 'diagrams', 'documentation', 'task_protocols'],
+  debugging:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'debugging', 'code', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'testing', 'metacognition', 'task_protocols'],
+  optimization:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'optimization', 'analysis', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'scaling', 'task_protocols'],
+  security:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'security', 'analysis', 'truth', 'reflection', 'self_audit', 'testing', 'task_protocols'],
+  scaling:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'scaling', 'architecture', 'operations', 'optimization', 'truth', 'reflection', 'self_audit', 'security', 'diagrams', 'task_protocols'],
+  integration:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'integration', 'architecture', 'code', 'truth', 'reflection', 'self_audit', 'testing', 'documentation', 'task_protocols'],
 };
 
 // ── Tier → base sections (progressive: free → commercial scale) ──
@@ -243,29 +288,29 @@ const TASK_SECTIONS: Record<TaskCategory, PromptSection[]> = {
 //
 const TIER_BASE: Record<string, PromptSection[]> = {
   // ── FREE TIER (minimal — token-efficient) ──
-  fast:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth'],
-  live:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'tools', 'widgets'],
+  fast:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'emotional_intelligence', 'refusal'],
+  live:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'tools', 'widgets', 'emotional_intelligence', 'refusal'],
 
-  // ── ENTRY PAID (plus — adds memory + visual + tools + typography) ──
-  plus:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'diagrams'],
+  // ── ENTRY PAID (plus — adds memory + visual + tools + typography + soft skills) ──
+  plus:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'diagrams', 'emotional_intelligence', 'refusal', 'cultural'],
 
-  // ── MID PAID (pro — adds decision-making + self-reflection + proactive) ──
-  pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets'],
+  // ── MID PAID (pro — adds decision-making + self-reflection + proactive + efficiency) ──
+  pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency'],
 
-  // ── DEVELOPER (code — adds code rules + testing + debugging) ──
-  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams'],
+  // ── DEVELOPER (code — adds code rules + testing + debugging + code review + refactoring) ──
+  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring'],
 
   // ── ENHANCED DEV (go_plus — adds memory + tools + scaling awareness) ──
-  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams'],
+  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring', 'cultural'],
 
-  // ── AUTONOMOUS (aai — adds reasoning + analysis + planning + self-audit) ──
-  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams'],
+  // ── AUTONOMOUS (aai — adds reasoning + analysis + planning + self-audit + math/critical + task protocols) ──
+  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'cognitive'],
 
-  // ── PRO+ AUTONOMOUS (plus_pro — adds creative + teaching + architecture + security) ──
-  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets'],
+  // ── PRO+ AUTONOMOUS (plus_pro — adds creative + teaching + architecture + security + all new) ──
+  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive'],
 
   // ── COMMERCIAL SCALE (ni — FULL ultra-autonomous, all sections) ──
-  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets'],
+  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive'],
 };
 
 /**
@@ -337,7 +382,7 @@ export function detectComplexity(input: string | TaskCategory): ComplexityLevel 
  * Sections that are "always-on" — never pruned regardless of complexity.
  * These are the minimum viable prompt.
  */
-const CORE_SECTIONS: PromptSection[] = ['identity', 'safety', 'persona', 'response_style', 'truth'];
+const CORE_SECTIONS: PromptSection[] = ['identity', 'safety', 'persona', 'response_style', 'truth', 'emotional_intelligence'];
 
 /**
  * Sections that are "enhancement" — pruned first when token budget is tight.
@@ -353,6 +398,10 @@ const ENHANCEMENT_PRUNE_ORDER: PromptSection[] = [
   'self_audit', 'debugging', 'architecture',
   'analysis', 'operations', 'reasoning',
   'tools', 'code', 'format_core',
+  // New sections — placed after existing ones to prune later
+  'efficiency', 'cultural', 'code_review', 'refactoring',
+  'cognitive', 'math_reasoning', 'critical_thinking',
+  'task_protocols', // keep task protocols longest as they're critical for autonomy
 ];
 
 /**
@@ -458,7 +507,7 @@ export function detectTaskCategory(message: string): TaskCategory {
     security: 0, scaling: 0, integration: 0,
   };
 
-  // ── Architecture patterns (high weight — very specific keywords) ──
+  // ── Architecture patterns ──
   const archPatterns = /\b(architect|system design|design (a |the )?(system|service|api|database|microservice)|scalab(le|ility)|high availability|fault tolerant|distributed system|event-driven|cqrs|event sourcing|domain-driven|ddd|service mesh|message queue|kafka|rabbitmq|event bus)\b/;
   if (archPatterns.test(lower)) scores.architecture += 3;
   if (/\b(design|blueprint|layout|topology|infrastructure|stack|monolith|microservice|serverless|lambda)\b/.test(lower)) scores.architecture += 1;
@@ -511,6 +560,9 @@ export function detectTaskCategory(message: string): TaskCategory {
   // ── Reasoning patterns ──
   if (/\b(why|how|compare|difference|reason|prove|derive|justify|strategy|trade-?off|pros and cons|advantages|disadvantages)\b/.test(lower)) scores.reasoning += 2;
   if (/\b(explain|what is|what are|define|describe)\b/.test(lower)) scores.reasoning += 1;
+  // Math / critical thinking hints → bump reasoning/analysis
+  if (/[\d+\-*/^=<>]/.test(lower) || /\b(math|equation|formula|derivative|integral|probability|statistic|proof|theorem)\b/.test(lower)) scores.reasoning += 1;
+  if (/\b(critical thinking|fallacy|bias|assumption|evidence|correlation|causation)\b/.test(lower)) scores.analysis += 1;
 
   // ── Casual fallback ──
   if (/^(hi|hello|hey|thanks|thank you|ok|okay|cool|nice|great|bye|goodbye|sup|yo)\b/.test(lower)) scores.casual += 2;

@@ -50,19 +50,20 @@ export default function ProfilePage() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("name, goal, custom_instructions")
+        .select("name, goal, custom_instructions, style_prefs")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
         setDisplayName(data.name || "");
         setUserGoal(data.goal || "");
         setUserInstructions(data.custom_instructions || "");
+        // Style prefs are stored on the profile row so they persist across
+        // devices; fall back to defaults when the user hasn't set them yet.
+        const stored = data.style_prefs as Partial<StylePrefs> | null;
+        if (stored && Object.keys(stored).length > 0) {
+          setLocalStylePrefs({ ...DEFAULT_STYLE_PREFS, ...stored });
+        }
       }
-      // Style prefs come from localStorage (codebase-only, no DB)
-      try {
-        const raw = localStorage.getItem("netsyra_style_prefs");
-        if (raw) setLocalStylePrefs({ ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) });
-      } catch {}
       setLoading(false);
     };
     loadProfile();
@@ -77,6 +78,7 @@ export default function ProfilePage() {
         name: displayName,
         goal: userGoal,
         custom_instructions: userInstructions,
+        style_prefs: stylePrefs,
       },
       { onConflict: "user_id" }
     );
@@ -84,8 +86,9 @@ export default function ProfilePage() {
       toast.error("Failed to save profile.");
       return;
     }
-    // Style prefs saved to localStorage + dispatch event so chat updates live
-    persistStylePrefs(stylePrefs);
+    // The upsert above is the durable copy; this refreshes the local cache and
+    // notifies the app so chat restyles immediately.
+    await persistStylePrefs(stylePrefs);
     toast.success("Profile saved!");
   };
 

@@ -30,6 +30,17 @@ export const defaultEditorConfig: EditorConfig = {
   bracketPairColorization: true,
 };
 
+// --- Panel width constraints (px). Shared with IdeShell's resize handles. ---
+export const SIDEBAR_MIN_WIDTH = 180;
+export const SIDEBAR_MAX_WIDTH = 640;
+export const SIDEBAR_DEFAULT_WIDTH = 280;
+export const RIGHT_PANEL_MIN_WIDTH = 280;
+export const RIGHT_PANEL_MAX_WIDTH = 800;
+export const RIGHT_PANEL_DEFAULT_WIDTH = 420;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
 // --- Helper to generate unique IDs for file items ---
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -43,6 +54,15 @@ const getLanguageFromPath = (path: string): string => {
   };
   return map[ext] || 'plaintext';
 };
+
+// --- A single proposed AI edit awaiting review, shown inline in the editor ---
+export interface PendingDiff {
+  editId: string;
+  filePath: string;
+  fileId: string | null;
+  oldContent: string;
+  newContent: string;
+}
 
 // --- Store Interface ---
 interface IdeStore {
@@ -67,11 +87,25 @@ interface IdeStore {
   isRightPanelOpen: boolean;
   editorConfig: EditorConfig;
 
+  // Panel widths (px, desktop only) — user-draggable, persisted
+  sidebarWidth: number;
+  rightPanelWidth: number;
+  setSidebarWidth: (width: number) => void;
+  setRightPanelWidth: (width: number) => void;
+
   // Problems (diagnostics)
   problems: Record<string, Problem[]>;
   setProblems: (fileId: string, problems: Problem[]) => void;
   mergeProblems: (fileId: string, problems: Problem[], source: string) => void;
   clearProblems: (fileId: string) => void;
+
+  // Pending AI diffs, keyed by file path. When a file has one, the editor
+  // renders an inline red/green diff instead of the plain editor so the user
+  // can review the agent's proposed change in place.
+  pendingDiffs: Record<string, PendingDiff>;
+  setPendingDiffs: (diffs: PendingDiff[]) => void;
+  clearPendingDiff: (filePath: string) => void;
+  clearPendingDiffs: () => void;
   
   // Actions: Workspace
   openWorkspace: (name: string, files: FileItem[]) => void;
@@ -129,6 +163,8 @@ export const useIdeStore = create<IdeStore>()(
       rightPanelView: null,
       isRightPanelOpen: false, // always closed initially (both mobile + desktop)
       editorConfig: defaultEditorConfig,
+      sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
+      rightPanelWidth: RIGHT_PANEL_DEFAULT_WIDTH,
       problems: {},
 
       // ---- Actions ----
@@ -461,6 +497,12 @@ export const useIdeStore = create<IdeStore>()(
       updateEditorConfig: (config) => set((s) => ({
         editorConfig: { ...s.editorConfig, ...config }
       })),
+      setSidebarWidth: (width) => set({
+        sidebarWidth: clamp(width, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH),
+      }),
+      setRightPanelWidth: (width) => set({
+        rightPanelWidth: clamp(width, RIGHT_PANEL_MIN_WIDTH, RIGHT_PANEL_MAX_WIDTH),
+      }),
 
       // Split Editor Actions
       splitEditor: (fileId) => {
@@ -488,6 +530,18 @@ export const useIdeStore = create<IdeStore>()(
         delete newProblems[fileId];
         return { problems: newProblems };
       }),
+
+      // 6. Pending AI Diff Actions
+      pendingDiffs: {},
+      setPendingDiffs: (diffs) => set(() => ({
+        pendingDiffs: Object.fromEntries(diffs.map((d) => [d.filePath, d])),
+      })),
+      clearPendingDiff: (filePath) => set((s) => {
+        const next = { ...s.pendingDiffs };
+        delete next[filePath];
+        return { pendingDiffs: next };
+      }),
+      clearPendingDiffs: () => set({ pendingDiffs: {} }),
     }),
     {
       name: 'netsyra-ide-storage', // Persists open tabs/layout to localStorage
@@ -496,6 +550,9 @@ export const useIdeStore = create<IdeStore>()(
         activeFileId: state.activeFileId,
         sidebarView: state.sidebarView,
         isSidebarOpen: state.isSidebarOpen,
+        // Remember the widths the user dragged to
+        sidebarWidth: state.sidebarWidth,
+        rightPanelWidth: state.rightPanelWidth,
       }),
       // After rehydrating from localStorage, close sidebar on mobile
       onRehydrateStorage: () => (state) => {

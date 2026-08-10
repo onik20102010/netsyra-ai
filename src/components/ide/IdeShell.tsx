@@ -2,7 +2,15 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useIdeStore } from "@/ide";
+import {
+  useIdeStore,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_DEFAULT_WIDTH,
+  RIGHT_PANEL_MIN_WIDTH,
+  RIGHT_PANEL_MAX_WIDTH,
+  RIGHT_PANEL_DEFAULT_WIDTH,
+} from "@/ide";
 import { ActivityBar } from "./ActivityBar";
 import { Sidebar } from "./Sidebar";
 import { EditorArea } from "./EditorArea";
@@ -11,11 +19,74 @@ import { StatusBar } from "./StatusBar";
 import { AIChatPanel } from "./AIChatPanel";
 import { CommandPalette } from "./CommandPalette";
 
-// Resizable panel constraints
-const SIDEBAR_MIN = 180;
-const SIDEBAR_MAX = 500;
-const RIGHT_MIN = 280;
-const RIGHT_MAX = 700;
+// Width of the ActivityBar, which the left sidebar starts after
+const ACTIVITY_BAR_WIDTH = 44;
+// How far the pointer can stray from the divider and still resize it. The
+// visible line stays thin, but this makes the ↔ cursor easy to catch.
+const RESIZE_HIT_AREA = 11;
+
+/**
+ * ResizeDivider — a thin vertical divider between panels. Hovering anywhere in
+ * its (wider) hit area shows the ↔ col-resize cursor; dragging resizes the
+ * panel. Double-click resets to the default width, and arrow keys nudge it.
+ */
+function ResizeDivider({
+  onResizeStart,
+  onReset,
+  onNudge,
+  label,
+  value,
+  min,
+  max,
+  isDragging,
+}: {
+  onResizeStart: (e: React.PointerEvent) => void;
+  onReset: () => void;
+  onNudge: (delta: number) => void;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  isDragging: boolean;
+}) {
+  return (
+    <div
+      onPointerDown={onResizeStart}
+      onDoubleClick={onReset}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          onNudge(-16);
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          onNudge(16);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          onReset();
+        }
+      }}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuenow={Math.round(value)}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      tabIndex={0}
+      title="Drag to resize — double-click to reset"
+      className="group relative z-50 flex-shrink-0 cursor-col-resize touch-none outline-none"
+      style={{ width: RESIZE_HIT_AREA, marginLeft: -(RESIZE_HIT_AREA - 1) / 2, marginRight: -(RESIZE_HIT_AREA - 1) / 2 }}
+    >
+      {/* Visible 1px line, thickens on hover/drag */}
+      <div
+        className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] transition-colors ${
+          isDragging
+            ? "bg-[#34e8bb]"
+            : "bg-transparent group-hover:bg-[#34e8bb]/60 group-focus-visible:bg-[#34e8bb]/60"
+        }`}
+      />
+    </div>
+  );
+}
 
 export function IdeShell() {
   const isSidebarOpen = useIdeStore((s) => s.isSidebarOpen);
@@ -34,49 +105,56 @@ export function IdeShell() {
   // Track mobile state for layout decisions
   const [isMobile, setIsMobile] = useState(false);
 
-  // Resizable panel widths (desktop only)
-  const [sidebarWidth, setSidebarWidth] = useState(280);
-  const [rightWidth, setRightWidth] = useState(420);
+  // Resizable panel widths (desktop only) — persisted in the store
+  const sidebarWidth = useIdeStore((s) => s.sidebarWidth);
+  const rightWidth = useIdeStore((s) => s.rightPanelWidth);
+  const setSidebarWidth = useIdeStore((s) => s.setSidebarWidth);
+  const setRightWidth = useIdeStore((s) => s.setRightPanelWidth);
 
-  // Drag state
+  // Which divider is being dragged (null = none)
+  const [dragging, setDragging] = useState<"sidebar" | "right" | null>(null);
   const dragRef = useRef<"sidebar" | "right" | null>(null);
 
-  const startDrag = useCallback((which: "sidebar" | "right") => {
-    return (e: React.MouseEvent) => {
+  const startDrag = useCallback(
+    (which: "sidebar" | "right") => (e: React.PointerEvent) => {
       e.preventDefault();
       dragRef.current = which;
+      setDragging(which);
+      // Keep receiving move events even if the pointer outruns the divider
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
-    };
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       if (!dragRef.current) return;
+      e.preventDefault();
       if (dragRef.current === "sidebar") {
-        // ActivityBar is 44px; sidebar starts at x=44
-        const w = e.clientX - 44;
-        setSidebarWidth(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, w)));
-      } else if (dragRef.current === "right") {
-        // Right panel width = window.innerWidth - e.clientX
-        const w = window.innerWidth - e.clientX;
-        setRightWidth(Math.max(RIGHT_MIN, Math.min(RIGHT_MAX, w)));
+        // Sidebar starts right after the ActivityBar
+        setSidebarWidth(e.clientX - ACTIVITY_BAR_WIDTH);
+      } else {
+        setRightWidth(window.innerWidth - e.clientX);
       }
     };
-    const handleMouseUp = () => {
-      if (dragRef.current) {
-        dragRef.current = null;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      }
+    const endDrag = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      setDragging(null);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
     };
-  }, []);
+  }, [setSidebarWidth, setRightWidth]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -142,12 +220,17 @@ export function IdeShell() {
             >
               <Sidebar />
             </div>
-            {/* Resize handle for sidebar (desktop only) */}
+            {/* Resize divider for sidebar (desktop only) */}
             {!isMobile && (
-              <div
-                onMouseDown={startDrag("sidebar")}
-                className="relative flex-shrink-0 w-[3px] cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors z-50"
-                title="Drag to resize"
+              <ResizeDivider
+                onResizeStart={startDrag("sidebar")}
+                onReset={() => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)}
+                onNudge={(delta) => setSidebarWidth(sidebarWidth + delta)}
+                label="Resize sidebar"
+                value={sidebarWidth}
+                min={SIDEBAR_MIN_WIDTH}
+                max={SIDEBAR_MAX_WIDTH}
+                isDragging={dragging === "sidebar"}
               />
             )}
           </>
@@ -166,12 +249,17 @@ export function IdeShell() {
                 Mobile: fixed overlay with backdrop, slides from right */}
             {isRightPanelOpen && (
               <>
-                {/* Resize handle for right panel (desktop only) */}
+                {/* Resize divider for right panel (desktop only) */}
                 {!isMobile && (
-                  <div
-                    onMouseDown={startDrag("right")}
-                    className="relative flex-shrink-0 w-[3px] cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors z-50"
-                    title="Drag to resize"
+                  <ResizeDivider
+                    onResizeStart={startDrag("right")}
+                    onReset={() => setRightWidth(RIGHT_PANEL_DEFAULT_WIDTH)}
+                    onNudge={(delta) => setRightWidth(rightWidth - delta)}
+                    label="Resize AI panel"
+                    value={rightWidth}
+                    min={RIGHT_PANEL_MIN_WIDTH}
+                    max={RIGHT_PANEL_MAX_WIDTH}
+                    isDragging={dragging === "right"}
                   />
                 )}
                 {/* Mobile backdrop */}

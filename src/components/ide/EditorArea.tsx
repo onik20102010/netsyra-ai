@@ -5,6 +5,7 @@ import Editor, { type Monaco, loader } from "@monaco-editor/react";
 import { ChevronRight } from "lucide-react";
 import { TabBar } from "./TabBar";
 import { SplitEditor } from "./SplitEditor";
+import { InlineDiffEditor } from "./InlineDiffEditor";
 import { 
   useIdeStore, 
   defineNetsyraTheme, 
@@ -110,6 +111,10 @@ export function EditorArea() {
   const closeSplitEditor = useIdeStore((s) => s.closeSplitEditor);
 
   const activeFile = openFiles.find((f) => f.id === activeFileId) ?? null;
+
+  // Pending AI change for the file on screen, if any
+  const pendingDiffs = useIdeStore((s) => s.pendingDiffs);
+  const activePendingDiff = activeFile ? pendingDiffs[activeFile.path] ?? null : null;
 
   // --- Project Indexer (AST + IndexedDB) ---
   useProjectIndexer();
@@ -487,19 +492,28 @@ export function EditorArea() {
               splitEditorOrientation === 'vertical' ? 'flex-col' : 'flex-row'
             }`}
           >
-            {/* Primary editor */}
+            {/* Primary editor — or an inline red/green diff while the AI's
+                proposed change for this file is awaiting review */}
             <div ref={containerRef} className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
-              <Editor
-                height="100%"
-                path={activeFile.path}
-                language={activeFile.language}
-                value={activeFile.content}
-                theme={NETSYRA_THEME}
-                beforeMount={defineNetsyraTheme}
-                onMount={handleMount}
-                onChange={handleChange}
-                options={buildEditorOptions(editorConfig)}
-              />
+              {activePendingDiff ? (
+                <InlineDiffEditor
+                  diff={activePendingDiff}
+                  language={activeFile.language}
+                  config={editorConfig}
+                />
+              ) : (
+                <Editor
+                  height="100%"
+                  path={activeFile.path}
+                  language={activeFile.language}
+                  value={activeFile.content}
+                  theme={NETSYRA_THEME}
+                  beforeMount={defineNetsyraTheme}
+                  onMount={handleMount}
+                  onChange={handleChange}
+                  options={buildEditorOptions(editorConfig)}
+                />
+              )}
             </div>
 
             {/* Split editor (right or bottom) */}

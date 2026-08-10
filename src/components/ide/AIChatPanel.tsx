@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useIdeStore, getDB } from "@/ide";
-import { Send, X, Bot, Loader2, FileText, Folder, Eye, Undo2, Check, XCircle, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
+import { Send, X, Bot, Loader2, FileText, Folder, Undo2, Check, AlertCircle, Brain, Search, Wrench, Lightbulb, CheckCircle2, ChevronRight, Copy, Plus, Code2, MessageSquare, FolderPlus } from "lucide-react";
 import { AgentOrchestrator, type ChatMessage, type PendingEdit, type AgentThought, type AgentPlan } from "@/agents/AgentOrchestrator";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentMessageLimit } from "@/hooks/useAgentMessageLimit";
@@ -75,6 +75,8 @@ export function AIChatPanel() {
   const [thoughts, setThoughts] = useState<AgentThought[]>([]);
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
   const [canUndo, setCanUndo] = useState(false);
+  // Collapse/expand the pending-edit file cards from the review bar
+  const [editsExpanded, setEditsExpanded] = useState(true);
   // Windsurf-style: Write/Chat mode toggle
   const [mode, setMode] = useState<'write' | 'chat'>('write');
   // Model selector
@@ -88,6 +90,49 @@ export function AIChatPanel() {
   const [mentionStart, setMentionStart] = useState<number>(-1);
   // Current plan from agent
   const [currentPlan, setCurrentPlan] = useState<AgentPlan | null>(null);
+
+  // ── Inline editor diffs ──
+  // Pending edits are mirrored into the IDE store so the editor can render each
+  // proposed change in place with red/green highlighting. Accepting or
+  // rejecting from the editor removes the diff, which syncs back to this list.
+  const pendingDiffs = useIdeStore((s) => s.pendingDiffs);
+  const setPendingDiffs = useIdeStore((s) => s.setPendingDiffs);
+
+  useEffect(() => {
+    setPendingDiffs(
+      pendingEdits.map((e) => ({
+        editId: e.id,
+        filePath: e.filePath,
+        fileId: e.fileId,
+        oldContent: e.action === 'create_file' ? '' : e.oldContent,
+        newContent: e.newContent,
+      }))
+    );
+  }, [pendingEdits, setPendingDiffs]);
+
+  useEffect(() => {
+    setPendingEdits((prev) => {
+      const next = prev.filter((e) => pendingDiffs[e.filePath]);
+      return next.length === prev.length ? prev : next;
+    });
+  }, [pendingDiffs]);
+
+  // Total added/removed lines across all pending edits — shown in the review bar
+  const editTotals = useMemo(() => {
+    let added = 0;
+    let removed = 0;
+    for (const edit of pendingEdits) {
+      if (edit.action === 'create_file') {
+        added += edit.newContent.split('\n').length;
+        continue;
+      }
+      for (const line of computeLcsDiff(edit.oldContent, edit.newContent, edit.startLine)) {
+        if (line.type === 'add') added++;
+        else if (line.type === 'del') removed++;
+      }
+    }
+    return { added, removed };
+  }, [pendingEdits]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agentRef = useRef<AgentOrchestrator | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -589,7 +634,7 @@ export function AIChatPanel() {
                 /* Assistant: no bubble, full-width markdown + inline tool cards, Windsurf style */
                 <div className="w-full text-[13px] leading-[1.6] text-[#e6edf3] break-words">
                   {/* Plan card (if agent created a plan) */}
-                  {message.plan && <PlanCard plan={message.plan} />}
+                  {message.plan && <PlanCard plan={message.plan} completed />}
                   {/* Inline tool-call cards (Windsurf style) */}
                   {message.toolCalls && message.toolCalls.length > 0 && (
                     <ToolCallCards toolCalls={message.toolCalls} />
@@ -668,51 +713,66 @@ export function AIChatPanel() {
             </div>
           )}
           {pendingEdits.length > 0 && (
-            <div className="flex justify-start">
-              {/* Windsurf-style diff card: dark bg, teal accent header, clean accept/reject */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 w-full">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-[#34e8bb] text-[12px] font-medium">
-                    <Eye size={14} />
-                    <span>{pendingEdits.length} change{pendingEdits.length > 1 ? 's' : ''} ready for review</span>
+            <div className="flex justify-start w-full">
+              <div className="w-full space-y-2">
+                {/* Per-file diff cards */}
+                {editsExpanded && (
+                  <div className="space-y-2">
+                    {pendingEdits.map((edit) => (
+                      <DiffCard
+                        key={edit.id}
+                        edit={edit}
+                        onAccept={() => handleAcceptEdit(edit.id)}
+                        onReject={() => handleRejectEdit(edit.id)}
+                      />
+                    ))}
                   </div>
+                )}
+
+                {/* Review bar: file/line summary on the left, bulk actions on the right */}
+                <div className="flex items-center gap-2 rounded-lg border border-[#2b3138] bg-[#191c20] px-2 py-1.5">
+                  <button
+                    onClick={() => setEditsExpanded((v) => !v)}
+                    className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-white/[0.04] transition-colors"
+                    title={editsExpanded ? 'Hide changes' : 'Show changes'}
+                  >
+                    <span className="text-[12px] text-[#e6edf3]">
+                      {pendingEdits.length} file{pendingEdits.length > 1 ? 's' : ''}
+                    </span>
+                    {editTotals.added > 0 && (
+                      <span className="text-[12px] font-mono text-[#3fb950]">+{editTotals.added}</span>
+                    )}
+                    {editTotals.removed > 0 && (
+                      <span className="text-[12px] font-mono text-[#f85149]">-{editTotals.removed}</span>
+                    )}
+                    <ChevronRight
+                      size={13}
+                      className={`text-[#6e7681] transition-transform ${editsExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </button>
+
+                  <div className="flex-1" />
+
                   {canUndo && (
                     <button
                       onClick={handleUndo}
-                      className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-[#6e7681] hover:text-[#e6edf3] border border-[#30363d] hover:border-[#484f58] rounded transition-colors"
+                      className="flex items-center justify-center w-7 h-7 rounded-md text-[#8b949e] hover:text-[#e6edf3] hover:bg-white/[0.06] transition-colors"
                       title="Undo all changes from last agent run"
                     >
-                      <Undo2 size={11} />
-                      Undo
+                      <Undo2 size={13} />
                     </button>
                   )}
-                </div>
-                {/* Per-file edit cards with expandable diff + per-file accept/reject */}
-                <div className="space-y-2 mb-3">
-                  {pendingEdits.map((edit) => (
-                    <DiffCard
-                      key={edit.id}
-                      edit={edit}
-                      onAccept={() => handleAcceptEdit(edit.id)}
-                      onReject={() => handleRejectEdit(edit.id)}
-                    />
-                  ))}
-                </div>
-                {/* Accept all / Reject all — Windsurf style */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleApplyEdits}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#3fb950] hover:bg-[#3fb950]/80 text-[#0d1117] text-[12px] font-medium rounded-md transition-colors"
-                  >
-                    <Check size={13} />
-                    Accept all
-                  </button>
                   <button
                     onClick={handleDismissEdits}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#f85149] text-[12px] font-medium rounded-md border border-[#30363d] transition-colors"
+                    className="px-2.5 py-1 rounded-md bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-[12px] font-medium transition-colors"
                   >
-                    <XCircle size={13} />
                     Reject all
+                  </button>
+                  <button
+                    onClick={handleApplyEdits}
+                    className="px-2.5 py-1 rounded-md bg-[#1f6feb] hover:bg-[#388bfd] text-white text-[12px] font-medium transition-colors"
+                  >
+                    Accept all
                   </button>
                 </div>
               </div>
@@ -1011,48 +1071,68 @@ function InputBox({
 
 // --- Plan Card: shows agent's step-by-step plan (Windsurf style) ---
 
-function PlanCard({ plan }: { plan: AgentPlan }) {
+function PlanCard({ plan, completed = false }: { plan: AgentPlan; completed?: boolean }) {
   const [expanded, setExpanded] = useState(true);
 
-  const actionIcons: Record<string, React.ReactNode> = {
-    search: <Search size={12} className="text-[#34e8bb]" />,
-    read: <FileText size={12} className="text-[#8b949e]" />,
-    edit: <Code2 size={12} className="text-[#58a6ff]" />,
-    create: <Plus size={12} className="text-[#3fb950]" />,
-    verify: <AlertCircle size={12} className="text-[#d29922]" />,
-    answer: <MessageSquare size={12} className="text-[#a371f7]" />,
-  };
+  // `completed` is set once the agent run has finished, so every step in the
+  // plan it followed is done. While the run is live we fall back to each
+  // step's own status.
+  const total = plan.steps.length;
+  const doneCount = completed
+    ? total
+    : plan.steps.filter((s) => s.status === 'done').length;
 
   return (
-    <div className="mb-3 rounded-lg border border-[#d29922]/20 bg-[#d29922]/5 overflow-hidden">
+    <div className="mb-3 rounded-xl border border-[#2b3138] bg-[#191c20] overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#d29922]/10 transition-colors"
+        className="w-full flex items-center gap-2 px-3.5 pt-2.5 pb-2 hover:bg-white/[0.02] transition-colors"
       >
-        <ChevronRight
-          size={14}
-          className={`text-[#d29922] transition-transform ${expanded ? 'rotate-90' : ''}`}
-        />
-        <Lightbulb size={13} className="text-[#d29922]" />
-        <span className="text-[11px] font-medium text-[#d29922] uppercase tracking-wider">
-          Plan
+        <span className="text-[11.5px] text-[#8b949e]">
+          {doneCount} / {total} tasks done
         </span>
-        <span className="text-[12px] text-[#e6edf3] truncate flex-1 text-left">{plan.summary}</span>
-        <span className="text-[10px] text-[#6e7681] shrink-0">{plan.steps.length} steps</span>
+        <div className="flex-1" />
+        <ChevronRight
+          size={13}
+          className={`text-[#6e7681] transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
       </button>
+
       {expanded && (
-        <div className="px-3 pb-2 space-y-1">
-          {plan.steps.map((step) => (
-            <div key={step.id} className="flex items-start gap-2 py-0.5">
-              <span className="text-[10px] text-[#484f58] shrink-0 w-4 text-right">{step.id}</span>
-              <span className="shrink-0 mt-0.5">{actionIcons[step.action] || <Wrench size={12} className="text-[#6e7681]" />}</span>
-              <span className="text-[12px] text-[#e6edf3] leading-tight flex-1">
-                {step.goal}
-                {step.file && <span className="text-[#58a6ff] font-mono text-[11px] ml-1.5">→ {step.file}</span>}
-              </span>
-            </div>
-          ))}
-        </div>
+        <ul className="px-3.5 pb-3 space-y-[9px]">
+          {plan.steps.map((step) => {
+            const isDone = completed || step.status === 'done';
+            const isActive = !isDone && step.status === 'in_progress';
+
+            return (
+              <li key={step.id} className="flex items-start gap-2.5">
+                <span className="shrink-0 mt-[1.5px]">
+                  {isDone ? (
+                    <span className="w-[17px] h-[17px] rounded-full bg-[#3fb950] flex items-center justify-center">
+                      <Check size={11} strokeWidth={3.5} className="text-[#0d1117]" />
+                    </span>
+                  ) : isActive ? (
+                    <span className="w-[17px] h-[17px] rounded-full border-2 border-[#d29922]/40 flex items-center justify-center">
+                      <Loader2 size={9} className="animate-spin text-[#d29922]" />
+                    </span>
+                  ) : (
+                    <span className="block w-[17px] h-[17px] rounded-full border-2 border-[#30363d]" />
+                  )}
+                </span>
+                <span
+                  className={`text-[13px] leading-[1.45] flex-1 ${
+                    isDone || isActive ? 'text-[#e6edf3]' : 'text-[#8b949e]'
+                  }`}
+                >
+                  {step.goal}
+                  {step.file && (
+                    <span className="text-[#58a6ff] font-mono text-[11.5px] ml-1.5">{step.file}</span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
@@ -1137,91 +1217,76 @@ function DiffCard({ edit, onAccept, onReject }: { edit: PendingEdit; onAccept: (
   const hasMore = diffLines.length > 30;
 
   return (
-    <div className="bg-[#0d1117] border border-[#21262d] rounded-md overflow-hidden">
-      {/* Header: file info + change stats + per-file accept/reject */}
-      <div className="flex items-center justify-between px-2.5 py-2 border-b border-[#21262d]">
-        <div className="flex items-center gap-2 min-w-0">
-          {edit.action === 'create_file' ? (
-            <span className="flex items-center gap-1 text-[#3fb950] text-[12px] shrink-0">
-              <Plus size={12} />
-              New
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-[#58a6ff] text-[12px] shrink-0">
-              <Code2 size={12} />
-              Edit
-            </span>
-          )}
-          <span className="font-mono text-[#8b949e] truncate text-[11px]">{edit.filePath}</span>
-          {edit.searchMatch ? (
-            <span className="text-[10px] text-[#d29922] font-mono shrink-0">search-replace</span>
-          ) : edit.startLine ? (
-            <span className="text-[10px] text-[#484f58] font-mono shrink-0">L{edit.startLine}</span>
-          ) : null}
-          {/* Change stats */}
-          {addedCount > 0 && <span className="text-[10px] text-[#3fb950] font-mono shrink-0">+{addedCount}</span>}
-          {removedCount > 0 && <span className="text-[10px] text-[#f85149] font-mono shrink-0">-{removedCount}</span>}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+    <div className="group rounded-xl border border-[#2b3138] bg-[#191c20] overflow-hidden">
+      {/* Header: file name + net change count. Per-file actions appear on hover. */}
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        {edit.action === 'create_file' ? (
+          <Plus size={13} className="text-[#3fb950] shrink-0" />
+        ) : (
+          <Code2 size={13} className="text-[#58a6ff] shrink-0" />
+        )}
+        <span className="text-[13px] text-[#e6edf3] truncate">{edit.filePath}</span>
+        {edit.searchMatch ? (
+          <span className="text-[10px] text-[#d29922] font-mono shrink-0">search-replace</span>
+        ) : edit.startLine ? (
+          <span className="text-[10px] text-[#484f58] font-mono shrink-0">L{edit.startLine}</span>
+        ) : null}
+
+        <div className="flex-1" />
+
+        {/* Per-file accept/reject — revealed on hover to keep the card clean */}
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button
             onClick={onAccept}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-[#3fb950] hover:bg-[#238636]/20 rounded transition-colors"
+            className="flex items-center justify-center w-6 h-6 rounded text-[#3fb950] hover:bg-[#238636]/20 transition-colors"
             title="Accept this change"
           >
-            <Check size={11} />
+            <Check size={12} />
           </button>
           <button
             onClick={onReject}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-[#f85149] hover:bg-[#f85149]/20 rounded transition-colors"
+            className="flex items-center justify-center w-6 h-6 rounded text-[#f85149] hover:bg-[#f85149]/20 transition-colors"
             title="Reject this change"
           >
-            <X size={11} />
+            <X size={12} />
           </button>
         </div>
+
+        {addedCount > 0 && (
+          <span className="text-[12px] text-[#3fb950] font-mono shrink-0">+{addedCount}</span>
+        )}
+        {removedCount > 0 && (
+          <span className="text-[12px] text-[#f85149] font-mono shrink-0">-{removedCount}</span>
+        )}
       </div>
 
-      {/* Description */}
-      <div className="px-2.5 py-1.5 text-[11px] text-[#6e7681] border-b border-[#21262d] bg-[#161b22]/50">
-        {edit.description}
-      </div>
-
-      {/* Diff preview — LCS-based with proper line tracking */}
-      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-        <table className="w-full text-[11px] font-mono border-collapse">
-          <tbody>
+      {/* Diff preview — tinted rows, no line-number gutter */}
+      <div className="mx-2 mb-2 rounded-lg overflow-hidden bg-[#0f1316]">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <div className="text-[12px] font-mono leading-[1.55] py-1.5">
             {visibleLines.map((line, idx) => (
-              <tr key={idx} className={
-                line.type === 'add' ? 'bg-[#238636]/15' :
-                line.type === 'del' ? 'bg-[#f85149]/15' :
-                ''
-              }>
-                <td className="text-[#484f58] text-right px-1.5 select-none w-[32px] align-top">
-                  {line.oldNum ?? ''}
-                </td>
-                <td className="text-[#484f58] text-right px-1.5 select-none w-[32px] align-top border-l border-[#21262d]">
-                  {line.newNum ?? ''}
-                </td>
-                <td className="px-1.5 whitespace-pre align-top border-l border-[#21262d]">
-                  <span className={
-                    line.type === 'add' ? 'text-[#3fb950]' :
-                    line.type === 'del' ? 'text-[#f85149]' :
-                    'text-[#8b949e]'
-                  }>
-                    {line.type === 'add' ? '+ ' : line.type === 'del' ? '- ' : '  '}
-                    {line.content}
-                  </span>
-                </td>
-              </tr>
+              <div
+                key={idx}
+                className={
+                  line.type === 'add'
+                    ? 'bg-[#1b3a25] text-[#c9d1d9] px-3 whitespace-pre'
+                    : line.type === 'del'
+                    ? 'bg-[#3d1d1f] text-[#c9d1d9] px-3 whitespace-pre'
+                    : 'text-[#6e7681] px-3 whitespace-pre'
+                }
+              >
+                {line.content || ' '}
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
 
       {/* Expand/collapse toggle */}
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full px-2.5 py-1.5 text-[11px] text-[#6e7681] hover:text-[#e6edf3] hover:bg-[#1f2428] transition-colors border-t border-[#21262d] text-left"
+          className="w-full px-3 pb-2.5 text-[11px] text-[#6e7681] hover:text-[#e6edf3] transition-colors text-left"
         >
           {expanded ? 'Show less' : `Show all ${diffLines.length} lines (+${addedCount} -${removedCount})`}
         </button>

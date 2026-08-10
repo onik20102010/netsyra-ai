@@ -217,8 +217,16 @@ export function defineNetsyraTheme(monaco: Monaco) {
       "peekViewResult.background": "#161b22",
       "peekViewResult.border": "#30363d",
       "peekViewEditor.background": "#0d1117",
-      "diffEditor.insertedTextBackground": "#23863630",
-      "diffEditor.removedTextBackground": "#f8514930",
+      // Line-level fills drive the red/green highlighting of AI changes shown
+      // inline in the editor. Text-level fills sit on top for changed spans.
+      "diffEditor.insertedLineBackground": "#23863633",
+      "diffEditor.removedLineBackground": "#f8514926",
+      "diffEditor.insertedTextBackground": "#2386364d",
+      "diffEditor.removedTextBackground": "#f8514940",
+      "diffEditorGutter.insertedLineBackground": "#23863640",
+      "diffEditorGutter.removedLineBackground": "#f8514930",
+      "diffEditorOverview.insertedForeground": "#3fb950",
+      "diffEditorOverview.removedForeground": "#f85149",
       "diffEditor.border": "#30363d",
     },
   });
