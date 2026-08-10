@@ -131,7 +131,8 @@ export const DEBUGGING_RULES = `DEBUGGING: Reproduce the issue first. Then trace
 export const OPTIMIZATION_RULES = `OPTIMIZATION: Measure before optimizing — never optimize on intuition. Identify the bottleneck (CPU, memory, I/O, network, lock contention). Profile the hot path. Apply the highest-impact, lowest-risk optimization first. After each change, re-measure to confirm improvement. Watch for trade-offs: speed vs memory, throughput vs latency, complexity vs maintainability. Document before/after metrics. Premature optimization is a code smell.`;
 
 // ── Security & Threat Modeling (~80 tokens) ────────────────
-export const SECURITY_RULES = `SECURITY: Think like an attacker. For any system, identify: attack surface, trust boundaries, authentication, authorization, input validation, and data exposure. Check for: injection (SQL, XSS, command), broken access control, sensitive data exposure, security misconfiguration, and dependency vulnerabilities. Never store secrets in code or logs. Prefer parameterized queries, prepared statements, and framework-provided security primitives. Flag security issues even when the user didn't ask — they are always Priority 1.`;
+export const SECURITY_RULES = `SECURITY: Think like an attacker. For any system, identify: attack surface, trust boundaries, authentication, authorization, input validation, and data exposure. Check for: injection (SQL, XSS, command), broken access control, sensitive data exposure, security misconfiguration, and dependency vulnerabilities. Never store secrets in code or logs. Prefer parameterized queries, prepared statements, and framework-provided security primitives. Flag security issues even when the user didn't ask — they are always Priority 1.
+  For OAuth/auth implementations, specifically verify: CSRF/state protection, PKCE if applicable, secure cookies (HttpOnly, Secure, SameSite), callback URL validation, secret management, open redirect prevention, and token leakage.`;
 
 // ── Scaling & Commercial Readiness (~80 tokens) ────────────
 export const SCALING_RULES = `SCALING: Design for 10x current load. Identify single points of failure. Evaluate horizontal vs vertical scaling per component. Consider: caching strategy, connection pooling, queue-based load leveling, circuit breakers, rate limiting, and graceful degradation. For data: partitioning, replication, and consistency model. For deployment: zero-downtime strategy, blue/green or canary, health checks, and automatic rollback. Cost-aware: estimate cloud spend at scale and flag expensive patterns. Commercial readiness = reliability + observability + cost control.`;
@@ -175,6 +176,105 @@ export const EFFICIENCY_RULES = `EFFICIENCY: Be maximally informative per token.
 // ── Task Execution Protocols (~100 tokens) ──────────────────
 export const TASK_PROTOCOLS_RULES = `TASK PROTOCOLS: For non‑trivial tasks, (1) Determine objective, constraints, missing info. (2) Plan minimal steps. (3) Execute smallest necessary actions, using tools only when they add value. (4) Inspect every tool result. (5) If failure occurs, preserve evidence, classify root cause, change strategy — never repeat identical failed actions. (6) Verify result against objective. (7) Calibrate confidence: high/moderate/low. (8) Maintain internal task state (assumptions, pending, done). (9) Prefer evidence hierarchy: tool output > user info > official docs > model knowledge > assumption. (10) Clarify only when multiple interpretations yield materially different outcomes. (11) Self‑correct any material defect before output. For code tasks: inspect project structure, implement minimal change, run verification, fix root causes.`;
 
+// ════════════════════════════════════════════════════════════
+//  AUTONOMOUS CODING AGENT RULES (v1.0 — addresses all 11 gaps)
+//  This section is mandatory for any task classified as "agentic"
+//  or for high‑autonomy tiers. It replaces shallow heuristics with
+//  a full evidence‑driven, safety‑first development pipeline.
+// ════════════════════════════════════════════════════════════
+export const AUTONOMOUS_CODING_AGENT_RULES = `AUTONOMOUS CODING AGENT (ACA):
+When you are asked to implement a feature, fix a bug, or modify a codebase without step‑by‑step human guidance, follow this rigorous protocol. It ensures you never break existing functionality and produce production‑grade changes.
+
+1. **Progressive Repository Discovery**  
+   - Start with \`package.json\` (or equivalent) to learn the framework, dependencies, and available scripts.  
+   - Map the routing structure (e.g., \`app/\`, \`pages/\`, \`src/router\`).  
+   - Trace entry points → core modules → auth/database/API abstractions.  
+   - Build a dependency graph incrementally. **Never assume the purpose of a file without reading it.**
+
+2. **Dependency‑Guided File Selection**  
+   To decide which files to read next, use this priority:  
+   (a) Files explicitly requested by the user.  
+   (b) Files imported by already‑known relevant files.  
+   (c) Files that import already‑known relevant files.  
+   (d) Files listed in routes matching the task’s domain.  
+   (e) Test files related to the target area.  
+   (f) Configuration files that could affect the task.  
+   (g) Files indicated by stack traces or error logs.  
+   *Do not rely on a single “entry point” like layout.tsx — dependency chains can branch widely.*
+
+3. **Ambiguity Resolution & Provider Selection**  
+   - Before installing a new library, **inspect the existing codebase** for any authentication, OAuth, or similar abstraction already in use.  
+   - If the task says “add OAuth” but doesn’t specify a provider:  
+     * Check environment variables (e.g., \`GOOGLE_CLIENT_ID\`, \`GITHUB_CLIENT_ID\`), existing configuration files, and any existing auth calls.  
+     * If still ambiguous, explicitly ask the user. Never assume a provider.  
+   - Always prefer to extend the existing authentication system. Only propose a replacement if the current system demonstrably cannot support the requirement.
+
+4. **Security‑by‑Design for Auth & Sensitive Features**  
+   - For any authentication/OAuth task, enforce:  
+     * CSRF/state parameter protection.  
+     * PKCE for public clients if applicable.  
+     * Secure cookies (HttpOnly, Secure, SameSite=Strict or Lax).  
+     * Strict callback URL validation.  
+     * Secrets stored in environment variables, never committed.  
+     * Open redirect prevention.  
+     * Proper error handling that doesn’t leak internals.  
+   - After implementation, perform a specific security checklist.
+
+5. **Comprehensive Verification Pipeline**  
+   Verify success through **all** of these layers (do not stop at the first one):  
+   \`\`\`text
+   ✓ TypeScript/type checking   (tsc --noEmit)
+   ✓ Linting                     (next lint, eslint)
+   ✓ Build                       (next build, npm run build)
+   ✓ Unit + integration tests    (npm test)
+   ✓ Auth‑specific integration   (OAuth callback flow, session creation, route protection)
+   ✓ Runtime simulation          (headless browser or curl to test the full login flow)
+   ✓ Security checks             (no hardcoded secrets, cookie flags, open redirects)
+   \`\`\`
+   **Only declare success when every layer passes.**
+
+6. **Failure Classification & Root‑Cause Analysis**  
+   When a test fails or an error occurs:  
+   - Capture the full error/log.  
+   - Classify the failure: syntax, type, missing dependency, configuration, logic, runtime, auth‑provider, etc.  
+   - Locate the failing subsystem by tracing imports and call sites.  
+   - Generate at least two hypotheses for the root cause.  
+   - Collect evidence to support or refute each hypothesis (read relevant files, logs, environment).  
+   - Select the most likely root cause, apply the **smallest possible fix**, and retest only the affected area, then a full regression.
+
+7. **Flexible Retry Budget**  
+   - You may retry a subtask up to **3 times**, but after each failure you **must** perform a new root‑cause analysis and change your approach.  
+   - Never repeat an identical action that already failed.  
+   - If 3 attempts still fail, stop and report to the user: what you tried, the evidence gathered, and why it still fails. Do not loop indefinitely.
+
+8. **Protect User‑Owned Changes**  
+   - Before making any file modification, run \`git status\`.  
+   - If there are uncommitted changes that are **unrelated to the current task**, do **not** touch those files.  
+   - If you need to modify a file with uncommitted changes, ask the user for permission or create a temporary branch/stash (and explain it).
+
+9. **Change Provenance Tracking**  
+   - For every file you modify, keep a mental (or internal) log:  
+     * Why this file was changed (linked to a specific task step).  
+     * What evidence supported the change.  
+     * What risk level it carries (HIGH if auth/security, MEDIUM if core logic, LOW if formatting).  
+     * How it will be verified.  
+   - This log lets you later answer “why did I change this file?” and roll back safely.
+
+10. **Explicit Definition of Done**  
+    A task is complete **only** when:  
+    \`\`\`text
+    All requested functionality is implemented.
+    AND TypeScript/type checking passes.
+    AND Linting passes.
+    AND Build passes.
+    AND All tests pass.
+    AND Security checks pass.
+    AND No unintended files were changed (verify via git diff).
+    AND OAuth flow (if applicable) works end‑to‑end.
+    AND Documentation is updated if needed.
+    \`\`\`
+    After meeting all criteria, output a **clear summary** of what was changed, how it was verified, and any caveats.`;
+
 // ────────────────────────────────────────────────────────────
 //  TIERED PROMPT ASSEMBLY
 // ────────────────────────────────────────────────────────────
@@ -192,7 +292,9 @@ export type PromptSection =
   // Newly added sections (from full SYSTEM_PROMPT parity)
   | 'math_reasoning' | 'critical_thinking' | 'code_review' | 'refactoring'
   | 'cognitive' | 'emotional_intelligence' | 'refusal' | 'cultural'
-  | 'efficiency' | 'task_protocols';
+  | 'efficiency' | 'task_protocols'
+  // Autonomous coding agent (addresses production‑grade autonomy gaps)
+  | 'autonomous_coding';
 
 const SECTION_MAP: Record<PromptSection, string> = {
   identity: IDENTITY,
@@ -241,6 +343,8 @@ const SECTION_MAP: Record<PromptSection, string> = {
   cultural: CULTURAL_RULES,
   efficiency: EFFICIENCY_RULES,
   task_protocols: TASK_PROTOCOLS_RULES,
+  // Autonomous coding agent
+  autonomous_coding: AUTONOMOUS_CODING_AGENT_RULES,
 };
 
 // ── Task type → relevant prompt sections ────────────────────
@@ -253,20 +357,20 @@ export type TaskCategory =
 
 const TASK_SECTIONS: Record<TaskCategory, PromptSection[]> = {
   casual:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'truth', 'emotional_intelligence', 'refusal'],
-  coding:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'testing', 'code_review', 'refactoring'],
+  coding:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'code', 'truth', 'reflection', 'testing', 'code_review', 'refactoring', 'autonomous_coding'],
   reasoning:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'decisions', 'truth', 'reflection', 'self_audit', 'math_reasoning', 'critical_thinking'],
   creative:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'creative', 'truth'],
   analysis:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'analysis', 'truth', 'reflection', 'self_audit', 'critical_thinking'],
-  operations:    ['identity', 'safety', 'persona', 'response_style', 'format_core', 'operations', 'truth', 'reflection', 'scaling', 'task_protocols'],
+  operations:    ['identity', 'safety', 'persona', 'response_style', 'format_core', 'operations', 'truth', 'reflection', 'scaling', 'task_protocols', 'autonomous_coding'],
   teaching:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'teaching', 'truth', 'reflection', 'documentation', 'emotional_intelligence', 'cultural'],
-  agentic:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'proactive', 'planning', 'task_protocols'],
-  // Ultra-autonomous task types
-  architecture:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'architecture', 'reasoning', 'decisions', 'truth', 'reflection', 'self_audit', 'scaling', 'security', 'diagrams', 'documentation', 'task_protocols'],
-  debugging:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'debugging', 'code', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'testing', 'metacognition', 'task_protocols'],
-  optimization:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'optimization', 'analysis', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'scaling', 'task_protocols'],
-  security:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'security', 'analysis', 'truth', 'reflection', 'self_audit', 'testing', 'task_protocols'],
-  scaling:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'scaling', 'architecture', 'operations', 'optimization', 'truth', 'reflection', 'self_audit', 'security', 'diagrams', 'task_protocols'],
-  integration:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'integration', 'architecture', 'code', 'truth', 'reflection', 'self_audit', 'testing', 'documentation', 'task_protocols'],
+  agentic:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'reasoning', 'reasoning_rigor', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'proactive', 'planning', 'task_protocols', 'autonomous_coding'],
+  // Ultra-autonomous task types (all get the full ACA stack)
+  architecture:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'architecture', 'reasoning', 'decisions', 'truth', 'reflection', 'self_audit', 'scaling', 'security', 'diagrams', 'documentation', 'task_protocols', 'autonomous_coding'],
+  debugging:     ['identity', 'safety', 'persona', 'response_style', 'format_core', 'debugging', 'code', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'testing', 'metacognition', 'task_protocols', 'autonomous_coding'],
+  optimization:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'optimization', 'analysis', 'reasoning_rigor', 'truth', 'reflection', 'self_audit', 'scaling', 'task_protocols', 'autonomous_coding'],
+  security:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'security', 'analysis', 'truth', 'reflection', 'self_audit', 'testing', 'task_protocols', 'autonomous_coding'],
+  scaling:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'scaling', 'architecture', 'operations', 'optimization', 'truth', 'reflection', 'self_audit', 'security', 'diagrams', 'task_protocols', 'autonomous_coding'],
+  integration:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'integration', 'architecture', 'code', 'truth', 'reflection', 'self_audit', 'testing', 'documentation', 'task_protocols', 'autonomous_coding'],
 };
 
 // ── Tier → base sections (progressive: free → commercial scale) ──
@@ -298,19 +402,19 @@ const TIER_BASE: Record<string, PromptSection[]> = {
   pro:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'truth', 'memory', 'tools', 'decisions', 'reflection', 'proactive', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency'],
 
   // ── DEVELOPER (code — adds code rules + testing + debugging + code review + refactoring) ──
-  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring'],
+  code:      ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'reflection', 'testing', 'debugging', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring', 'autonomous_coding'],
 
   // ── ENHANCED DEV (go_plus — adds memory + tools + scaling awareness) ──
-  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring', 'cultural'],
+  go_plus:   ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'code', 'truth', 'memory', 'tools', 'reflection', 'testing', 'scaling', 'diagrams', 'emotional_intelligence', 'refusal', 'code_review', 'refactoring', 'cultural', 'autonomous_coding'],
 
   // ── AUTONOMOUS (aai — adds reasoning + analysis + planning + self-audit + math/critical + task protocols) ──
-  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'cognitive'],
+  aai:       ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'analysis', 'operations', 'tools', 'truth', 'decisions', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'diagrams', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'cognitive', 'autonomous_coding'],
 
   // ── PRO+ AUTONOMOUS (plus_pro — adds creative + teaching + architecture + security + all new) ──
-  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive'],
+  plus_pro:  ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'security', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive', 'autonomous_coding'],
 
   // ── COMMERCIAL SCALE (ni — FULL ultra-autonomous, all sections) ──
-  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive'],
+  ni:        ['identity', 'safety', 'persona', 'response_style', 'format_core', 'typography', 'reasoning', 'reasoning_rigor', 'code', 'creative', 'analysis', 'operations', 'memory', 'tools', 'truth', 'decisions', 'teaching', 'reflection', 'self_audit', 'metacognition', 'planning', 'proactive', 'architecture', 'debugging', 'optimization', 'security', 'scaling', 'integration', 'testing', 'documentation', 'diagrams', 'widgets', 'emotional_intelligence', 'refusal', 'cultural', 'efficiency', 'task_protocols', 'math_reasoning', 'critical_thinking', 'code_review', 'refactoring', 'cognitive', 'autonomous_coding'],
 };
 
 /**
@@ -382,7 +486,7 @@ export function detectComplexity(input: string | TaskCategory): ComplexityLevel 
  * Sections that are "always-on" — never pruned regardless of complexity.
  * These are the minimum viable prompt.
  */
-const CORE_SECTIONS: PromptSection[] = ['identity', 'safety', 'persona', 'response_style', 'truth', 'emotional_intelligence'];
+const CORE_SECTIONS: PromptSection[] = ['identity', 'safety', 'persona', 'response_style', 'truth', 'emotional_intelligence', 'autonomous_coding'];  // ACA is critical for safety
 
 /**
  * Sections that are "enhancement" — pruned first when token budget is tight.
@@ -402,6 +506,7 @@ const ENHANCEMENT_PRUNE_ORDER: PromptSection[] = [
   'efficiency', 'cultural', 'code_review', 'refactoring',
   'cognitive', 'math_reasoning', 'critical_thinking',
   'task_protocols', // keep task protocols longest as they're critical for autonomy
+  // autonomous_coding is now core, never pruned
 ];
 
 /**
@@ -532,8 +637,8 @@ export function detectTaskCategory(message: string): TaskCategory {
   if (/\b(integrat(e|ion)|webhook|api (design|gateway|versioning)|third-party|external (service|api)|stripe|paddle|twilio|sendgrid|oauth flow|sso|saml|rest api|graphql|grpc|protobuf|openapi|swagger)\b/.test(lower)) scores.integration += 3;
   if (/\b(endpoint|callback|polling|retry|backoff|idempoten|circuit breaker|rate limit)\b/.test(lower)) scores.integration += 1;
 
-  // ── Agentic patterns ──
-  if (/\b(autonomous|multi-step|end-to-end|orchestrat|agentic|do it all|handle everything|from scratch|full (pipeline|workflow)|end to end)\b/.test(lower)) scores.agentic += 3;
+  // ── Agentic patterns (broad autonomous tasks like "add OAuth", "build a dashboard") ──
+  if (/\b(autonomous|multi-step|end-to-end|orchestrat|agentic|do it all|handle everything|from scratch|full (pipeline|workflow)|end to end|add (a |the |)(oauth|authentication|login|signup|dashboard|crud|api)|implement (a |the |)(feature|authentication|oauth|database)|build (a |the |)(app|application|feature))\b/.test(lower)) scores.agentic += 3;
   if (/\b(plan|execute|coordinate|manage (the |a )?(project|task|workflow)|automate)\b/.test(lower)) scores.agentic += 1;
 
   // ── Teaching patterns ──
