@@ -52,9 +52,14 @@ export function InlineDiffEditor({
     (diffEditor: editor.IStandaloneDiffEditor, monaco: Monaco) => {
       diffEditorRef.current = diffEditor;
 
+      // Apply tabSize to both the original and modified editors
+      const original = diffEditor.getOriginalEditor();
+      const modified = diffEditor.getModifiedEditor();
+      original.updateOptions({ tabSize: config.tabSize });
+      modified.updateOptions({ tabSize: config.tabSize });
+
       // Bind Accept / Reject to the modified pane so shortcuts work while the
       // user is scrolling through the change.
-      const modified = diffEditor.getModifiedEditor();
       modified.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, accept);
       modified.addCommand(
         monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.Backspace,
@@ -63,7 +68,7 @@ export function InlineDiffEditor({
 
       diffEditor.layout();
     },
-    [accept, reject]
+    [accept, reject, config.tabSize]
   );
 
   return (
@@ -98,7 +103,6 @@ export function InlineDiffEditor({
           overviewRulerBorder: false,
           guides: { indentation: true },
           wordWrap: config.wordWrap,
-          tabSize: config.tabSize,
           bracketPairColorization: { enabled: config.bracketPairColorization },
         }}
       />
