@@ -46,7 +46,7 @@ const fadeInScale = {
 
 export default function LiveRoutingSection() {
   return (
-    <section className="relative py-16 sm:py-24 px-4 sm:px-6 select-none">
+    <section className="relative py-16 sm:py-24 px-4 sm:px-6">
       <AnimatedBackground />
       <div className="max-w-6xl mx-auto">
         <motion.div

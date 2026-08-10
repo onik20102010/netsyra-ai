@@ -197,7 +197,7 @@ const SelfMadeEditor = (function () {
                 <i class="fas fa-diamond"></i> Diamond
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addHexagon()" title="Add Hexagon">
-                <i class="fas fa-hexagon"></i> Hexagon
+                <i class="fas fa-shapes"></i> Hexagon
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addStar()" title="Add Star">
                 <i class="fas fa-star"></i> Star
@@ -254,10 +254,10 @@ const SelfMadeEditor = (function () {
                 <i class="fas fa-tags"></i> Skill Tags
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addTimeline()" title="Add Timeline">
-                <i class="fas fa-timeline"></i> Timeline
+                <i class="fas fa-clock-rotate-left"></i> Timeline
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addProgressBar()" title="Add Progress Bar">
-                <i class="fas fa-tasks"></i> Progress Bar
+                <i class="fas fa-bars-progress"></i> Progress Bar
               </button>
               <button class="selfmade-tool-btn" onclick="SelfMadeEditor.addBadge()" title="Add Badge">
                 <i class="fas fa-certificate"></i> Badge
@@ -631,14 +631,22 @@ const SelfMadeEditor = (function () {
     }
 
     if (el.type === 'timeline') {
-      return `<div class="selfmade-el${sel}" style="${baseStyle} padding:8px; display:flex; flex-direction:column; gap:6px;" data-id="${el.id}" ${dragAttr}>
-        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2020 - Event 1</div></div>
-        <div style="width:2px;height:12px;background:#ccc;margin-left:4px;"></div>
-        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2022 - Event 2</div></div>
-        <div style="width:2px;height:12px;background:#ccc;margin-left:4px;"></div>
-        <div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:#6b8fad;flex-shrink:0;"></div><div style="font-size:11px;color:#333;">2024 - Event 3</div></div>
-        ${handles}
-      </div>`;
+      var tlEvents = el.props.events || [
+        { year: '2020', text: 'Event 1' },
+        { year: '2022', text: 'Event 2' },
+        { year: '2024', text: 'Event 3' }
+      ];
+      var tlColor = el.props.color || '#6b8fad';
+      var tlFontSize = parseInt(el.props.fontSize) || 11;
+      var tlItemsHtml = tlEvents.map(function(ev, idx) {
+        var isLast = idx === tlEvents.length - 1;
+        return '<div style="display:flex; gap:8px; align-items:center;"><div style="width:10px;height:10px;border-radius:50%;background:' + tlColor + ';flex-shrink:0;"></div><div style="font-size:' + tlFontSize + 'px;color:#333;">' + escapeHTML2(ev.year || '') + ' - ' + escapeHTML2(ev.text || '') + '</div></div>' +
+          (isLast ? '' : '<div style="width:2px;height:12px;background:#ccc;margin-left:4px;"></div>');
+      }).join('');
+      return '<div class="selfmade-el' + sel + '" style="' + baseStyle + ' padding:8px; display:flex; flex-direction:column; gap:6px;" data-id="' + el.id + '" ' + dragAttr + '>' +
+        tlItemsHtml +
+        handles +
+      '</div>';
     }
 
     if (el.type === 'progressBar') {
@@ -672,19 +680,31 @@ const SelfMadeEditor = (function () {
     }
 
     if (el.type === 'socialIcons') {
-      return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; gap:8px;" data-id="${el.id}" ${dragAttr}>
-        <i class="fab fa-linkedin" style="font-size:18px;color:#0077b5;"></i>
-        <i class="fab fa-github" style="font-size:18px;color:#333;"></i>
-        <i class="fab fa-twitter" style="font-size:18px;color:#1da1f2;"></i>
-        <i class="fas fa-globe" style="font-size:18px;color:#6b8fad;"></i>
-        ${handles}
-      </div>`;
+      var socialItems = el.props.items || [
+        { icon: 'fab fa-linkedin', color: '#0077b5' },
+        { icon: 'fab fa-github', color: '#333333' },
+        { icon: 'fab fa-twitter', color: '#1da1f2' },
+        { icon: 'fas fa-globe', color: '#6b8fad' }
+      ];
+      var socialSize = parseInt(el.props.fontSize) || 18;
+      var socialGap = parseInt(el.props.gap) || 8;
+      var socialItemsHtml = socialItems.map(function(item) {
+        return '<i class="' + escapeHTML2(item.icon) + '" style="font-size:' + socialSize + 'px;color:' + (item.color || '#6b8fad') + ';"></i>';
+      }).join('');
+      return '<div class="selfmade-el' + sel + '" style="' + baseStyle + ' display:flex; align-items:center; justify-content:center; gap:' + socialGap + 'px;" data-id="' + el.id + '" ' + dragAttr + '>' +
+        socialItemsHtml +
+        handles +
+      '</div>';
     }
 
     if (el.type === 'rating') {
-      const rating = el.props.level || 4;
+      const rating = parseInt(el.props.level) || 0;
+      const maxStars = parseInt(el.props.maxStars) || 5;
+      const starColor = el.props.starColor || '#f59e0b';
+      const inactiveColor = el.props.inactiveColor || '#d1d5db';
+      const starSize = parseInt(el.props.starSize) || 16;
       return `<div class="selfmade-el${sel}" style="${baseStyle} display:flex; align-items:center; justify-content:center; gap:2px;" data-id="${el.id}" ${dragAttr}>
-        ${[1,2,3,4,5].map(i => `<i class="fas fa-star" style="font-size:16px;color:${i<=rating?'#f59e0b':'#d1d5db'};"></i>`).join('')}
+        ${Array.from({length: maxStars}, (_, i) => i + 1).map(i => `<i class="fas fa-star" style="font-size:${starSize}px;color:${i<=rating?starColor:inactiveColor};"></i>`).join('')}
         ${handles}
       </div>`;
     }
@@ -1027,23 +1047,68 @@ const SelfMadeEditor = (function () {
     }
 
     if (el.type === 'icon') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-group-title">Icon</div>
-          <div class="prop-row">
-            <label>Icon Name</label>
-            <input type="text" value="${escapeHTML2(el.props.iconName || 'fa-star')}" oninput="SelfMadeEditor.setPropDeep('iconName', this.value)" placeholder="fa-star, fa-heart, fa-user...">
-          </div>
-          <div class="prop-row">
-            <label>Size</label>
-            <input type="number" value="${el.props.fontSize || 24}" oninput="SelfMadeEditor.setPropDeep('fontSize', this.value)">
-          </div>
-          <div class="prop-row">
-            <label>Color</label>
-            <input type="color" value="${el.props.color || '#6b8fad'}" oninput="SelfMadeEditor.setPropDeep('color', this.value)">
-          </div>
-        </div>
-      `;
+      var iconList = [
+        'fa-star','fa-heart','fa-user','fa-users','fa-envelope','fa-phone','fa-location-dot',
+        'fa-briefcase','fa-graduation-cap','fa-trophy','fa-medal','fa-certificate','fa-award',
+        'fa-book','fa-bookmark','fa-pen','fa-pen-nib','fa-file','fa-file-lines','fa-folder',
+        'fa-code','fa-terminal','fa-bug','fa-cog','fa-gear','fa-tools','fa-wrench','fa-screwdriver-wrench',
+        'fa-chart-bar','fa-chart-line','fa-chart-pie','fa-bars-progress','fa-list','fa-list-check',
+        'fa-check','fa-check-circle','fa-check-double','fa-circle-check','fa-xmark','fa-circle-xmark',
+        'fa-plus','fa-plus-circle','fa-minus','fa-circle-minus','fa-arrow-right','fa-arrow-left',
+        'fa-arrow-up','fa-arrow-down','fa-share','fa-share-nodes','fa-link','fa-globe','fa-network-wired',
+        'fa-github','fa-linkedin','fa-twitter','fa-facebook','fa-instagram','fa-youtube','fa-whatsapp',
+        'fa-telegram','fa-discord','fa-twitch','fa-reddit','fa-medium','fa-pinterest','fa-tiktok',
+        'fa-home','fa-house','fa-building','fa-building-columns','fa-school','fa-hospital',
+        'fa-map','fa-map-location','fa-compass','fa-route','fa-plane','fa-car','fa-train','fa-bus',
+        'fa-bicycle','fa-walking','fa-running','fa-dumbbell','fa-heart-pulse','fa-stethoscope',
+        'fa-pills','fa-microscope','fa-atom','fa-flask','fa-vial','fa-dna','fa-brain',
+        'fa-lightbulb','fa-fire','fa-bolt','fa-cloud','fa-sun','fa-moon',
+        'fa-leaf','fa-tree','fa-seedling','fa-feather','fa-snowflake','fa-mountain','fa-water',
+        'fa-music','fa-guitar','fa-drum','fa-microphone','fa-headphones','fa-volume-high',
+        'fa-camera','fa-image','fa-video','fa-film','fa-clapperboard','fa-palette','fa-paintbrush',
+        'fa-brush','fa-eraser','fa-diamond','fa-gem',
+        'fa-crown','fa-chess','fa-dice','fa-gamepad','fa-puzzle-piece',
+        'fa-shopping-bag','fa-shopping-cart','fa-cart-shopping','fa-store','fa-tag','fa-tags',
+        'fa-credit-card','fa-money-bill','fa-coins','fa-sack-dollar','fa-percent',
+        'fa-calendar','fa-calendar-days','fa-clock','fa-hourglass','fa-bell',
+        'fa-message','fa-comment','fa-comments','fa-inbox','fa-paper-plane','fa-quote-left',
+        'fa-magnifying-glass','fa-eye','fa-eye-slash','fa-lock','fa-unlock','fa-key',
+        'fa-shield','fa-shield-halved','fa-flag','fa-rocket','fa-satellite','fa-tower-broadcast',
+        'fa-wifi','fa-bluetooth','fa-plug','fa-battery-full','fa-battery-half',
+        'fa-handshake','fa-hand-peace','fa-thumbs-up','fa-thumbs-down','fa-face-smile',
+        'fa-face-frown','fa-face-laugh','fa-mug-hot','fa-coffee','fa-utensils',
+        'fa-pizza-slice','fa-burger','fa-cake-candles','fa-apple-whole','fa-carrot','fa-egg'
+      ];
+      var currentIcon = el.props.iconName || 'fa-star';
+      var iconColor = el.props.color || '#6b8fad';
+      var iconGridHtml = iconList.map(function(ic) {
+        var isSelected = currentIcon === ic;
+        var bg = isSelected ? 'background:var(--primary-light);' : '';
+        var clr = isSelected ? iconColor : '#888';
+        return '<div style="display:flex;align-items:center;justify-content:center;padding:6px;cursor:pointer;border-radius:4px;' + bg + '" onclick="SelfMadeEditor.setPropDeep(\'iconName\', \'' + ic + '\'); SelfMadeEditor.renderProps();"><i class="fas ' + ic + '" style="font-size:14px;color:' + clr + ';"></i></div>';
+      }).join('');
+      html += '' +
+        '<div class="prop-group">' +
+          '<div class="prop-group-title">Icon</div>' +
+          '<div class="prop-row">' +
+            '<label>Current: <i class="fas ' + escapeHTML2(currentIcon) + '" style="color:' + iconColor + ';"></i></label>' +
+            '<input type="text" value="' + escapeHTML2(currentIcon) + '" oninput="SelfMadeEditor.setPropDeep(\'iconName\', this.value)" placeholder="fa-star, fa-heart, fa-user...">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Pick an icon</label>' +
+            '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--border-color);border-radius:6px;">' +
+              iconGridHtml +
+            '</div>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Size</label>' +
+            '<input type="number" value="' + (el.props.fontSize || 24) + '" oninput="SelfMadeEditor.setPropDeep(\'fontSize\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Color</label>' +
+            '<input type="color" value="' + iconColor + '" oninput="SelfMadeEditor.setPropDeep(\'color\', this.value)">' +
+          '</div>' +
+        '</div>';
     }
 
     if (el.type === 'barcode') {
@@ -1157,16 +1222,149 @@ const SelfMadeEditor = (function () {
       `;
     }
 
+    if (el.type === 'timeline') {
+      var tlEvents = el.props.events || [
+        { year: '2020', text: 'Event 1' },
+        { year: '2022', text: 'Event 2' },
+        { year: '2024', text: 'Event 3' }
+      ];
+      var tlColor = el.props.color || '#6b8fad';
+      var tlFontSize = parseInt(el.props.fontSize) || 11;
+      var tlEventsHtml = tlEvents.map(function(ev, idx) {
+        return '<div style="display:flex;gap:4px;padding:4px 0;border-bottom:1px solid #eee;align-items:center;">' +
+          '<input type="text" value="' + escapeHTML2(ev.year || '') + '" style="width:50px;font-size:10px;" oninput="SelfMadeEditor.updateTimelineEvent(' + idx + ', \'year\', this.value)">' +
+          '<input type="text" value="' + escapeHTML2(ev.text || '') + '" style="flex:1;font-size:10px;" oninput="SelfMadeEditor.updateTimelineEvent(' + idx + ', \'text\', this.value)">' +
+          '<button onclick="SelfMadeEditor.removeTimelineEvent(' + idx + ')" style="border:none;background:none;cursor:pointer;color:#e44d44;font-size:12px;"><i class="fas fa-times"></i></button>' +
+        '</div>';
+      }).join('');
+      html += '' +
+        '<div class="prop-group">' +
+          '<div class="prop-group-title">Timeline</div>' +
+          '<div class="prop-row">' +
+            '<label>Events</label>' +
+            '<div>' + tlEventsHtml + '</div>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<button class="selfmade-tool-btn" onclick="SelfMadeEditor.addTimelineEvent()" style="width:100%;"><i class="fas fa-plus"></i> Add Event</button>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Dot Color</label>' +
+            '<input type="color" value="' + tlColor + '" oninput="SelfMadeEditor.setPropDeep(\'color\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Font Size</label>' +
+            '<input type="number" value="' + tlFontSize + '" min="8" max="20" oninput="SelfMadeEditor.setPropDeep(\'fontSize\', this.value)">' +
+          '</div>' +
+        '</div>';
+    }
+
+    if (el.type === 'socialIcons') {
+      var socialItems = el.props.items || [
+        { icon: 'fab fa-linkedin', color: '#0077b5' },
+        { icon: 'fab fa-github', color: '#333333' },
+        { icon: 'fab fa-twitter', color: '#1da1f2' },
+        { icon: 'fas fa-globe', color: '#6b8fad' }
+      ];
+      var socialSize = parseInt(el.props.fontSize) || 18;
+      var socialGap = parseInt(el.props.gap) || 8;
+      var socialPresets = [
+        { icon: 'fab fa-linkedin', color: '#0077b5', label: 'LinkedIn' },
+        { icon: 'fab fa-github', color: '#333333', label: 'GitHub' },
+        { icon: 'fab fa-twitter', color: '#1da1f2', label: 'Twitter' },
+        { icon: 'fab fa-facebook', color: '#1877f2', label: 'Facebook' },
+        { icon: 'fab fa-instagram', color: '#e4405f', label: 'Instagram' },
+        { icon: 'fab fa-youtube', color: '#ff0000', label: 'YouTube' },
+        { icon: 'fab fa-whatsapp', color: '#25d366', label: 'WhatsApp' },
+        { icon: 'fab fa-telegram', color: '#0088cc', label: 'Telegram' },
+        { icon: 'fab fa-discord', color: '#5865f2', label: 'Discord' },
+        { icon: 'fab fa-reddit', color: '#ff4500', label: 'Reddit' },
+        { icon: 'fab fa-medium', color: '#000000', label: 'Medium' },
+        { icon: 'fab fa-pinterest', color: '#bd082c', label: 'Pinterest' },
+        { icon: 'fab fa-tiktok', color: '#000000', label: 'TikTok' },
+        { icon: 'fas fa-globe', color: '#6b8fad', label: 'Website' },
+        { icon: 'fas fa-envelope', color: '#ea4335', label: 'Email' },
+        { icon: 'fas fa-phone', color: '#25d366', label: 'Phone' }
+      ];
+      var socialPresetsHtml = socialPresets.map(function(p) {
+        var alreadyAdded = socialItems.some(function(item) { return item.icon === p.icon; });
+        return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;border-radius:4px;' + (alreadyAdded ? 'opacity:0.4;' : '') + '" onclick="SelfMadeEditor.addSocialIcon(\'' + p.icon + '\', \'' + p.color + '\')">' +
+          '<i class="' + p.icon + '" style="font-size:14px;color:' + p.color + ';"></i>' +
+          '<span style="font-size:11px;color:#666;">' + p.label + '</span>' +
+        '</div>';
+      }).join('');
+      var socialCurrentHtml = socialItems.map(function(item, idx) {
+        return '<div style="display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #eee;">' +
+          '<i class="' + escapeHTML2(item.icon) + '" style="font-size:16px;color:' + (item.color || '#6b8fad') + ';width:20px;text-align:center;"></i>' +
+          '<input type="text" value="' + escapeHTML2(item.icon) + '" style="flex:1;font-size:10px;" oninput="SelfMadeEditor.updateSocialIcon(' + idx + ', \'icon\', this.value)">' +
+          '<input type="color" value="' + (item.color || '#6b8fad') + '" style="width:24px;height:24px;" oninput="SelfMadeEditor.updateSocialIcon(' + idx + ', \'color\', this.value)">' +
+          '<button onclick="SelfMadeEditor.removeSocialIcon(' + idx + ')" style="border:none;background:none;cursor:pointer;color:#e44;color:#e44d44;font-size:12px;"><i class="fas fa-times"></i></button>' +
+        '</div>';
+      }).join('');
+      html += '' +
+        '<div class="prop-group">' +
+          '<div class="prop-group-title">Social Icons</div>' +
+          '<div class="prop-row">' +
+            '<label>Current Icons</label>' +
+            '<div>' + socialCurrentHtml + '</div>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Add Icon</label>' +
+            '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:2px;max-height:160px;overflow-y:auto;padding:4px;border:1px solid var(--border-color);border-radius:6px;">' +
+              socialPresetsHtml +
+            '</div>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Icon Size (px)</label>' +
+            '<input type="number" value="' + socialSize + '" min="10" max="48" oninput="SelfMadeEditor.setPropDeep(\'fontSize\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Gap (px)</label>' +
+            '<input type="number" value="' + socialGap + '" min="0" max="30" oninput="SelfMadeEditor.setPropDeep(\'gap\', this.value)">' +
+          '</div>' +
+        '</div>';
+    }
+
     if (el.type === 'rating') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-group-title">Rating</div>
-          <div class="prop-row">
-            <label>Stars (1-5)</label>
-            <input type="number" value="${el.props.level || 4}" min="1" max="5" oninput="SelfMadeEditor.setPropDeep('level', this.value)">
-          </div>
-        </div>
-      `;
+      var rating = parseInt(el.props.level) || 0;
+      var maxStars = parseInt(el.props.maxStars) || 5;
+      var starColor = el.props.starColor || '#f59e0b';
+      var inactiveColor = el.props.inactiveColor || '#d1d5db';
+      var starSize = parseInt(el.props.starSize) || 16;
+      var starPickerHtml = '';
+      for (var s = 1; s <= maxStars; s++) {
+        var clr = s <= rating ? starColor : inactiveColor;
+        starPickerHtml += '<i class="fas fa-star" style="color:' + clr + ';" onclick="SelfMadeEditor.setPropDeep(\'level\', ' + s + '); SelfMadeEditor.renderProps();"></i>';
+      }
+      html += '' +
+        '<div class="prop-group">' +
+          '<div class="prop-group-title">Rating Stars</div>' +
+          '<div class="prop-row">' +
+            '<label>Click to set rating</label>' +
+            '<div style="display:flex;gap:4px;cursor:pointer;font-size:20px;padding:4px 0;">' +
+              starPickerHtml +
+            '</div>' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Stars (0-' + maxStars + ')</label>' +
+            '<input type="number" value="' + rating + '" min="0" max="' + maxStars + '" oninput="SelfMadeEditor.setPropDeep(\'level\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Max Stars</label>' +
+            '<input type="number" value="' + maxStars + '" min="1" max="10" oninput="SelfMadeEditor.setPropDeep(\'maxStars\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Star Size (px)</label>' +
+            '<input type="number" value="' + starSize + '" min="8" max="48" oninput="SelfMadeEditor.setPropDeep(\'starSize\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Active Color</label>' +
+            '<input type="color" value="' + starColor + '" oninput="SelfMadeEditor.setPropDeep(\'starColor\', this.value)">' +
+          '</div>' +
+          '<div class="prop-row">' +
+            '<label>Inactive Color</label>' +
+            '<input type="color" value="' + inactiveColor + '" oninput="SelfMadeEditor.setPropDeep(\'inactiveColor\', this.value)">' +
+          '</div>' +
+        '</div>';
     }
 
     body.innerHTML = html;
@@ -1468,11 +1666,47 @@ const SelfMadeEditor = (function () {
   function addTimeline() {
     const el = {
       id: nextId++, type: 'timeline', x: 50, y: 50, w: 250, h: 120,
-      props: {}
+      props: {
+        events: [
+          { year: '2020', text: 'Event 1' },
+          { year: '2022', text: 'Event 2' },
+          { year: '2024', text: 'Event 3' }
+        ],
+        color: '#6b8fad',
+        fontSize: 11
+      }
     };
     elements.push(el);
     pushHistory();
     selectElement(el.id);
+  }
+
+  function addTimelineEvent() {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'timeline') return;
+    if (!el.props.events) el.props.events = [];
+    el.props.events.push({ year: '', text: 'New Event' });
+    pushHistory();
+    updateCanvasElement(el);
+    renderProps();
+  }
+
+  function updateTimelineEvent(idx, key, value) {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'timeline') return;
+    if (!el.props.events || !el.props.events[idx]) return;
+    el.props.events[idx][key] = value;
+    updateCanvasElement(el);
+  }
+
+  function removeTimelineEvent(idx) {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'timeline') return;
+    if (!el.props.events) return;
+    el.props.events.splice(idx, 1);
+    pushHistory();
+    updateCanvasElement(el);
+    renderProps();
   }
 
   function addProgressBar() {
@@ -1508,17 +1742,55 @@ const SelfMadeEditor = (function () {
   function addSocialIcons() {
     const el = {
       id: nextId++, type: 'socialIcons', x: 50, y: 50, w: 150, h: 30,
-      props: {}
+      props: {
+        items: [
+          { icon: 'fab fa-linkedin', color: '#0077b5' },
+          { icon: 'fab fa-github', color: '#333333' },
+          { icon: 'fab fa-twitter', color: '#1da1f2' },
+          { icon: 'fas fa-globe', color: '#6b8fad' }
+        ],
+        fontSize: 18,
+        gap: 8
+      }
     };
     elements.push(el);
     pushHistory();
     selectElement(el.id);
   }
 
+  function addSocialIcon(icon, color) {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'socialIcons') return;
+    if (!el.props.items) el.props.items = [];
+    if (el.props.items.some(function(item) { return item.icon === icon; })) return;
+    el.props.items.push({ icon: icon, color: color });
+    pushHistory();
+    updateCanvasElement(el);
+    renderProps();
+  }
+
+  function updateSocialIcon(idx, key, value) {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'socialIcons') return;
+    if (!el.props.items || !el.props.items[idx]) return;
+    el.props.items[idx][key] = value;
+    updateCanvasElement(el);
+  }
+
+  function removeSocialIcon(idx) {
+    var el = elements.find(function(x) { return x.id === selectedId; });
+    if (!el || el.type !== 'socialIcons') return;
+    if (!el.props.items) return;
+    el.props.items.splice(idx, 1);
+    pushHistory();
+    updateCanvasElement(el);
+    renderProps();
+  }
+
   function addRating() {
     const el = {
       id: nextId++, type: 'rating', x: 50, y: 50, w: 120, h: 30,
-      props: { level: 4 }
+      props: { level: 4, maxStars: 5, starColor: '#f59e0b', inactiveColor: '#d1d5db', starSize: 16 }
     };
     elements.push(el);
     pushHistory();
@@ -1736,6 +2008,8 @@ const SelfMadeEditor = (function () {
     addLine, addDashedLine, addDoubleLine, addDivider,
     addImage, addIcon, addPhotoFrame, addBarcode, addQRPlaceholder,
     addSkillBar, addSkillTags, addTimeline, addProgressBar, addBadge, addContactCard, addSocialIcons, addRating,
+    addSocialIcon, updateSocialIcon, removeSocialIcon,
+    addTimelineEvent, updateTimelineEvent, removeTimelineEvent,
     insertData, deleteSelected, duplicateSelected, clearAll,
     exportPDF, exportPNG, exportJPG,
     undo, redo, toggleSnap, setGridSize, bringForward, sendBackward

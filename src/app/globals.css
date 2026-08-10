@@ -495,6 +495,127 @@ button:active > .netsyra-logo {
   scrollbar-color: #30363d transparent;
 }
 
+/* ── Chat dark theme overrides ── */
+/* Applied when .dark-theme class is on the chat-layout root */
+.dark-theme {
+  background-color: #0a0a0b !important;
+  color: #e4e4e7 !important;
+}
+
+/* Sidebar background override (inline style uses rgba(255,255,255,0.72)) */
+.dark-theme [style*="rgba(255, 255, 255, 0.72)"] {
+  background-color: rgba(10, 10, 11, 0.8) !important;
+}
+
+/* Override bg-white → dark */
+.dark-theme .bg-white {
+  background-color: #131316 !important;
+}
+
+/* Override text colors */
+.dark-theme .text-gray-900,
+.dark-theme .text-zinc-950 {
+  color: #e4e4e7 !important;
+}
+.dark-theme .text-gray-800 {
+  color: #d4d4d8 !important;
+}
+.dark-theme .text-gray-700 {
+  color: #c4c4c8 !important;
+}
+.dark-theme .text-gray-600 {
+  color: #a1a1aa !important;
+}
+.dark-theme .text-gray-500 {
+  color: #8b8b94 !important;
+}
+.dark-theme .text-gray-400 {
+  color: #71717a !important;
+}
+
+/* Override borders */
+.dark-theme .border-gray-200,
+.dark-theme .border-gray-100 {
+  border-color: #27272a !important;
+}
+.dark-theme .border-gray-300 {
+  border-color: #3f3f46 !important;
+}
+.dark-theme .border-white\/40 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Override bg-gray-50, bg-gray-100 → dark */
+.dark-theme .bg-gray-50 {
+  background-color: #1a1a1e !important;
+}
+.dark-theme .bg-gray-100 {
+  background-color: #1f1f23 !important;
+}
+
+/* Prose chat dark overrides */
+.dark-theme .prose-chat {
+  color: #d4d4d8 !important;
+}
+.dark-theme .prose-chat h1,
+.dark-theme .prose-chat h2,
+.dark-theme .prose-chat h3,
+.dark-theme .prose-chat h4,
+.dark-theme .prose-chat h5,
+.dark-theme .prose-chat h6 {
+  color: #f4f4f5 !important;
+}
+.dark-theme .prose-chat a {
+  color: #a5b4fc !important;
+  text-decoration-color: #6366f1 !important;
+}
+.dark-theme .prose-chat blockquote {
+  border-color: #4f46e5 !important;
+  color: #a1a1aa !important;
+}
+.dark-theme .prose-chat code {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+.dark-theme .prose-chat hr {
+  border-color: #3f3f46 !important;
+}
+
+/* Chat message blockquote (definition highlighter) */
+.dark-theme .chat-message blockquote {
+  background-color: rgba(52, 211, 153, 0.1) !important;
+  border-left-color: #34d399 !important;
+  color: #6ee7b7 !important;
+}
+
+/* Input bar shadow override */
+.dark-theme .shadow-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Scroll-to-bottom button */
+.dark-theme .bg-white.border.border-gray-200.shadow-lg {
+  background-color: #1f1f23 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Thinking/searching/typing indicator bubbles */
+.dark-theme .bg-white.text-sm.flex.items-center.gap-2.shadow-sm {
+  background-color: #1f1f23 !important;
+}
+
+/* Focus ring override */
+.dark-theme .focus\:within\:ring-black:focus-within {
+  --tw-ring-color: #6366f1 !important;
+}
+
+/* Sources panel */
+.dark-theme .bg-white.px-4.py-3 {
+  background-color: #1a1a1e !important;
+}
+
+/* ── End chat dark theme overrides ── */
+
 /* Light theme (default) */
 :root {
   --mermaid-bg: #ffffff;

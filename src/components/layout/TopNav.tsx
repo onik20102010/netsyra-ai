@@ -48,18 +48,62 @@ export default function TopNav() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 select-none"
+      className="fixed top-0 left-0 right-0 z-50"
     >
       <div className="mx-3 mt-2 sm:mx-6 sm:mt-4">
         <div className="flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           {/* Left – Logo + Name */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-black flex items-center justify-center p-1">
-              <img
-                src="/logo.png"
-                alt="Netsyra AI logo"
-                className="w-full h-full object-contain"
-              />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+                <defs>
+                  <radialGradient id="bgGradient" cx="50%" cy="50%" r="70%">
+                    <stop offset="0%" stopColor="#1a1c23" />
+                    <stop offset="60%" stopColor="#0a0b0e" />
+                    <stop offset="100%" stopColor="#020203" />
+                  </radialGradient>
+                  <linearGradient id="silverBase" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e6e8fa" />
+                    <stop offset="25%" stopColor="#9ea4b4" />
+                    <stop offset="50%" stopColor="#ffffff" />
+                    <stop offset="75%" stopColor="#6b7280" />
+                    <stop offset="100%" stopColor="#374151" />
+                  </linearGradient>
+                  <linearGradient id="whiteHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="50%" stopColor="#f3f4f6" />
+                    <stop offset="100%" stopColor="#d1d5db" />
+                  </linearGradient>
+                  <linearGradient id="bevelShadow" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#111827" />
+                    <stop offset="50%" stopColor="#4b5563" />
+                    <stop offset="100%" stopColor="#1f2937" />
+                  </linearGradient>
+                  <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="12" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                  <linearGradient id="reflectionGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <rect width="800" height="800" fill="url(#bgGradient)" />
+                <ellipse cx="400" cy="680" rx="220" ry="25" fill="url(#reflectionGrad)" />
+                <g transform="translate(0, -10)">
+                  <path d="M 230 180 L 250 180 L 250 620 L 230 620 Z" fill="url(#bevelShadow)" />
+                  <path d="M 550 180 L 570 180 L 570 620 L 550 620 Z" fill="url(#bevelShadow)" />
+                  <path d="M 220 160 H 350 L 470 460 V 160 H 580 V 640 H 450 L 330 340 V 640 H 220 Z" fill="url(#silverBase)" stroke="#94a3b8" strokeWidth="2" filter="url(#subtleGlow)" />
+                  <path d="M 245 185 H 325 V 525 L 245 320 Z" fill="url(#whiteHighlight)" />
+                  <path d="M 355 200 L 555 615 H 475 L 275 200 Z" fill="url(#whiteHighlight)" />
+                  <path d="M 495 275 L 555 425 V 615 H 495 Z" fill="url(#whiteHighlight)" />
+                  <path d="M 220 160 H 350" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M 470 160 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M 220 640 H 330" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M 450 640 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                  <line x1="280" y1="210" x2="470" y2="600" stroke="#ffffff" strokeWidth="3" opacity="0.8" />
+                </g>
+              </svg>
             </div>
             <span className="text-base sm:text-lg font-bold text-white">
               Netsyra

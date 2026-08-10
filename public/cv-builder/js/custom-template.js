@@ -74,6 +74,26 @@ const CustomTemplateEditor = (function () {
       }
     });
 
+    // Find top bar / header background (first child of root with background color, not a sidebar)
+    if (!colors.sidebarBg) {
+      const rootChild = tempDiv.firstElementChild;
+      if (rootChild) {
+        // Check direct children of root for a header/top bar element
+        const rootChildren = rootChild.children;
+        for (let i = 0; i < rootChildren.length; i++) {
+          const cs = rootChildren[i].getAttribute('style') || '';
+          // Top bar: has background color, contains an h1 (name), and is not a flex sidebar
+          if (/background(?:-color)?:\s*#[0-9a-fA-F]{6}/i.test(cs) && !/width:\s*\d+%/i.test(cs)) {
+            const hasHeading = rootChildren[i].querySelector('h1, h2');
+            if (hasHeading) {
+              const bg = extractHex(cs);
+              if (bg) { colors.sidebarBg = bg; break; }
+            }
+          }
+        }
+      }
+    }
+
     // Find primary/accent color (from headings, links, or elements with distinct colors)
     const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, strong, b');
     headings.forEach(h => {
@@ -117,6 +137,9 @@ const CustomTemplateEditor = (function () {
     if (!colors.textColor) colors.textColor = '#022b74';
     if (!colors.accentColor) colors.accentColor = '#ff9966';
     if (!colors.dividerColor) colors.dividerColor = '#276cd3';
+
+    // Also look for top bar color if sidebarBg was found from a top bar (store it separately)
+    // We reuse sidebarBg for both sidebar and top bar since the UI label covers both
 
     return colors;
   }
@@ -219,7 +242,7 @@ const CustomTemplateEditor = (function () {
           <div class="custom-panel-body">
             ${section('Colors', 'fa-palette', `
               ${colorField('primaryColor', 'Primary / Accent', '#084372')}
-              ${colorField('sidebarBg', 'Sidebar Background', '#065de0')}
+              ${colorField('sidebarBg', 'Sidebar / Top Bar Background', '#065de0')}
               ${colorField('textColor', 'Text Color', '#022b74')}
               ${colorField('accentColor', 'Secondary Accent', '#ff9966')}
               ${colorField('dividerColor', 'Divider Lines', '#276cd3')}
@@ -513,6 +536,10 @@ const CustomTemplateEditor = (function () {
     if (state.dividerColor) {
       css += `#${cid} hr, #${cid} .divider { border-color: ${state.dividerColor} !important; background: ${state.dividerColor} !important; }`;
       css += `#${cid} div[style*="border-bottom"] { border-bottom-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} div[style*="border-top"] { border-top-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} div[style*="border-left"] { border-left-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} div[style*="border-right"] { border-right-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} div[style*="border:"] { border-color: ${state.dividerColor} !important; }`;
     }
 
     // Inject style
@@ -582,20 +609,40 @@ const CustomTemplateEditor = (function () {
       }
     });
 
-    // Helper: check if an element is inside the sidebar
+    // Detect top bar / header element (first child of root with background color, containing h1/h2)
+    let topBarEl = null;
+    let topBarBgColor = null;
+    if (!sidebarEl) {
+      const rootChildren = root.children;
+      for (let i = 0; i < rootChildren.length; i++) {
+        const cs = rootChildren[i].getAttribute('style') || '';
+        if (/background(?:-color)?:\s*#[0-9a-fA-F]{6}/i.test(cs) && !/width:\s*\d+%/i.test(cs)) {
+          const hasHeading = rootChildren[i].querySelector('h1, h2');
+          if (hasHeading) {
+            topBarEl = rootChildren[i];
+            const bgMatch = cs.match(/background(?:-color)?:\s*(#[0-9a-fA-F]{6})/i);
+            if (bgMatch) topBarBgColor = bgMatch[1];
+            break;
+          }
+        }
+      }
+    }
+
+    // Helper: check if an element is inside the sidebar or top bar
     function isInsideSidebar(el) {
-      if (!sidebarEl) return false;
+      const target = sidebarEl || topBarEl;
+      if (!target) return false;
       let node = el;
       while (node) {
-        if (node === sidebarEl) return true;
+        if (node === target) return true;
         node = node.parentElement;
       }
       return false;
     }
 
-    // Helper: check if an element IS the sidebar
+    // Helper: check if an element IS the sidebar or top bar
     function isSidebar(el) {
-      return sidebarEl && el === sidebarEl;
+      return (sidebarEl && el === sidebarEl) || (topBarEl && el === topBarEl);
     }
 
     allElements.forEach(el => {
@@ -606,16 +653,20 @@ const CustomTemplateEditor = (function () {
       const inSidebar = isInsideSidebar(el);
       const isSb = isSidebar(el);
 
-      // ── 1. Sidebar background FIRST (before primary color so it takes priority) ──
+      // ── 1. Sidebar / Top bar background FIRST (before primary color so it takes priority) ──
       if (state.sidebarBg) {
-        if (sidebarBgColor) {
-          const re = new RegExp(sidebarBgColor, 'gi');
+        const bgSourceColor = sidebarBgColor || topBarBgColor;
+        if (bgSourceColor) {
+          const re = new RegExp(bgSourceColor, 'gi');
           newStyle = newStyle.replace(re, state.sidebarBg);
         }
         newStyle = newStyle.replace(/background-color:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background-color: ' + state.sidebarBg);
-        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background-color:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E|#3A3D40|#36393E)/gi, 'background-color: ' + state.sidebarBg);
         newStyle = newStyle.replace(/background:\s*(#E2E4E7|#EFECE6|#E1E4E7|#F0F2F5|#F5F5F5|#EAEAEA|#F7F5F2|#E8E4DD|#EDE9E0|#D8CBB9|#E2E5E8)/gi, 'background: ' + state.sidebarBg);
-        newStyle = newStyle.replace(/background:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E)/gi, 'background: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#1A1A1A|#2D2D2D|#1E1E1E|#252525|#333333|#05520E|#033C0A|#1C1C1C|#222222|#2A2A2A|#363A40|#1A202C|#2D3748|#2C3E50|#34495E|#3A3D40|#36393E)/gi, 'background: ' + state.sidebarBg);
+        // Also replace top bar specific colors (professional template: #2c3e50, etc.)
+        newStyle = newStyle.replace(/background-color:\s*(#2c3e50|#34495e|#1a5276|#154360|#778899|#3498db|#2c3e50)/gi, 'background-color: ' + state.sidebarBg);
+        newStyle = newStyle.replace(/background:\s*(#2c3e50|#34495e|#1a5276|#154360|#778899|#3498db|#2c3e50)/gi, 'background: ' + state.sidebarBg);
       }
 
       // ── 2. Primary color: replace accent colors, but SKIP sidebar element's background ──
@@ -674,14 +725,37 @@ const CustomTemplateEditor = (function () {
         });
       }
 
-      // ── 5. Divider color: replace border colors on dividers ──
+      // ── 5. Divider color: replace border colors on all divider types ──
       if (state.dividerColor) {
-        newStyle = newStyle.replace(/border-bottom:\s*\d+px\s+\w+\s+(#[0-9a-fA-F]{6})/gi, (match, hex) => {
-          return match.replace(hex, state.dividerColor);
+        // border-bottom shorthand: 2px solid #color
+        newStyle = newStyle.replace(/border-bottom:\s*(\d+px)\s+(\w+)\s+(#[0-9a-fA-F]{6})/gi, (match, width, style, hex) => {
+          return `border-bottom: ${width} ${style} ${state.dividerColor}`;
         });
         newStyle = newStyle.replace(/border-bottom-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-bottom-color: ' + state.dividerColor);
-        newStyle = newStyle.replace(/border-top:\s*\d+px\s+\w+\s+(#[0-9a-fA-F]{6})/gi, (match, hex) => {
-          return match.replace(hex, state.dividerColor);
+        // border-top shorthand
+        newStyle = newStyle.replace(/border-top:\s*(\d+px)\s+(\w+)\s+(#[0-9a-fA-F]{6})/gi, (match, width, style, hex) => {
+          return `border-top: ${width} ${style} ${state.dividerColor}`;
+        });
+        newStyle = newStyle.replace(/border-top-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-top-color: ' + state.dividerColor);
+        // border-left shorthand
+        newStyle = newStyle.replace(/border-left:\s*(\d+px)\s+(\w+)\s+(#[0-9a-fA-F]{6})/gi, (match, width, style, hex) => {
+          return `border-left: ${width} ${style} ${state.dividerColor}`;
+        });
+        newStyle = newStyle.replace(/border-left-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-left-color: ' + state.dividerColor);
+        // border-right shorthand
+        newStyle = newStyle.replace(/border-right:\s*(\d+px)\s+(\w+)\s+(#[0-9a-fA-F]{6})/gi, (match, width, style, hex) => {
+          return `border-right: ${width} ${style} ${state.dividerColor}`;
+        });
+        newStyle = newStyle.replace(/border-right-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-right-color: ' + state.dividerColor);
+        // Generic border shorthand: 1px solid #color
+        newStyle = newStyle.replace(/border:\s*(\d+px)\s+(\w+)\s+(#[0-9a-fA-F]{6})/gi, (match, width, style, hex) => {
+          return `border: ${width} ${style} ${state.dividerColor}`;
+        });
+        newStyle = newStyle.replace(/border-color:\s*(#[0-9a-fA-F]{6})/gi, 'border-color: ' + state.dividerColor);
+        // border-bottom with color name (e.g. border-bottom: 1px solid #333)
+        newStyle = newStyle.replace(/border-bottom:\s*(\d+px)\s+(\w+)\s+([a-zA-Z]+)/gi, (match, width, style, colorName) => {
+          if (/^(solid|dashed|dotted|double|groove|ridge|inset|outset|none)$/i.test(colorName)) return match;
+          return `border-bottom: ${width} ${style} ${state.dividerColor}`;
         });
       }
 

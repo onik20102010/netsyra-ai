@@ -107,8 +107,8 @@ function ModelCard({
       whileHover={{ y: -10, transition: { duration: 0.25, ease: "easeOut" } }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      className="group relative rounded-2xl overflow-hidden select-none"
-      style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none" }}
+      className="group relative rounded-2xl overflow-hidden"
+      style={{}}
     >
       {/* ── Outer glow layer ── */}
       <motion.div
@@ -288,8 +288,8 @@ export default function ModelsShowcase() {
 
   return (
     <section
-      className="min-h-screen bg-[#06080B] flex items-center justify-center px-4 sm:px-6 py-12 sm:py-20 select-none relative overflow-hidden"
-      style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none" }}
+      className="min-h-screen bg-[#06080B] flex items-center justify-center px-4 sm:px-6 py-12 sm:py-20 relative overflow-hidden"
+      style={{}}
     >
       {/* ── Ambient background glow ── */}
       <div className="absolute inset-0 pointer-events-none">

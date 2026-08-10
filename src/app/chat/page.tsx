@@ -14,6 +14,7 @@ import ChatInterface from "@/components/chat/ChatInterface";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getAllowedTiers } from "@/lib/plan-access";
+import { StylePrefs, DEFAULT_STYLE_PREFS } from "@/hooks/useStylePrefs";
 
 function ChatContent() {
   const { user, loading } = useAuth();
@@ -29,6 +30,7 @@ function ChatContent() {
   const [isPro, setIsPro] = useState(false);
   const [userPlan, setUserPlan] = useState("free");
   const [allowedTiers, setAllowedTiers] = useState<string[]>(["fast", "plus", "pro", "code", "live", "aai"]);
+  const [chatTheme, setChatTheme] = useState<"default" | "dark">("default");
 
   // Lifted model state – shared between sidebar (maybe for future use) and chat interface
   // For Pro users, default to NI model
@@ -107,6 +109,28 @@ function ChatContent() {
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
+  // Load chat theme from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("netsyra_style_prefs");
+      if (raw) {
+        const prefs = { ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) } as StylePrefs;
+        setChatTheme(prefs.chatTheme || "default");
+      }
+    } catch {}
+    const onStyleUpdate = () => {
+      try {
+        const raw = localStorage.getItem("netsyra_style_prefs");
+        if (raw) {
+          const prefs = { ...DEFAULT_STYLE_PREFS, ...JSON.parse(raw) } as StylePrefs;
+          setChatTheme(prefs.chatTheme || "default");
+        }
+      } catch {}
+    };
+    window.addEventListener("netsyra-style-update", onStyleUpdate as EventListener);
+    return () => window.removeEventListener("netsyra-style-update", onStyleUpdate as EventListener);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     supabase
@@ -147,7 +171,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="chat-layout flex flex-col lg:flex-row h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom">
+    <div className={`chat-layout flex flex-col lg:flex-row h-dvh overflow-hidden bg-white text-gray-900 safe-top safe-bottom ${chatTheme === "dark" ? "dark-theme" : ""}`}>
       {/* Hover strip — left edge of screen, opens sidebar on mouse enter (desktop only) */}
       {!sidebarOpen && (
         <div

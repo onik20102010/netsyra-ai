@@ -4,12 +4,14 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 
 export type FontSize = "small" | "medium" | "large";
 export type TableEdges = "sharp" | "round";
+export type ChatTheme = "default" | "dark";
 
 export interface StylePrefs {
   sectionSpacing: number; // 0-100, default 50
   wordSpacing: number; // 0-100, default 50
   tableEdges: TableEdges;
   fontSize: FontSize;
+  chatTheme: ChatTheme;
 }
 
 export const DEFAULT_STYLE_PREFS: StylePrefs = {
@@ -17,6 +19,7 @@ export const DEFAULT_STYLE_PREFS: StylePrefs = {
   wordSpacing: 50,
   tableEdges: "sharp",
   fontSize: "medium",
+  chatTheme: "default",
 };
 
 const STORAGE_KEY = "netsyra_style_prefs";

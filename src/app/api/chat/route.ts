@@ -16,7 +16,6 @@ import { checkCache, storeInCache } from "@/lib/chat/semantic-cache";
 import { getSystemPrompt } from "@/lib/chat/model-registry";
 import { trimContextByTokens } from "@/lib/chat/token-counter";
 import { executeWebSearch } from "@/lib/chat/tools/execute-web-search";
-import { shouldWebSearch } from "@/lib/chat/web-search-decision";
 import { compressHistory } from "@/lib/chat/context-compression";
 import { getCachedReply, setCachedReply } from "@/lib/scale";
 import { verifyAnswer } from "@/lib/verifier";
@@ -360,17 +359,8 @@ export async function POST(req: NextRequest) {
     const diveDeepActive = diveDeep && !isGreeting;
     const shouldUseNLive = diveDeepActive;
 
-    // ── Auto web search decision (intent-based, no limits) ──
-    // If the user didn't toggle the web search button, check if the message
-    // intent requires real-time/external data. If so, auto-trigger a search.
-    let autoSearchDecision: { shouldSearch: boolean; reason: string } | null = null;
-    if (!webSearchEnabled && !shouldUseNLive && !isWidgetQuery) {
-      const decision = shouldWebSearch(userMessage);
-      if (decision.shouldSearch) {
-        autoSearchDecision = decision;
-        console.log(`🔍 Auto web search triggered: ${decision.reason}`);
-      }
-    }
+    // ── Web search: only when user toggles the button ──
+    // No auto web search — user must explicitly enable it.
 
     // ── For Plus Pro, select model based on complexity (no token limits) ──
     let selectedModelKey = modelTier;
@@ -1263,14 +1253,10 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
       }
     }
 
-    // ── Web Search (button toggle OR auto-trigger from intent) ──
-    // Injected AFTER system prompt trimming so search results are not cut off.
+    // ── Web Search (only when user toggles the button) ──
+    // No auto web search — only explicit user toggle triggers search.
     // N Live has its own search pipeline, so skip when shouldUseNLive is true.
-    // Two trigger paths:
-    //   1. User toggled the web search button (webSearchEnabled)
-    //   2. Auto-triggered because the message intent requires real-time data
-    //      (autoSearchDecision — checked against limit above)
-    const shouldPerformWebSearch = (webSearchEnabled || autoSearchDecision !== null) && !shouldUseNLive && !isWidgetQuery;
+    const shouldPerformWebSearch = webSearchEnabled && !shouldUseNLive && !isWidgetQuery;
     if (shouldPerformWebSearch) {
       // ── Web search limit check (24h sliding window) ──
       const wsLimitCheck = await checkWebSearchLimit(
@@ -1281,8 +1267,7 @@ The system will cut you off if you exceed twice this limit, so plan ahead.`;
         // Don't block the chat — just skip the search and inform via console
         console.log(`⚠️ Web search skipped due to limit. Proceeding without search results.`);
       } else {
-        const trigger = webSearchEnabled ? "user button" : `auto (${autoSearchDecision!.reason})`;
-        console.log(`🔍 Web search triggered by ${trigger} — performing search for: "${userMessage.slice(0, 80)}"`);
+        console.log(`🔍 Web search triggered by user button — performing search for: "${userMessage.slice(0, 80)}"`);
         try {
           const { result: searchResult, sources: webSources } = await executeWebSearch({
             query: userMessage,

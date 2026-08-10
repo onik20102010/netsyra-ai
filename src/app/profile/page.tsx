@@ -21,7 +21,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
-import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, setStylePrefs as persistStylePrefs } from "@/hooks/useStylePrefs";
+import { StylePrefs, DEFAULT_STYLE_PREFS, FontSize, TableEdges, ChatTheme, setStylePrefs as persistStylePrefs } from "@/hooks/useStylePrefs";
 
 // ── Sidebar nav items (matches history page) ──
 const NAV_ITEMS = [
@@ -296,6 +296,36 @@ export default function ProfilePage() {
                   className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-600 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/20 transition"
                   placeholder="Tell us how you'd like Netsyra to respond..."
                 />
+              </div>
+
+              {/* ── Chat Theme ── */}
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-sm font-medium text-gray-200">Chat Theme</h3>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-500">Appearance</label>
+                  <div className="flex gap-2">
+                    {(["default", "dark"] as ChatTheme[]).map((theme) => (
+                      <button
+                        key={theme}
+                        onClick={() => {
+                          const next = { ...stylePrefs, chatTheme: theme };
+                          setLocalStylePrefs(next);
+                          persistStylePrefs(next);
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition border ${
+                          stylePrefs.chatTheme === theme
+                            ? "bg-white/15 text-white border-white/30"
+                            : "bg-white/5 text-gray-400 border-white/10 hover:border-white/20 hover:text-gray-200"
+                        }`}
+                      >
+                        {theme === "default" ? "Default (Light)" : "Dark"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* ── Style Preferences ── */}

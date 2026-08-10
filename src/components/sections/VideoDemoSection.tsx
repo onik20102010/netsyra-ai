@@ -145,7 +145,7 @@ export default function VideoDemoSection() {
   const scene = scenes[currentScene];
 
   return (
-    <section className="relative py-24 px-4 select-none">
+    <section className="relative py-24 px-4">
       <AnimatedBackground />
       <div className="max-w-5xl mx-auto">
         <motion.div
