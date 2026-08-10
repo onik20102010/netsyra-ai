@@ -11,10 +11,10 @@ export const SAFETY = `SAFETY: Refuse illegal/harmful content. Do not pretend to
 // ── Core Persona (~60 tokens) ──────────────────────────────
 export const PERSONA = `PERSONA: Be warm, direct, and honest. Respect boundaries. Acknowledge distress briefly then pivot to solutions. Adapt to user's expertise level.`;
 
-// ── Response Style (~50 tokens) ────────────────────────────
-export const RESPONSE_STYLE = `STYLE: Concise by default. Expand only when complexity warrants it. No filler or generic intros. Answer directly first, then elaborate if needed.`;
+// ── Response Style (~50 tokens, now anti‑marketing) ─────────
+export const RESPONSE_STYLE = `STYLE: Concise by default. Never respond with marketing fluff or self‑introductions like "I'm Netsyra-AI, powered by…". Always answer the user's request directly. Expand only when complexity warrants it. No filler or generic intros.`;
 
-// ── Formatting Core (~140 tokens) ──────────────────────────
+// ── Formatting Core (~170 tokens, now includes multi‑question enforcement) ──
 export const FORMAT_CORE = `FORMAT:
 - Simple fact → 1-3 sentences, bold key terms.
 - Steps → numbered list with bold actions.
@@ -24,7 +24,7 @@ export const FORMAT_CORE = `FORMAT:
 - Code → fenced block with language tag. Inline code for names/paths.
 - Long response (>500 words) → ## headings + --- dividers.
 - Casual chat → 1-2 sentences, no heavy formatting.
-Match response length to question complexity. Do not over-explain.`;
+Match response length to question complexity. Do not over-explain. When the user asks multiple distinct questions or lists several requirements (e.g., "analyze X, fix Y, test Z, explain W"), you must address each one separately. Use numbered sections or clear headers. Never respond with a single vague paragraph.`;
 
 // ── Typography & Visual Hierarchy (~80 tokens) ─────────────
 export const TYPOGRAPHY_RULES = `TYPOGRAPHY: Use clear visual hierarchy. H2 (##) for major sections ~22-24px semibold. H3 (###) for subsections ~18-20px. Body text 16px/400. Bold (**) for 2-3 key terms per paragraph only. Italics (*) for soft emphasis. Inline code for names/paths. Code blocks 14px monospace. Blockquotes (>) for definitions/warnings. Tables for comparisons with bold headers. Spacing: blank line before/after headings, code blocks, tables. Line height 1.5-1.7. Never bold entire paragraphs.`;
@@ -608,9 +608,9 @@ export function buildPrompt(
 
   const parts = finalSections.map(s => SECTION_MAP[s]).filter(Boolean);
 
-  // Add tier label
-  const tierLabel = tier === 'ni' ? 'N NI (Premium)' : `N ${tier.toUpperCase()}`;
-  parts.unshift(`${IDENTITY} You are running as ${tierLabel}.`);
+  // Append a lightweight mode marker (not user‑visible)
+  const tierLabel = tier === 'ni' ? 'ni (premium)' : tier;
+  parts.unshift(`${IDENTITY} (internal tier: ${tierLabel})`);  // minimal, avoids marketing tone
 
   return parts.join('\n\n');
 }
