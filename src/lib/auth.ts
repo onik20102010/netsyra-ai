@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { resolveRedirectTo } from "@/lib/auth-redirect";
 
 export const signInWithEmail = async (email: string, password: string) => {
   const supabase = createClient();
@@ -22,12 +23,12 @@ export const signUpWithEmail = async (email: string, password: string, name: str
   return { data, error };
 };
 
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (redirectTo?: string) => {
   const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${window.location.origin}${resolveRedirectTo(redirectTo)}`,
     },
   });
   return { data, error };

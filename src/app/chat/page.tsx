@@ -131,6 +131,14 @@ function ChatContent() {
     return () => window.removeEventListener("netsyra-style-update", onStyleUpdate as EventListener);
   }, []);
 
+  // Not signed in → open the login page (and come back here afterwards).
+  useEffect(() => {
+    if (loading || user) return;
+    const search = searchParams.toString();
+    const target = search ? `/chat?${search}` : "/chat";
+    router.replace(`/login?redirectTo=${encodeURIComponent(target)}`);
+  }, [loading, user, router, searchParams]);
+
   useEffect(() => {
     if (!user) return;
     supabase
@@ -162,10 +170,12 @@ function ChatContent() {
     );
   }
 
+  // Redirecting to /login (handled by the effect above) — keep the spinner so
+  // there's no flash of a dead-end message.
   if (!user) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-white text-gray-600">
-        Please log in to use the chat.
+      <div className="flex h-dvh items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-indigo-500" size={32} />
       </div>
     );
   }

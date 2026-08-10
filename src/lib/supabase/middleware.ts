@@ -1,6 +1,7 @@
 // src/lib/supabase/middleware.ts
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveRedirectTo } from "@/lib/auth-redirect";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -40,8 +41,25 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirectTo", request.nextUrl.pathname);
+    url.searchParams.set(
+      "redirectTo",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
     return NextResponse.redirect(url);
+  }
+
+  // Already signed in → skip the auth pages entirely and go into the app.
+  // Exception: password-recovery links land on /login?password-reset=true with a
+  // temporary session, so leave that flow alone.
+  const authRoutes = ["/login", "/register"];
+  const isPasswordRecovery = request.nextUrl.searchParams.has("password-reset");
+  if (user && !isPasswordRecovery && authRoutes.includes(request.nextUrl.pathname)) {
+    const target = resolveRedirectTo(
+      request.nextUrl.searchParams.get("redirectTo")
+    );
+    // `target` may carry its own query string (e.g. /chat?model=pro),
+    // so resolve it as a full URL against the current origin.
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   // Admin-only routes

@@ -2,6 +2,27 @@
 import Link from "next/link";
 import { Zap, Cpu, BrainCircuit, Globe, Code, Sparkles, Shield, Bot } from "lucide-react";
 
+function YouTubeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.19C0 8.08 0 12 0 12s0 3.92.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14C24 15.92 24 12 24 12s0-3.92-.5-5.81ZM9.55 15.57V8.43L15.82 12l-6.27 3.57Z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.4l-5.8-7.58-6.63 7.58H.49l8.6-9.83L0 1.15h7.59l5.44 7.2 5.87-7.2Zm-1.29 19.5h2.04L6.48 3.24H4.29l13.32 17.41Z" />
+    </svg>
+  );
+}
+
+const socialLinks = [
+  { name: "YouTube Channel", href: "https://www.youtube.com", Icon: YouTubeIcon },
+  { name: "X Account", href: "https://x.com/ONIKMAN777", Icon: XIcon },
+];
+
 const modelLinks = [
   { name: "N Fast", href: "/chat?model=fast", icon: Zap },
   { name: "N Plus", href: "/chat?model=plus", icon: Cpu },
@@ -70,6 +91,23 @@ export default function FooterSection() {
                   netsyraai@gmail.com
                 </a>
               </li>
+            </ul>
+
+            <h4 className="text-white/60 text-sm font-semibold uppercase tracking-wider pt-3">Follow</h4>
+            <ul className="space-y-2">
+              {socialLinks.map((social) => (
+                <li key={social.name}>
+                  <a
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/30 hover:text-white/70 transition text-sm flex items-center gap-2"
+                  >
+                    <social.Icon className="w-3.5 h-3.5" />
+                    {social.name}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

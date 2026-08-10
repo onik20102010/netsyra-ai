@@ -6,9 +6,14 @@ import { Input } from "@/components/ui/input";
 import PasswordInput from "./PasswordInput";
 import GoogleButton from "./GoogleButton";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth";
+import { DEFAULT_AUTH_REDIRECT } from "@/lib/auth-redirect";
 import { toast } from "sonner";
 
-export default function LoginForm() {
+export default function LoginForm({
+  redirectTo = DEFAULT_AUTH_REDIRECT,
+}: {
+  redirectTo?: string;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,13 +30,14 @@ export default function LoginForm() {
     }
 
     toast.success("Logged in successfully!");
-    router.push("/dashboard");
+    // Send the user back to the page they originally requested.
+    router.replace(redirectTo);
     router.refresh();
     setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(redirectTo);
     if (error) {
       toast.error(error.message);
     }
