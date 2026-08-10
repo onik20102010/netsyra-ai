@@ -117,9 +117,54 @@ export default function TopNav() {
                 variant="ghost"
                 className="text-white/80 hover:text-white hover:bg-white/10 rounded-full px-3 sm:px-4 text-sm transition-all"
               >
-                <svg className="w-4 h-4 mr-1 sm:mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M4 4v16h16" />
-                  <path d="M4 20l16-16" />
+                <svg className="w-5 h-5 mr-1 sm:mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+                  <defs>
+                    <radialGradient id="bgGradientChat" cx="50%" cy="50%" r="70%">
+                      <stop offset="0%" stopColor="#1a1c23" />
+                      <stop offset="60%" stopColor="#0a0b0e" />
+                      <stop offset="100%" stopColor="#020203" />
+                    </radialGradient>
+                    <linearGradient id="silverBaseChat" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#e6e8fa" />
+                      <stop offset="25%" stopColor="#9ea4b4" />
+                      <stop offset="50%" stopColor="#ffffff" />
+                      <stop offset="75%" stopColor="#6b7280" />
+                      <stop offset="100%" stopColor="#374151" />
+                    </linearGradient>
+                    <linearGradient id="whiteHighlightChat" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="50%" stopColor="#f3f4f6" />
+                      <stop offset="100%" stopColor="#d1d5db" />
+                    </linearGradient>
+                    <linearGradient id="bevelShadowChat" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#111827" />
+                      <stop offset="50%" stopColor="#4b5563" />
+                      <stop offset="100%" stopColor="#1f2937" />
+                    </linearGradient>
+                    <filter id="subtleGlowChat" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="12" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <linearGradient id="reflectionGradChat" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="800" height="800" fill="url(#bgGradientChat)" />
+                  <ellipse cx="400" cy="680" rx="220" ry="25" fill="url(#reflectionGradChat)" />
+                  <g transform="translate(0, -10)">
+                    <path d="M 230 180 L 250 180 L 250 620 L 230 620 Z" fill="url(#bevelShadowChat)" />
+                    <path d="M 550 180 L 570 180 L 570 620 L 550 620 Z" fill="url(#bevelShadowChat)" />
+                    <path d="M 220 160 H 350 L 470 460 V 160 H 580 V 640 H 450 L 330 340 V 640 H 220 Z" fill="url(#silverBaseChat)" stroke="#94a3b8" strokeWidth="2" filter="url(#subtleGlowChat)" />
+                    <path d="M 245 185 H 325 V 525 L 245 320 Z" fill="url(#whiteHighlightChat)" />
+                    <path d="M 355 200 L 555 615 H 475 L 275 200 Z" fill="url(#whiteHighlightChat)" />
+                    <path d="M 495 275 L 555 425 V 615 H 495 Z" fill="url(#whiteHighlightChat)" />
+                    <path d="M 220 160 H 350" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M 470 160 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M 220 640 H 330" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M 450 640 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                    <line x1="280" y1="210" x2="470" y2="600" stroke="#ffffff" strokeWidth="3" opacity="0.8" />
+                  </g>
                 </svg>
                 <span>Netsyra Chat</span>
               </Button>
@@ -281,9 +326,54 @@ export default function TopNav() {
               <div className="flex flex-col p-3 gap-1">
                 <Link href="/chat" onClick={() => setMobileMenuOpen(false)}>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M4 4v16h16" />
-                      <path d="M4 20l16-16" />
+                    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+                      <defs>
+                        <radialGradient id="bgGradientChatM" cx="50%" cy="50%" r="70%">
+                          <stop offset="0%" stopColor="#1a1c23" />
+                          <stop offset="60%" stopColor="#0a0b0e" />
+                          <stop offset="100%" stopColor="#020203" />
+                        </radialGradient>
+                        <linearGradient id="silverBaseChatM" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#e6e8fa" />
+                          <stop offset="25%" stopColor="#9ea4b4" />
+                          <stop offset="50%" stopColor="#ffffff" />
+                          <stop offset="75%" stopColor="#6b7280" />
+                          <stop offset="100%" stopColor="#374151" />
+                        </linearGradient>
+                        <linearGradient id="whiteHighlightChatM" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#f3f4f6" />
+                          <stop offset="100%" stopColor="#d1d5db" />
+                        </linearGradient>
+                        <linearGradient id="bevelShadowChatM" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#111827" />
+                          <stop offset="50%" stopColor="#4b5563" />
+                          <stop offset="100%" stopColor="#1f2937" />
+                        </linearGradient>
+                        <filter id="subtleGlowChatM" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="12" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        <linearGradient id="reflectionGradChatM" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <rect width="800" height="800" fill="url(#bgGradientChatM)" />
+                      <ellipse cx="400" cy="680" rx="220" ry="25" fill="url(#reflectionGradChatM)" />
+                      <g transform="translate(0, -10)">
+                        <path d="M 230 180 L 250 180 L 250 620 L 230 620 Z" fill="url(#bevelShadowChatM)" />
+                        <path d="M 550 180 L 570 180 L 570 620 L 550 620 Z" fill="url(#bevelShadowChatM)" />
+                        <path d="M 220 160 H 350 L 470 460 V 160 H 580 V 640 H 450 L 330 340 V 640 H 220 Z" fill="url(#silverBaseChatM)" stroke="#94a3b8" strokeWidth="2" filter="url(#subtleGlowChatM)" />
+                        <path d="M 245 185 H 325 V 525 L 245 320 Z" fill="url(#whiteHighlightChatM)" />
+                        <path d="M 355 200 L 555 615 H 475 L 275 200 Z" fill="url(#whiteHighlightChatM)" />
+                        <path d="M 495 275 L 555 425 V 615 H 495 Z" fill="url(#whiteHighlightChatM)" />
+                        <path d="M 220 160 H 350" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M 470 160 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M 220 640 H 330" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M 450 640 H 580" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="280" y1="210" x2="470" y2="600" stroke="#ffffff" strokeWidth="3" opacity="0.8" />
+                      </g>
                     </svg>
                     <span className="text-sm">Netsyra Chat</span>
                   </div>
