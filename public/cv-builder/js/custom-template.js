@@ -501,10 +501,15 @@ const CustomTemplateEditor = (function () {
       css += `#${cid} p, #${cid} div, #${cid} span { line-height: ${state.lineHeight} !important; }`;
     }
 
-    // Text color
+    // ── Primary / Accent color: headings, links, strong ──
+    if (state.primaryColor) {
+      css += `#${cid} h1, #${cid} h2, #${cid} h3, #${cid} h4, #${cid} h5, #${cid} h6 { color: ${state.primaryColor} !important; }`;
+      css += `#${cid} a, #${cid} strong, #${cid} b { color: ${state.primaryColor} !important; }`;
+    }
+
+    // ── Text color: all elements ──
     if (state.textColor) {
-      css += `#${cid} { color: ${state.textColor} !important; }`;
-      css += `#${cid} p, #${cid} div, #${cid} span { color: ${state.textColor} !important; }`;
+      css += `#${cid}, #${cid} * { color: ${state.textColor} !important; }`;
     }
 
     // Bold headings
@@ -532,14 +537,10 @@ const CustomTemplateEditor = (function () {
       css += `#${cid} > div > div > div { margin-bottom: ${state.sectionSpacing}px !important; }`;
     }
 
-    // Divider color
+    // ── Divider color: all border types ──
     if (state.dividerColor) {
-      css += `#${cid} hr, #${cid} .divider { border-color: ${state.dividerColor} !important; background: ${state.dividerColor} !important; }`;
-      css += `#${cid} div[style*="border-bottom"] { border-bottom-color: ${state.dividerColor} !important; }`;
-      css += `#${cid} div[style*="border-top"] { border-top-color: ${state.dividerColor} !important; }`;
-      css += `#${cid} div[style*="border-left"] { border-left-color: ${state.dividerColor} !important; }`;
-      css += `#${cid} div[style*="border-right"] { border-right-color: ${state.dividerColor} !important; }`;
-      css += `#${cid} div[style*="border:"] { border-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} * { border-color: ${state.dividerColor} !important; }`;
+      css += `#${cid} hr { background: ${state.dividerColor} !important; border-color: ${state.dividerColor} !important; }`;
     }
 
     // Inject style
@@ -763,6 +764,17 @@ const CustomTemplateEditor = (function () {
         el.setAttribute('style', newStyle);
       }
     });
+
+    // ── Direct fallback: set sidebar/topbar background on detected element ──
+    if (state.sidebarBg) {
+      const targetEl = sidebarEl || topBarEl;
+      if (targetEl) {
+        let s = targetEl.getAttribute('style') || '';
+        s = s.replace(/background(?:-color)?:\s*[^;]+;?/gi, '');
+        s += '; background-color: ' + state.sidebarBg + ' !important';
+        targetEl.setAttribute('style', s);
+      }
+    }
   }
 
   // Helper: determine if a hex color is an "accent" color (not white, black, or gray)
@@ -1072,7 +1084,7 @@ const CustomTemplateEditor = (function () {
       <div class="custom-field">
         <label>${label}</label>
         <div class="color-input-row">
-          <input type="color" id="ct${id}" value="${defaultColor}" oninput="CustomTemplateEditor.update()">
+          <input type="color" id="ct${id}" value="${defaultColor}" oninput="CustomTemplateEditor.update()" onchange="CustomTemplateEditor.update()">
           <span class="color-hex-display" id="ct${id}Hex">${defaultColor}</span>
         </div>
       </div>
