@@ -124,8 +124,41 @@ export const PLANNING_RULES = `PLANNING: For multi-step tasks, decompose before 
 // ── Architecture & System Design (~80 tokens) ──────────────
 export const ARCHITECTURE_RULES = `ARCHITECTURE: When designing systems, evaluate trade-offs explicitly: latency vs throughput, consistency vs availability, simplicity vs flexibility, cost vs performance. Consider: data flow, failure modes, blast radius, rollback strategy, observability, and operational burden. Prefer proven patterns over novel ones unless the novel approach has a clear, quantified advantage. Document assumptions. For production systems, always address: scaling, monitoring, alerting, and disaster recovery.`;
 
-// ── Debugging & Troubleshooting (~70 tokens) ───────────────
-export const DEBUGGING_RULES = `DEBUGGING: Reproduce the issue first. Then trace the code path to understand the flow. Isolate the root cause before attempting fixes — never patch symptoms. Add targeted logging to confirm the hypothesis. Verify the fix addresses the root cause, not just the symptom. Re-run all related test cases after the fix to check for regressions. If the bug is intermittent, identify the race condition or timing dependency.`;
+// ── Debugging & Troubleshooting (~120 tokens, now production‑grade) ──
+export const DEBUGGING_RULES = `DEBUGGING (Autonomous, Evidence‑Driven):
+When you encounter a bug or a request to debug, follow this exact loop — never assume a root cause before collecting evidence.
+
+1. **Reproduce the issue** if possible. If intermittent, collect at least 2 successful vs failing examples.
+
+2. **Trace the complete state transition** from the first user action to the point of failure. For web/auth bugs: login → session creation → Set-Cookie → browser storage → redirect → subsequent requests → middleware → token/session validation → database. Identify the **first point where expected state diverges from actual state**.
+
+3. **Generate at least 3 competing hypotheses** for what could cause the observed divergence. Rank them by plausibility, considering:
+   - Cookie name/domain/path/SameSite/HttpOnly mismatches
+   - Token/signing‑secret/session‑store configuration errors
+   - Middleware order / conditional skips
+   - Caching layers (CDN, service worker, HTTP cache)
+   - Race conditions / async timing issues
+   - Environment differences (dev vs prod, server vs client)
+   - Recent code changes
+
+4. **Design the cheapest discriminating test** that can eliminate the most hypotheses at once. Prefer server‑side logs, curl commands, or direct variable inspection over full refactors.
+
+5. **Run the test, observe the result, and update a hypothesis ledger**:
+   - Hypothesis A: (confirmed / rejected) because …
+   - Hypothesis B: …
+   - Keep only hypotheses consistent with all collected evidence.
+
+6. **Prove the root cause** before proposing a fix. Two independent pieces of evidence must point to the same cause. For intermittent bugs, compare successful vs failing requests bit by bit (timing, headers, payloads, environment variables, cached data).
+
+7. **Apply the smallest possible fix** that addresses the root cause, not a symptom. Ensure it does not break other flows.
+
+8. **Verify the fix** with:
+   - The original reproduction case
+   - At least 2 edge cases (empty state, invalid input, concurrent access)
+   - A full regression run on related functionality
+   - For intermittent bugs, repeat the test multiple times under realistic load or use a retry‑based stress script
+
+9. **Report** what was wrong, how you proved it, what you changed, and what still needs monitoring.`;
 
 // ── Performance Optimization (~70 tokens) ──────────────────
 export const OPTIMIZATION_RULES = `OPTIMIZATION: Measure before optimizing — never optimize on intuition. Identify the bottleneck (CPU, memory, I/O, network, lock contention). Profile the hot path. Apply the highest-impact, lowest-risk optimization first. After each change, re-measure to confirm improvement. Watch for trade-offs: speed vs memory, throughput vs latency, complexity vs maintainability. Document before/after metrics. Premature optimization is a code smell.`;
@@ -233,14 +266,8 @@ When you are asked to implement a feature, fix a bug, or modify a codebase witho
    \`\`\`
    **Only declare success when every layer passes.**
 
-6. **Failure Classification & Root‑Cause Analysis**  
-   When a test fails or an error occurs:  
-   - Capture the full error/log.  
-   - Classify the failure: syntax, type, missing dependency, configuration, logic, runtime, auth‑provider, etc.  
-   - Locate the failing subsystem by tracing imports and call sites.  
-   - Generate at least two hypotheses for the root cause.  
-   - Collect evidence to support or refute each hypothesis (read relevant files, logs, environment).  
-   - Select the most likely root cause, apply the **smallest possible fix**, and retest only the affected area, then a full regression.
+6. **Failure Classification & Root‑Cause Analysis (mandatory DEBUGGING protocol)**  
+   When any verification fails or a bug is reported, you must invoke the rigorous DEBUGGING protocol (see dedicated rules). This means: reproduce, trace state transitions, generate ≥3 competing hypotheses, run discriminating tests, maintain a hypothesis ledger, and prove root cause before applying the smallest possible fix.
 
 7. **Flexible Retry Budget**  
    - You may retry a subtask up to **3 times**, but after each failure you **must** perform a new root‑cause analysis and change your approach.  
