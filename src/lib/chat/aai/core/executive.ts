@@ -83,7 +83,7 @@ export class Executive {
     const tierConfig = AAI_CONFIG.getTierConfig(targetTier);
 
     // Build system prompt — selective sections based on tier + user message
-    let finalSystemPrompt = getSystemPrompt(targetTier, request.userMessage);
+    let finalSystemPrompt = await getSystemPrompt(targetTier, request.userMessage);
     if (memoryContext) {
       finalSystemPrompt = `${memoryContext}\n\n${finalSystemPrompt}`;
     }
