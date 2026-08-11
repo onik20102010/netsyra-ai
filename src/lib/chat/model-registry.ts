@@ -760,12 +760,12 @@ export interface TierConfig {
  * The full SYSTEM_PROMPT constant is still exported for backward compatibility
  * but is no longer the primary path.
  */
-export function getSystemPrompt(
+export async function getSystemPrompt(
   tier: string,
   message: string,
-  extras: string[] = []     // extra section titles to force-include
-): string {
-  return buildPrompt(tier, message, extras);
+  extras: string[] = []
+): Promise<string> {
+  return await buildPrompt(tier, message, extras);
 }
 
 // ── N FAST (full fallback chain with retries) ────────────────

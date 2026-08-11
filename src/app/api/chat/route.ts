@@ -931,7 +931,7 @@ Calendar:      <!--WIDGET:CALENDAR:{"year":2026,"month":7,"day":3,"timezone":"As
     }
 
     // Build messages array with dynamic tiered system prompt (reduces token usage by 50-70%)
-    const dynamicSystemPrompt = getSystemPrompt(modelTier, userMessage);
+    const dynamicSystemPrompt = await getSystemPrompt(modelTier, userMessage);
     const apiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: dynamicSystemPrompt },
       ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
