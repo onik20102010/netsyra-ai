@@ -46,7 +46,7 @@ function isCoreSection(title: string): boolean {
   return CORE_TITLES.has(title);
 }
 
-// ── 3. Complexity estimation (unchanged) ────────────────
+// ── 3. Complexity estimation ────────────────────────────
 type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
 
 function estimateComplexity(message: string): ComplexityLevel {
@@ -109,7 +109,7 @@ User message (truncated): "${preview}"`;
     const elapsed = Date.now() - startTime;
 
     if (!res.ok) {
-      console.warn(`❌ Selector API error: ${res.status}`);
+      console.warn(`❌ Selector API error: ${res.status} (${res.statusText})`);
       return null;
     }
     const data = await res.json();
@@ -125,16 +125,43 @@ User message (truncated): "${preview}"`;
       `✅ Selector finished in ${elapsed}ms | tokens: prompt=${usage.prompt_tokens || '?'}, completion=${usage.completion_tokens || '?'}, total=${usage.total_tokens || '?'}`
     );
 
-    const parsed = JSON.parse(content);
+    // ── Robust parsing: LLM may return a JSON array or an object with an array field ──
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      console.warn('⚠️ Selector returned invalid JSON:', content.slice(0, 200));
+      return null;
+    }
+
+    let titles: string[] = [];
+
     if (Array.isArray(parsed)) {
-      const titleSet = new Set(availableTitles.map(t => t.toLowerCase()));
-      const validTitles = parsed
-        .filter((t: any) => typeof t === 'string' && titleSet.has(t.toLowerCase()))
-        .slice(0, 15);
-      console.log(`📌 Selected sections: ${validTitles.join(', ') || 'none'}`);
+      // Good: direct array
+      titles = parsed.filter((t: unknown) => typeof t === 'string');
+    } else if (parsed && typeof parsed === 'object') {
+      // Object: look for the first array property (commonly "sections")
+      const obj = parsed as Record<string, unknown>;
+      for (const key of Object.keys(obj)) {
+        if (Array.isArray(obj[key])) {
+          titles = (obj[key] as unknown[]).filter((t: unknown) => typeof t === 'string');
+          break;
+        }
+      }
+    }
+
+    // Filter to valid section titles (case‑insensitive)
+    const titleSet = new Set(availableTitles.map(t => t.toLowerCase()));
+    const validTitles = titles
+      .filter(t => titleSet.has(t.toLowerCase()))
+      .slice(0, 15);
+
+    if (validTitles.length > 0) {
+      console.log(`📌 Selected sections: ${validTitles.join(', ')}`);
       return validTitles;
     }
-    console.warn('⚠️ Selector response was not an array:', content);
+
+    console.warn('⚠️ Selector returned no valid section titles in:', content);
     return null;
   } catch (err) {
     console.warn('❌ Selector failed:', err);
