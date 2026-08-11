@@ -26,6 +26,7 @@ function getSections(): { title: string; content: string }[] {
     sections.push({ title, content: sectionContent });
   }
   _sections = sections;
+  console.log(`📚 Parsed ${sections.length} sections from SYSTEM_PROMPT`);
   return sections;
 }
 
@@ -60,26 +61,24 @@ function estimateComplexity(message: string): ComplexityLevel {
 }
 
 // ── 4. LLM Section Selector (truncated, max 200 tokens output) ──
-/**
- * Sends a truncated preview of the user message to llama‑3.1‑8b‑instant.
- * The model returns a JSON array of section titles it deems relevant.
- * max_tokens=200 lets it spend anywhere from 2‑3 tokens (simple) up to
- * 200 tokens (complex). The input preview is capped at 1200 characters
- * (~300 tokens) so the selector never reads a huge message.
- */
 async function selectSectionsViaLLM(
   fullMessage: string,
   availableTitles: string[]
 ): Promise<string[] | null> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn('🔑 No GROQ_API_KEY, selector disabled');
+    return null;
+  }
+
+  const startTime = Date.now();
 
   // Truncate to first 1200 chars (~300 tokens) – enough to capture intent
   const MAX_CHARS = 1200;
   const preview =
     fullMessage.length <= MAX_CHARS
       ? fullMessage
-      : fullMessage.slice(0, MAX_CHARS) + '…'; // ellipsis signals more exists
+      : fullMessage.slice(0, MAX_CHARS) + '…';
 
   const titlesList = availableTitles.map(t => `"${t}"`).join(', ');
 
@@ -88,6 +87,8 @@ Return ONLY a JSON array of strings, e.g. ["SAFETY & BOUNDARIES", "CODE GENERATI
 Available sections: [${titlesList}]
 
 User message (truncated): "${preview}"`;
+
+  console.log(`🤖 Selector input length: ${preview.length} chars`);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -100,25 +101,43 @@ User message (truncated): "${preview}"`;
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: selectorPrompt }],
         temperature: 0.1,
-        max_tokens: 200,          // OUTPUT tokens: never more than 200
+        max_tokens: 200,
         response_format: { type: 'json_object' },
       }),
     });
 
-    if (!res.ok) return null;
+    const elapsed = Date.now() - startTime;
+
+    if (!res.ok) {
+      console.warn(`❌ Selector API error: ${res.status}`);
+      return null;
+    }
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
+    if (!content) {
+      console.warn('❌ Selector returned empty content');
+      return null;
+    }
+
+    // Token usage from response
+    const usage = data.usage || {};
+    console.log(
+      `✅ Selector finished in ${elapsed}ms | tokens: prompt=${usage.prompt_tokens || '?'}, completion=${usage.completion_tokens || '?'}, total=${usage.total_tokens || '?'}`
+    );
 
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed)) {
       const titleSet = new Set(availableTitles.map(t => t.toLowerCase()));
-      return parsed
+      const validTitles = parsed
         .filter((t: any) => typeof t === 'string' && titleSet.has(t.toLowerCase()))
-        .slice(0, 15); // safety cap – LLM shouldn't need more
+        .slice(0, 15);
+      console.log(`📌 Selected sections: ${validTitles.join(', ') || 'none'}`);
+      return validTitles;
     }
+    console.warn('⚠️ Selector response was not an array:', content);
     return null;
-  } catch {
+  } catch (err) {
+    console.warn('❌ Selector failed:', err);
     return null;
   }
 }
@@ -126,14 +145,14 @@ User message (truncated): "${preview}"`;
 // ── 5. Build the final prompt (async) ───────────────────
 export async function buildPrompt(
   tier: string,
-  userMessage: string,              // FULL message – never truncated for main model
+  userMessage: string,
   extras: string[] = [],
   complexityOverride?: ComplexityLevel
 ): Promise<string> {
   const sections = getSections();
   const allTitles = sections.map(s => s.title);
 
-  // ── LLM‑driven selection (truncated input, max 200 tokens output) ──
+  // ── LLM‑driven selection ──
   let selectedTitles: string[] | null = null;
   try {
     selectedTitles = await selectSectionsViaLLM(userMessage, allTitles);
@@ -145,7 +164,6 @@ export async function buildPrompt(
 
   if (selectedTitles && selectedTitles.length > 0) {
     const selectedSet = new Set(selectedTitles.map(t => t.toLowerCase()));
-    // Core sections come first, then any non‑core LLM picks
     const core = sections.filter(s => isCoreSection(s.title));
     const llmPicks = sections.filter(
       s => !isCoreSection(s.title) && selectedSet.has(s.title.toLowerCase())
@@ -154,7 +172,6 @@ export async function buildPrompt(
       ? sections.filter(s => extras.includes(s.title))
       : [];
     filteredSections = [...core, ...llmPicks, ...extraSections];
-    // Deduplicate by title
     const seen = new Set<string>();
     filteredSections = filteredSections.filter(s => {
       const key = s.title.toLowerCase();
@@ -162,12 +179,15 @@ export async function buildPrompt(
       seen.add(key);
       return true;
     });
+    console.log(
+      `📋 Final prompt sections: ${filteredSections.map(s => s.title).join(', ')}`
+    );
   } else {
-    // Fallback: full monolith
+    console.log('⚠️ Selector returned no titles, using full SYSTEM_PROMPT');
     filteredSections = sections;
   }
 
-  // ── Complexity cap (soft) ──
+  // ── Complexity cap ──
   const level = complexityOverride || estimateComplexity(userMessage);
   const maxSections = {
     trivial: 6,
@@ -178,10 +198,15 @@ export async function buildPrompt(
   }[level];
   const finalSections = filteredSections.slice(0, maxSections);
 
-  // Build prompt – no self‑intro header
   const header = `[Netsyra‑AI, tier: ${tier}]`;
   const body = finalSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
-  return header + '\n\n' + body;
+  const prompt = header + '\n\n' + body;
+
+  console.log(
+    `📏 Final prompt: ${finalSections.length} sections, ~${estimatePromptTokens(prompt)} tokens`
+  );
+
+  return prompt;
 }
 
 // ── 6. Utility ──────────────────────────────────────────
