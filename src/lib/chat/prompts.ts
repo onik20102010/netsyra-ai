@@ -43,22 +43,20 @@ function scoreRelevance(message: string, sectionContent: string): number {
   return score;
 }
 
-// ── 3. Core sections (always included) ─────────────────
-// Use the actual heading titles from your monolithic prompt.
-// They are matched as substrings, so "IDENTITY (Priority 1…)" works.
-const CORE_TITLE_FRAGMENTS = [
+// ── 3. Core sections – always included (by EXACT title) ─
+const CORE_TITLES: Set<string> = new Set([
   'IDENTITY',
   'SAFETY & BOUNDARIES',
   'PERSONA & TONE',
-  'RESPONSE STYLE',
-  'EMOTIONAL INTELLIGENCE',
-  'FORMATTING INTELLIGENCE',   // contains formatting rules
-  'GRACEFUL REFUSAL',          // safety‑critical
-  'SELF‑REFLECTION',           // verification gate
-];
+  'RESPONSE STYLE & ADAPTIVE VERBOSITY',
+  'EMOTIONAL INTELLIGENCE & USER‑STATE SENSITIVITY',
+  'GRACEFUL REFUSAL & CONSTRUCTIVE ALTERNATIVES',
+  'SELF‑REFLECTION & VERIFICATION',
+  'FORMATTING INTELLIGENCE',
+]);
 
 function isCoreSection(title: string): boolean {
-  return CORE_TITLE_FRAGMENTS.some(frag => title.toUpperCase().includes(frag.toUpperCase()));
+  return CORE_TITLES.has(title);
 }
 
 // ── 4. Complexity estimation ────────────────────────────
@@ -67,7 +65,7 @@ type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical
 function estimateComplexity(message: string): ComplexityLevel {
   const lower = message.toLowerCase();
   const wordCount = message.split(/\s+/).length;
-  // Critical indicators
+  // Critical hints
   if (/\b(million users|production|commercial|enterprise|sla|compliance|security audit|disaster recovery|0 downtime)\b/.test(lower))
     return 'critical';
   if (wordCount > 80) return 'complex';
@@ -112,7 +110,7 @@ export function buildPrompt(
 
   const finalSections = selected.slice(0, maxSections);
 
-  // Build the prompt text
+  // Build the prompt text (no self‑introductive header)
   const header = `[Netsyra‑AI, tier: ${tier}]`;
   const body = finalSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
   return header + '\n\n' + body;
