@@ -764,10 +764,10 @@ export function getSystemPrompt(
   message: string,
   extras: string[] = []
 ): string {
-  // `tiers` is already defined in this file — no import needed
   const tierConfig = tiers[tier as keyof typeof tiers] || tiers.fast;
   return buildPrompt(tier, message, extras, undefined, tierConfig.maxTokens);
 }
+
 
 // ── N FAST (full fallback chain with retries) ────────────────
 const fastModels: ModelConfig[] = [
