@@ -1,6 +1,8 @@
-// prompts.ts – Prompt Compiler v5.2
-// Implicit prerequisite objectives, full constraint‑precedence resolution,
-// protected‑budget overflow warnings, and cycle‑safe dependency expansion.
+// prompts.ts – Prompt Compiler v5.2 + Mandatory Policies & Debug (fixed)
+// Implicit prerequisites, constraint precedence, protected‑budget warnings,
+// mandatory policies for freshness, security, debugging, architecture.
+// Hard user constraints CANNOT be overridden by mandatory policies.
+// Detailed selector logging with trim diagnostics.
 
 import { SYSTEM_PROMPT } from '@/lib/chat/model-registry';
 
@@ -66,7 +68,6 @@ interface Objective {
   dependsOn: ObjectiveType[];
 }
 
-// Objective dependency graph (must be acyclic)
 const OBJECTIVE_DEPENDENCIES: Record<ObjectiveType, ObjectiveType[]> = {
   generate: ['design'],
   execute: ['generate'],
@@ -110,13 +111,10 @@ function detectObjectives(message: string): Map<ObjectiveType, number> {
 
 function extractObjectives(message: string): Objective[] {
   const detected = detectObjectives(message);
-
-  // Initial objectives (only detected ones)
   const initial: Objective[] = Array.from(detected.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([type], idx) => ({ type, priority: idx + 1, dependsOn: OBJECTIVE_DEPENDENCIES[type] || [] }));
 
-  // Expand implicit prerequisites
   const allTypes = new Set(detected.keys());
   let changed = true;
   while (changed) {
@@ -136,11 +134,8 @@ function extractObjectives(message: string): Objective[] {
     }
   }
 
-  // Sort by priority (preserve original order for detected, then new ones)
   initial.sort((a, b) => a.priority - b.priority);
-  for (let i = 0; i < initial.length; i++) {
-    initial[i].priority = i + 1;
-  }
+  for (let i = 0; i < initial.length; i++) initial[i].priority = i + 1;
   return initial;
 }
 
@@ -157,13 +152,18 @@ interface SectionDecision {
   priority: ConstraintPriority;
 }
 
-// Resolve conflicting decisions: highest priority wins
-function resolveDecision(decisions: SectionDecision[]): SectionDecision {
-  decisions.sort((a, b) => b.priority - a.priority);
-  return decisions[0];
+function setIfHigher(
+  map: Map<string, SectionDecision>,
+  section: string,
+  decision: 'FORBIDDEN' | 'REQUIRED' | 'ALLOWED',
+  priority: ConstraintPriority
+) {
+  const existing = map.get(section);
+  if (!existing || priority > existing.priority) {
+    map.set(section, { decision, priority });
+  }
 }
 
-// Build decisions for all sections from different sources
 function buildSectionDecisions(
   message: string,
   objectives: Objective[],
@@ -174,58 +174,44 @@ function buildSectionDecisions(
   const lower = message.toLowerCase();
   const decisions = new Map<string, SectionDecision>();
 
-  // Helper to set decision with priority only if higher priority
-  const setIfHigher = (section: string, decision: 'FORBIDDEN' | 'REQUIRED' | 'ALLOWED', priority: ConstraintPriority) => {
-    const existing = decisions.get(section);
-    if (!existing || priority > existing.priority) {
-      decisions.set(section, { decision, priority });
-    }
-  };
-
-  // 1. Hard user constraints (FORBIDDEN)
+  // Hard user constraints
   if (/\b(no code|don'?t (give|write|show) (me )?code|without code|code not needed)\b/i.test(lower)) {
-    setIfHigher('CODE GENERATION STANDARDS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'CODE GENERATION STANDARDS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
   }
   if (/\b(no (web )?search|don'?t search|without search(ing)?|offline)\b/i.test(lower)) {
-    setIfHigher('TOOL USAGE & EXTERNAL CAPABILITIES', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'TOOL USAGE & EXTERNAL CAPABILITIES', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
   }
   if (/\b(no diagram|don'?t (draw|visualize|make a diagram)|without diagram)\b/i.test(lower)) {
-    setIfHigher('PROACTIVE DIAGRAMS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'PROACTIVE DIAGRAMS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
   }
   if (/\b(don'?t explain|no explanation|without expla(nation|ining)|just the (answer|fix|change))\b/i.test(lower)) {
-    setIfHigher('ANALYTICAL REASONING & PROBLEM SOLVING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-    setIfHigher('CRITICAL THINKING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-    setIfHigher('ADVANCED COGNITIVE ENGINE', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'ANALYTICAL REASONING & PROBLEM SOLVING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'CRITICAL THINKING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
+    setIfHigher(decisions, 'ADVANCED COGNITIVE ENGINE', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
   }
-
-  // 2. User instruction REQUIRED (e.g., "just answer" -> redundancy required)
   if (/\b(just (answer|tell me|the answer)|only the answer|straight answer)\b/i.test(lower)) {
-    setIfHigher('REDUNDANCY & TOKEN OPTIMISATION', 'REQUIRED', ConstraintPriority.USER_INSTRUCTION);
+    setIfHigher(decisions, 'REDUNDANCY & TOKEN OPTIMISATION', 'REQUIRED', ConstraintPriority.USER_INSTRUCTION);
   }
 
-  // 3. Task requirements (derived from objectives and high-scoring sections)
-  //   Sections boosted by primary objective with weight >= 4 become REQUIRED at TASK_REQUIREMENT level
+  // Task requirements (primary objective with weight >= 4 -> REQUIRED)
   const primaryObj = objectives.find(o => o.priority === 1);
   if (primaryObj) {
     const boost = OBJECTIVE_SECTION_BOOST[primaryObj.type] || [];
     for (const { title, weight } of boost) {
       if (weight >= 4) {
-        setIfHigher(title, 'REQUIRED', ConstraintPriority.TASK_REQUIREMENT);
+        setIfHigher(decisions, title, 'REQUIRED', ConstraintPriority.TASK_REQUIREMENT);
       }
     }
   }
 
-  // 4. Domain defaults: sections that appear in domain mapping are ALLOWED at DOMAIN_DEFAULT
-  // (We won't force them, but we mark them so that they are not blocked.)
-  // In practice, we'll just let the scoring handle domain sections; no explicit decision needed.
-  // But we can mark them as ALLOWED to ensure they aren't forbidden accidentally.
+  // Domain defaults
   const domainSections = new Set<string>();
   for (const domain of domains) {
     const list = domainSectionMap[domain] || [];
     for (const title of list) domainSections.add(title);
   }
   for (const title of domainSections) {
-    setIfHigher(title, 'ALLOWED', ConstraintPriority.DOMAIN_DEFAULT);
+    setIfHigher(decisions, title, 'ALLOWED', ConstraintPriority.DOMAIN_DEFAULT);
   }
 
   return decisions;
@@ -292,15 +278,9 @@ function detectBehavior(message: string, domains: Domain[]): BehaviorFlags {
 // ── 8. Complexity estimation ─────────────────────────────
 type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
 
-function refineComplexity(
-  message: string,
-  objectives: Objective[],
-  domains: Domain[],
-  behavior: BehaviorFlags
-): ComplexityLevel {
+function refineComplexity(message: string, objectives: Objective[], domains: Domain[], behavior: BehaviorFlags): ComplexityLevel {
   const lower = message.toLowerCase();
   const wordCount = message.split(/\s+/).length;
-
   let baseScore = 0;
   if (wordCount > 80) baseScore = 3;
   else if (wordCount > 30) baseScore = 2;
@@ -324,10 +304,7 @@ function refineComplexity(
 }
 
 // ── 9. Section scoring (objective‑aware) ─────────────────
-const BASE_SIGNALS: Array<{
-  regex: RegExp;
-  sections: Array<{ title: string; weight: number }>;
-}> = [
+const BASE_SIGNALS: Array<{ regex: RegExp; sections: Array<{ title: string; weight: number }> }> = [
   {
     regex: /\b(code|program|function|class|api|endpoint|database|sql|algorithm|data structure|refactor|debug|bug|error|compile|runtime|syntax|typescript|javascript|python|java|rust|go(lang)?|c\+\+|c#|regex)\b/i,
     sections: [
@@ -390,7 +367,7 @@ const BASE_SIGNALS: Array<{
   {
     regex: /\b(task|autonomous|multi-step|orchestrat|workflow|pipeline|agent|batch|do (it|this) (all|end to end)|handle everything)\b/i,
     sections: [
-      { title: 'TASK EXECUTION PROTOCOL', weight: 5 },
+      { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 5 },
       { title: 'TOOL SELECTION POLICY', weight: 2 },
       { title: 'FAILURE RECOVERY PROTOCOL', weight: 2 },
       { title: 'TASK COMPLETION PROTOCOL', weight: 2 },
@@ -447,7 +424,7 @@ const OBJECTIVE_SECTION_BOOST: Record<ObjectiveType, Array<{ title: string; weig
     { title: 'RECOMMENDATION FRAMEWORK', weight: 4 },
   ],
   plan: [
-    { title: 'TASK EXECUTION PROTOCOL', weight: 4 },
+    { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 4 },
     { title: 'DECISION FRAMEWORK', weight: 3 },
   ],
   research: [
@@ -458,7 +435,7 @@ const OBJECTIVE_SECTION_BOOST: Record<ObjectiveType, Array<{ title: string; weig
     { title: 'CODE TASK PROTOCOL', weight: 3 },
   ],
   execute: [
-    { title: 'TASK EXECUTION PROTOCOL', weight: 4 },
+    { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 4 },
     { title: 'FAILURE RECOVERY PROTOCOL', weight: 3 },
   ],
   summarize: [
@@ -481,8 +458,8 @@ const domainSectionMap: Record<Domain, string[]> = {
 // ── 10. Section dependencies ──────────────────────────────
 const SECTION_DEPENDENCIES: Record<string, string[]> = {
   'DEBUGGING FRAMEWORK': ['SELF‑REFLECTION & VERIFICATION', 'FAILURE RECOVERY PROTOCOL', 'TASK COMPLETION PROTOCOL'],
-  'CODE TASK PROTOCOL': ['TASK EXECUTION PROTOCOL', 'TASK COMPLETION PROTOCOL'],
-  'TASK EXECUTION PROTOCOL': ['TOOL SELECTION POLICY', 'FAILURE RECOVERY PROTOCOL'],
+  'CODE TASK PROTOCOL': ['TASK EXECUTION & COMPLETION PROTOCOL', 'TASK COMPLETION PROTOCOL'],
+  'TASK EXECUTION & COMPLETION PROTOCOL': ['TOOL SELECTION POLICY', 'FAILURE RECOVERY PROTOCOL'],
   'ARCHITECTURE FRAMEWORK': ['DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION'],
 };
 
@@ -597,7 +574,62 @@ function classifySection(title: string): string[] {
   return ['behavior'];
 }
 
-// ── 15. Main builder v5.2 ────────────────────────────────
+// ── 15. MANDATORY POLICIES (fixed) ────────────────────────
+// Policies are only enforced if the section is not explicitly forbidden
+function applyMandatoryPolicies(
+  message: string,
+  domains: Domain[],
+  mandatory: Set<string>,
+  scores: Map<string, number>,
+  forbidden: Set<string>
+): void {
+  const lower = message.toLowerCase();
+
+  // Freshness / current information
+  if (/\b(latest|current|recent|today|yesterday|tomorrow|as of 20\d{2}|this year|news|update|release)\b/i.test(lower)) {
+    const section = 'TOOL USAGE & EXTERNAL CAPABILITIES';
+    if (!forbidden.has(section)) {
+      mandatory.add(section);
+      scores.set(section, Math.max(scores.get(section) || 0, 10));
+    } else {
+      console.warn(`⚠️ Mandatory freshness policy blocked by hard constraint: ${section}`);
+    }
+  }
+
+  // Security / auth / production (only when domain matches)
+  if (domains.includes('security') || (domains.includes('coding') && /\b(production|deploy|infrastructure|authentication|oauth|jwt|csrf|xss)\b/i.test(lower))) {
+    for (const section of ['SAFETY & BOUNDARIES', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!forbidden.has(section)) {
+        mandatory.add(section);
+        scores.set(section, Math.max(scores.get(section) || 0, 10));
+      } else {
+        console.warn(`⚠️ Mandatory security policy blocked by hard constraint: ${section}`);
+      }
+    }
+  }
+
+  // Debugging / error
+  if (/\b(debug|error|broken|not working|crash|401|403|500|traceback|exception|bug)\b/i.test(lower)) {
+    for (const section of ['DEBUGGING FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!forbidden.has(section)) {
+        mandatory.add(section);
+        scores.set(section, Math.max(scores.get(section) || 0, 10));
+      }
+    }
+  }
+
+  // Architecture / system design
+  if (domains.includes('architecture') || /\b(architecture|system design|scalab|microservice|distributed|deploy|infrastructure)\b/i.test(lower)) {
+    for (const section of ['ARCHITECTURE FRAMEWORK', 'DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!forbidden.has(section)) {
+        mandatory.add(section);
+        scores.set(section, Math.max(scores.get(section) || 0, 10));
+      }
+    }
+  }
+}
+
+// ── 16. Main builder v5.2 + Fixed Policies ────────────────
 export function buildPrompt(
   tier: string,
   userMessage: string,
@@ -626,10 +658,8 @@ export function buildPrompt(
   if (behavior.needs_step_by_step || objectives.some(o => o.type === 'plan')) responseModes.push('structured');
   if (responseModes.length === 0) responseModes.push('balanced');
 
-  // 4. Initial scoring (keywords, objectives, domain, behavior, complexity)
+  // 4. Initial scoring
   const scores = new Map<string, number>();
-
-  // keyword signals
   for (const signal of BASE_SIGNALS) {
     if (signal.regex.test(lowerMsg)) {
       for (const { title, weight } of signal.sections) {
@@ -638,7 +668,6 @@ export function buildPrompt(
     }
   }
 
-  // objective boosts
   for (const obj of objectives) {
     const boost = OBJECTIVE_SECTION_BOOST[obj.type] || [];
     const multiplier = obj.priority === 1 ? 2.5 : 1.5;
@@ -647,14 +676,12 @@ export function buildPrompt(
     }
   }
 
-  // domain boosts
   for (const domain of domains) {
     for (const title of domainSectionMap[domain] || []) {
       scores.set(title, (scores.get(title) || 0) + 2);
     }
   }
 
-  // behavior boosts (except code_required handled later)
   if (behavior.needs_reasoning) {
     scores.set('ANALYTICAL REASONING & PROBLEM SOLVING', (scores.get('ANALYTICAL REASONING & PROBLEM SOLVING') || 0) + 2);
     scores.set('CRITICAL THINKING', (scores.get('CRITICAL THINKING') || 0) + 2);
@@ -684,23 +711,26 @@ export function buildPrompt(
     scores.set(title, (scores.get(title) || 0) + 2);
   }
 
-  // 5. Build constraint‑precedence decisions
+  // 5. Constraint decisions
   const decisions = buildSectionDecisions(userMessage, objectives, domains, behavior, scores);
 
-  // 6. Compile forbidden / mandatory sets from decisions
+  // 6. Forbidden / mandatory from decisions + core
   const forbidden = new Set<string>();
   const mandatory = new Set<string>(sections.filter(s => isCoreSection(s.title)).map(s => s.title));
 
   for (const [title, decision] of decisions) {
     if (decision.decision === 'FORBIDDEN') {
       forbidden.add(title);
-      scores.set(title, -1000); // ensure never selected
+      scores.set(title, -1000);
     } else if (decision.decision === 'REQUIRED') {
       mandatory.add(title);
     }
   }
 
-  // 7. Candidate selection (non‑forbidden, with sufficient score or mandatory)
+  // 7. Apply mandatory policies (respecting hard constraints)
+  applyMandatoryPolicies(userMessage, domains, mandatory, scores, forbidden);
+
+  // 8. Candidate selection (non‑forbidden, with sufficient score or mandatory)
   const candidateTitles = new Set<string>();
   for (const t of mandatory) candidateTitles.add(t);
   for (const sec of sections) {
@@ -709,7 +739,7 @@ export function buildPrompt(
     }
   }
 
-  // 8. Expand dependencies (cycle‑safe: max 100 iterations)
+  // 9. Expand dependencies (cycle‑safe)
   const MAX_DEP_ITER = 100;
   for (let iter = 0; iter < MAX_DEP_ITER; iter++) {
     let changed = false;
@@ -726,7 +756,7 @@ export function buildPrompt(
     if (!changed) break;
   }
 
-  // 9. Determine protected titles (mandatory + dependency sections that were added)
+  // 10. Protected titles (mandatory + dependency sections)
   const protectedTitles = new Set(mandatory);
   for (const [key, deps] of Object.entries(SECTION_DEPENDENCIES)) {
     if (candidateTitles.has(key)) {
@@ -736,15 +766,14 @@ export function buildPrompt(
     }
   }
 
-  // 10. Compatibility resolution
+  // 11. Compatibility resolution
   const compatibleSet = resolveConflicts(candidateTitles, responseModes, objectives, protectedTitles);
 
-  // 11. Dynamic quotas (merged across objectives)
+  // 12. Dynamic quotas
   const quotas = mergeQuotas(objectives);
   const categoryCount: Record<string, number> = {};
   const finalSelection = new Set<string>();
 
-  // First, add protected sections without quota limit
   for (const title of compatibleSet) {
     if (protectedTitles.has(title)) {
       finalSelection.add(title);
@@ -754,7 +783,6 @@ export function buildPrompt(
     }
   }
 
-  // Then fill remaining with quota
   const candidates = Array.from(compatibleSet)
     .filter(t => !finalSelection.has(t))
     .sort((a, b) => (scores.get(b) || 0) - (scores.get(a) || 0));
@@ -771,13 +799,10 @@ export function buildPrompt(
     }
     if (canAdd) {
       finalSelection.add(title);
-      for (const cat of cats) {
-        categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-      }
+      for (const cat of cats) categoryCount[cat] = (categoryCount[cat] || 0) + 1;
     }
   }
 
-  // Add forced extras (unless forbidden)
   if (extras.length) {
     for (const t of extras) {
       if (!forbidden.has(t)) finalSelection.add(t);
@@ -786,23 +811,40 @@ export function buildPrompt(
 
   let filteredSections = sections.filter(s => finalSelection.has(s.title));
 
-  // 12. Protected‑budget overflow warning
+  // 13. Trim diagnostics: capture before/after titles
+  const beforeTrimTitles = filteredSections.map(s => s.title);
   if (maxTokens && maxTokens > 0) {
     const maxSystemTokens = Math.floor(maxTokens * 0.6);
     const protectedOnly = filteredSections.filter(s => protectedTitles.has(s.title));
     const protectedText = protectedOnly.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
     const protectedTokens = estimatePromptTokens(protectedText);
     if (protectedTokens > maxSystemTokens) {
-      console.warn(
-        `⚠️ Protected sections (${protectedOnly.length}) exceed system token budget: ~${protectedTokens} tokens > ${maxSystemTokens} max`
-      );
+      console.warn(`⚠️ Protected sections (${protectedOnly.length}) exceed system token budget: ~${protectedTokens} tokens > ${maxSystemTokens} max`);
     }
-    // Trim non‑protected sections, but protect the protected ones
     filteredSections = trimSectionsToTokenBudget(filteredSections, protectedTitles, maxSystemTokens);
   }
+  const afterTrimTitles = filteredSections.map(s => s.title);
+  const trimmedTitles = beforeTrimTitles.filter(t => !afterTrimTitles.includes(t));
 
   const body = filteredSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
-  console.log(`📌 Selected sections (v5.2): ${filteredSections.map(s => s.title).join(', ')}`);
-  console.log(`📏 Final prompt: ${filteredSections.length} sections, ~${estimatePromptTokens(body)} tokens`);
+
+  // ── 14. SELECTOR DEBUG LOGGING ──────────────────────────
+  console.log(`=== PROMPT SELECTOR DEBUG ===`);
+  console.log(`Message: "${userMessage.slice(0, 100)}..."`);
+  console.log(`Intent: ${objectives.map(o => o.type).join(', ')}`);
+  console.log(`Domain: ${domains.join(', ')}`);
+  console.log(`CurrentInfoRequired: ${/\b(latest|current|recent|today|yesterday|tomorrow|as of 20\d{2}|this year|news|update|release)\b/i.test(lowerMsg)}`);
+  console.log(`SecurityRequired: ${domains.includes('security') || (domains.includes('coding') && /\b(production|deploy|infrastructure|authentication|oauth|jwt|csrf|xss)\b/i.test(lowerMsg))}`);
+  console.log(`Mandatory: ${[...mandatory].join(', ')}`);
+  console.log(`Forbidden: ${[...forbidden].join(', ')}`);
+  console.log(`Selected: ${afterTrimTitles.join(', ')}`);
+  if (trimmedTitles.length > 0) {
+    console.log(`Trimmed: ${trimmedTitles.join(', ')}`);
+  } else {
+    console.log(`Trimmed: none`);
+  }
+  console.log(`Final prompt: ${filteredSections.length} sections, ~${estimatePromptTokens(body)} tokens`);
+  console.log(`===============================`);
+
   return body;
 }
