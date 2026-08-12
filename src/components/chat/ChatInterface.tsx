@@ -251,7 +251,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   const parts = processed.split(/(\[\[WIDGET:\d+\]\])/);
 
   return (
-    <div className={cn("space-y-2", isPlus ? "overflow-visible h-auto" : "")}>
+    <div className={cn("space-y-2 font-sans", isPlus ? "overflow-visible h-auto" : "")} style={{ fontFamily: "var(--font-sans)" }}>
       {parts.map((part, i) => {
         const match = part.match(/^\[\[WIDGET:(\d+)\]\]$/);
         if (match) {
