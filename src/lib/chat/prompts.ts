@@ -1,9 +1,9 @@
 // prompts.ts – Deterministic Adaptive Prompt Builder
 // No LLM needed. Maps user message keywords to relevant sections
 // from the monolithic SYSTEM_PROMPT. Core sections are always included.
+// Automatically trims sections to stay within 60% of the model's token budget.
 
 import { SYSTEM_PROMPT } from '@/lib/chat/model-registry';
-
 // ── 1. Parse the monolith into sections (cached) ─────────
 let _sections: { title: string; content: string }[] | null = null;
 
@@ -44,8 +44,6 @@ function isCoreSection(title: string): boolean {
 }
 
 // ── 3. Keyword → Section mapping ────────────────────────
-// Each keyword is a regex (case insensitive). When it matches
-// the user message, the corresponding section titles are added.
 const KEYWORD_SECTION_MAP: Array<{ regex: RegExp; sections: string[] }> = [
   // Coding / development
   {
@@ -155,7 +153,7 @@ const KEYWORD_SECTION_MAP: Array<{ regex: RegExp; sections: string[] }> = [
   },
 ];
 
-// ── 4. Complexity estimation (unchanged) ────────────────
+// ── 4. Complexity estimation ────────────────────────────
 type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
 
 function estimateComplexity(message: string): ComplexityLevel {
@@ -169,12 +167,38 @@ function estimateComplexity(message: string): ComplexityLevel {
   return 'trivial';
 }
 
-// ── 5. Build the final prompt (sync) ────────────────────
+// ── 5. Token‑budget‑aware trimming ──────────────────────
+function estimatePromptTokens(prompt: string): number {
+  return Math.ceil(prompt.split(/\s+/).length * 1.3);
+}
+
+function trimSectionsToTokenBudget(
+  sections: { title: string; content: string }[],
+  coreTitles: Set<string>,
+  maxSystemTokens: number
+): { title: string; content: string }[] {
+  let current = [...sections];
+  let text = current.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
+  while (estimatePromptTokens(text) > maxSystemTokens && current.length > coreTitles.size) {
+    // Remove the last non‑core section
+    for (let i = current.length - 1; i >= 0; i--) {
+      if (!coreTitles.has(current[i].title)) {
+        current.splice(i, 1);
+        break;
+      }
+    }
+    text = current.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
+  }
+  return current;
+}
+
+// ── 6. Build the final prompt (synchronous) ─────────────
 export function buildPrompt(
   tier: string,
   userMessage: string,
-  extras: string[] = [],           // force additional section titles
-  complexityOverride?: ComplexityLevel
+  extras: string[] = [],
+  complexityOverride?: ComplexityLevel,
+  maxTokens?: number      // total token budget for the model (from tier config)
 ): string {
   const sections = getSections();
 
@@ -200,36 +224,39 @@ export function buildPrompt(
   // Merge, deduplicate (preserve order: core first, then selected, then extras)
   const merged = [...coreSections, ...nonCore, ...extraSections];
   const seen = new Set<string>();
-  const filteredSections = merged.filter(s => {
+  let filteredSections = merged.filter(s => {
     const key = s.title.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
-  // Cap by complexity
-  const level = complexityOverride || estimateComplexity(userMessage);
-  const maxSections = {
-    trivial: 6,
-    simple: 10,
-    moderate: 15,
-    complex: 22,
-    critical: 40,
-  }[level];
-  const finalSections = filteredSections.slice(0, maxSections);
+  // ── Token‑budget trimming (reserve 40% for reply) ──
+  if (maxTokens && maxTokens > 0) {
+    const maxSystemTokens = Math.floor(maxTokens * 0.6);
+    filteredSections = trimSectionsToTokenBudget(filteredSections, CORE_TITLES, maxSystemTokens);
+  } else {
+    // Fallback: cap by complexity if no maxTokens given
+    const level = complexityOverride || estimateComplexity(userMessage);
+    const maxSections = {
+      trivial: 6,
+      simple: 10,
+      moderate: 15,
+      complex: 22,
+      critical: 40,
+    }[level];
+    filteredSections = filteredSections.slice(0, maxSections);
+  }
 
-  const header = `[Netsyra‑AI, tier: ${tier}]`;
-  const body = finalSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
-  const prompt = header + '\n\n' + body;
+  // Build the prompt — no header, no self‑introduction
+  const body = filteredSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
 
   console.log(
-    `📌 Selected sections (keyword): ${finalSections.map(s => s.title).join(', ') || 'none'}`
+    `📌 Selected sections: ${filteredSections.map(s => s.title).join(', ')}`
   );
-  console.log(`📏 Final prompt: ${finalSections.length} sections, ~${estimatePromptTokens(prompt)} tokens`);
-  return prompt;
+  console.log(`📏 Final prompt: ${filteredSections.length} sections, ~${estimatePromptTokens(body)} tokens`);
+  return body;
 }
 
-// ── 6. Utility ──────────────────────────────────────────
-export function estimatePromptTokens(prompt: string): number {
-  return Math.ceil(prompt.split(/\s+/).length * 1.3);
-}
+// ── 7. Utility (public) ─────────────────────────────────
+export { estimatePromptTokens };

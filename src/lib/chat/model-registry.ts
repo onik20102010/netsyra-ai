@@ -1,5 +1,4 @@
-import { buildPrompt } from "@/lib/chat/prompts";   // no more detectTaskCategory needed
-
+import { buildPrompt } from "@/lib/chat/prompts";
 // Keep all the model arrays and tier config as before (only the prompt-related part changes)
 
 // ────────────────────────────────────────────────────────────
@@ -765,7 +764,9 @@ export function getSystemPrompt(
   message: string,
   extras: string[] = []
 ): string {
-  return buildPrompt(tier, message, extras);
+  // `tiers` is already defined in this file — no import needed
+  const tierConfig = tiers[tier as keyof typeof tiers] || tiers.fast;
+  return buildPrompt(tier, message, extras, undefined, tierConfig.maxTokens);
 }
 
 // ── N FAST (full fallback chain with retries) ────────────────
