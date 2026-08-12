@@ -1,8 +1,7 @@
-// prompts.ts – Prompt Compiler v5.2 + Mandatory Policies & Debug (fixed)
-// Implicit prerequisites, constraint precedence, protected‑budget warnings,
-// mandatory policies for freshness, security, debugging, architecture.
-// Hard user constraints CANNOT be overridden by mandatory policies.
-// Detailed selector logging with trim diagnostics.
+// prompts.ts – Prompt Compiler v5.3 (production)
+// Fully explicit SectionClass pipeline, corrected diagnostics,
+// entity‑freshness detection, conditional dependency protection,
+// and transitive dependency closure. Zero extra token cost.
 
 import { SYSTEM_PROMPT } from '@/lib/chat/model-registry';
 
@@ -26,6 +25,7 @@ function getSections(): { title: string; content: string }[] {
     sections.push({ title, content: sectionContent });
   }
   _sections = sections;
+  detectDependencyCycles(); // startup validation
   return sections;
 }
 
@@ -45,183 +45,113 @@ function isCoreSection(title: string): boolean {
   return CORE_TITLES.has(title);
 }
 
-// ── 3. Objective types and dependencies ──────────────────
+// ── 3. Types ──────────────────────────────────────────────
 type ObjectiveType =
-  | 'answer'
-  | 'explain'
-  | 'teach'
-  | 'debug'
-  | 'design'
-  | 'generate'
-  | 'analyze'
-  | 'compare'
-  | 'recommend'
-  | 'plan'
-  | 'research'
-  | 'transform'
-  | 'execute'
-  | 'summarize';
+  | 'answer' | 'explain' | 'teach' | 'debug' | 'design'
+  | 'generate' | 'analyze' | 'compare' | 'recommend'
+  | 'plan' | 'research' | 'transform' | 'execute' | 'summarize';
 
-interface Objective {
+type ResponseMode = 'concise' | 'balanced' | 'detailed' | 'technical' | 'educational' | 'analytical' | 'structured';
+type Domain = 'coding' | 'math' | 'security' | 'architecture' | 'writing' | 'research' | 'business' | 'general';
+type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
+type SectionClass = 'MANDATORY' | 'REQUIRED' | 'RELEVANT' | 'OPTIONAL' | 'FORBIDDEN';
+
+interface ObjectiveNode {
   type: ObjectiveType;
   priority: number;
-  dependsOn: ObjectiveType[];
+  confidence: number;
+  explicit: boolean;
+  inferred: boolean;
 }
 
-const OBJECTIVE_DEPENDENCIES: Record<ObjectiveType, ObjectiveType[]> = {
-  generate: ['design'],
-  execute: ['generate'],
-  analyze: ['research'],
-  recommend: ['compare'],
-  transform: ['generate', 'design'],
-  debug: ['analyze'],
-  teach: ['explain'],
-  plan: ['analyze'],
-  compare: ['analyze'],
-  design: [],
-  explain: [],
-  answer: [],
-  research: [],
-  summarize: [],
-};
-
-// ── 4. Extract & expand objectives ────────────────────────
-function detectObjectives(message: string): Map<ObjectiveType, number> {
-  const lower = message.toLowerCase();
-  const detected = new Map<ObjectiveType, number>();
-  const add = (t: ObjectiveType, w: number) => detected.set(t, (detected.get(t) || 0) + w);
-
-  if (/\b(design|architect|architecture|system design|design a|design the|blueprint)\b/i.test(lower)) add('design', 4);
-  if (/\b(why|how|explain|describe|what is|what are|meaning of)\b/i.test(lower)) add('explain', 3);
-  if (/\b(teach|learn|tutorial|guide|beginner|eli5|new to|101|walkthrough)\b/i.test(lower)) add('teach', 3);
-  if (/\b(debug|fix|not working|bug|error|crash|traceback|stack trace|resolve)\b/i.test(lower)) add('debug', 4);
-  if (/\b(write|create|generate|build|code|implement|script|function)\b/i.test(lower)) add('generate', 3);
-  if (/\b(analy[sz]e|review|audit|assess|evaluate|examine)\b/i.test(lower)) add('analyze', 3);
-  if (/\b(compare|versus|vs\.?|differences? between|pros and cons|better|worse)\b/i.test(lower)) add('compare', 3);
-  if (/\b(recommend|suggest|best|which (one|tool|framework|library|language|model)|what should I use)\b/i.test(lower)) add('recommend', 3);
-  if (/\b(plan|roadmap|steps|milestone|schedule|agenda|next steps)\b/i.test(lower)) add('plan', 3);
-  if (/\b(research|search|find|look up|latest|current|news|today|dive deep)\b/i.test(lower)) add('research', 3);
-  if (/\b(convert|transform|translate|rewrite|refactor|clean up|modernize)\b/i.test(lower)) add('transform', 3);
-  if (/\b(run|execute|test|perform|do (this|it)|apply)\b/i.test(lower)) add('execute', 3);
-  if (/\b(summarize|summary|tl;dr|condense|shorten|key points|bullet points)\b/i.test(lower)) add('summarize', 3);
-  if (detected.size === 0) add('answer', 1);
-
-  return detected;
+interface Constraint {
+  type: 'no_code' | 'no_web' | 'no_examples' | 'no_diagram' | 'no_explanation' | 'concise' | 'one_sentence' | 'no_markdown' | 'dont_change';
+  priority: number;
+  source: 'hard_user_constraint' | 'user_instruction' | 'task_requirement' | 'domain_default';
 }
 
-function extractObjectives(message: string): Objective[] {
-  const detected = detectObjectives(message);
-  const initial: Objective[] = Array.from(detected.entries())
-    .sort((a, b) => b[1] - a[1])
-    .map(([type], idx) => ({ type, priority: idx + 1, dependsOn: OBJECTIVE_DEPENDENCIES[type] || [] }));
-
-  const allTypes = new Set(detected.keys());
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const obj of initial) {
-      for (const prereq of obj.dependsOn) {
-        if (!allTypes.has(prereq)) {
-          initial.push({
-            type: prereq,
-            priority: initial.length + 1,
-            dependsOn: OBJECTIVE_DEPENDENCIES[prereq] || [],
-          });
-          allTypes.add(prereq);
-          changed = true;
-        }
-      }
-    }
-  }
-
-  initial.sort((a, b) => a.priority - b.priority);
-  for (let i = 0; i < initial.length; i++) initial[i].priority = i + 1;
-  return initial;
-}
-
-// ── 5. Constraint precedence engine ──────────────────────
-enum ConstraintPriority {
-  DOMAIN_DEFAULT = 10,
-  TASK_REQUIREMENT = 20,
-  USER_INSTRUCTION = 30,
-  HARD_CONSTRAINT = 40,
+interface IntentFrame {
+  primaryObjective: ObjectiveType;
+  secondaryObjectives: ObjectiveType[];
+  objectives: ObjectiveNode[];
+  domains: Domain[];
+  codeDomain: boolean;
+  codeRequired: boolean;
+  requiresReasoning: boolean;
+  requiresCurrentInformation: boolean;
+  requiresEntityFreshness: boolean;
+  requiresExternalEvidence: boolean;
+  requiresWeb: boolean;
+  requiresTools: boolean;
+  requiresVerification: boolean;
+  requiresExamples: boolean;
+  requiresStepByStep: boolean;
+  requiresComparison: boolean;
+  requiresCitations: boolean;
+  requiresDiagram: boolean;
+  requiresMemory: boolean;
+  responseModes: ResponseMode[];
+  complexity: ComplexityLevel;
+  constraints: Constraint[];
+  confidence: number;
 }
 
 interface SectionDecision {
-  decision: 'FORBIDDEN' | 'REQUIRED' | 'ALLOWED';
-  priority: ConstraintPriority;
+  title: string;
+  class: SectionClass;
+  utility: number;
+  reasons: string[];
 }
 
-function setIfHigher(
-  map: Map<string, SectionDecision>,
-  section: string,
-  decision: 'FORBIDDEN' | 'REQUIRED' | 'ALLOWED',
-  priority: ConstraintPriority
-) {
-  const existing = map.get(section);
-  if (!existing || priority > existing.priority) {
-    map.set(section, { decision, priority });
-  }
-}
+// ── 4. Dependency graph & cycle detection ────────────────
+const SECTION_DEPENDENCIES: Record<string, string[]> = {
+  'DEBUGGING FRAMEWORK': ['SELF‑REFLECTION & VERIFICATION', 'FAILURE RECOVERY PROTOCOL', 'TASK COMPLETION PROTOCOL'],
+  'CODE TASK PROTOCOL': ['TASK EXECUTION & COMPLETION PROTOCOL', 'TASK COMPLETION PROTOCOL'],
+  'TASK EXECUTION & COMPLETION PROTOCOL': ['TOOL SELECTION POLICY', 'FAILURE RECOVERY PROTOCOL'],
+  'ARCHITECTURE FRAMEWORK': ['DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION'],
+};
 
-function buildSectionDecisions(
-  message: string,
-  objectives: Objective[],
-  domains: Domain[],
-  behavior: BehaviorFlags,
-  scores: Map<string, number>
-): Map<string, SectionDecision> {
-  const lower = message.toLowerCase();
-  const decisions = new Map<string, SectionDecision>();
-
-  // Hard user constraints
-  if (/\b(no code|don'?t (give|write|show) (me )?code|without code|code not needed)\b/i.test(lower)) {
-    setIfHigher(decisions, 'CODE GENERATION STANDARDS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-  }
-  if (/\b(no (web )?search|don'?t search|without search(ing)?|offline)\b/i.test(lower)) {
-    setIfHigher(decisions, 'TOOL USAGE & EXTERNAL CAPABILITIES', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-  }
-  if (/\b(no diagram|don'?t (draw|visualize|make a diagram)|without diagram)\b/i.test(lower)) {
-    setIfHigher(decisions, 'PROACTIVE DIAGRAMS', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-  }
-  if (/\b(don'?t explain|no explanation|without expla(nation|ining)|just the (answer|fix|change))\b/i.test(lower)) {
-    setIfHigher(decisions, 'ANALYTICAL REASONING & PROBLEM SOLVING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-    setIfHigher(decisions, 'CRITICAL THINKING', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-    setIfHigher(decisions, 'ADVANCED COGNITIVE ENGINE', 'FORBIDDEN', ConstraintPriority.HARD_CONSTRAINT);
-  }
-  if (/\b(just (answer|tell me|the answer)|only the answer|straight answer)\b/i.test(lower)) {
-    setIfHigher(decisions, 'REDUNDANCY & TOKEN OPTIMISATION', 'REQUIRED', ConstraintPriority.USER_INSTRUCTION);
-  }
-
-  // Task requirements (primary objective with weight >= 4 -> REQUIRED)
-  const primaryObj = objectives.find(o => o.priority === 1);
-  if (primaryObj) {
-    const boost = OBJECTIVE_SECTION_BOOST[primaryObj.type] || [];
-    for (const { title, weight } of boost) {
-      if (weight >= 4) {
-        setIfHigher(decisions, title, 'REQUIRED', ConstraintPriority.TASK_REQUIREMENT);
+function detectDependencyCycles() {
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  function visit(node: string): boolean {
+    if (visiting.has(node)) return true;
+    if (visited.has(node)) return false;
+    visiting.add(node);
+    for (const dep of SECTION_DEPENDENCIES[node] || []) {
+      if (visit(dep)) {
+        console.error(`⚠️ Dependency cycle involving "${node}"`);
+        return true;
       }
     }
+    visiting.delete(node);
+    visited.add(node);
+    return false;
   }
-
-  // Domain defaults
-  const domainSections = new Set<string>();
-  for (const domain of domains) {
-    const list = domainSectionMap[domain] || [];
-    for (const title of list) domainSections.add(title);
+  for (const node of Object.keys(SECTION_DEPENDENCIES)) {
+    if (!visited.has(node) && visit(node)) {
+      throw new Error('Dependency cycle detected in SECTION_DEPENDENCIES; aborting build.');
+    }
   }
-  for (const title of domainSections) {
-    setIfHigher(decisions, title, 'ALLOWED', ConstraintPriority.DOMAIN_DEFAULT);
-  }
-
-  return decisions;
 }
 
-// ── 6. Domain classifier ─────────────────────────────────
-type Domain = 'coding' | 'math' | 'security' | 'architecture' | 'writing' | 'research' | 'business' | 'general';
+function dependencyClosure(roots: Set<string>): Set<string> {
+  const result = new Set(roots);
+  const queue = [...roots];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const dep of SECTION_DEPENDENCIES[current] || []) {
+      if (!result.has(dep)) { result.add(dep); queue.push(dep); }
+    }
+  }
+  return result;
+}
 
-function classifyDomain(message: string): Domain[] {
+// ── 5. Semantic Parser ────────────────────────────────────
+function parseMessage(message: string): IntentFrame {
   const lower = message.toLowerCase();
+
+  // ── Domains ──
   const domains: Domain[] = [];
   if (/\b(code|program|function|class|api|endpoint|database|sql|algorithm|bug|debug|compile|runtime|syntax|typescript|javascript|python|java|rust|go(lang)?|c\+\+|c#|react|next\.?js|vue|angular|svelte|express|django|flask|spring|tailwind|prisma|supabase)\b/i.test(lower)) domains.push('coding');
   if (/\b(math|equation|derivative|integral|probability|statistic|algebra|geometry|trigonometry|logarithm|exponent|solve)\b/i.test(lower)) domains.push('math');
@@ -231,337 +161,329 @@ function classifyDomain(message: string): Domain[] {
   if (/\b(research|study|paper|survey|findings|data|analysis|statistics|trends)\b/i.test(lower)) domains.push('research');
   if (/\b(business|marketing|sales|revenue|customer|product|pricing|strategy|startup|company)\b/i.test(lower)) domains.push('business');
   if (domains.length === 0) domains.push('general');
-  return domains;
-}
 
-// ── 7. Behavior flags ────────────────────────────────────
-interface BehaviorFlags {
-  needs_reasoning: boolean;
-  needs_verification: boolean;
-  needs_examples: boolean;
-  needs_web: boolean;
-  needs_tools: boolean;
-  code_domain: boolean;
-  code_required: boolean;
-  needs_citations: boolean;
-  needs_step_by_step: boolean;
-  needs_comparison: boolean;
-  needs_memory: boolean;
-  needs_clarification: boolean;
-  needs_diagram: boolean;
-}
-
-function detectBehavior(message: string, domains: Domain[]): BehaviorFlags {
-  const lower = message.toLowerCase();
+  // ── Code behavior ──
   const codeDomain = domains.includes('coding');
   const codeRequired =
-    /\b(write|create|implement|code|build) (a |the |an )?(function|method|class|component|module|script|endpoint|api)\b/i.test(lower) ||
-    (codeDomain && /\b(how (do|can|to) I (code|write|implement|create)|give me the code|show the code|example code)\b/i.test(lower));
+    /\b(write|create|implement|code|build|generate|add|make|produce|return code|show implementation)\s+(a |the |an )?(function|method|class|component|module|script|endpoint|api|code)\b/i.test(lower) ||
+    /\b(how (do|can|to) I (code|write|implement|create))\b/i.test(lower) ||
+    /\b(give me the code|show the code|example code)\b/i.test(lower) ||
+    /\b(generate|produce|output) (the |a )?(code|implementation)\b/i.test(lower);
 
-  return {
-    needs_reasoning: /\b(why|reason|logic|critic(al)?|analy[sz]e|compare|prove)\b/i.test(lower),
-    needs_verification: /\b(verify|check|test|validate|correct)\b/i.test(lower),
-    needs_examples: /\b(example|demo|sample|illustrate)\b/i.test(lower),
-    needs_web: /\b(search|web|latest|current|news|today|look up)\b/i.test(lower),
-    needs_tools: /\b(scrape|download|fetch|api call|curl)\b/i.test(lower),
-    code_domain: codeDomain,
-    code_required: codeRequired,
-    needs_citations: /\b(cite|source|reference|according to)\b/i.test(lower),
-    needs_step_by_step: /\b(step by step|walkthrough|guide)\b/i.test(lower),
-    needs_comparison: /\b(compare|versus|vs|pros and cons)\b/i.test(lower),
-    needs_memory: /\b(remember|memory|previous|earlier|you said|you mentioned)\b/i.test(lower),
-    needs_clarification: /\b(what do you mean|clarify|elaborate|confusing|unclear)\b/i.test(lower),
-    needs_diagram: /\b(diagram|visualize|mermaid|flowchart|graph|chart|ascii|draw)\b/i.test(lower),
+  // ── Objectives ──
+  const objScores: Record<ObjectiveType, number> = {
+    answer:0, explain:0, teach:0, debug:0, design:0,
+    generate:0, analyze:0, compare:0, recommend:0,
+    plan:0, research:0, transform:0, execute:0, summarize:0,
   };
-}
+  if (/\b(design|architect|blueprint|system design|design a|design the)\b/i.test(lower)) objScores.design += 4;
+  if (/\b(why|how|explain|describe|what is|what are|meaning of)\b/i.test(lower)) objScores.explain += 3;
+  if (/\b(teach|learn|tutorial|guide|beginner|eli5|new to|101|walkthrough)\b/i.test(lower)) objScores.teach += 3;
+  if (/\b(debug|fix|not working|bug|error|crash|traceback|stack trace|resolve)\b/i.test(lower)) objScores.debug += 4;
+  if (codeRequired) objScores.generate += 4;
+  else if (/\b(write|create|implement|build|generate) (a |the )?\w*(function|method|class|component|module|script|endpoint|api)\b/i.test(lower)) objScores.generate += 3;
+  if (/\b(analy[sz]e|review|audit|assess|evaluate|examine)\b/i.test(lower)) objScores.analyze += 3;
+  if (/\b(compare|versus|vs\.?|differences? between|pros and cons|better|worse)\b/i.test(lower)) objScores.compare += 3;
+  if (/\b(recommend|suggest|best|which (one|tool|framework|library|language|model)|what should I use)\b/i.test(lower)) objScores.recommend += 3;
+  if (/\b(plan|roadmap|steps|milestone|schedule|agenda|next steps)\b/i.test(lower)) objScores.plan += 3;
+  if (/\b(research|search|find|look up|latest|current|news|today|dive deep)\b/i.test(lower)) objScores.research += 3;
+  if (/\b(convert|transform|translate|rewrite|refactor|clean up|modernize)\b/i.test(lower)) objScores.transform += 3;
+  if (/\b(run|execute|test|perform|do (this|it)|apply)\b/i.test(lower)) objScores.execute += 3;
+  if (/\b(summarize|summary|tl;dr|condense|shorten|key points|bullet points)\b/i.test(lower)) objScores.summarize += 3;
+  if (Object.values(objScores).every(v => v === 0)) objScores.answer = 1;
 
-// ── 8. Complexity estimation ─────────────────────────────
-type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
+  const sortedObj = (Object.keys(objScores) as ObjectiveType[])
+    .filter(k => objScores[k] > 0)
+    .sort((a, b) => objScores[b] - objScores[a]);
+  const primaryObjective: ObjectiveType = sortedObj[0] || 'answer';
+  const secondaryObjectives: ObjectiveType[] = sortedObj.slice(1, 3);
 
-function refineComplexity(message: string, objectives: Objective[], domains: Domain[], behavior: BehaviorFlags): ComplexityLevel {
-  const lower = message.toLowerCase();
+  // ── Information / tool requirements ──
+  const hasTemporalMarker = /\b(latest|current|recent|today|now|currently|at present|as of now|newest|most recent|this year|this month)\b/i.test(lower);
+  const requiresCurrentInformation =
+    hasTemporalMarker &&
+    (/\b(version|release|person|ceo|president|price|ranking|security|library|framework|model|company|product|news|event)\b/i.test(lower) ||
+     domains.includes('research') || domains.includes('security'));
+
+  const requiresEntityFreshness =
+    /\b(who (is|are|leads|runs|owns)|ceo|president|director|founder|leader|coach|captain|manager|current (ceo|president|leader|coach|team|club|company|version|price)|plays? for|team (does|is)|squad|roster|lineup)\b/i.test(lower) &&
+    !/\b(historical|former|past|dead|deceased|retired|founded|born|died)\b/i.test(lower);
+
+  const requiresExternalEvidence =
+    requiresCurrentInformation ||
+    requiresEntityFreshness ||
+    /\b(evidence|source|reference|study|report|official)\b/i.test(lower);
+
+  const requiresWeb =
+    requiresCurrentInformation ||
+    requiresEntityFreshness ||
+    /\b(search the web|search online|look it up online|browse the web|google|web search)\b/i.test(lower) ||
+    requiresExternalEvidence;
+
+  const requiresTools =
+    requiresWeb ||
+    /\b(scrape|download|api call|curl|fetch|execute|run)\b/i.test(lower);
+
+  // ── Behavioral flags ──
+  const requiresReasoning =
+    primaryObjective === 'explain' || primaryObjective === 'analyze' ||
+    primaryObjective === 'compare' || primaryObjective === 'recommend' ||
+    /\b(why|reason|logic|justify|prove|evaluate)\b/i.test(lower);
+
+  const requiresVerification =
+    primaryObjective === 'debug' || primaryObjective === 'execute' ||
+    primaryObjective === 'analyze' ||
+    /\b(verify|check|test|validate|correct)\b/i.test(lower) ||
+    domains.includes('security');
+
+  const requiresExamples =
+    primaryObjective === 'teach' || primaryObjective === 'explain' ||
+    /\b(example|demo|sample|illustrate|show me)\b/i.test(lower);
+
+  const requiresStepByStep =
+    primaryObjective === 'teach' || primaryObjective === 'plan' ||
+    /\b(step by step|walkthrough|guide|steps|tutorial)\b/i.test(lower);
+
+  const requiresComparison =
+    primaryObjective === 'compare' ||
+    /\b(compare|versus|vs|pros and cons|differences? between)\b/i.test(lower);
+
+  const requiresCitations =
+    requiresExternalEvidence ||
+    /\b(cite|source|reference|according to)\b/i.test(lower);
+
+  const requiresDiagram =
+    /\b(diagram|visualize|mermaid|flowchart|graph|chart|ascii|draw)\b/i.test(lower);
+
+  const requiresMemory =
+    /\b(remember|memory|previous|earlier|you said|you mentioned)\b/i.test(lower);
+
+  // ── Response modes ──
+  const responseModes: ResponseMode[] = [];
+  if (/\b(one sentence|in a sentence|single sentence|briefly|just answer|only the answer|straight answer)\b/i.test(lower)) {
+    responseModes.push('concise');
+  } else if (/\b(concise|short|brief|tl;dr|summarize|keep it short|quick answer)\b/i.test(lower)) {
+    responseModes.push('concise');
+  } else if (/\b(detailed|thorough|in depth|comprehensive|exhaustive|deep dive)\b/i.test(lower)) {
+    responseModes.push('detailed');
+  } else if (domains.includes('coding') || domains.includes('math') || domains.includes('security')) {
+    responseModes.push('technical');
+  } else if (primaryObjective === 'teach' || primaryObjective === 'explain') {
+    responseModes.push('educational');
+  } else if (primaryObjective === 'analyze' || primaryObjective === 'compare') {
+    responseModes.push('analytical');
+  } else if (requiresStepByStep) {
+    responseModes.push('structured');
+  } else {
+    responseModes.push('balanced');
+  }
+
+  // ── Complexity ──
   const wordCount = message.split(/\s+/).length;
   let baseScore = 0;
   if (wordCount > 80) baseScore = 3;
   else if (wordCount > 30) baseScore = 2;
   else if (wordCount > 10) baseScore = 1;
-
-  if (objectives.length >= 3) baseScore += 2;
-  else if (objectives.length >= 2) baseScore += 1;
-
+  if (secondaryObjectives.length >= 2) baseScore += 2;
+  else if (secondaryObjectives.length >= 1) baseScore += 1;
   if (/\b(algorithm|complexity|big o|race condition|deadlock|optimization|scaling|microservice)\b/i.test(lower)) baseScore += 1;
   if (domains.includes('security') || /\b(production|critical|urgent|crash|data loss)\b/i.test(lower)) baseScore += 1;
-  if (behavior.needs_verification) baseScore += 1;
-
+  if (requiresVerification) baseScore += 1;
   const questionCount = (lower.match(/\?/g) || []).length;
-  if (questionCount > 2 && objectives.length === 1) baseScore += 1;
+  if (questionCount > 2 && primaryObjective === 'answer') baseScore += 1;
+  let complexity: ComplexityLevel = 'trivial';
+  if (baseScore >= 5) complexity = 'critical';
+  else if (baseScore >= 4) complexity = 'complex';
+  else if (baseScore >= 2) complexity = 'moderate';
+  else if (baseScore >= 1) complexity = 'simple';
 
-  if (baseScore >= 5) return 'critical';
-  if (baseScore >= 4) return 'complex';
-  if (baseScore >= 2) return 'moderate';
-  if (baseScore >= 1) return 'simple';
-  return 'trivial';
+  // ── Constraints ──
+  const constraints: Constraint[] = [];
+  if (/\b(no code|don'?t (give|write|show) (me )?code|without code|code not needed)\b/i.test(lower))
+    constraints.push({ type: 'no_code', priority: 10, source: 'hard_user_constraint' });
+  if (/\b(no (web )?search|don'?t search|without search(ing)?|offline)\b/i.test(lower))
+    constraints.push({ type: 'no_web', priority: 10, source: 'hard_user_constraint' });
+  if (/\b(no diagram|don'?t (draw|visualize|make a diagram)|without diagram)\b/i.test(lower))
+    constraints.push({ type: 'no_diagram', priority: 10, source: 'hard_user_constraint' });
+  if (/\b(don'?t explain|no explanation|without expla(nation|ining)|just the (answer|fix|change))\b/i.test(lower))
+    constraints.push({ type: 'no_explanation', priority: 8, source: 'hard_user_constraint' });
+  if (/\b(just (answer|tell me|the answer)|only the answer|straight answer)\b/i.test(lower))
+    constraints.push({ type: 'concise', priority: 5, source: 'user_instruction' });
+  if (/\b(one sentence|in a sentence|single sentence|briefly)\b/i.test(lower))
+    constraints.push({ type: 'one_sentence', priority: 6, source: 'user_instruction' });
+  if (/\b(no markdown|plain text|no formatting|don'?t format)\b/i.test(lower))
+    constraints.push({ type: 'no_markdown', priority: 6, source: 'user_instruction' });
+
+  // ── Objective nodes ──
+  const objectives: ObjectiveNode[] = sortedObj.map((type, idx) => ({
+    type, priority: idx + 1,
+    confidence: Math.min(1, (objScores[type] || 0) / 6),
+    explicit: true, inferred: false,
+  }));
+
+  function addPrereq(type: ObjectiveType, condition: boolean) {
+    if (condition && !objectives.some(o => o.type === type)) {
+      objectives.push({ type, priority: objectives.length + 1, confidence: 0.5, explicit: false, inferred: true });
+    }
+  }
+
+  if (primaryObjective === 'generate' && complexity !== 'trivial' && complexity !== 'simple') addPrereq('design', true);
+  if (primaryObjective === 'execute') addPrereq('generate', true);
+  if (primaryObjective === 'analyze' && (requiresCurrentInformation || requiresEntityFreshness)) addPrereq('research', true);
+  if (primaryObjective === 'analyze' && requiresExternalEvidence) addPrereq('research', true);
+  if (primaryObjective === 'compare') addPrereq('analyze', true);
+  if (primaryObjective === 'recommend') addPrereq('compare', true);
+  if (primaryObjective === 'transform') addPrereq('generate', true);
+  if (primaryObjective === 'debug') addPrereq('analyze', true);
+  if (primaryObjective === 'teach') addPrereq('explain', true);
+  if (primaryObjective === 'plan' && (complexity === 'complex' || complexity === 'critical')) addPrereq('analyze', true);
+
+  return {
+    primaryObjective, secondaryObjectives, objectives,
+    domains, codeDomain, codeRequired,
+    requiresReasoning,
+    requiresCurrentInformation,
+    requiresEntityFreshness,
+    requiresExternalEvidence,
+    requiresWeb, requiresTools,
+    requiresVerification, requiresExamples,
+    requiresStepByStep, requiresComparison,
+    requiresCitations, requiresDiagram, requiresMemory,
+    responseModes, complexity, constraints,
+    confidence: 0.8,
+  };
 }
 
-// ── 9. Section scoring (objective‑aware) ─────────────────
+// ── 6. Scoring signals (code gen excluded) ───────────────
 const BASE_SIGNALS: Array<{ regex: RegExp; sections: Array<{ title: string; weight: number }> }> = [
-  {
-    regex: /\b(code|program|function|class|api|endpoint|database|sql|algorithm|data structure|refactor|debug|bug|error|compile|runtime|syntax|typescript|javascript|python|java|rust|go(lang)?|c\+\+|c#|regex)\b/i,
-    sections: [
-      { title: 'DEBUGGING FRAMEWORK', weight: 4 },
-      { title: 'CODE REVIEW FRAMEWORK', weight: 3 },
-      { title: 'REFACTORING FRAMEWORK', weight: 3 },
-      { title: 'CODE TASK PROTOCOL', weight: 2 },
-    ],
-  },
-  {
-    regex: /\b(fix (this|the|my)|not working|broken|crash|traceback|exception|stack ?trace|segfault|typeerror|undefined is not a function)\b/i,
-    sections: [{ title: 'DEBUGGING FRAMEWORK', weight: 6 }],
-  },
-  {
-    regex: /\b(architecture|system design|design pattern|microservice|monolith|scalability|distributed|component|module|dependency|interface|pipeline|workflow|orchestrat)\b/i,
-    sections: [
-      { title: 'ARCHITECTURE FRAMEWORK', weight: 7 },
-      { title: 'DECISION FRAMEWORK', weight: 3 },
-    ],
-  },
-  {
-    regex: /\b(math|equation|derivative|integral|probability|statistic|algebra|geometry|trigonometry|logarithm|exponent|solve)\b/i,
-    sections: [{ title: 'MATH REASONING', weight: 8 }],
-  },
-  {
-    regex: /\b(why|how|explain|reason|logic|analy[sz]e|compare|contrast|evaluate|justify|critic(al)?|think|prove|derive)\b/i,
-    sections: [
-      { title: 'ANALYTICAL REASONING & PROBLEM SOLVING', weight: 4 },
-      { title: 'CRITICAL THINKING', weight: 4 },
-      { title: 'ADVANCED COGNITIVE ENGINE', weight: 2 },
-    ],
-  },
-  {
-    regex: /\b(teach|learn|tutorial|guide|help|walkthrough|explain|example|beginner|new to|101|how (do|can|to) I)\b/i,
-    sections: [{ title: 'TEACHING FRAMEWORK', weight: 6 }],
-  },
-  {
-    regex: /\b(option|choice|decide|recommend|better approach|which (model|tool|framework|library)|pick one|pros and cons|vs|versus)\b/i,
-    sections: [
-      { title: 'DECISION FRAMEWORK', weight: 7 },
-      { title: 'RECOMMENDATION FRAMEWORK', weight: 5 },
-    ],
-  },
-  {
-    regex: /\b(diagram|visualize|mermaid|flowchart|graph|chart|ascii|draw)\b/i,
-    sections: [{ title: 'PROACTIVE DIAGRAMS', weight: 8 }],
-  },
-  {
-    regex: /\b(search|web|url|fetch|api (call|request)|http|https|download|curl|scrape)\b/i,
-    sections: [{ title: 'TOOL USAGE & EXTERNAL CAPABILITIES', weight: 4 }],
-  },
-  {
-    regex: /\b(time|clock|weather|temperature|forecast|date|calendar|today|tomorrow)\b/i,
-    sections: [{ title: 'REAL‑TIME WIDGETS', weight: 6 }],
-  },
-  {
-    regex: /\b(remember|memory|context|history|previous|earlier|you said|you mentioned)\b/i,
-    sections: [{ title: 'MEMORY SYSTEM', weight: 5 }],
-  },
-  {
-    regex: /\b(task|autonomous|multi-step|orchestrat|workflow|pipeline|agent|batch|do (it|this) (all|end to end)|handle everything)\b/i,
-    sections: [
-      { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 5 },
-      { title: 'TOOL SELECTION POLICY', weight: 2 },
-      { title: 'FAILURE RECOVERY PROTOCOL', weight: 2 },
-      { title: 'TASK COMPLETION PROTOCOL', weight: 2 },
-      { title: 'MINIMAL ACTION PRINCIPLE', weight: 2 },
-    ],
-  },
-  {
-    regex: /\b(security|vulnerab|injection|csrf|xss|owasp|encrypt|decrypt|auth|jwt|oauth|secret|credential|penetrat)\b/i,
-    sections: [{ title: 'SAFETY & BOUNDARIES', weight: 2 }],
-  },
-  {
-    regex: /\b(culture|locale|country|language|translation|timezone|metric|imperial)\b/i,
-    sections: [{ title: 'CULTURAL DEXTERITY & GLOBAL AWARENESS', weight: 3 }],
-  },
-  {
-    regex: /\b(concise|short|brief|tl;dr|summarize|token|efficient|no fluff|keep it short)\b/i,
-    sections: [{ title: 'REDUNDANCY & TOKEN OPTIMISATION', weight: 4 }],
-  },
-  {
-    regex: /\b(quality|verify|check|correct|accurate|precise|double-check)\b/i,
-    sections: [{ title: 'FINAL OBJECTIVE', weight: 2 }],
-  },
+  { regex: /\b(code|program|function|class|api|endpoint|database|sql|algorithm|data structure|refactor|debug|bug|error|compile|runtime|syntax|typescript|javascript|python|java|rust|go(lang)?|c\+\+|c#|regex)\b/i,
+    sections: [{ title:'DEBUGGING FRAMEWORK', weight:4 },{ title:'CODE REVIEW FRAMEWORK', weight:3 },{ title:'REFACTORING FRAMEWORK', weight:3 },{ title:'CODE TASK PROTOCOL', weight:2 }] },
+  { regex: /\b(fix (this|the|my)|not working|broken|crash|traceback|exception|stack ?trace|segfault|typeerror|undefined is not a function)\b/i,
+    sections: [{ title:'DEBUGGING FRAMEWORK', weight:6 }] },
+  { regex: /\b(architecture|system design|design pattern|microservice|monolith|scalability|distributed|component|module|dependency|interface|pipeline|workflow|orchestrat)\b/i,
+    sections: [{ title:'ARCHITECTURE FRAMEWORK', weight:7 },{ title:'DECISION FRAMEWORK', weight:3 }] },
+  { regex: /\b(math|equation|derivative|integral|probability|statistic|algebra|geometry|trigonometry|logarithm|exponent|solve)\b/i,
+    sections: [{ title:'MATH REASONING', weight:8 }] },
+  { regex: /\b(why|how|explain|reason|logic|analy[sz]e|compare|contrast|evaluate|justify|critic(al)?|think|prove|derive)\b/i,
+    sections: [{ title:'ANALYTICAL REASONING & PROBLEM SOLVING', weight:4 },{ title:'CRITICAL THINKING', weight:4 },{ title:'ADVANCED COGNITIVE ENGINE', weight:2 }] },
+  { regex: /\b(teach|learn|tutorial|guide|help|walkthrough|explain|example|beginner|new to|101|how (do|can|to) I)\b/i,
+    sections: [{ title:'TEACHING FRAMEWORK', weight:6 }] },
+  { regex: /\b(option|choice|decide|recommend|better approach|which (model|tool|framework|library)|pick one|pros and cons|vs|versus)\b/i,
+    sections: [{ title:'DECISION FRAMEWORK', weight:7 },{ title:'RECOMMENDATION FRAMEWORK', weight:5 }] },
+  { regex: /\b(diagram|visualize|mermaid|flowchart|graph|chart|ascii|draw)\b/i,
+    sections: [{ title:'PROACTIVE DIAGRAMS', weight:8 }] },
+  { regex: /\b(search|web|url|fetch|api (call|request)|http|https|download|curl|scrape)\b/i,
+    sections: [{ title:'TOOL USAGE & EXTERNAL CAPABILITIES', weight:4 }] },
+  { regex: /\b(time|clock|weather|temperature|forecast|date|calendar|today|tomorrow)\b/i,
+    sections: [{ title:'REAL‑TIME WIDGETS', weight:6 }] },
+  { regex: /\b(remember|memory|context|history|previous|earlier|you said|you mentioned)\b/i,
+    sections: [{ title:'MEMORY SYSTEM', weight:5 }] },
+  { regex: /\b(task|autonomous|multi-step|orchestrat|workflow|pipeline|agent|batch|do (it|this) (all|end to end)|handle everything)\b/i,
+    sections: [{ title:'TASK EXECUTION & COMPLETION PROTOCOL', weight:5 },{ title:'TOOL SELECTION POLICY', weight:2 },{ title:'FAILURE RECOVERY PROTOCOL', weight:2 },{ title:'MINIMAL ACTION PRINCIPLE', weight:2 }] },
+  { regex: /\b(security|vulnerab|injection|csrf|xss|owasp|encrypt|decrypt|auth|jwt|oauth|secret|credential|penetrat)\b/i,
+    sections: [{ title:'SAFETY & BOUNDARIES', weight:2 }] },
+  { regex: /\b(culture|locale|country|language|translation|timezone|metric|imperial)\b/i,
+    sections: [{ title:'CULTURAL DEXTERITY & GLOBAL AWARENESS', weight:3 }] },
+  { regex: /\b(concise|short|brief|tl;dr|summarize|token|efficient|no fluff|keep it short)\b/i,
+    sections: [{ title:'REDUNDANCY & TOKEN OPTIMISATION', weight:4 }] },
+  { regex: /\b(quality|verify|check|correct|accurate|precise|double-check)\b/i,
+    sections: [{ title:'FINAL OBJECTIVE', weight:2 }] },
 ];
 
 const OBJECTIVE_SECTION_BOOST: Record<ObjectiveType, Array<{ title: string; weight: number }>> = {
-  design: [
-    { title: 'ARCHITECTURE FRAMEWORK', weight: 6 },
-    { title: 'DECISION FRAMEWORK', weight: 4 },
-  ],
-  explain: [
-    { title: 'ANALYTICAL REASONING & PROBLEM SOLVING', weight: 3 },
-    { title: 'CRITICAL THINKING', weight: 3 },
-  ],
-  teach: [
-    { title: 'TEACHING FRAMEWORK', weight: 5 },
-  ],
-  debug: [
-    { title: 'DEBUGGING FRAMEWORK', weight: 5 },
-    { title: 'SELF‑REFLECTION & VERIFICATION', weight: 3 },
-  ],
-  generate: [
-    { title: 'CODE GENERATION STANDARDS', weight: 5 },
-  ],
-  analyze: [
-    { title: 'ANALYTICAL REASONING & PROBLEM SOLVING', weight: 3 },
-    { title: 'CRITICAL THINKING', weight: 3 },
-  ],
-  compare: [
-    { title: 'DECISION FRAMEWORK', weight: 4 },
-    { title: 'CRITICAL THINKING', weight: 3 },
-  ],
-  recommend: [
-    { title: 'DECISION FRAMEWORK', weight: 4 },
-    { title: 'RECOMMENDATION FRAMEWORK', weight: 4 },
-  ],
-  plan: [
-    { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 4 },
-    { title: 'DECISION FRAMEWORK', weight: 3 },
-  ],
-  research: [
-    { title: 'TOOL USAGE & EXTERNAL CAPABILITIES', weight: 4 },
-  ],
-  transform: [
-    { title: 'REFACTORING FRAMEWORK', weight: 4 },
-    { title: 'CODE TASK PROTOCOL', weight: 3 },
-  ],
-  execute: [
-    { title: 'TASK EXECUTION & COMPLETION PROTOCOL', weight: 4 },
-    { title: 'FAILURE RECOVERY PROTOCOL', weight: 3 },
-  ],
-  summarize: [
-    { title: 'REDUNDANCY & TOKEN OPTIMISATION', weight: 4 },
-  ],
-  answer: [],
+  design:    [{ title:'ARCHITECTURE FRAMEWORK', weight:6 },{ title:'DECISION FRAMEWORK', weight:4 }],
+  explain:   [{ title:'ANALYTICAL REASONING & PROBLEM SOLVING', weight:3 },{ title:'CRITICAL THINKING', weight:3 }],
+  teach:     [{ title:'TEACHING FRAMEWORK', weight:5 }],
+  debug:     [{ title:'DEBUGGING FRAMEWORK', weight:5 },{ title:'SELF‑REFLECTION & VERIFICATION', weight:3 }],
+  generate:  [], // only via codeRequired
+  analyze:   [{ title:'ANALYTICAL REASONING & PROBLEM SOLVING', weight:3 },{ title:'CRITICAL THINKING', weight:3 }],
+  compare:   [{ title:'DECISION FRAMEWORK', weight:4 },{ title:'CRITICAL THINKING', weight:3 }],
+  recommend: [{ title:'DECISION FRAMEWORK', weight:4 },{ title:'RECOMMENDATION FRAMEWORK', weight:4 }],
+  plan:      [{ title:'TASK EXECUTION & COMPLETION PROTOCOL', weight:4 },{ title:'DECISION FRAMEWORK', weight:3 }],
+  research:  [{ title:'TOOL USAGE & EXTERNAL CAPABILITIES', weight:4 }],
+  transform: [{ title:'REFACTORING FRAMEWORK', weight:4 },{ title:'CODE TASK PROTOCOL', weight:3 }],
+  execute:   [{ title:'TASK EXECUTION & COMPLETION PROTOCOL', weight:4 },{ title:'FAILURE RECOVERY PROTOCOL', weight:3 }],
+  summarize: [{ title:'REDUNDANCY & TOKEN OPTIMISATION', weight:4 }],
+  answer:    [],
 };
 
 const domainSectionMap: Record<Domain, string[]> = {
-  coding: ['DEBUGGING FRAMEWORK', 'CODE TASK PROTOCOL'],
-  math: ['MATH REASONING'],
-  security: ['SAFETY & BOUNDARIES'],
-  architecture: ['ARCHITECTURE FRAMEWORK', 'DECISION FRAMEWORK'],
-  writing: ['TEACHING FRAMEWORK'],
-  research: ['TOOL USAGE & EXTERNAL CAPABILITIES'],
-  business: ['DECISION FRAMEWORK'],
-  general: [],
+  coding:       ['DEBUGGING FRAMEWORK','CODE TASK PROTOCOL'],
+  math:         ['MATH REASONING'],
+  security:     ['SAFETY & BOUNDARIES'],
+  architecture: ['ARCHITECTURE FRAMEWORK','DECISION FRAMEWORK'],
+  writing:      ['TEACHING FRAMEWORK'],
+  research:     ['TOOL USAGE & EXTERNAL CAPABILITIES'],
+  business:     ['DECISION FRAMEWORK'],
+  general:      [],
 };
 
-// ── 10. Section dependencies ──────────────────────────────
-const SECTION_DEPENDENCIES: Record<string, string[]> = {
-  'DEBUGGING FRAMEWORK': ['SELF‑REFLECTION & VERIFICATION', 'FAILURE RECOVERY PROTOCOL', 'TASK COMPLETION PROTOCOL'],
-  'CODE TASK PROTOCOL': ['TASK EXECUTION & COMPLETION PROTOCOL', 'TASK COMPLETION PROTOCOL'],
-  'TASK EXECUTION & COMPLETION PROTOCOL': ['TOOL SELECTION POLICY', 'FAILURE RECOVERY PROTOCOL'],
-  'ARCHITECTURE FRAMEWORK': ['DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION'],
-};
-
-// ── 11. Compatibility matrix ──────────────────────────────
+// ── 7. Compatibility matrix ──────────────────────────────
 const SECTION_CONFLICTS: Record<string, { conflictsWith: string[]; resolution: string }> = {
-  'REDUNDANCY & TOKEN OPTIMISATION': {
-    conflictsWith: ['TEACHING FRAMEWORK', 'ANALYTICAL REASONING & PROBLEM SOLVING'],
-    resolution: 'prefer_shorter',
-  },
-  'TEACHING FRAMEWORK': {
-    conflictsWith: ['MINIMAL ACTION PRINCIPLE'],
-    resolution: 'prefer_teaching',
-  },
+  'REDUNDANCY & TOKEN OPTIMISATION': { conflictsWith: ['TEACHING FRAMEWORK','ANALYTICAL REASONING & PROBLEM SOLVING'], resolution: 'prefer_shorter' },
+  'TEACHING FRAMEWORK': { conflictsWith: ['MINIMAL ACTION PRINCIPLE'], resolution: 'prefer_teaching' },
 };
 
-function resolveConflicts(
-  selectedTitles: Set<string>,
-  responseModes: string[],
-  objectives: Objective[],
-  protectedTitles: Set<string>
-): Set<string> {
-  const final = new Set(selectedTitles);
+function resolveConflicts(selected: Set<string>, modes: string[], objectives: ObjectiveNode[], protectedTitles: Set<string>): Set<string> {
+  const final = new Set(selected);
   for (const [section, rule] of Object.entries(SECTION_CONFLICTS)) {
     if (!final.has(section)) continue;
     for (const conflict of rule.conflictsWith) {
       if (!final.has(conflict)) continue;
       if (protectedTitles.has(section) && protectedTitles.has(conflict)) continue;
-      if (protectedTitles.has(section)) {
-        final.delete(conflict);
-      } else if (protectedTitles.has(conflict)) {
-        final.delete(section);
-      } else if (rule.resolution === 'prefer_shorter' && responseModes.includes('concise')) {
-        final.delete(conflict);
-      } else if (rule.resolution === 'prefer_teaching' && objectives.some(o => o.type === 'teach')) {
-        final.delete(conflict);
-      } else {
-        final.delete(section);
-      }
+      if (protectedTitles.has(section)) { final.delete(conflict); }
+      else if (protectedTitles.has(conflict)) { final.delete(section); }
+      else if (rule.resolution === 'prefer_shorter' && modes.includes('concise')) { final.delete(conflict); }
+      else if (rule.resolution === 'prefer_teaching' && objectives.some(o => o.type === 'teach')) { final.delete(conflict); }
+      else { final.delete(section); }
     }
   }
   return final;
 }
 
-// ── 12. Dynamic quotas (merged across objectives) ─────────
+// ── 8. Dynamic quotas ────────────────────────────────────
 const TASK_QUOTAS: Record<ObjectiveType, Record<string, number>> = {
-  design:     { domain: 4, reasoning: 4, tools: 2, quality: 2 },
-  explain:    { reasoning: 4, domain: 3, tools: 1, quality: 2 },
-  teach:      { reasoning: 5, domain: 2, tools: 1, quality: 2 },
-  debug:      { tools: 5, domain: 3, reasoning: 2, quality: 3 },
-  generate:   { domain: 4, tools: 3, reasoning: 2, quality: 3 },
-  analyze:    { reasoning: 4, domain: 3, tools: 2, quality: 3 },
-  compare:    { reasoning: 4, domain: 3, tools: 1, quality: 2 },
-  recommend:  { reasoning: 4, domain: 2, tools: 1, quality: 2 },
-  plan:       { reasoning: 4, domain: 3, tools: 3, quality: 3 },
-  research:   { tools: 4, reasoning: 3, domain: 2, quality: 2 },
-  transform:  { domain: 4, tools: 3, reasoning: 2, quality: 2 },
-  execute:    { tools: 4, domain: 3, reasoning: 2, quality: 3 },
-  summarize:  { reasoning: 1, domain: 1, tools: 0, quality: 1 },
-  answer:     { reasoning: 2, domain: 2, tools: 1, quality: 2 },
+  design:{domain:4,reasoning:4,tools:2,quality:2}, explain:{reasoning:4,domain:3,tools:1,quality:2},
+  teach:{reasoning:5,domain:2,tools:1,quality:2}, debug:{tools:5,domain:3,reasoning:2,quality:3},
+  generate:{domain:4,tools:3,reasoning:2,quality:3}, analyze:{reasoning:4,domain:3,tools:2,quality:3},
+  compare:{reasoning:4,domain:3,tools:1,quality:2}, recommend:{reasoning:4,domain:2,tools:1,quality:2},
+  plan:{reasoning:4,domain:3,tools:3,quality:3}, research:{tools:4,reasoning:3,domain:2,quality:2},
+  transform:{domain:4,tools:3,reasoning:2,quality:2}, execute:{tools:4,domain:3,reasoning:2,quality:3},
+  summarize:{reasoning:1,domain:1,tools:0,quality:1}, answer:{reasoning:2,domain:2,tools:1,quality:2},
 };
+const DEFAULT_QUOTAS: Record<string, number> = { domain:3, reasoning:3, tools:2, context:2, quality:3, advanced:2, behavior:4 };
 
-const DEFAULT_QUOTAS: Record<string, number> = {
-  domain: 3, reasoning: 3, tools: 2, context: 2, quality: 3, advanced: 2, behavior: 4,
-};
-
-function mergeQuotas(objectives: Objective[]): Record<string, number> {
-  const merged: Record<string, number> = { ...DEFAULT_QUOTAS };
-  for (const obj of objectives) {
-    const profile = TASK_QUOTAS[obj.type];
-    if (!profile) continue;
-    for (const [cat, limit] of Object.entries(profile)) {
-      merged[cat] = Math.max(merged[cat] || 0, limit);
-    }
+function mergeQuotas(objs: ObjectiveNode[]): Record<string, number> {
+  const m: Record<string, number> = { ...DEFAULT_QUOTAS };
+  for (const o of objs) {
+    const p = TASK_QUOTAS[o.type];
+    if (!p) continue;
+    for (const [k, v] of Object.entries(p)) m[k] = Math.max(m[k] || 0, v);
   }
-  return merged;
+  return m;
 }
 
-// ── 13. Token helpers ─────────────────────────────────────
+// ── 9. Token helpers ──────────────────────────────────────
 export function estimatePromptTokens(prompt: string): number {
   return Math.ceil(prompt.split(/\s+/).length * 1.3);
 }
 
-function trimSectionsToTokenBudget(
+function trimToBudget(
   sections: { title: string; content: string }[],
   protectedTitles: Set<string>,
   maxSystemTokens: number
 ): { title: string; content: string }[] {
-  let current = [...sections];
-  let text = current.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
-  while (estimatePromptTokens(text) > maxSystemTokens && current.length > protectedTitles.size) {
-    for (let i = current.length - 1; i >= 0; i--) {
-      if (!protectedTitles.has(current[i].title)) {
-        current.splice(i, 1);
-        break;
-      }
+  let cur = [...sections];
+  let text = cur.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
+  while (estimatePromptTokens(text) > maxSystemTokens && cur.length > protectedTitles.size) {
+    for (let i = cur.length - 1; i >= 0; i--) {
+      if (!protectedTitles.has(cur[i].title)) { cur.splice(i, 1); break; }
     }
-    text = current.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
+    text = cur.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
   }
-  return current;
+  return cur;
 }
 
-// ── 14. Section category helper ───────────────────────────
 function classifySection(title: string): string[] {
   if (isCoreSection(title)) return ['core'];
   if (/^(CODE|DEBUGGING|REFACTORING|CODE REVIEW|ARCHITECTURE)/i.test(title)) return ['domain'];
@@ -574,62 +496,71 @@ function classifySection(title: string): string[] {
   return ['behavior'];
 }
 
-// ── 15. MANDATORY POLICIES (fixed) ────────────────────────
-// Policies are only enforced if the section is not explicitly forbidden
-function applyMandatoryPolicies(
+// ── 10. Policy & constraint application ──────────────────
+function applyConstraintsAndPolicies(
+  frame: IntentFrame,
   message: string,
-  domains: Domain[],
-  mandatory: Set<string>,
-  scores: Map<string, number>,
-  forbidden: Set<string>
+  decisions: Map<string, SectionDecision>,
+  utility: Map<string, number>
 ): void {
   const lower = message.toLowerCase();
 
-  // Freshness / current information
-  if (/\b(latest|current|recent|today|yesterday|tomorrow|as of 20\d{2}|this year|news|update|release)\b/i.test(lower)) {
-    const section = 'TOOL USAGE & EXTERNAL CAPABILITIES';
-    if (!forbidden.has(section)) {
-      mandatory.add(section);
-      scores.set(section, Math.max(scores.get(section) || 0, 10));
-    } else {
-      console.warn(`⚠️ Mandatory freshness policy blocked by hard constraint: ${section}`);
-    }
-  }
-
-  // Security / auth / production (only when domain matches)
-  if (domains.includes('security') || (domains.includes('coding') && /\b(production|deploy|infrastructure|authentication|oauth|jwt|csrf|xss)\b/i.test(lower))) {
-    for (const section of ['SAFETY & BOUNDARIES', 'SELF‑REFLECTION & VERIFICATION']) {
-      if (!forbidden.has(section)) {
-        mandatory.add(section);
-        scores.set(section, Math.max(scores.get(section) || 0, 10));
-      } else {
-        console.warn(`⚠️ Mandatory security policy blocked by hard constraint: ${section}`);
+  // Hard constraints → FORBIDDEN
+  for (const c of frame.constraints) {
+    if (c.type === 'no_code') {
+      decisions.set('CODE GENERATION STANDARDS', { title: 'CODE GENERATION STANDARDS', class: 'FORBIDDEN', utility: -100, reasons: ['user: no code'] });
+    } else if (c.type === 'no_web') {
+      decisions.set('TOOL USAGE & EXTERNAL CAPABILITIES', { title: 'TOOL USAGE & EXTERNAL CAPABILITIES', class: 'FORBIDDEN', utility: -100, reasons: ['user: no web'] });
+    } else if (c.type === 'no_diagram') {
+      decisions.set('PROACTIVE DIAGRAMS', { title: 'PROACTIVE DIAGRAMS', class: 'FORBIDDEN', utility: -100, reasons: ['user: no diagram'] });
+    } else if (c.type === 'no_explanation') {
+      for (const t of ['ANALYTICAL REASONING & PROBLEM SOLVING', 'CRITICAL THINKING', 'ADVANCED COGNITIVE ENGINE']) {
+        decisions.set(t, { title: t, class: 'FORBIDDEN', utility: -100, reasons: ['user: no explanation'] });
       }
     }
   }
 
-  // Debugging / error
+  // Mandatory freshness/web policy
+  if (frame.requiresCurrentInformation || frame.requiresEntityFreshness || frame.requiresWeb) {
+    const sec = 'TOOL USAGE & EXTERNAL CAPABILITIES';
+    if (!decisions.has(sec) || decisions.get(sec)!.class !== 'FORBIDDEN') {
+      decisions.set(sec, { title: sec, class: 'MANDATORY', utility: 100, reasons: ['policy: freshness/web'] });
+      utility.set(sec, Math.max(utility.get(sec) || 0, 10));
+    }
+  }
+
+  // Security / auth / production
+  if (frame.domains.includes('security') || (frame.codeDomain && /\b(production|deploy|infrastructure|authentication|oauth|jwt|csrf|xss)\b/i.test(lower))) {
+    for (const s of ['SAFETY & BOUNDARIES', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!decisions.has(s) || decisions.get(s)!.class !== 'FORBIDDEN') {
+        decisions.set(s, { title: s, class: 'MANDATORY', utility: 100, reasons: ['policy: security'] });
+        utility.set(s, Math.max(utility.get(s) || 0, 10));
+      }
+    }
+  }
+
+  // Debugging
   if (/\b(debug|error|broken|not working|crash|401|403|500|traceback|exception|bug)\b/i.test(lower)) {
-    for (const section of ['DEBUGGING FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
-      if (!forbidden.has(section)) {
-        mandatory.add(section);
-        scores.set(section, Math.max(scores.get(section) || 0, 10));
+    for (const s of ['DEBUGGING FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!decisions.has(s) || decisions.get(s)!.class !== 'FORBIDDEN') {
+        decisions.set(s, { title: s, class: 'MANDATORY', utility: 100, reasons: ['policy: debugging'] });
+        utility.set(s, Math.max(utility.get(s) || 0, 10));
       }
     }
   }
 
-  // Architecture / system design
-  if (domains.includes('architecture') || /\b(architecture|system design|scalab|microservice|distributed|deploy|infrastructure)\b/i.test(lower)) {
-    for (const section of ['ARCHITECTURE FRAMEWORK', 'DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
-      if (!forbidden.has(section)) {
-        mandatory.add(section);
-        scores.set(section, Math.max(scores.get(section) || 0, 10));
+  // Architecture / design
+  if (frame.domains.includes('architecture') || /\b(architecture|system design|scalab|microservice|distributed|deploy|infrastructure)\b/i.test(lower)) {
+    for (const s of ['ARCHITECTURE FRAMEWORK', 'DECISION FRAMEWORK', 'SELF‑REFLECTION & VERIFICATION']) {
+      if (!decisions.has(s) || decisions.get(s)!.class !== 'FORBIDDEN') {
+        decisions.set(s, { title: s, class: 'MANDATORY', utility: 100, reasons: ['policy: architecture'] });
+        utility.set(s, Math.max(utility.get(s) || 0, 10));
       }
     }
   }
 }
 
-// ── 16. Main builder v5.2 + Fixed Policies ────────────────
+// ── 11. Main builder v5.3 (final) ────────────────────────
 export function buildPrompt(
   tier: string,
   userMessage: string,
@@ -638,213 +569,237 @@ export function buildPrompt(
   maxTokens?: number
 ): string {
   const sections = getSections();
-  const lowerMsg = userMessage.toLowerCase();
+  const frame = parseMessage(userMessage);
+  if (complexityOverride) frame.complexity = complexityOverride;
 
-  // 1. Objectives (with implicit prerequisites)
-  const objectives = extractObjectives(userMessage);
+  // ── Initialize SectionDecisions ──
+  const decisions = new Map<string, SectionDecision>();
+  const utility = new Map<string, number>();
+  const lower = userMessage.toLowerCase();
 
-  // 2. Domains & behavior
-  const domains = classifyDomain(userMessage);
-  const behavior = detectBehavior(userMessage, domains);
-  const complexity = complexityOverride || refineComplexity(userMessage, objectives, domains, behavior);
-
-  // 3. Response modes
-  const responseModes: string[] = [];
-  if (/\b(concise|short|brief|tl;dr|summarize|keep it short|quick answer|one sentence)\b/i.test(lowerMsg)) responseModes.push('concise');
-  if (/\b(detailed|thorough|in depth|comprehensive|exhaustive|deep dive)\b/i.test(lowerMsg)) responseModes.push('detailed');
-  if (domains.includes('coding') || domains.includes('math') || domains.includes('security')) responseModes.push('technical');
-  if (objectives.some(o => o.type === 'teach' || o.type === 'explain')) responseModes.push('educational');
-  if (objectives.some(o => o.type === 'analyze' || o.type === 'compare')) responseModes.push('analytical');
-  if (behavior.needs_step_by_step || objectives.some(o => o.type === 'plan')) responseModes.push('structured');
-  if (responseModes.length === 0) responseModes.push('balanced');
-
-  // 4. Initial scoring
-  const scores = new Map<string, number>();
-  for (const signal of BASE_SIGNALS) {
-    if (signal.regex.test(lowerMsg)) {
-      for (const { title, weight } of signal.sections) {
-        scores.set(title, (scores.get(title) || 0) + weight);
-      }
-    }
-  }
-
-  for (const obj of objectives) {
-    const boost = OBJECTIVE_SECTION_BOOST[obj.type] || [];
-    const multiplier = obj.priority === 1 ? 2.5 : 1.5;
-    for (const { title, weight } of boost) {
-      scores.set(title, (scores.get(title) || 0) + weight * multiplier);
-    }
-  }
-
-  for (const domain of domains) {
-    for (const title of domainSectionMap[domain] || []) {
-      scores.set(title, (scores.get(title) || 0) + 2);
-    }
-  }
-
-  if (behavior.needs_reasoning) {
-    scores.set('ANALYTICAL REASONING & PROBLEM SOLVING', (scores.get('ANALYTICAL REASONING & PROBLEM SOLVING') || 0) + 2);
-    scores.set('CRITICAL THINKING', (scores.get('CRITICAL THINKING') || 0) + 2);
-  }
-  if (behavior.needs_verification) scores.set('SELF‑REFLECTION & VERIFICATION', (scores.get('SELF‑REFLECTION & VERIFICATION') || 0) + 3);
-  if (behavior.needs_web) scores.set('TOOL USAGE & EXTERNAL CAPABILITIES', (scores.get('TOOL USAGE & EXTERNAL CAPABILITIES') || 0) + 3);
-  if (behavior.needs_tools) scores.set('TOOL SELECTION POLICY', (scores.get('TOOL SELECTION POLICY') || 0) + 2);
-  if (behavior.code_required) {
-    scores.set('CODE GENERATION STANDARDS', (scores.get('CODE GENERATION STANDARDS') || 0) + 5);
-  }
-  if (behavior.needs_citations) scores.set('TOOL USAGE & EXTERNAL CAPABILITIES', (scores.get('TOOL USAGE & EXTERNAL CAPABILITIES') || 0) + 2);
-  if (behavior.needs_memory) scores.set('MEMORY SYSTEM', (scores.get('MEMORY SYSTEM') || 0) + 3);
-  if (behavior.needs_diagram) scores.set('PROACTIVE DIAGRAMS', (scores.get('PROACTIVE DIAGRAMS') || 0) + 5);
-
-  if (responseModes.includes('concise')) scores.set('REDUNDANCY & TOKEN OPTIMISATION', (scores.get('REDUNDANCY & TOKEN OPTIMISATION') || 0) + 3);
-  if (responseModes.includes('educational')) scores.set('TEACHING FRAMEWORK', (scores.get('TEACHING FRAMEWORK') || 0) + 2);
-  if (responseModes.includes('structured')) scores.set('FORMATTING INTELLIGENCE', (scores.get('FORMATTING INTELLIGENCE') || 0) + 1);
-
-  const complexityBonus: Record<ComplexityLevel, string[]> = {
-    trivial: [],
-    simple: [],
-    moderate: ['ADVANCED COGNITIVE ENGINE'],
-    complex: ['ADVANCED COGNITIVE ENGINE', 'DECISION FRAMEWORK'],
-    critical: ['ADVANCED COGNITIVE ENGINE', 'ARCHITECTURE FRAMEWORK', 'DECISION FRAMEWORK'],
-  };
-  for (const title of complexityBonus[complexity]) {
-    scores.set(title, (scores.get(title) || 0) + 2);
-  }
-
-  // 5. Constraint decisions
-  const decisions = buildSectionDecisions(userMessage, objectives, domains, behavior, scores);
-
-  // 6. Forbidden / mandatory from decisions + core
-  const forbidden = new Set<string>();
-  const mandatory = new Set<string>(sections.filter(s => isCoreSection(s.title)).map(s => s.title));
-
-  for (const [title, decision] of decisions) {
-    if (decision.decision === 'FORBIDDEN') {
-      forbidden.add(title);
-      scores.set(title, -1000);
-    } else if (decision.decision === 'REQUIRED') {
-      mandatory.add(title);
-    }
-  }
-
-  // 7. Apply mandatory policies (respecting hard constraints)
-  applyMandatoryPolicies(userMessage, domains, mandatory, scores, forbidden);
-
-  // 8. Candidate selection (non‑forbidden, with sufficient score or mandatory)
-  const candidateTitles = new Set<string>();
-  for (const t of mandatory) candidateTitles.add(t);
+  // Mark core sections as MANDATORY
   for (const sec of sections) {
-    if (!forbidden.has(sec.title) && !candidateTitles.has(sec.title) && (scores.get(sec.title) || 0) >= 3) {
-      candidateTitles.add(sec.title);
+    if (isCoreSection(sec.title)) {
+      decisions.set(sec.title, { title: sec.title, class: 'MANDATORY', utility: 200, reasons: ['core'] });
+      utility.set(sec.title, 200);
+    } else {
+      decisions.set(sec.title, { title: sec.title, class: 'OPTIONAL', utility: 0, reasons: [] });
     }
   }
 
-  // 9. Expand dependencies (cycle‑safe)
-  const MAX_DEP_ITER = 100;
-  for (let iter = 0; iter < MAX_DEP_ITER; iter++) {
-    let changed = false;
-    for (const [key, deps] of Object.entries(SECTION_DEPENDENCIES)) {
-      if (candidateTitles.has(key)) {
-        for (const dep of deps) {
-          if (!candidateTitles.has(dep) && !forbidden.has(dep)) {
-            candidateTitles.add(dep);
-            changed = true;
-          }
+  // Apply hard constraints & mandatory policies
+  applyConstraintsAndPolicies(frame, userMessage, decisions, utility);
+
+  // Compute utility from signals
+  for (const signal of BASE_SIGNALS) {
+    if (signal.regex.test(lower)) {
+      for (const { title, weight } of signal.sections) {
+        const d = decisions.get(title);
+        if (d && d.class !== 'FORBIDDEN') {
+          utility.set(title, (utility.get(title) || 0) + weight);
         }
       }
     }
-    if (!changed) break;
   }
 
-  // 10. Protected titles (mandatory + dependency sections)
-  const protectedTitles = new Set(mandatory);
-  for (const [key, deps] of Object.entries(SECTION_DEPENDENCIES)) {
-    if (candidateTitles.has(key)) {
-      for (const dep of deps) {
-        if (candidateTitles.has(dep)) protectedTitles.add(dep);
+  // Objective boosts
+  for (const obj of frame.objectives) {
+    if (obj.type === 'generate' && !frame.codeRequired) continue;
+    const boost = OBJECTIVE_SECTION_BOOST[obj.type] || [];
+    const mult = obj.explicit ? 2.5 : 1.5;
+    for (const { title, weight } of boost) {
+      const d = decisions.get(title);
+      if (d && d.class !== 'FORBIDDEN') {
+        utility.set(title, (utility.get(title) || 0) + weight * mult);
+      }
+    }
+  }
+  if (frame.codeRequired) {
+    utility.set('CODE GENERATION STANDARDS', (utility.get('CODE GENERATION STANDARDS') || 0) + 5);
+  }
+
+  // Domain
+  for (const domain of frame.domains) {
+    for (const title of domainSectionMap[domain] || []) {
+      const d = decisions.get(title);
+      if (d && d.class !== 'FORBIDDEN') utility.set(title, (utility.get(title) || 0) + 2);
+    }
+  }
+
+  // Behavioral
+  if (frame.requiresReasoning) {
+    utility.set('ANALYTICAL REASONING & PROBLEM SOLVING', (utility.get('ANALYTICAL REASONING & PROBLEM SOLVING') || 0) + 2);
+    utility.set('CRITICAL THINKING', (utility.get('CRITICAL THINKING') || 0) + 2);
+  }
+  if (frame.requiresVerification) utility.set('SELF‑REFLECTION & VERIFICATION', (utility.get('SELF‑REFLECTION & VERIFICATION') || 0) + 3);
+  if (frame.requiresWeb) utility.set('TOOL USAGE & EXTERNAL CAPABILITIES', (utility.get('TOOL USAGE & EXTERNAL CAPABILITIES') || 0) + 3);
+  if (frame.requiresTools) utility.set('TOOL SELECTION POLICY', (utility.get('TOOL SELECTION POLICY') || 0) + 2);
+  if (frame.requiresCitations) utility.set('TOOL USAGE & EXTERNAL CAPABILITIES', (utility.get('TOOL USAGE & EXTERNAL CAPABILITIES') || 0) + 2);
+  if (frame.requiresMemory) utility.set('MEMORY SYSTEM', (utility.get('MEMORY SYSTEM') || 0) + 3);
+  if (frame.requiresDiagram) {
+    const d = decisions.get('PROACTIVE DIAGRAMS');
+    if (d && d.class !== 'FORBIDDEN') utility.set('PROACTIVE DIAGRAMS', (utility.get('PROACTIVE DIAGRAMS') || 0) + 5);
+  }
+
+  // Response mode
+  if (frame.responseModes.includes('concise')) utility.set('REDUNDANCY & TOKEN OPTIMISATION', (utility.get('REDUNDANCY & TOKEN OPTIMISATION') || 0) + 3);
+  if (frame.responseModes.includes('educational')) utility.set('TEACHING FRAMEWORK', (utility.get('TEACHING FRAMEWORK') || 0) + 2);
+  if (frame.responseModes.includes('structured')) utility.set('FORMATTING INTELLIGENCE', (utility.get('FORMATTING INTELLIGENCE') || 0) + 1);
+
+  // Complexity bonus
+  const cBonus: Record<ComplexityLevel, string[]> = {
+    trivial:[], simple:[], moderate:['ADVANCED COGNITIVE ENGINE'],
+    complex:['ADVANCED COGNITIVE ENGINE','DECISION FRAMEWORK'],
+    critical:['ADVANCED COGNITIVE ENGINE','ARCHITECTURE FRAMEWORK','DECISION FRAMEWORK'],
+  };
+  for (const title of cBonus[frame.complexity]) {
+    const d = decisions.get(title);
+    if (d && d.class !== 'FORBIDDEN') utility.set(title, (utility.get(title) || 0) + 2);
+  }
+
+  // ── Classify every section ──
+  const mandatorySet = new Set<string>();
+  const forbiddenSet = new Set<string>();
+
+  for (const sec of sections) {
+    const d = decisions.get(sec.title)!;
+    const u = utility.get(sec.title) || 0;
+
+    if (d.class === 'MANDATORY' || d.class === 'FORBIDDEN') {
+      // keep as-is
+    } else if (u >= 6) {
+      d.class = 'REQUIRED'; d.reasons.push('high utility');
+    } else if (u >= 3) {
+      d.class = 'RELEVANT'; d.reasons.push('moderate utility');
+    } else {
+      d.class = 'OPTIONAL';
+    }
+
+    d.utility = u;
+
+    if (d.class === 'MANDATORY' || d.class === 'REQUIRED') mandatorySet.add(sec.title);
+    if (d.class === 'FORBIDDEN') forbiddenSet.add(sec.title);
+  }
+
+  // ── Candidate set: MANDATORY + REQUIRED + RELEVANT (not FORBIDDEN) ──
+  const candidates = new Set<string>();
+  for (const sec of sections) {
+    const d = decisions.get(sec.title)!;
+    if (d.class === 'FORBIDDEN') continue;
+    if (d.class === 'MANDATORY' || d.class === 'REQUIRED' || d.class === 'RELEVANT') {
+      candidates.add(sec.title);
+    }
+  }
+
+  // ── Expand dependencies (transitive closure) ──
+  const allDeps = dependencyClosure(candidates);
+  for (const dep of allDeps) {
+    if (!forbiddenSet.has(dep)) {
+      candidates.add(dep);
+      const dd = decisions.get(dep);
+      if (dd && dd.class !== 'MANDATORY' && dd.class !== 'FORBIDDEN') {
+        dd.class = 'REQUIRED';
+        dd.reasons.push('dependency');
+        mandatorySet.add(dep);
       }
     }
   }
 
-  // 11. Compatibility resolution
-  const compatibleSet = resolveConflicts(candidateTitles, responseModes, objectives, protectedTitles);
+  // ── Protected titles (MANDATORY + REQUIRED) ──
+  const protectedTitles = new Set(mandatorySet);
+  for (const dep of allDeps) {
+    if (!forbiddenSet.has(dep)) protectedTitles.add(dep);
+  }
 
-  // 12. Dynamic quotas
-  const quotas = mergeQuotas(objectives);
-  const categoryCount: Record<string, number> = {};
+  // ── Compatibility ──
+  const compatible = resolveConflicts(candidates, frame.responseModes, frame.objectives, protectedTitles);
+
+  // ── Quotas ──
+  const quotas = mergeQuotas(frame.objectives);
+  const catCount: Record<string, number> = {};
   const finalSelection = new Set<string>();
 
-  for (const title of compatibleSet) {
+  // Protected first (bypass quotas)
+  for (const title of compatible) {
     if (protectedTitles.has(title)) {
       finalSelection.add(title);
-      for (const cat of classifySection(title)) {
-        categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-      }
+      for (const cat of classifySection(title)) catCount[cat] = (catCount[cat] || 0) + 1;
     }
   }
 
-  const candidates = Array.from(compatibleSet)
+  // Remaining sorted by utility
+  const sorted = Array.from(compatible)
     .filter(t => !finalSelection.has(t))
-    .sort((a, b) => (scores.get(b) || 0) - (scores.get(a) || 0));
+    .sort((a, b) => (utility.get(b) || 0) - (utility.get(a) || 0));
 
-  for (const title of candidates) {
+  for (const title of sorted) {
     const cats = classifySection(title).filter(c => c !== 'core');
     let canAdd = true;
     for (const cat of cats) {
       const limit = quotas[cat] ?? DEFAULT_QUOTAS[cat] ?? 3;
-      if ((categoryCount[cat] || 0) >= limit) {
-        canAdd = false;
-        break;
-      }
+      if ((catCount[cat] || 0) >= limit) { canAdd = false; break; }
     }
     if (canAdd) {
       finalSelection.add(title);
-      for (const cat of cats) categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+      for (const cat of cats) catCount[cat] = (catCount[cat] || 0) + 1;
     }
   }
 
+  // Extras (force-include, unless forbidden)
   if (extras.length) {
     for (const t of extras) {
-      if (!forbidden.has(t)) finalSelection.add(t);
+      if (!forbiddenSet.has(t)) finalSelection.add(t);
     }
   }
 
   let filteredSections = sections.filter(s => finalSelection.has(s.title));
 
-  // 13. Trim diagnostics: capture before/after titles
-  const beforeTrimTitles = filteredSections.map(s => s.title);
+  // ── Token trim ──
+  const beforeTrim = filteredSections.map(s => s.title);
   if (maxTokens && maxTokens > 0) {
-    const maxSystemTokens = Math.floor(maxTokens * 0.6);
-    const protectedOnly = filteredSections.filter(s => protectedTitles.has(s.title));
-    const protectedText = protectedOnly.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
-    const protectedTokens = estimatePromptTokens(protectedText);
-    if (protectedTokens > maxSystemTokens) {
-      console.warn(`⚠️ Protected sections (${protectedOnly.length}) exceed system token budget: ~${protectedTokens} tokens > ${maxSystemTokens} max`);
+    const maxSys = Math.floor(maxTokens * 0.6);
+    const protOnly = filteredSections.filter(s => protectedTitles.has(s.title));
+    const protText = protOnly.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
+    const protTok = estimatePromptTokens(protText);
+    if (protTok > maxSys) {
+      console.warn(`⚠️ Protected sections (${protOnly.length}) exceed system token budget: ~${protTok} tokens > ${maxSys} max`);
     }
-    filteredSections = trimSectionsToTokenBudget(filteredSections, protectedTitles, maxSystemTokens);
+    filteredSections = trimToBudget(filteredSections, protectedTitles, maxSys);
   }
-  const afterTrimTitles = filteredSections.map(s => s.title);
-  const trimmedTitles = beforeTrimTitles.filter(t => !afterTrimTitles.includes(t));
+  const afterTrim = filteredSections.map(s => s.title);
+  const trimmedTitles = beforeTrim.filter(t => !afterTrim.includes(t));
 
   const body = filteredSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n');
 
-  // ── 14. SELECTOR DEBUG LOGGING ──────────────────────────
-  console.log(`=== PROMPT SELECTOR DEBUG ===`);
-  console.log(`Message: "${userMessage.slice(0, 100)}..."`);
-  console.log(`Intent: ${objectives.map(o => o.type).join(', ')}`);
-  console.log(`Domain: ${domains.join(', ')}`);
-  console.log(`CurrentInfoRequired: ${/\b(latest|current|recent|today|yesterday|tomorrow|as of 20\d{2}|this year|news|update|release)\b/i.test(lowerMsg)}`);
-  console.log(`SecurityRequired: ${domains.includes('security') || (domains.includes('coding') && /\b(production|deploy|infrastructure|authentication|oauth|jwt|csrf|xss)\b/i.test(lowerMsg))}`);
-  console.log(`Mandatory: ${[...mandatory].join(', ')}`);
-  console.log(`Forbidden: ${[...forbidden].join(', ')}`);
-  console.log(`Selected: ${afterTrimTitles.join(', ')}`);
-  if (trimmedTitles.length > 0) {
-    console.log(`Trimmed: ${trimmedTitles.join(', ')}`);
-  } else {
-    console.log(`Trimmed: none`);
-  }
-  console.log(`Final prompt: ${filteredSections.length} sections, ~${estimatePromptTokens(body)} tokens`);
-  console.log(`===============================`);
+  // ── Debug ── (derive classes directly from decisions)
+  const mandatory = Array.from(decisions.values())
+    .filter(d => d.class === 'MANDATORY')
+    .map(d => d.title);
+  const required = Array.from(decisions.values())
+    .filter(d => d.class === 'REQUIRED')
+    .map(d => d.title);
+  const forbidden = Array.from(decisions.values())
+    .filter(d => d.class === 'FORBIDDEN')
+    .map(d => d.title);
+
+  console.debug('[PromptCompiler v5.3 final]', {
+    message: userMessage.slice(0, 100),
+    primaryObjective: frame.primaryObjective,
+    domains: frame.domains,
+    codeDomain: frame.codeDomain,
+    codeRequired: frame.codeRequired,
+    requiresCurrentInformation: frame.requiresCurrentInformation,
+    requiresEntityFreshness: frame.requiresEntityFreshness,
+    requiresWeb: frame.requiresWeb,
+    responseModes: frame.responseModes,
+    complexity: frame.complexity,
+    mandatory,
+    required,
+    forbidden,
+    selected: afterTrim,
+    trimmed: trimmedTitles,
+    tokenEstimate: estimatePromptTokens(body),
+  });
 
   return body;
 }
