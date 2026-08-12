@@ -1,8 +1,6 @@
-// prompts.ts – LLM‑Driven Adaptive Prompt Builder (truncated, intent‑focused)
-// Uses a cheap LLM to select the most relevant sections from the monolithic
-// SYSTEM_PROMPT. The selector sees a short truncated preview of the user message
-// (first 1200 chars) and outputs ONLY the needed section titles. max_tokens=200
-// keeps the selector lightweight while still allowing rich selections.
+// prompts.ts – Deterministic Adaptive Prompt Builder
+// No LLM needed. Maps user message keywords to relevant sections
+// from the monolithic SYSTEM_PROMPT. Core sections are always included.
 
 import { SYSTEM_PROMPT } from '@/lib/chat/model-registry';
 
@@ -26,12 +24,11 @@ function getSections(): { title: string; content: string }[] {
     sections.push({ title, content: sectionContent });
   }
   _sections = sections;
-  console.log(`📚 Parsed ${sections.length} sections from SYSTEM_PROMPT`);
   return sections;
 }
 
-// ── 2. Core sections – always included (by EXACT title) ─
-const CORE_TITLES: Set<string> = new Set([
+// ── 2. Core sections – always included ──────────────────
+const CORE_TITLES = new Set([
   'IDENTITY',
   'SAFETY & BOUNDARIES',
   'PERSONA & TONE',
@@ -46,7 +43,119 @@ function isCoreSection(title: string): boolean {
   return CORE_TITLES.has(title);
 }
 
-// ── 3. Complexity estimation ────────────────────────────
+// ── 3. Keyword → Section mapping ────────────────────────
+// Each keyword is a regex (case insensitive). When it matches
+// the user message, the corresponding section titles are added.
+const KEYWORD_SECTION_MAP: Array<{ regex: RegExp; sections: string[] }> = [
+  // Coding / development
+  {
+    regex: /\b(code|program|function|class|api|endpoint|database|sql|algorithm|data structure|refactor|debug|bug|error|compile|runtime|syntax|typescript|javascript|python|java|rust|go(lang)?|c\+\+|c#)\b/i,
+    sections: [
+      'CODE GENERATION STANDARDS',
+      'DEBUGGING FRAMEWORK',
+      'CODE REVIEW FRAMEWORK',
+      'REFACTORING FRAMEWORK',
+      'CODE TASK PROTOCOL',
+    ],
+  },
+  // Architecture / design
+  {
+    regex: /\b(architecture|system design|design pattern|microservice|monolith|scalability|distributed|component|module|dependency|interface)\b/i,
+    sections: ['ARCHITECTURE FRAMEWORK'],
+  },
+  // Math
+  {
+    regex: /\b(math|equation|derivative|integral|probability|statistic|algebra|geometry|trigonometry|logarithm|exponent)\b/i,
+    sections: ['MATH REASONING'],
+  },
+  // Reasoning / critical thinking / explanation
+  {
+    regex: /\b(why|how|explain|reason|logic|analy[sz]e|compare|contrast|evaluate|justify|critic(al)?|think)\b/i,
+    sections: [
+      'ANALYTICAL REASONING & PROBLEM SOLVING',
+      'CRITICAL THINKING',
+      'ADVANCED COGNITIVE ENGINE',
+    ],
+  },
+  // Learning / teaching / help
+  {
+    regex: /\b(teach|learn|tutorial|guide|help|walkthrough|explain|example|beginner|new to|101)\b/i,
+    sections: ['TEACHING FRAMEWORK'],
+  },
+  // Decision / recommendation
+  {
+    regex: /\b(option|choice|decide|recommend|better approach|which (model|tool|framework|library)|pick one)\b/i,
+    sections: ['DECISION FRAMEWORK', 'RECOMMENDATION FRAMEWORK'],
+  },
+  // Planning / roadmap / steps
+  {
+    regex: /\b(plan|roadmap|steps|milestone|goal|objective|schedule|agenda)\b/i,
+    sections: ['DECISION FRAMEWORK', 'RECOMMENDATION FRAMEWORK'],
+  },
+  // Diagrams
+  {
+    regex: /\b(diagram|visualize|mermaid|flowchart|graph|chart|ascii|draw)\b/i,
+    sections: ['PROACTIVE DIAGRAMS'],
+  },
+  // Tools / external
+  {
+    regex: /\b(search|web|url|fetch|api (call|request)|http|https|download|curl)\b/i,
+    sections: ['TOOL USAGE & EXTERNAL CAPABILITIES'],
+  },
+  // Time / weather / date
+  {
+    regex: /\b(time|clock|weather|temperature|forecast|date|calendar|today|tomorrow)\b/i,
+    sections: ['REAL‑TIME WIDGETS'],
+  },
+  // Memory / context
+  {
+    regex: /\b(remember|memory|context|history|previous|earlier|you said|you mentioned)\b/i,
+    sections: ['MEMORY SYSTEM'],
+  },
+  // Task / autonomous / multi-step
+  {
+    regex: /\b(task|autonomous|multi-step|orchestrat|workflow|pipeline|agent|batch)\b/i,
+    sections: [
+      'TASK EXECUTION PROTOCOL',
+      'TOOL SELECTION POLICY',
+      'FAILURE RECOVERY PROTOCOL',
+      'TASK COMPLETION PROTOCOL',
+      'EVIDENCE HIERARCHY',
+      'UNCERTAINTY CALIBRATION',
+      'ASSUMPTION MANAGEMENT',
+      'CLARIFICATION POLICY',
+      'MINIMAL ACTION PRINCIPLE',
+      'CONTEXT RELEVANCE POLICY',
+      'TASK STATE',
+      'SELF-CORRECTION',
+    ],
+  },
+  // Security
+  {
+    regex: /\b(security|vulnerab|injection|csrf|xss|owasp|encrypt|decrypt|auth|jwt|oauth|secret|credential)\b/i,
+    sections: [
+      'SAFETY & BOUNDARIES',   // already core, but ensures emphasis
+      'CODE GENERATION STANDARDS',
+    ],
+  },
+  // Cultural / locale
+  {
+    regex: /\b(culture|locale|country|language|translation|timezone|metric|imperial)\b/i,
+    sections: ['CULTURAL DEXTERITY & GLOBAL AWARENESS'],
+  },
+  // Redundancy / efficiency
+  {
+    regex: /\b(concise|short|brief|tl;dr|summarize|token|efficient|no fluff)\b/i,
+    sections: ['REDUNDANCY & TOKEN OPTIMISATION'],
+  },
+  // Final objective (quality)
+  {
+    regex: /\b(quality|verify|check|correct|accurate|precise)\b/i,
+    sections: ['FINAL OBJECTIVE'],
+  },
+];
+
+// ── 4. Complexity estimation (unchanged) ────────────────
 type ComplexityLevel = 'trivial' | 'simple' | 'moderate' | 'complex' | 'critical';
 
 function estimateComplexity(message: string): ComplexityLevel {
@@ -60,161 +169,45 @@ function estimateComplexity(message: string): ComplexityLevel {
   return 'trivial';
 }
 
-// ── 4. LLM Section Selector (truncated, max 200 tokens output) ──
-async function selectSectionsViaLLM(
-  fullMessage: string,
-  availableTitles: string[]
-): Promise<string[] | null> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    console.warn('🔑 No GROQ_API_KEY, selector disabled');
-    return null;
-  }
-
-  const startTime = Date.now();
-
-  // Truncate to first 1200 chars (~300 tokens) – enough to capture intent
-  const MAX_CHARS = 1200;
-  const preview =
-    fullMessage.length <= MAX_CHARS
-      ? fullMessage
-      : fullMessage.slice(0, MAX_CHARS) + '…';
-
-  const titlesList = availableTitles.map(t => `"${t}"`).join(', ');
-
-  const selectorPrompt = `You are an intent classifier. Based on the START of the user message below, select the section titles that are most relevant to the request.
-Return ONLY a JSON array of strings, e.g. ["SAFETY & BOUNDARIES", "CODE GENERATION STANDARDS"].
-Available sections: [${titlesList}]
-
-User message (truncated): "${preview}"`;
-
-  console.log(`🤖 Selector input length: ${preview.length} chars`);
-
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: selectorPrompt }],
-        temperature: 0.1,
-        max_tokens: 200,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    const elapsed = Date.now() - startTime;
-
-    if (!res.ok) {
-      console.warn(`❌ Selector API error: ${res.status} (${res.statusText})`);
-      return null;
-    }
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      console.warn('❌ Selector returned empty content');
-      return null;
-    }
-
-    // Token usage from response
-    const usage = data.usage || {};
-    console.log(
-      `✅ Selector finished in ${elapsed}ms | tokens: prompt=${usage.prompt_tokens || '?'}, completion=${usage.completion_tokens || '?'}, total=${usage.total_tokens || '?'}`
-    );
-
-    // ── Robust parsing: LLM may return a JSON array or an object with an array field ──
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      console.warn('⚠️ Selector returned invalid JSON:', content.slice(0, 200));
-      return null;
-    }
-
-    let titles: string[] = [];
-
-    if (Array.isArray(parsed)) {
-      // Good: direct array
-      titles = parsed.filter((t: unknown) => typeof t === 'string');
-    } else if (parsed && typeof parsed === 'object') {
-      // Object: look for the first array property (commonly "sections")
-      const obj = parsed as Record<string, unknown>;
-      for (const key of Object.keys(obj)) {
-        if (Array.isArray(obj[key])) {
-          titles = (obj[key] as unknown[]).filter((t: unknown) => typeof t === 'string');
-          break;
-        }
-      }
-    }
-
-    // Filter to valid section titles (case‑insensitive)
-    const titleSet = new Set(availableTitles.map(t => t.toLowerCase()));
-    const validTitles = titles
-      .filter(t => titleSet.has(t.toLowerCase()))
-      .slice(0, 15);
-
-    if (validTitles.length > 0) {
-      console.log(`📌 Selected sections: ${validTitles.join(', ')}`);
-      return validTitles;
-    }
-
-    console.warn('⚠️ Selector returned no valid section titles in:', content);
-    return null;
-  } catch (err) {
-    console.warn('❌ Selector failed:', err);
-    return null;
-  }
-}
-
-// ── 5. Build the final prompt (async) ───────────────────
-export async function buildPrompt(
+// ── 5. Build the final prompt (sync) ────────────────────
+export function buildPrompt(
   tier: string,
   userMessage: string,
-  extras: string[] = [],
+  extras: string[] = [],           // force additional section titles
   complexityOverride?: ComplexityLevel
-): Promise<string> {
+): string {
   const sections = getSections();
-  const allTitles = sections.map(s => s.title);
 
-  // ── LLM‑driven selection ──
-  let selectedTitles: string[] | null = null;
-  try {
-    selectedTitles = await selectSectionsViaLLM(userMessage, allTitles);
-  } catch {
-    // fallback to full prompt below
+  // Collect titles from keyword matches
+  const lowerMsg = userMessage.toLowerCase();
+  const selectedTitles = new Set<string>();
+
+  for (const entry of KEYWORD_SECTION_MAP) {
+    if (entry.regex.test(lowerMsg)) {
+      entry.sections.forEach(s => selectedTitles.add(s));
+    }
   }
 
-  let filteredSections: typeof sections;
+  // Always add core sections
+  const coreSections = sections.filter(s => isCoreSection(s.title));
+  const nonCore = sections.filter(s => !isCoreSection(s.title) && selectedTitles.has(s.title));
 
-  if (selectedTitles && selectedTitles.length > 0) {
-    const selectedSet = new Set(selectedTitles.map(t => t.toLowerCase()));
-    const core = sections.filter(s => isCoreSection(s.title));
-    const llmPicks = sections.filter(
-      s => !isCoreSection(s.title) && selectedSet.has(s.title.toLowerCase())
-    );
-    const extraSections = extras.length
-      ? sections.filter(s => extras.includes(s.title))
-      : [];
-    filteredSections = [...core, ...llmPicks, ...extraSections];
-    const seen = new Set<string>();
-    filteredSections = filteredSections.filter(s => {
-      const key = s.title.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    console.log(
-      `📋 Final prompt sections: ${filteredSections.map(s => s.title).join(', ')}`
-    );
-  } else {
-    console.log('⚠️ Selector returned no titles, using full SYSTEM_PROMPT');
-    filteredSections = sections;
-  }
+  // Add extras (force-included titles)
+  const extraSections = extras.length
+    ? sections.filter(s => extras.includes(s.title))
+    : [];
 
-  // ── Complexity cap ──
+  // Merge, deduplicate (preserve order: core first, then selected, then extras)
+  const merged = [...coreSections, ...nonCore, ...extraSections];
+  const seen = new Set<string>();
+  const filteredSections = merged.filter(s => {
+    const key = s.title.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Cap by complexity
   const level = complexityOverride || estimateComplexity(userMessage);
   const maxSections = {
     trivial: 6,
@@ -230,9 +223,9 @@ export async function buildPrompt(
   const prompt = header + '\n\n' + body;
 
   console.log(
-    `📏 Final prompt: ${finalSections.length} sections, ~${estimatePromptTokens(prompt)} tokens`
+    `📌 Selected sections (keyword): ${finalSections.map(s => s.title).join(', ') || 'none'}`
   );
-
+  console.log(`📏 Final prompt: ${finalSections.length} sections, ~${estimatePromptTokens(prompt)} tokens`);
   return prompt;
 }
 
