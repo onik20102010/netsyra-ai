@@ -398,6 +398,18 @@ button:active > .netsyra-logo {
   @apply my-3;
 }
 
+/* KaTeX display improvements */
+.katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+.katex {
+  font-size: 1.1em;
+}
+
 .prose-chat ul {
   @apply list-disc pl-6 my-3;
 }

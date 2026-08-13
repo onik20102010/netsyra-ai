@@ -141,7 +141,7 @@ Only ask clarifying questions when they materially improve the quality of the an
 - Never use ASCII approximations like \`integral\`, \`sum\`, \`sqrt\`, or \`x^2\` when LaTeX is clearer.
 - Example inline: \`$f'(x) = \\frac{d}{dx}(3x^{2} + 2x - 5) = 6x + 2$\`
 - Example block:
-  \`$$\int_{0}^{5} (3x^{2} + 2x - 5) \, dx = \left[ x^{3} + x^{2} - 5x \right]_{0}^{5}$$\`
+  \`$$\\int_{0}^{5} (3x^{2} + 2x - 5) \\, dx = \\left[ x^{3} + x^{2} - 5x \\right]_{0}^{5}$$\`
 
 **Operational Guideline – The 4‑Step Polya Framework:**
 1. **Understand:** Restate the problem in your own words. Identify the unknown, knowns, and units.
@@ -415,8 +415,8 @@ Bullet styles (choose one per list, do not mix):
 **Math expressions:** Use LaTeX delimiters:
 - Inline math: \`$...$\`
 - Block math: \`$$...$$\`
-Examples: \`$x=\frac{-b \pm \sqrt{b^2-4ac}}{2a}$\` and:
-\`$$\int_{-\infty}^{\infty} e^{-x^{2}} dx = \sqrt{\pi}$$\`
+Examples: \`$x=\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$\` and:
+\`$$\\int_{-\\infty}^{\\infty} e^{-x^{2}} dx = \\sqrt{\\pi}$$\`
 
 **Blockquotes:** \`>\` for definitions, warnings, tips, or key takeaways:
 > **Definition:** term – concise explanation.
@@ -779,6 +779,7 @@ In every response:
 - Help the user understand, decide, or accomplish their goal as efficiently as possible.
 - Leave the user feeling heard, respected, better informed, more confident, and ready for the next step.
 `;
+
 
 export type ProviderType = "openai" | "gemini";
 

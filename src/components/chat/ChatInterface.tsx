@@ -267,7 +267,10 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
           <ReactMarkdown
             key={i}
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
+            rehypePlugins={[
+              rehypeRaw,
+              [rehypeKatex, { throwOnError: false, strict: false, output: "html" }],
+            ]}
             components={{
               h1({ children }: any) {
                 return <h1 className="text-2xl font-bold text-zinc-900" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h1>;
