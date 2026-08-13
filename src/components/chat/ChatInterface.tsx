@@ -28,6 +28,10 @@ import SourcesPanel from "./SourcesPanel";
 import { useStylePrefs, getStyleValues } from "@/hooks/useStylePrefs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -262,7 +266,8 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
         return (
           <ReactMarkdown
             key={i}
-            remarkPlugins={[remarkGfm]}
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeRaw, rehypeKatex]}
             components={{
               h1({ children }: any) {
                 return <h1 className="text-2xl font-bold text-zinc-900" style={{ marginTop: sv.sectionMargin, marginBottom: sv.sectionMargin }}>{children}</h1>;
