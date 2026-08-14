@@ -210,8 +210,6 @@ function extractSources(content: string): {
 }
 
 // ── MarkdownRenderer (top-level + memoized to prevent widget re-renders) ──
-// Defined outside ChatInterface so it doesn't get recreated on every parent
-// re-render, which would unmount/remount all widgets (Clock, Weather, Calendar).
 const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   modelTier,
@@ -327,7 +325,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
 
                 if (!inline && match && match[1] === "ascii") {
                   return (
-                    <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-hidden">
+                    <div className="my-4 rounded-2xl bg-[#F3F3F3] shadow-sm overflow-hidden w-full">
                       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Diagram
@@ -345,7 +343,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
 
                 if (!inline && match) {
                   return (
-                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg max-w-full md:max-w-[80%]">
+                    <div className="my-4 rounded-xl overflow-hidden border border-gray-800 bg-[#1e1e1e] shadow-lg w-full">
                       <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-gray-700">
                         <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
                           {match[1]}
@@ -376,7 +374,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
               },
               table({ children }: any) {
                 return (
-                  <div className="overflow-x-auto my-4">
+                  <div className="overflow-x-auto my-4 w-full">
                     <table className="min-w-full border-collapse border border-gray-300 text-sm" style={{ borderRadius: sv.tableRadius, overflow: "hidden" }}>
                       {children}
                     </table>
@@ -473,7 +471,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 });
 
-// ── Noise-suppressed audio constraints (matches Gemini-style noise cancellation) ──
+// ── Noise-suppressed audio constraints ──
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
   noiseSuppression: true,
@@ -513,7 +511,6 @@ export default function ChatInterface({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef("");
-  // MediaRecorder fallback (for Firefox etc. that lack Web Speech API)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -534,11 +531,11 @@ export default function ChatInterface({
 
   const { refetch: refetchUsage } = useChatUsage();
 
-  // ── Mobile keyboard detection: use visualViewport to detect keyboard ──
+  // ── Mobile keyboard detection ──
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return;
     const vv = window.visualViewport;
-    const threshold = 150; // px difference between layout & visual viewport = keyboard
+    const threshold = 150;
     const update = () => {
       const diff = window.innerHeight - vv.height;
       setIsMobileKeyboardOpen(diff > threshold);
@@ -551,13 +548,11 @@ export default function ChatInterface({
     };
   }, []);
 
-  // ── Scroll to bottom when keyboard opens ──
   useEffect(() => {
     if (isMobileKeyboardOpen) {
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
     }
   }, [isMobileKeyboardOpen]);
-
 
   const isSelfCreatedConv = useRef(false);
 
@@ -660,7 +655,6 @@ export default function ChatInterface({
     setStreamingMessageId(assistantId);
     setInput("");
 
-    // ── Timeout for fetch (45 seconds) ──
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
@@ -705,7 +699,6 @@ export default function ChatInterface({
         setTimeout(() => setSearching(false), 2000);
       }
 
-      // Extract sources from header
       const sourcesHeader = res.headers.get("x-sources");
       let sources: { title: string; url: string }[] = [];
       if (sourcesHeader) {
@@ -723,10 +716,8 @@ export default function ChatInterface({
         onConversationCreated?.(newConvId, userContent);
       }
 
-      // Which model the router actually used (relevant when selector is "Auto").
       const modelUsed = res.headers.get("x-model-used") || undefined;
 
-      // Track which model auto-routing picked (shown above the input bar)
       if (selectedModel === "auto" && modelUsed) {
         const friendlyName = MODEL_LABELS[modelUsed] || modelUsed;
         setAutoTiersUsed(prev =>
@@ -805,16 +796,11 @@ export default function ChatInterface({
     }
   };
 
-  // ── Check which speech recognition method is available ──
   const getSpeechRecognition = useCallback((): any | null => {
     if (typeof window === "undefined") return null;
     return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
   }, []);
 
-  // ── Method 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
-  // To avoid "double listening" (mic turning on → off → on), we try recognition.start()
-  // directly first. Chrome reuses cached mic permission without a second getUserMedia call.
-  // Only if that fails do we fall back to the getUserMedia permission-grant dance.
   const startWebSpeechRecognition = useCallback(async (): Promise<boolean> => {
     const SpeechRecognition = getSpeechRecognition();
     if (!SpeechRecognition) return false;
@@ -825,13 +811,10 @@ export default function ChatInterface({
       recognition.continuous = true;
       recognition.interimResults = true;
 
-      // Track the base text (existing input) and processed final results
       const baseText = input.trim() ? input.trim() + " " : "";
       finalTranscriptRef.current = baseText;
 
       recognition.onresult = (event: any) => {
-        // Build the full transcript from ALL results — this avoids duplication
-        // because we reconstruct from scratch each time instead of appending
         let finalText = baseText;
         let interim = "";
 
@@ -846,8 +829,6 @@ export default function ChatInterface({
 
         const fullText = (finalText + interim).replace(/\s+/g, " ").trimStart();
         setInput(fullText);
-
-        // Update the final transcript ref with just the final parts
         finalTranscriptRef.current = finalText;
       };
 
@@ -866,22 +847,14 @@ export default function ChatInterface({
       return recognition;
     };
 
-    // ── Attempt 1: Try starting recognition directly (no double mic activation) ──
-    // Chrome caches mic permission after the first grant, so this usually works
-    // without needing a separate getUserMedia call.
     try {
       const recognition = createRecognition();
       recognition.start();
       recognitionRef.current = recognition;
       setIsRecording(true);
       return true;
-    } catch {
-      // recognition.start() threw — likely needs permission grant
-    }
+    } catch {}
 
-    // ── Attempt 2: Permission-grant dance (first-time use or permission revoked) ──
-    // Call getUserMedia to trigger the browser's native permission prompt,
-    // then stop the stream, wait for mic release, and try recognition again.
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
@@ -890,10 +863,8 @@ export default function ChatInterface({
       return false;
     }
 
-    // Stop the getUserMedia stream — we only needed it to grant permission
     stream.getTracks().forEach((t) => t.stop());
 
-    // Wait 200ms for the browser to fully release the microphone
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     try {
@@ -908,9 +879,7 @@ export default function ChatInterface({
     }
   }, [input, getSpeechRecognition]);
 
-  // ── Method 2: MediaRecorder + Groq Whisper (Firefox, etc.) — record then transcribe ──
   const startMediaRecorderFallback = useCallback(async (): Promise<boolean> => {
-    // Get a fresh noise-suppressed stream for recording
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
@@ -918,7 +887,7 @@ export default function ChatInterface({
       toast.error("Could not access microphone. Please check your permissions.", { duration: 6000 });
       return false;
     }
-    // Pick the best supported audio format
+
     const mimeTypes = [
       "audio/webm;codecs=opus",
       "audio/webm",
@@ -954,7 +923,6 @@ export default function ChatInterface({
     };
 
     recorder.onstop = async () => {
-      // Stop the mic stream
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((t) => t.stop());
         mediaStreamRef.current = null;
@@ -962,13 +930,11 @@ export default function ChatInterface({
 
       setIsRecording(false);
 
-      // If no audio was captured, do nothing
       if (audioChunksRef.current.length === 0) return;
 
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || "audio/webm" });
       audioChunksRef.current = [];
 
-      // If the recording is too short, skip it
       if (audioBlob.size < 1000) return;
 
       setIsTranscribing(true);
@@ -1013,22 +979,17 @@ export default function ChatInterface({
     return true;
   }, [input]);
 
-  // ── Main toggle: click → start recording (single mic activation, no double listening) ──
   const toggleRecording = useCallback(async () => {
-    // If already recording, stop
     if (isRecording) {
-      // Stop Web Speech API if active
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
         return;
       }
-      // Stop MediaRecorder if active
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop();
         return;
       }
-      // Fallback: stop any lingering stream
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((t) => t.stop());
         mediaStreamRef.current = null;
@@ -1037,23 +998,15 @@ export default function ChatInterface({
       return;
     }
 
-    // Check secure context (HTTPS or localhost)
     if (typeof window !== "undefined" && !window.isSecureContext) return;
-
-    // Check if getUserMedia is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
 
-    // ── Path 1: Web Speech API (Chrome, Edge, Safari) — live transcription ──
-    // Tries recognition.start() directly first (no double mic activation).
-    // Falls back to getUserMedia permission dance only if needed.
     const SpeechRecognition = getSpeechRecognition();
     if (SpeechRecognition) {
       const started = await startWebSpeechRecognition();
       if (started) return;
     }
 
-    // ── Path 2: MediaRecorder + Groq Whisper (Firefox, etc.) ──
-    // Gets its own noise-suppressed stream internally.
     await startMediaRecorderFallback();
   }, [isRecording, getSpeechRecognition, startWebSpeechRecognition, startMediaRecorderFallback]);
 
@@ -1064,14 +1017,12 @@ export default function ChatInterface({
     let messageContent = input.trim();
     let apiContent = input.trim();
 
-    // Process images if attached
     if (attachedImages.length > 0) {
       const imageDescription = await processImagesWithGroq(attachedImages);
       if (imageDescription) {
         apiContent = apiContent ? `${apiContent}\n\n[Image Analysis: ${imageDescription}]` : `[Image Analysis: ${imageDescription}]`;
       }
 
-      // Convert File objects to base64 data URLs so they persist in messages
       const imagePromises = attachedImages.map((img) => {
         return new Promise<{ id: string; url: string; name: string }>((resolve) => {
           const reader = new FileReader();
@@ -1097,7 +1048,6 @@ export default function ChatInterface({
       setInput("");
       setAttachedImages([]);
 
-      // For API: use apiContent (includes [Image Analysis: ...]) instead of display content
       const apiMessage: Message = {
         ...userMessage,
         content: apiContent || "",
@@ -1188,7 +1138,6 @@ export default function ChatInterface({
   const isPaidPlan = selectedModel === "go_plus" || selectedModel === "ni" || selectedModel === "plus_pro";
   const maxImagesPerMessage = isPaidPlan ? 10 : 2;
 
-  // Clear attached images when switching away from N Plus
   useEffect(() => {
     if (!isImageAttachEnabled && attachedImages.length > 0) {
       setAttachedImages([]);
@@ -1201,7 +1150,6 @@ export default function ChatInterface({
 
     if (!isImageAttachEnabled) {
       toast.error("Image analysis is available with N Plus, Go Plus, Pro, and + Pro models");
-      // Reset input so the same file can be selected again later
       e.target.value = "";
       return;
     }
@@ -1241,7 +1189,6 @@ export default function ChatInterface({
       }
 
       setAttachedImages(prev => [...prev, ...newImages]);
-      // Reset input so the same file can be selected again
       e.target.value = "";
     };
 
@@ -1254,11 +1201,9 @@ export default function ChatInterface({
     });
   };
 
-  // ── Handle paste: detect image files and image URLs ──
   const handlePaste = async (e: React.ClipboardEvent) => {
     if (!isImageAttachEnabled) return;
 
-    // Check for pasted image files
     const items = e.clipboardData.items;
     const imageItems: File[] = [];
     for (let i = 0; i < items.length; i++) {
@@ -1311,7 +1256,6 @@ export default function ChatInterface({
       return;
     }
 
-    // Check for pasted image URLs
     const pastedText = e.clipboardData.getData('text');
     if (pastedText && isImageUrl(pastedText.trim())) {
       e.preventDefault();
@@ -1319,12 +1263,10 @@ export default function ChatInterface({
     }
   };
 
-  // Check if a string looks like an image URL
   const isImageUrl = (url: string): boolean => {
     return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
   };
 
-  // Fetch image from URL and add to attached images
   const fetchImageFromUrl = async (url: string) => {
     if (!isImageAttachEnabled) return;
     if (attachedImages.length >= maxImagesPerMessage) {
@@ -1402,7 +1344,7 @@ export default function ChatInterface({
     <div className="flex flex-col h-full bg-white overflow-hidden">
       <div className="relative flex-1 min-h-0">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto overscroll-contain chat-scroll-area">
-          <div className={`chat-content-center ${sidebarOpen ? "sidebar-open" : ""} px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-[140px] sm:pb-0 space-y-4 sm:space-y-6`}>
+          <div className="w-full max-w-[768px] mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-[140px] sm:pb-0 space-y-3 sm:space-y-4">
             <AnimatePresence initial={false}>
               {messages.length === 0 && !isThinking && !isTyping && !showStream && !searching && (
                 <motion.div
@@ -1424,8 +1366,6 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
-              
-
               {messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
                 const isEditing = editingMessageId === msg.id;
@@ -1438,10 +1378,6 @@ export default function ChatInterface({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                     onAnimationComplete={() => {
-                      // Clear the inline transform that framer-motion leaves behind.
-                      // Without this, the browser keeps a compositing layer on every
-                      // message bubble, which causes Mermaid SVGs to flicker during
-                      // scroll repaints. Removing it lets the bubble paint normally.
                       const el = document.querySelector<HTMLDivElement>(
                         `[data-msg-id="${msg.id}"]`
                       );
@@ -1453,7 +1389,6 @@ export default function ChatInterface({
                     data-msg-id={msg.id}
                     className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}
                   >
-                    {/* User images rendered OUTSIDE and ABOVE the bubble, starting from right, expanding left */}
                     {isUser && msg.images && msg.images.length > 0 && (
                       <div className="flex flex-wrap-reverse gap-2 mb-1 self-stretch justify-end">
                         {msg.images.map((img) => (
@@ -1467,212 +1402,117 @@ export default function ChatInterface({
                       </div>
                     )}
 
-                    {/* Text bubble — only show if there's text content */}
                     {isUser && msg.content ? (
-                    <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
-                    {!isUser && msg.id === lastAssistantId && (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                        <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
-                      </div>
-                    )}
-
-                    <div
-                      className={cn(
-                        msg.role === "user"
-                          ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
-                          : cn(
-                              "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2",
-                              msg.modelUsed === "plus" ? "overflow-visible h-auto" : ""
-                            )
-                      )}
-                    >
-                      {isEditing ? (
-                        <div className="flex flex-col gap-2 w-full">
-                          <textarea
-                            ref={editInputRef}
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            onKeyDown={handleEditKeyDown}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:border-gray-400 transition-colors"
-                            rows={3}
-                            autoFocus
-                          />
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-400">
-                              Enter to save · Esc to cancel
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={cancelEditing}
-                                className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:bg-gray-100 transition"
-                              >
-                                Cancel
+                      <div className="flex gap-3 w-full justify-end">
+                        <div className="max-w-[85%] md:max-w-[75%] px-3.5 py-2.5 rounded-2xl bg-white text-gray-900 border border-gray-200 shadow-sm">
+                          {isEditing ? (
+                            <div className="flex flex-col gap-2 w-full">
+                              <textarea
+                                ref={editInputRef}
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                onKeyDown={handleEditKeyDown}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:border-gray-400 transition-colors"
+                                rows={3}
+                                autoFocus
+                              />
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-400">
+                                  Enter to save · Esc to cancel
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={cancelEditing}
+                                    className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:bg-gray-100 transition"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => saveEdit(msg)}
+                                    className="px-4 py-1.5 rounded-full text-xs font-medium bg-black text-white hover:bg-gray-800 transition"
+                                  >
+                                    Save & Send
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              {msg.content && <p>{msg.content}</p>}
+                            </div>
+                          )}
+                          {!isEditing && (
+                            <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5 justify-end">
+                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
+                                <Copy className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => saveEdit(msg)}
-                                className="px-4 py-1.5 rounded-full text-xs font-medium bg-black text-white hover:bg-gray-800 transition"
-                              >
-                                Save & Send
+                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
+                                <Edit3 className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                          </div>
-                        </div>
-                      ) : isUser ? (
-                        <div>
-                          {msg.content && <p>{msg.content}</p>}
-                        </div>
-                      ) : (
-                        <>
-                          <MarkdownRenderer content={msg.content} modelTier={msg.modelUsed} />
-                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
-                            <span className="inline-block text-xs text-amber-500 ml-2">
-                              ⚠️ Low confidence
-                            </span>
-                          )}
-                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
-                          {msg.wikiLink && (
-                            <a
-                              href={msg.wikiLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              View from there
-                            </a>
-                          )}
-                        </>
-                      )}
-                      {!isEditing && (
-                        <div
-                          className={cn(
-                            "flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5",
-                            isUser ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          {isUser ? (
-                            <>
-                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleRefresh(msg.id)}
-                                disabled={isLoading}
-                                className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
-                                title="Regenerate"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={handleLike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Like">
-                                <ThumbsUp className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={handleDislike} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Dislike">
-                                <ThumbsDown className="w-3.5 h-3.5" />
-                              </button>
-                              {msg.sources && msg.sources.length > 0 && <SourcesPanel sources={msg.sources} />}
-                              {msg.modelUsed && MODEL_LABELS[msg.modelUsed] && (
-                                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-gray-100 text-[10px] text-gray-500 select-none whitespace-nowrap shrink-0" title="Model used for this response">
-                                  {MODEL_LABELS[msg.modelUsed]}
-                                </span>
-                              )}
-                            </>
                           )}
                         </div>
-                      )}
-                    </div>
-                    </div>
-                    ) : !isUser ? (
-                    <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
-                    {!isUser && msg.id === lastAssistantId && (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                        <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                       </div>
-                    )}
-
-                    <div
-                      className={cn(
-                        msg.role === "user"
-                          ? "max-w-[85%] md:max-w-[55%] px-3.5 py-2.5 rounded-3xl bg-white text-gray-900 border border-gray-200 shadow-sm"
-                          : cn(
-                              "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2",
-                              msg.modelUsed === "plus" ? "overflow-visible h-auto" : ""
-                            )
-                      )}
-                    >
-                      {isEditing ? (
-                        <div className="flex items-start gap-2">
-                          <textarea
-                            ref={editInputRef}
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            onKeyDown={handleEditKeyDown}
-                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
-                            rows={4}
-                          />
-                          <button
-                            onClick={() => saveEdit(msg)}
-                            className="text-indigo-600 hover:text-indigo-800 transition p-1"
-                            title="Save edit"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-400 hover:text-gray-600 transition p-1"
-                            title="Cancel"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <MarkdownRenderer content={msg.content} modelTier={msg.modelUsed} />
-                          {msg.confidence !== undefined && msg.confidence < 0.6 && (
-                            <span className="inline-block text-xs text-amber-500 ml-2">
-                              ⚠️ Low confidence
-                            </span>
-                          )}
-                          {msg.thinking && <ThinkingBlock text={msg.thinking} />}
-                          {msg.wikiLink && (
-                            <a
-                              href={msg.wikiLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              View from there
-                            </a>
-                          )}
-                        </>
-                      )}
-                      {!isEditing && (
-                        <div
-                          className={cn(
-                            "flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5",
-                            isUser ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          {isUser ? (
-                            <>
-                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
-                                <Copy className="w-3.5 h-3.5" />
+                    ) : !isUser ? (
+                      <div className="flex gap-3 w-full justify-start">
+                        {msg.id === lastAssistantId && (
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                            <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
+                          </div>
+                        )}
+                        <div className={cn(
+                          "flex-1 min-w-0 text-zinc-950 pt-1 pl-1 md:pl-2",
+                          msg.modelUsed === "plus" ? "overflow-visible h-auto" : ""
+                        )}>
+                          {isEditing ? (
+                            <div className="flex items-start gap-2">
+                              <textarea
+                                ref={editInputRef}
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                onKeyDown={handleEditKeyDown}
+                                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none outline-none focus:border-indigo-300"
+                                rows={4}
+                              />
+                              <button
+                                onClick={() => saveEdit(msg)}
+                                className="text-indigo-600 hover:text-indigo-800 transition p-1"
+                                title="Save edit"
+                              >
+                                <Send className="w-4 h-4" />
                               </button>
-                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
-                                <Edit3 className="w-3.5 h-3.5" />
+                              <button
+                                onClick={cancelEditing}
+                                className="text-gray-400 hover:text-gray-600 transition p-1"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
                               </button>
-                            </>
+                            </div>
                           ) : (
                             <>
+                              <MarkdownRenderer content={msg.content} modelTier={msg.modelUsed} />
+                              {msg.confidence !== undefined && msg.confidence < 0.6 && (
+                                <span className="inline-block text-xs text-amber-500 ml-2">
+                                  ⚠️ Low confidence
+                                </span>
+                              )}
+                              {msg.thinking && <ThinkingBlock text={msg.thinking} />}
+                              {msg.wikiLink && (
+                                <a
+                                  href={msg.wikiLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  View from there
+                                </a>
+                              )}
+                            </>
+                          )}
+                          {!isEditing && (
+                            <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5 justify-start">
                               <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
@@ -1696,12 +1536,10 @@ export default function ChatInterface({
                                   {MODEL_LABELS[msg.modelUsed]}
                                 </span>
                               )}
-                            </>
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                    </div>
+                      </div>
                     ) : null}
                   </motion.div>
                 );
@@ -1723,6 +1561,20 @@ export default function ChatInterface({
                     >
                       …
                     </motion.span>
+                  </div>
+                </motion.div>
+              )}
+
+              {searching && (
+                <motion.div
+                  key="searching-indicator"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2 shadow-sm">
+                    <span className="text-gray-500">🌐 Netsyra is searching the web…</span>
                   </div>
                 </motion.div>
               )}
@@ -1758,7 +1610,7 @@ export default function ChatInterface({
                     <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                   </div>
                   <div className={cn(
-                    "max-w-[96%] md:max-w-[80%] text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2",
+                    "flex-1 min-w-0 text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2",
                     selectedModel === "plus" ? "overflow-visible h-auto" : ""
                   )}>
                     <MarkdownRenderer content={partialReply} modelTier={selectedModel} />
@@ -1808,7 +1660,7 @@ export default function ChatInterface({
       </div>
 
       <div className="chat-input-bar sticky bottom-0 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        <div className={`chat-content-center ${sidebarOpen ? "sidebar-open" : ""} px-3 sm:px-4 md:px-6 pt-2 pb-3 sm:pb-4`}>
+        <div className="w-full max-w-[768px] mx-auto px-4 sm:px-6 pt-2 pb-3 sm:pb-4">
           {selectedModel !== "auto" && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 px-1">
               <span>Using {MODEL_LABELS[selectedModel] || selectedModel}</span>
@@ -1817,7 +1669,6 @@ export default function ChatInterface({
 
           <form onSubmit={handleSend} className="relative">
 
-            {/* Attached Images Preview */}
             {attachedImages.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 px-1">
                 {attachedImages.map((img) => (
@@ -1852,7 +1703,6 @@ export default function ChatInterface({
                 />
               </div>
 
-              {/* Attachment Button - only enabled when N Plus is selected */}
               <div className="flex-shrink-0 flex items-center">
                 <input
                   type="file"
@@ -1882,7 +1732,6 @@ export default function ChatInterface({
                 }}
                 onPaste={handlePaste}
                 onFocus={() => {
-                  // On mobile, scroll chat to bottom when input is focused (keyboard pushes view up)
                   if (window.innerWidth < 768) {
                     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
                   }
@@ -1915,17 +1764,13 @@ export default function ChatInterface({
                 >
                   {isRecording ? (
                     <>
-                      {/* Animated sound waves ring */}
                       <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
-                      {/* Real microphone icon with recording dot */}
                       <span className="relative flex items-center justify-center">
                         <Mic className="w-4 h-4 text-white" />
                       </span>
-                      {/* Red recording dot indicator */}
                       <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
                     </>
                   ) : isTranscribing ? (
-                    /* Spinner while transcribing via Whisper */
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <Mic className="w-4 h-4 text-white" />
