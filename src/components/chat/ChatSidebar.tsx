@@ -307,13 +307,65 @@ export default function ChatSidebar({
               onClick={onNewChat}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-black/5 transition"
             >
-              <MessageSquarePlus className="h-5 w-5 text-indigo-600" /> New Chat
+              <span className="h-5 w-5 block">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" className="h-full w-full">
+                  <path d="
+    M 420 115 
+    C 460 115 485 140 485 185 
+    L 485 305 
+    C 485 350 455 375 410 380 
+    L 435 480 
+    L 300 392 
+    C 230 435 170 380 150 350 
+    L 210 300 
+    C 215 300 390 300 400 290 
+    C 415 275 415 160 415 130 
+    Z" 
+                    fill="#000000" 
+                  />
+
+                  <path d="
+    M 85 25 
+    L 335 25 
+    C 368 25 395 52 395 85 
+    L 395 235 
+    C 395 268 368 295 335 295 
+    L 200 295 
+    L 90 385 
+    L 95 295 
+    L 85 295 
+    C 52 295 25 268 25 235 
+    L 25 85 
+    C 25 52 52 25 85 25 
+    Z" 
+                    fill="#ffffff" 
+                    stroke="#000000" 
+                    strokeWidth="32" 
+                    strokeLinejoin="round" 
+                    strokeLinecap="round"
+                  />
+
+                  <line x1="110" y1="112" x2="295" y2="112" stroke="#000000" strokeWidth="26" strokeLinecap="round" />
+                  <line x1="110" y1="168" x2="240" y2="168" stroke="#000000" strokeWidth="26" strokeLinecap="round" />
+                </svg>
+              </span>
+              New Chat
             </button>
             <button
               onClick={onHistory}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-black/5 transition"
             >
-              <History className="h-5 w-5 text-indigo-600" /> History
+              <span className="h-5 w-5 block">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" className="h-full w-full">
+                  <g fill="none" stroke="#454150" strokeWidth="28" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M 245 412 A 165 165 0 1 1 398 308" />
+                    <path d="M 365 268 L 398 308 L 435 272" />
+                    <circle cx="250" cy="190" r="40" />
+                    <path d="M 180 315 C 180 280 205 262 235 262 L 265 262 C 295 262 320 280 320 315 Z" />
+                  </g>
+                </svg>
+              </span>
+              History
             </button>
 
             {/* N Live toggle button */}
@@ -326,7 +378,45 @@ export default function ChatSidebar({
               }`}
               title="Enable real-time web search for any model"
             >
-              <BrainCircuit className={`h-5 w-5 ${diveDeep ? "text-cyan-600" : "text-gray-400"}`} />
+              <span className="h-5 w-5 block">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" className="h-full w-full">
+                  <g fill="#000000">
+                    <circle cx="48" cy="120" r="17.5" />
+                    <circle cx="82" cy="146" r="14.5" />
+                    <circle cx="50" cy="170" r="9" />
+                    <circle cx="61" cy="208" r="6" />
+                  </g>
+
+                  <path d="M 82 390 C 52 335 75 270 195 265" fill="none" stroke="#000000" strokeWidth="19" strokeLinecap="round" />
+
+                  <g transform="translate(202, 212) rotate(-38)" fill="#000000">
+                    <rect x="-95" y="-26" width="120" height="52" rx="26" ry="26" />
+                    <rect x="33" y="-26" width="28" height="52" rx="4" ry="4" />
+                  </g>
+
+                  <g fill="#000000">
+                    <circle cx="82" cy="432" r="44" />
+                    <path d="M 110 448 L 130 460 C 135 463 134 471 128 474 L 102 489 C 97 492 91 489 88 483 L 78 464 Z" />
+                  </g>
+
+                  <path d="
+    M 112 340
+    L 245 200
+    L 252 12
+    C 270 26 286 10 302 26
+    C 318 10 334 26 350 12
+    L 310 210
+    L 404 26
+    C 422 46 436 30 452 50
+    C 468 34 482 52 492 70
+    L 368 285
+    L 300 340
+    C 330 340 330 400 300 400
+    L 140 400
+    C 110 400 95 340 112 340
+    Z" fill="#000000" />
+                </svg>
+              </span>
               Deep Dive
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
                 diveDeep ? "bg-cyan-600 text-white" : "bg-black/10 text-gray-500"
