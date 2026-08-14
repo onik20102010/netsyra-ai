@@ -530,6 +530,8 @@ export default function ChatInterface({
 
   const supabase = createClient();
 
+  const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id;
+
   const { refetch: refetchUsage } = useChatUsage();
 
   // ── Mobile keyboard detection: use visualViewport to detect keyboard ──
@@ -1422,6 +1424,8 @@ export default function ChatInterface({
                 </motion.div>
               )}
 
+              
+
               {messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
                 const isEditing = editingMessageId === msg.id;
@@ -1466,7 +1470,7 @@ export default function ChatInterface({
                     {/* Text bubble — only show if there's text content */}
                     {isUser && msg.content ? (
                     <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
-                    {!isUser && (
+                    {!isUser && msg.id === lastAssistantId && (
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                         <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                       </div>
@@ -1588,7 +1592,7 @@ export default function ChatInterface({
                     </div>
                     ) : !isUser ? (
                     <div className={cn("flex gap-3 w-full", isUser ? "justify-end" : "justify-start")}>
-                    {!isUser && (
+                    {!isUser && msg.id === lastAssistantId && (
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                         <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
                       </div>
@@ -1719,20 +1723,6 @@ export default function ChatInterface({
                     >
                       …
                     </motion.span>
-                  </div>
-                </motion.div>
-              )}
-
-              {searching && (
-                <motion.div
-                  key="searching-indicator"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="flex justify-start"
-                >
-                  <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-white text-sm flex items-center gap-2 shadow-sm">
-                    <span className="text-gray-500">🌐 Netsyra is searching the web…</span>
                   </div>
                 </motion.div>
               )}
