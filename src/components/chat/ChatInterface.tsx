@@ -1343,6 +1343,52 @@ export default function ChatInterface({
   return (
     <div className="flex flex-col h-full bg-white overflow-hidden">
       <div className="relative flex-1 min-h-0">
+        {/* New Chat, History, and Dive Deep SVGs */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+          <button
+            onClick={() => setConversationId(null)}
+            className="p-2 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition text-black"
+            title="New Chat"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2v4l4-4h6a2 2 0 0 0 2-2V6z" />
+              <path d="M16 10a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6l4 4v-4h2a2 2 0 0 0 2-2v-8z" />
+              <rect x="7" y="12" width="6" height="1.5" />
+              <rect x="7" y="15" width="4" height="1.5" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => { /* Open history sidebar */ }}
+            className="p-2 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition text-black"
+            title="History"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="9" r="3.5" />
+              <path d="M12 15c-4 0-6 1.5-6 4h12c0-2.5-2-4-6-4z" />
+              <path d="M22 12a10 10 0 1 1-18-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M8 5l-3-3-2 4" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => { /* Toggle dive deep */ }}
+            className="p-2 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition text-black"
+            title="Dive Deep"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="7" cy="15" r="3" />
+              <path d="M9 13l3 2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M9 17c2 2 3 4 6 4l2-2c-3-2-5-4-7-5z" />
+              <path d="M17 20l-4 4 2 1 4-3z" />
+              <path d="M19 20l4 4-2 1-4-3z" />
+              <circle cx="4" cy="11" r="1.5" />
+              <circle cx="2" cy="7" r="1" />
+              <circle cx="5" cy="5" r="2" />
+            </svg>
+          </button>
+        </div>
+
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto overscroll-contain chat-scroll-area">
           <div className="w-full max-w-[768px] mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-[140px] sm:pb-0 space-y-3 sm:space-y-4">
             <AnimatePresence initial={false}>
