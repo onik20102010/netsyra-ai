@@ -1358,7 +1358,7 @@ export default function ChatInterface({
                       src="/logo.png"
                       alt="Netsyra"
                       className="w-full h-full object-contain select-none pointer-events-none"
-                      style={{ filter: "brightness(0)" }}
+                      style={{ filter: "invert(1)" }}
                       draggable={false}
                     />
                   </div>
@@ -1458,7 +1458,7 @@ export default function ChatInterface({
                       <div className="flex gap-3 w-full justify-start">
                         {msg.id === lastAssistantId && (
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                            <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
+                            <img src="/logo.png" className="w-5 h-5 object-contain" style={{ filter: "invert(1)" }} />
                           </div>
                         )}
                         <div className={cn(
@@ -1608,7 +1608,7 @@ export default function ChatInterface({
                   className="flex gap-3 justify-start"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                    <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" />
+                    <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" style={{ filter: "invert(1)" }} />
                   </div>
                   <div className={cn(
                     "flex-1 min-w-0 text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2",
