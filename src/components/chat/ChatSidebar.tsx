@@ -497,7 +497,7 @@ export default function ChatSidebar({
                 <div className="flex-1 min-w-0">
                   {nameLoaded ? (
                     <p className="text-sm text-gray-900 truncate font-medium">
-                      {displayName || user?.email?.split("@")[0] || "User"}
+                      {displayName || "supportnetsyra@gmail.com"}
                     </p>
                   ) : (
                     <div className="w-20 h-4 bg-black/10 rounded animate-pulse" />

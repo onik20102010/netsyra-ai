@@ -113,7 +113,7 @@ const sections = [
     content: [
       "Netsyra respects intellectual-property rights and expects users of the Service to do the same.",
       "If you believe that material available through the Netsyra Service infringes your copyright or other intellectual-property rights, you may contact us at:",
-      "legal@netsyraai.com",
+      "supportnetsyra@gmail.com",
       "A copyright complaint should contain sufficient information for us to identify:",
       "1. the copyrighted work or other protected material;",
       "2. the allegedly infringing material and its location;",
@@ -228,8 +228,8 @@ const sections = [
     content: [
       "For legal, intellectual-property, copyright, or trademark matters:",
       "Netsyra AI",
-      "Legal: legal@netsyraai.com",
-      "Support: support@netsyraai.com",
+      "Legal: supportnetsyra@gmail.com",
+      "Support: supportnetsyra@gmail.com",
       "Website: https://www.netsyraai.com",
       "Legal Entity: [LEGAL ENTITY NAME]",
       "Registered Address: [LEGAL BUSINESS ADDRESS]",
@@ -525,8 +525,8 @@ export default function LegalPage() {
               <strong>Legal Entity:</strong> [LEGAL ENTITY NAME]<br />
               <strong>Business Name:</strong> Netsyra AI<br />
               <strong>Registered Address:</strong> [LEGAL BUSINESS ADDRESS]<br />
-              <strong>Legal Contact:</strong> <a href="mailto:legal@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">legal@netsyraai.com</a><br />
-              <strong>General Support:</strong> <a href="mailto:support@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">support@netsyraai.com</a><br />
+              <strong>Legal Contact:</strong> <a href="mailto:supportnetsyra@gmail.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">supportnetsyra@gmail.com</a><br />
+              <strong>General Support:</strong> <a href="mailto:supportnetsyra@gmail.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">supportnetsyra@gmail.com</a><br />
               <strong>Website:</strong> <a href="https://www.netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">https://www.netsyraai.com</a>
             </p>
           </motion.div>

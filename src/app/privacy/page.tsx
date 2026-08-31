@@ -240,7 +240,7 @@ const sections = [
     title: "10. Account and Data Deletion",
     content: [
       "You may request deletion of your account and personal information by contacting:",
-      "support@netsyraai.com",
+      "supportnetsyra@gmail.com",
       "Where account deletion is available directly through the Service, you may use that functionality.",
       "Deletion may not immediately remove information that we are legally required to retain or that is necessary to establish, exercise, or defend legal claims.",
       "Backups may also retain deleted information for a limited period until they are securely overwritten according to our backup lifecycle.",
@@ -263,7 +263,7 @@ const sections = [
       "• the right to lodge a complaint with a competent supervisory authority.",
       "These rights are not absolute and may be subject to legal exceptions.",
       "To exercise applicable rights, contact:",
-      "support@netsyraai.com",
+      "supportnetsyra@gmail.com",
       "We may need to verify your identity before completing certain requests.",
     ],
   },
@@ -293,7 +293,7 @@ const sections = [
       "Netsyra does not sell personal information for monetary consideration.",
       "Where applicable California law defines certain disclosures or activities as 'sharing,' Netsyra will provide any legally required opt-out mechanism.",
       "California residents may submit privacy requests by contacting:",
-      "support@netsyraai.com",
+      "supportnetsyra@gmail.com",
     ],
   },
   {
@@ -303,7 +303,7 @@ const sections = [
       "We do not knowingly collect personal information from children under 13 without legally required parental consent.",
       "If we learn that we have collected personal information from a child under 13 in circumstances where collection was not permitted, we will take reasonable steps to delete the information.",
       "If you believe a child has provided personal information to Netsyra, contact:",
-      "support@netsyraai.com",
+      "supportnetsyra@gmail.com",
       "Depending on your jurisdiction, additional children's privacy laws may apply.",
     ],
   },
@@ -397,7 +397,7 @@ const sections = [
     content: [
       "For privacy questions, requests, complaints, or data-rights requests:",
       "Netsyra AI",
-      "Email: support@netsyraai.com",
+      "Email: supportnetsyra@gmail.com",
       "Website: https://www.netsyraai.com",
       "Legal Entity: [LEGAL ENTITY NAME]",
       "Registered Address: [LEGAL BUSINESS ADDRESS]",
@@ -690,7 +690,7 @@ export default function PrivacyPage() {
               Netsyra AI ("Netsyra," "we," "us," or "our") respects your privacy and is committed to protecting personal information entrusted to us. This Privacy Policy explains how we collect, use, disclose, retain, and protect information when you visit netsyraai.com, create an account, use Netsyra AI, interact with our applications or APIs, or otherwise use our services (collectively, the "Service").
             </p>
             <p className="text-gray-300 text-base leading-relaxed">
-              The Service is operated by: [LEGAL ENTITY NAME] – Doing business as Netsyra AI – Address: [LEGAL BUSINESS ADDRESS] – Privacy Contact: <a href="mailto:support@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">support@netsyraai.com</a>
+              The Service is operated by: [LEGAL ENTITY NAME] – Doing business as Netsyra AI – Address: [LEGAL BUSINESS ADDRESS] – Privacy Contact: <a href="mailto:supportnetsyra@gmail.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">supportnetsyra@gmail.com</a>
             </p>
           </motion.div>
 

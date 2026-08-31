@@ -254,7 +254,7 @@ export default function HistoryPage() {
             <Menu className="w-5 h-5" />
           </button>
           <span className="text-xs sm:text-sm text-white/40 truncate max-w-[140px] sm:max-w-none">
-            {user.email}
+            supportnetsyra@gmail.com
           </span>
         </header>
 

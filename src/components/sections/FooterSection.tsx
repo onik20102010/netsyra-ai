@@ -85,10 +85,10 @@ export default function FooterSection() {
             <ul className="space-y-2">
               <li>
                 <a
-                  href="mailto:netsyraai@gmail.com"
+                  href="mailto:supportnetsyra@gmail.com"
                   className="text-white/30 hover:text-white/70 transition text-sm"
                 >
-                  netsyraai@gmail.com
+                  supportnetsyra@gmail.com
                 </a>
               </li>
             </ul>

@@ -200,12 +200,12 @@ export default function TopNav() {
               <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
             ) : user ? (
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-2 group" title={user.email ?? undefined}>
+                <div className="flex items-center gap-2 group" title="supportnetsyra@gmail.com">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
-                    {user.email?.charAt(0).toUpperCase() || "U"}
+                    S
                   </div>
                   <span className="text-sm text-white/70 max-w-[100px] truncate group-hover:text-white transition-colors">
-                    {user.email}
+                    supportnetsyra@gmail.com
                   </span>
                 </div>
                 <Button

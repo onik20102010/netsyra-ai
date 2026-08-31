@@ -116,7 +116,7 @@ const sections = [
     title: "13. CONTACT INFORMATION",
     content: [
       `If you have any questions, concerns, or feedback regarding these Terms, please contact us at:`,
-      `Email: netsyraai@gmail.com`,
+      `Email: supportnetsyra@gmail.com`,
     ],
   },
   {
@@ -201,7 +201,7 @@ export default function DashboardPage() {
         </div>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white mb-2">Welcome back</h1>
         <p className="text-xs sm:text-sm text-white/30 mb-6 sm:mb-8 md:mb-10">
-          Signed in as <span className="text-white/60 font-medium">{user?.email}</span>
+          Signed in as <span className="text-white/60 font-medium">supportnetsyra@gmail.com</span>
         </p>
 
         <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4">
@@ -320,7 +320,7 @@ export default function DashboardPage() {
               <h3 className="text-base sm:text-lg font-semibold text-white">Need Help?</h3>
               <p className="text-gray-400 text-xs sm:text-sm">
                 If you have any questions, feel free to contact us.<br />
-                <a href="mailto:netsyraai@gmail.com" className="text-gray-300 hover:text-white transition">netsyraai@gmail.com</a>
+                <a href="mailto:supportnetsyra@gmail.com" className="text-gray-300 hover:text-white transition">supportnetsyra@gmail.com</a>
               </p>
             </div>
           </div>

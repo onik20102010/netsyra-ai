@@ -271,7 +271,7 @@ const sections = [
     title: "22. Copyright Complaints",
     content: [
       "If you believe content available through the Service infringes your copyright, you may contact us at:",
-      "support@netsyraai.com",
+      "supportnetsyra@gmail.com",
       "Your notice should include sufficient information to identify the copyrighted work, the allegedly infringing material, your contact information, and the information required by applicable copyright law.",
     ],
   },
@@ -328,7 +328,7 @@ const sections = [
     title: "27. Dispute Resolution and Governing Law",
     content: [
       "These Terms are governed by the laws of [GOVERNING JURISDICTION], without regard to conflict-of-law principles, except to the extent mandatory consumer-protection laws require otherwise.",
-      "Before filing a formal legal claim, you agree to contact Netsyra at support@netsyraai.com and provide a reasonable opportunity to resolve the dispute informally.",
+      "Before filing a formal legal claim, you agree to contact Netsyra at supportnetsyra@gmail.com and provide a reasonable opportunity to resolve the dispute informally.",
       "Nothing in this section prevents a consumer from exercising mandatory rights available under the laws of the consumer's jurisdiction.",
       "[FINAL GOVERNING-LAW / ARBITRATION / COURT-JURISDICTION CLAUSE TO BE COMPLETED AFTER CONFIRMING NETSYRA'S LEGAL ENTITY AND JURISDICTION.]",
     ],
@@ -373,7 +373,7 @@ const sections = [
     content: [
       "For questions concerning these Terms:",
       "Netsyra AI",
-      "Email: support@netsyraai.com",
+      "Email: supportnetsyra@gmail.com",
       "Website: https://www.netsyraai.com",
       "Legal Entity: [LEGAL ENTITY NAME]",
       "Registered Address: [LEGAL BUSINESS ADDRESS]",
@@ -671,7 +671,7 @@ export default function TermsPage() {
             </p>
             <p className="text-gray-300 text-base leading-relaxed">
               <strong>Registered Address:</strong> [LEGAL BUSINESS ADDRESS]<br />
-              <strong>Contact:</strong> <a href="mailto:support@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">support@netsyraai.com</a>
+              <strong>Contact:</strong> <a href="mailto:supportnetsyra@gmail.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">supportnetsyra@gmail.com</a>
             </p>
             <p className="text-gray-300 text-base leading-relaxed">
               By creating an account, accessing the Service, purchasing a subscription, or otherwise using the Service, you agree to these Terms and our Privacy Policy. If you do not agree to these Terms, you must not access or use the Service.
