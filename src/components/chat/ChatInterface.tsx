@@ -1353,22 +1353,11 @@ export default function ChatInterface({
                   animate={{ opacity: 1 }}
                   className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
                 >
-                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-slate-200/80 shadow-sm flex items-center justify-center p-2 select-none pointer-events-none">
-                    <div
-                      className="w-full h-full select-none pointer-events-none"
-                      style={{
-                        backgroundColor: '#ffffff',
-                        maskImage: 'url(/logo.png)',
-                        maskSize: 'contain',
-                        maskRepeat: 'no-repeat',
-                        maskPosition: 'center',
-                        WebkitMaskImage: 'url(/logo.png)',
-                        WebkitMaskSize: 'contain',
-                        WebkitMaskRepeat: 'no-repeat',
-                        WebkitMaskPosition: 'center',
-                      }}
-                    />
-                  </div>
+                  <img
+                    src="/logo.png"
+                    alt="Netsyra Logo"
+                    className="w-24 h-24 rounded-lg object-contain select-none pointer-events-none"
+                  />
                   <p className="text-lg sm:text-xl font-medium text-gray-600">How can I help you today?</p>
                   <p className="text-xs sm:text-sm text-gray-400">Netsyra is here to help you with any thing.</p>
                 </motion.div>
