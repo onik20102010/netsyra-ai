@@ -1,4 +1,4 @@
-// app/legal-notice/page.tsx
+// app/legal/page.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -28,47 +28,216 @@ const item = {
 // ── Data ──────────────────────────────────────────────────
 const sections = [
   {
-    title: "Intellectual Property Protection Statement",
+    title: "1. Intellectual Property",
     content: [
-      "⚠️ Unauthorized Use is Strictly Prohibited",
-      "All content, design elements, user interface components, source code, algorithms, routing logic, AI model configurations, system prompts, and overall architecture of Netsyra AI are the exclusive intellectual property of their respective owners.",
+      "Unless otherwise stated, the Netsyra name, brand identity, website content, original software, source code, documentation, graphics, interface designs, original written materials, logos, and other proprietary materials made available by Netsyra are owned by or licensed to Netsyra and are protected by applicable intellectual-property laws.",
+      "This may include, where legally protectable:",
+      "• software and source code;",
+      "• original website and application content;",
+      "• original interface elements and visual assets;",
+      "• documentation;",
+      "• original written materials;",
+      "• logos and branding;",
+      "• trademarks and service marks;",
+      "• proprietary algorithms and implementations;",
+      "• AI orchestration and routing implementations;",
+      "• proprietary system configurations;",
+      "• proprietary prompts and instructions;",
+      "• proprietary datasets and internal resources; and",
+      "• other original materials created or lawfully licensed by Netsyra.",
+      "The existence of an element on the Netsyra website does not by itself mean that every underlying concept, method, functional element, or general design principle is exclusively owned by Netsyra. Intellectual-property rights apply only to the extent provided by applicable law.",
     ],
   },
   {
-    title: "Protected Elements",
+    title: "2. Netsyra Trademarks",
     content: [
-      "• User Interface design and layout",
-      "• AI routing algorithms and logic",
-      "• System prompt engineering and configurations",
-      "• Model fallback chains and orchestration patterns",
-      "• Source code, file structure, and architecture",
-      "• Website design, color schemes, and typography choices",
-      "• Branding, logos, and visual identity",
-      "• Documentation and written content",
-      "• Database schemas and data models",
-      "• API design and endpoint structures",
+      "\"Netsyra,\" \"Netsyra AI,\" associated logos, product names, service names, and other marks identified as Netsyra branding may constitute trademarks or service marks of Netsyra or their respective owners.",
+      "You may not use Netsyra trademarks, logos, or branding in a manner that:",
+      "• suggests an unauthorized affiliation or endorsement;",
+      "• causes confusion about the source of a product or service;",
+      "• falsely implies a partnership or sponsorship; or",
+      "• otherwise violates applicable trademark law.",
+      "Nothing on this website grants you a license to use Netsyra trademarks except where expressly authorized in writing.",
     ],
   },
   {
-    title: "Our Rights",
+    title: "3. Software and Service",
     content: [
-      "We actively monitor for unauthorized use, copying, reproduction, or distribution of our intellectual property. We reserve the right to pursue legal action, including but not limited to:",
-      "• Filing DMCA takedown notices for copyright infringement",
-      "• Pursuing civil litigation for damages and injunctive relief",
-      "• Reporting violations to relevant authorities and platforms",
-      "• Seeking compensation for financial losses and legal costs",
+      "Access to the Netsyra software and services does not transfer ownership of the underlying software or intellectual property to you.",
+      "Subject to the Terms of Service, Netsyra grants users only the rights necessary to access and use the Service for its intended purpose.",
+      "You may not copy, reproduce, distribute, sell, sublicense, lease, modify, or create derivative works from proprietary Netsyra software except where expressly permitted by the applicable license, Terms of Service, or applicable law.",
+      "Nothing in this section restricts rights that cannot legally be restricted.",
     ],
   },
   {
-    title: "Report Infringement",
+    title: "4. AI Models and Third-Party Technology",
     content: [
-      "If you believe your work has been copied or used without authorization, please contact us at:",
-      "Email: netsyraai@gmail.com",
+      "Netsyra is an AI orchestration platform and may integrate or interact with AI models, APIs, search services, infrastructure, authentication systems, payment providers, software libraries, and other technologies operated by third parties.",
+      "Third-party technologies remain the property of their respective owners.",
+      "Netsyra does not claim ownership of third-party models, trademarks, APIs, libraries, or other materials merely because they are accessible through or integrated with the Service.",
+      "The availability of a third-party model or service through Netsyra does not necessarily indicate an endorsement, partnership, or ownership relationship unless expressly stated.",
+      "Third-party services may be governed by separate terms, licenses, and privacy policies.",
+    ],
+  },
+  {
+    title: "5. Open-Source Software",
+    content: [
+      "Netsyra may use open-source software and third-party software components.",
+      "Such components remain subject to their respective licenses.",
+      "Where required by an applicable open-source license, the relevant license terms, notices, copyright statements, or attribution information will govern the applicable component.",
+      "Nothing in this Legal Notice is intended to restrict rights granted to you under an applicable open-source license.",
+    ],
+  },
+  {
+    title: "6. User Content",
+    content: [
+      "Users retain ownership of content they submit to Netsyra to the extent they possess applicable rights in that content.",
+      "Submitting content to Netsyra does not automatically transfer ownership of that content to Netsyra.",
+      "However, Netsyra may need limited rights to process submitted content in order to provide the Service, operate requested features, maintain security, and perform other activities described in the Terms of Service and Privacy Policy.",
+      "You are responsible for ensuring that you have the necessary rights, permissions, and legal authority to submit content to the Service.",
+      "You must not submit content that you do not have the right to process or that would cause Netsyra to violate applicable law or third-party rights.",
+    ],
+  },
+  {
+    title: "7. AI-Generated Output",
+    content: [
+      "AI-generated output may be produced using third-party models and technologies.",
+      "Netsyra does not automatically claim ownership of every output generated through the Service.",
+      "The ownership, copyright status, licensing, and permitted use of AI-generated content may depend on applicable law, the nature of the output, the rights in the input material, and the terms applicable to the underlying AI provider.",
+      "Users are responsible for determining whether their intended use of AI-generated output is lawful and appropriate.",
+      "Netsyra does not guarantee that generated output is unique or free from third-party intellectual-property claims.",
+    ],
+  },
+  {
+    title: "8. Copyright and Infringement",
+    content: [
+      "Netsyra respects intellectual-property rights and expects users of the Service to do the same.",
+      "If you believe that material available through the Netsyra Service infringes your copyright or other intellectual-property rights, you may contact us at:",
+      "legal@netsyraai.com",
+      "A copyright complaint should contain sufficient information for us to identify:",
+      "1. the copyrighted work or other protected material;",
+      "2. the allegedly infringing material and its location;",
+      "3. your contact information;",
+      "4. a statement explaining your good-faith belief that the use is unauthorized; and",
+      "5. any additional information required by applicable law.",
+      "Submitting a notice does not guarantee removal of the reported material. Netsyra may evaluate notices according to applicable law and may request additional information.",
+      "Where legally required, Netsyra may maintain procedures for receiving and responding to valid copyright notices and counter-notices.",
+    ],
+  },
+  {
+    title: "9. Unauthorized Use",
+    content: [
+      "You may not use Netsyra proprietary materials in a manner that infringes applicable intellectual-property rights.",
+      "Examples of potentially prohibited conduct include:",
+      "• copying proprietary source code without authorization;",
+      "• reproducing proprietary documentation substantially without permission;",
+      "• distributing proprietary assets without authorization;",
+      "• impersonating Netsyra;",
+      "• using Netsyra branding to create a misleading affiliation;",
+      "• extracting proprietary materials through unauthorized means; or",
+      "• bypassing technical controls specifically intended to protect proprietary resources.",
+      "Nothing in this section prohibits lawful activities such as independent development, interoperability, criticism, commentary, research, fair use, fair dealing, or other rights protected by applicable law.",
+    ],
+  },
+  {
+    title: "10. Confidential and Proprietary Information",
+    content: [
+      "Certain Netsyra information may constitute confidential or proprietary information even if it is not formally registered as intellectual property.",
+      "Examples may include non-public:",
+      "• technical architecture;",
+      "• security information;",
+      "• internal processes;",
+      "• system configurations;",
+      "• business information;",
+      "• product roadmaps;",
+      "• proprietary algorithms;",
+      "• internal prompts;",
+      "• pricing arrangements; and",
+      "• other information that is reasonably understood to be confidential.",
+      "Unauthorized disclosure, extraction, or use of confidential information may violate contractual obligations or applicable law.",
+    ],
+  },
+  {
+    title: "11. No Implied License",
+    content: [
+      "Except for the limited rights expressly granted through the Terms of Service or another written agreement, nothing on the Netsyra website or within the Service grants any license or other right to Netsyra's intellectual property.",
+      "Any rights not expressly granted are reserved.",
+    ],
+  },
+  {
+    title: "12. Third-Party Content and Links",
+    content: [
+      "The Netsyra website or Service may contain links, references, integrations, or content provided by third parties.",
+      "Netsyra does not necessarily control or endorse third-party content.",
+      "Third-party websites and services are governed by their own terms and policies.",
+      "Netsyra is not responsible for the accuracy, availability, security, or intellectual-property practices of third-party websites or services that it does not control.",
+    ],
+  },
+  {
+    title: "13. Accuracy of Legal and Product Information",
+    content: [
+      "We attempt to keep information on the Netsyra website accurate and current.",
+      "However, product capabilities, AI models, providers, pricing, technical architecture, and other information may change.",
+      "Nothing on the website should be interpreted as a guarantee that a particular model, feature, provider, integration, or capability will remain available indefinitely.",
+      "Where legally binding terms apply, the applicable Terms of Service, order terms, subscription terms, or written agreement will control.",
+    ],
+  },
+  {
+    title: "14. No Professional Advice",
+    content: [
+      "Information provided through Netsyra or its website is not intended to constitute legal, financial, medical, accounting, security, or other professional advice.",
+      "AI-generated information should be independently evaluated before being relied upon for consequential decisions.",
+      "For professional matters, consult an appropriately qualified professional.",
+    ],
+  },
+  {
+    title: "15. Legal Compliance",
+    content: [
+      "Netsyra operates its Service subject to applicable laws and regulations.",
+      "Users are responsible for ensuring that their use of the Service complies with the laws applicable to them.",
+      "Nothing on this website authorizes conduct that is unlawful in the user's jurisdiction.",
+    ],
+  },
+  {
+    title: "16. Reservation of Rights",
+    content: [
+      "Netsyra reserves all rights in its proprietary materials and intellectual property that are not expressly granted to users.",
+      "Where Netsyra believes its legally protected rights have been infringed, it may take appropriate action available under applicable law, which may include requesting removal of infringing material, seeking injunctive relief, pursuing damages, or taking other lawful measures.",
+      "Any enforcement action will be subject to applicable law and available legal remedies.",
+    ],
+  },
+  {
+    title: "17. Relationship to Other Legal Documents",
+    content: [
+      "This Legal Notice should be read together with the Netsyra AI:",
+      "• Terms of Service, which govern use of the Service;",
+      "• Privacy Policy, which explains how personal information is processed; and",
+      "• Acceptable Use Policy, where applicable, which establishes additional restrictions concerning prohibited or abusive use.",
+      "If there is a conflict between this Legal Notice and a specific contractual agreement, the applicable contractual agreement will control to the extent provided by that agreement.",
+    ],
+  },
+  {
+    title: "18. Changes to This Legal Notice",
+    content: [
+      "We may update this Legal Notice from time to time to reflect changes to our business, Service, intellectual-property rights, legal requirements, or other relevant circumstances.",
+      'The "Last Updated" date at the beginning of this page indicates when this notice was most recently revised.',
+    ],
+  },
+  {
+    title: "19. Contact",
+    content: [
+      "For legal, intellectual-property, copyright, or trademark matters:",
+      "Netsyra AI",
+      "Legal: legal@netsyraai.com",
+      "Support: support@netsyraai.com",
+      "Website: https://www.netsyraai.com",
+      "Legal Entity: [LEGAL ENTITY NAME]",
+      "Registered Address: [LEGAL BUSINESS ADDRESS]",
     ],
   },
 ];
 
-export default function LegalNoticePage() {
+export default function LegalPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -291,12 +460,11 @@ export default function LegalNoticePage() {
         <div className="hidden md:flex items-center gap-6 flex-wrap justify-center">
           <Link href="https://netsyraai.com/chat" target="_blank" className="text-sm text-gray-400 hover:text-white transition">Chat</Link>
           <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" className="text-sm text-gray-400 hover:text-white transition">CV Builder</Link>
-          <Link href="/legal" className="text-sm text-gray-400 hover:text-white transition">Legal</Link>
+          <Link href="/legal" className="text-sm text-white font-medium">Legal</Link>
           <Link href="/goal" className="text-sm text-gray-400 hover:text-white transition">Goal</Link>
           <Link href="/about" className="text-sm text-gray-400 hover:text-white transition">About</Link>
           <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition">Privacy</Link>
           <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition">Terms</Link>
-          <Link href="/legal-notice" className="text-sm text-white font-medium">Legal Notice</Link>
           <Link href="#" className="text-sm px-4 py-1.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition">Contact</Link>
         </div>
         <div className="flex md:hidden items-center justify-between w-full">
@@ -311,12 +479,11 @@ export default function LegalNoticePage() {
               <div className="flex flex-col p-2 gap-1">
                 <Link href="https://netsyraai.com/chat" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Chat</Link>
                 <Link href="https://netsyraai.com/cv-builder/index.html" target="_blank" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">CV Builder</Link>
-                <Link href="/legal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Legal</Link>
+                <Link href="/legal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-white font-medium hover:bg-white/10 transition">Legal</Link>
                 <Link href="/goal" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Goal</Link>
                 <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">About</Link>
                 <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Privacy</Link>
                 <Link href="/terms" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Terms</Link>
-                <Link href="/legal-notice" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-white font-medium hover:bg-white/10 transition">Legal Notice</Link>
                 <Link href="#" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition">Contact</Link>
               </div>
             </motion.div>
@@ -337,7 +504,31 @@ export default function LegalNoticePage() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-[#6c5ce7] bg-clip-text text-transparent">
               Legal Notice
             </h1>
+            <p className="text-gray-400 text-sm">
+              Last Updated: <span className="text-white">August 31, 2026</span>
+            </p>
             <div className="w-16 h-1 mx-auto rounded-full bg-gradient-to-r from-[#6c5ce7] to-[#00b4d8]" />
+          </motion.div>
+
+          {/* ── Intro ── */}
+          <motion.div
+            variants={item}
+            className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-4"
+          >
+            <p className="text-gray-300 text-base leading-relaxed">
+              This Legal Notice provides general legal information concerning <strong>Netsyra AI</strong> ("Netsyra," "we," "us," or "our"), the Netsyra website, applications, software, services, documentation, and related materials.
+            </p>
+            <p className="text-gray-300 text-base leading-relaxed">
+              Netsyra AI is operated by:
+            </p>
+            <p className="text-gray-300 text-base leading-relaxed">
+              <strong>Legal Entity:</strong> [LEGAL ENTITY NAME]<br />
+              <strong>Business Name:</strong> Netsyra AI<br />
+              <strong>Registered Address:</strong> [LEGAL BUSINESS ADDRESS]<br />
+              <strong>Legal Contact:</strong> <a href="mailto:legal@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">legal@netsyraai.com</a><br />
+              <strong>General Support:</strong> <a href="mailto:support@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">support@netsyraai.com</a><br />
+              <strong>Website:</strong> <a href="https://www.netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">https://www.netsyraai.com</a>
+            </p>
           </motion.div>
 
           {/* ── Sections ── */}
@@ -345,14 +536,14 @@ export default function LegalNoticePage() {
             <motion.div
               key={idx}
               variants={item}
-              className="p-4 sm:p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
+              className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
             >
               <h2 className="text-xl md:text-2xl font-semibold text-white">
                 {section.title}
               </h2>
               <div className="space-y-2">
                 {section.content.map((line, i) => {
-                  // Check if line starts with a bullet
+                  // Bullet points
                   if (line.startsWith("•")) {
                     return (
                       <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed flex items-start gap-3">
@@ -361,29 +552,41 @@ export default function LegalNoticePage() {
                       </p>
                     );
                   }
-                  // Check if line is an email
-                  if (line.startsWith("Email:")) {
-                    const email = line.replace("Email: ", "");
+                  // Numbered list (e.g., "1. the copyrighted work...")
+                  if (/^\d+\./.test(line)) {
+                    return (
+                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed flex items-start gap-3">
+                        <span className="text-[#6c5ce7] mt-1 font-mono">{line.match(/^\d+\./)?.[0]}</span>
+                        <span>{line.replace(/^\d+\.\s*/, "")}</span>
+                      </p>
+                    );
+                  }
+                  // Email lines (any that contain @ and are not part of a sentence)
+                  if (line.includes("@") && (line.includes("legal@") || line.includes("support@") || line.includes("Legal:") || line.includes("Support:"))) {
+                    const email = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0];
+                    if (email) {
+                      const before = line.replace(email, "");
+                      return (
+                        <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
+                          {before}
+                          <a href={`mailto:${email}`} className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">
+                            {email}
+                          </a>
+                        </p>
+                      );
+                    }
+                  }
+                  // Website link
+                  if (line.includes("https://www.netsyraai.com")) {
                     return (
                       <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
-                        {line.replace(email, "")}
-                        <a
-                          href={`mailto:${email}`}
-                          className="text-[#6c5ce7] hover:text-[#8b7cf7] transition"
-                        >
-                          {email}
+                        <a href="https://www.netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">
+                          https://www.netsyraai.com
                         </a>
                       </p>
                     );
                   }
-                  // Check for warning emoji to style it differently
-                  if (line.includes("⚠️")) {
-                    return (
-                      <p key={i} className="text-amber-400 text-sm md:text-base leading-relaxed font-medium">
-                        {line}
-                      </p>
-                    );
-                  }
+                  // Default paragraph
                   return (
                     <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
                       {line}
@@ -393,6 +596,17 @@ export default function LegalNoticePage() {
               </div>
             </motion.div>
           ))}
+
+          {/* ── Important Notice ── */}
+          <motion.div
+            variants={item}
+            className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
+          >
+            <h2 className="text-xl md:text-2xl font-semibold text-white">Important Notice</h2>
+            <p className="text-gray-300 text-sm md:text-base leading-relaxed">
+              This Legal Notice describes Netsyra's general legal and intellectual-property position. It does not replace the Terms of Service or Privacy Policy and does not grant rights beyond those expressly provided in applicable agreements or law.
+            </p>
+          </motion.div>
 
           {/* ── Back to Home ── */}
           <motion.div variants={item} className="text-center">

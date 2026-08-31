@@ -27,89 +27,356 @@ const item = {
 // ── Data ──────────────────────────────────────────────────
 const sections = [
   {
-    title: "1. INTRODUCTION",
+    title: "1. Eligibility",
     content: [
-      'Welcome to Netsyra AI ("Company," "we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of the Netsyra AI website, platform, AI orchestration services, and any related tools or features (collectively, the "Services").',
-      "By accessing or using the Services, you agree to be bound by these Terms. If you do not agree to these Terms, do not use the Services.",
-      "These Terms constitute a legally binding agreement between you (\"User\" or \"you\") and Netsyra AI. Our Privacy Policy explains how we collect, use, and protect your personal information.",
+      "You must be legally capable of entering into a binding agreement to use the Service.",
+      "If you are using the Service on behalf of a company, organization, or other legal entity, you represent and warrant that you have authority to bind that entity to these Terms.",
+      "The Service is not intended for children under 13 years of age. If you are under the minimum age required to legally use the Service in your jurisdiction, you may use the Service only with the involvement and authorization of a parent or legal guardian where permitted by applicable law.",
+      "We may impose additional age or eligibility requirements where required by applicable law.",
     ],
   },
   {
-    title: "2. ELIGIBILITY",
+    title: "2. The Service",
     content: [
-      "You must be at least 13 years of age to use the Services. If you are under the age of majority in your jurisdiction, you must have the consent of a parent or legal guardian. By using the Services, you represent and warrant that you meet these eligibility requirements and that you will comply with all applicable laws and regulations.",
+      "Netsyra AI provides an artificial-intelligence orchestration platform that may analyze requests and route them to one or more AI models, tools, search systems, software services, or other processing providers.",
+      "Depending on the product, plan, configuration, and availability, the Service may provide:",
+      "• conversational AI;",
+      "• AI-generated text and other content;",
+      "• coding and software-development assistance;",
+      "• repository and document analysis;",
+      "• web or real-time information retrieval;",
+      "• automated workflows;",
+      "• autonomous or agentic functionality;",
+      "• model selection and routing;",
+      "• memory and conversation-history features;",
+      "• APIs, SDKs, and developer functionality; and",
+      "• other AI-related capabilities introduced from time to time.",
+      "The specific models, providers, capabilities, limits, and availability may change over time.",
     ],
   },
   {
-    title: "3. ACCOUNT TERMS",
+    title: "3. AI-Generated Content",
     content: [
-      "3.1 Account Creation. To access certain features, you must create an account by providing accurate, current, and complete information, including a valid email address. You may also sign up using third‑party authentication services such as Google.",
-      "3.2 Account Security. You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use.",
-      "3.3 Responsibility for Account Activity. You are fully responsible for all actions taken through your account, including any content generated, messages sent, or configurations made. Netsyra AI is not liable for any loss or damage arising from your failure to safeguard your account.",
+      "The Service uses artificial-intelligence systems to generate responses and other outputs.",
+      "AI-generated output may be inaccurate, incomplete, outdated, biased, misleading, or unsuitable for a particular purpose. The Service may produce plausible-sounding information that is incorrect.",
+      "You are solely responsible for evaluating AI-generated output before relying on it, publishing it, executing it, distributing it, or using it for any consequential purpose.",
+      "Netsyra does not represent or warrant that AI-generated output is:",
+      "• accurate;",
+      "• complete;",
+      "• current;",
+      "• unique;",
+      "• suitable for your particular purpose;",
+      "• free from errors;",
+      "• free from third-party intellectual-property claims; or",
+      "• appropriate for legal, medical, financial, security, employment, educational, or other high-impact decisions.",
+      "You must not rely on the Service as a substitute for qualified professional advice.",
     ],
   },
   {
-    title: "4. ACCEPTABLE USE",
+    title: "4. High-Risk and Professional Uses",
     content: [
-      "You agree not to use the Services for any unlawful purpose or in violation of these Terms. Prohibited conduct includes, but is not limited to:",
-      "• Engaging in fraud, scams, identity theft, money laundering, or any criminal activity.",
-      "• Generating, uploading, or distributing content that promotes violence, terrorism, exploitation of minors, harassment, hate speech, or other harmful material.",
-      "• Uploading malware, viruses, ransomware, or other malicious code.",
-      "• Sending mass unsolicited messages, spam, or using the Services for automated abuse.",
-      "• Infringing upon copyrights, trademarks, patents, trade secrets, or other intellectual property rights of any third party.",
-      "• Circumventing rate limits, scraping, using automated scripts, reselling access without explicit written permission, or attempting to gain unauthorized access to our systems.",
-      "• Probing, scanning, or testing the vulnerability of any system or network connected to the Services.",
+      "Unless expressly agreed otherwise in writing, the Service is not designed or intended to replace qualified professionals or independently validated systems in circumstances where an error could reasonably result in significant injury, financial loss, legal consequences, loss of rights, or other material harm.",
+      "You are responsible for implementing appropriate human review, testing, validation, access controls, and other safeguards when using the Service in consequential environments.",
     ],
   },
   {
-    title: "5. AI OUTPUT DISCLAIMER",
+    title: "5. Accounts",
     content: [
-      "Netsyra AI is an artificial intelligence platform. You acknowledge and agree that:",
-      "5.1 No Guaranteed Accuracy. AI-generated content may contain errors, inaccuracies, or outdated information. The output should not be relied upon as factual or complete without independent verification.",
-      "5.2 No Professional Advice. The Services do not provide legal, medical, financial, accounting, engineering, or other professional advice. Any AI-generated content related to these fields is provided for informational purposes only.",
-      "5.3 User Responsibility. You are solely responsible for evaluating the accuracy, completeness, and appropriateness of any AI-generated content. Decisions made based on such content are at your own risk.",
-      "5.4 No High‑Risk Use. You may not use the Services for high‑risk applications, including medical diagnosis, emergency response, life‑support systems, critical infrastructure, autonomous weapons, or any application where failure could result in death, personal injury, or catastrophic damage.",
+      "Certain features require an account.",
+      "You agree to provide information that is accurate and reasonably current and to keep your account information updated.",
+      "You are responsible for maintaining the confidentiality of your credentials and for activity occurring through your account, except to the extent that applicable law provides otherwise.",
+      "You must promptly notify us if you believe your account has been compromised or used without authorization.",
+      "You may not:",
+      "• share account credentials in a manner that circumvents plan limits;",
+      "• impersonate another person or entity;",
+      "• create accounts for fraudulent purposes;",
+      "• use another person's account without authorization; or",
+      "• create accounts for the purpose of evading suspension or enforcement actions.",
     ],
   },
   {
-    title: "6. INTELLECTUAL PROPERTY",
+    title: "6. Your Content",
     content: [
-      "6.1 Our IP. All rights, title, and interest in and to the Services, including the Netsyra AI name, logo, branding, website, software, APIs, algorithms, models, documentation, and any related materials, are and will remain the exclusive property of Netsyra AI and its licensors.",
-      "6.2 Restrictions. You may not copy, modify, distribute, sell, lease, reverse engineer, decompile, or create derivative works of the Services or any part thereof without our express written permission.",
-      "6.3 User Content. You retain all ownership rights to the content you submit, upload, or generate through the Services. By using the Services, you grant us a limited, non‑exclusive, worldwide license to process, store, and transmit your content solely as necessary to provide the Services to you.",
+      "\"Your Content\" means information, text, prompts, files, code, documents, data, instructions, or other material that you submit to or through the Service.",
+      "You retain your rights in Your Content, subject to the rights necessary for us and our service providers to operate the Service.",
+      "You grant Netsyra a limited, non-exclusive, worldwide, royalty-free license to host, reproduce, transmit, process, modify as technically necessary, and otherwise use Your Content solely to:",
+      "1. provide and operate the Service;",
+      "2. authenticate and maintain your account;",
+      "3. process requests and generate responses;",
+      "4. maintain conversation history and memory features that you enable;",
+      "5. provide customer support;",
+      "6. maintain security and prevent abuse;",
+      "7. monitor and improve the reliability, performance, and functionality of the Service; and",
+      "8. comply with legal obligations.",
+      "We will not use Your Content for purposes beyond those described in our Privacy Policy without an appropriate legal basis or notice where required by applicable law.",
     ],
   },
   {
-    title: "7. LIMITATION OF LIABILITY",
+    title: "7. Third-Party AI Providers",
     content: [
-      "To the maximum extent permitted by applicable law, Netsyra AI, its officers, directors, employees, agents, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, use, goodwill, or other intangible losses, arising from or related to your use of the Services.",
-      "Our total aggregate liability for any claims arising from these Terms or the Services shall not exceed the amount you have paid us, if any, in the twelve months preceding the claim.",
+      "Netsyra may use third-party AI model providers, infrastructure providers, search providers, authentication providers, payment processors, analytics providers, hosting providers, and other service providers.",
+      "Your requests may therefore be transmitted to third-party providers when necessary to provide a requested feature.",
+      "The models available through Netsyra may be operated by companies other than Netsyra. Their services may be subject to their own terms, policies, technical limitations, and data-processing practices.",
+      "We do not guarantee the continued availability of any particular model or provider.",
+      "We may change, replace, add, or remove providers and models when reasonably necessary to operate, secure, improve, or maintain the Service.",
     ],
   },
   {
-    title: "8. ACCOUNT SUSPENSION AND TERMINATION",
+    title: "8. Acceptable Use",
     content: [
-      "We reserve the right to suspend or terminate your access to the Services, in whole or in part, without prior notice, if we determine that you have violated these Terms, engaged in abusive, fraudulent, or illegal conduct, or created a security risk for our systems.",
-      "Upon termination, all rights granted to you under these Terms will immediately end, and you must cease all use of the Services.",
+      "You may use the Service only in compliance with these Terms and applicable law.",
+      "You must not use the Service to:",
+      "• violate any applicable law or regulation;",
+      "• infringe, misappropriate, or violate another person's intellectual-property, privacy, publicity, contractual, or other rights;",
+      "• commit fraud, deception, harassment, abuse, or impersonation;",
+      "• distribute malware, ransomware, spyware, or other malicious software;",
+      "• obtain unauthorized access to systems, accounts, networks, or data;",
+      "• interfere with or disrupt the Service or its infrastructure;",
+      "• probe, scan, or test systems for vulnerabilities without authorization;",
+      "• circumvent authentication, security controls, rate limits, quotas, or other technical restrictions;",
+      "• reverse engineer the Service except to the extent such restriction is prohibited by applicable law;",
+      "• use the Service to develop or operate unlawful surveillance;",
+      "• use the Service to facilitate exploitation or abuse of children;",
+      "• generate or distribute content that violates applicable law;",
+      "• intentionally submit highly sensitive personal information when it is unnecessary for the requested task;",
+      "• use automated methods to create accounts or consume resources in a manner that circumvents limits;",
+      "• resell or sublicense access to the Service unless expressly authorized;",
+      "• use the Service to benchmark or publicly evaluate it for competitive purposes where prohibited by an applicable plan or agreement;",
+      "• use the Service to make automated decisions about people where doing so would violate applicable law; or",
+      "• attempt to use the Service in a manner that creates unreasonable security, operational, or financial risk to Netsyra or others.",
+      "We may take reasonable measures to investigate and prevent abuse.",
     ],
   },
   {
-    title: "9. CHANGES TO THESE TERMS",
+    title: "9. Security Research",
     content: [
-      'We may modify these Terms at any time by posting the updated version on our website. The updated Terms will be effective as of the "Last Updated" date indicated at the top. Your continued use of the Services after any changes constitutes your acceptance of the revised Terms.',
+      "Nothing in these Terms is intended to prohibit good-faith security research conducted in accordance with applicable law and any security disclosure program expressly provided by Netsyra.",
+      "You must not access, modify, disrupt, or exfiltrate systems or data without authorization.",
     ],
   },
   {
-    title: "10. CHILDREN'S PRIVACY",
+    title: "10. Developer and API Use",
     content: [
-      "The Services are not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If we learn that we have collected such information, we will delete it promptly.",
+      "If Netsyra provides API or developer access, you must protect API credentials and must not expose private credentials in publicly accessible source code, client-side applications, repositories, logs, or other insecure locations.",
+      "You are responsible for applications that you build using the Service, including their security, authentication, authorization, rate limiting, user disclosures, and compliance obligations.",
+      "API usage may be subject to additional technical limits, documentation, pricing, and service-specific terms.",
     ],
   },
   {
-    title: "11. CONTACT INFORMATION",
+    title: "11. Free and Paid Plans",
     content: [
-      "If you have any questions, concerns, or feedback regarding these Terms, please contact us at:",
-      "Email: netsyraai@gmail.com",
+      "Certain features may be offered under free, trial, promotional, or paid plans.",
+      "Plans may differ in:",
+      "• model availability;",
+      "• message limits;",
+      "• token limits;",
+      "• context limits;",
+      "• web-search access;",
+      "• storage;",
+      "• API access;",
+      "• rate limits;",
+      "• response priority;",
+      "• features; and",
+      "• other usage restrictions.",
+      "We may impose reasonable technical limits to prevent abuse and maintain service availability.",
+      "Limits may be changed prospectively, subject to applicable law and any contractual commitments that expressly provide otherwise.",
+    ],
+  },
+  {
+    title: "12. Subscriptions and Payments",
+    content: [
+      "Paid features are subject to the pricing presented at the time of purchase.",
+      "Where applicable, subscriptions automatically renew for the selected billing period unless cancelled before renewal.",
+      "You authorize the applicable payment processor to charge the payment method associated with your subscription.",
+      "Netsyra may use third-party payment processors. Netsyra generally does not receive or store complete payment-card numbers when payment processing is handled directly by a third-party payment processor.",
+      "Taxes, duties, or other governmental charges may apply depending on your location and applicable law.",
+      "If a payment fails, we may restrict or suspend paid features until the outstanding amount is resolved.",
+    ],
+  },
+  {
+    title: "13. Refunds and Cancellation",
+    content: [
+      "You may cancel a subscription in accordance with the cancellation process made available through the Service or the applicable payment processor.",
+      "Cancellation generally prevents future renewal but does not necessarily provide a refund for the current billing period.",
+      "Refund rights may vary depending on applicable consumer-protection law and the payment terms presented at purchase.",
+      "Where applicable law grants a mandatory cancellation, withdrawal, refund, or other consumer right, those rights are not excluded by these Terms.",
+      "Any additional refund rules are described in our Refund Policy, where applicable.",
+    ],
+  },
+  {
+    title: "14. Intellectual Property",
+    content: [
+      "The Service, including its software, interfaces, designs, branding, documentation, proprietary routing systems, system architecture, system prompts, non-user-generated content, and other materials provided by Netsyra, is owned by or licensed to Netsyra and is protected by applicable intellectual-property laws.",
+      "Except as expressly permitted by these Terms, you may not copy, reproduce, distribute, modify, create derivative works from, publicly display, sell, sublicense, or commercially exploit Netsyra's proprietary materials.",
+      "\"Netsyra AI,\" \"Netsyra,\" associated logos, names, designs, and branding are trademarks or identifiers of Netsyra or their respective owners.",
+      "Nothing in these Terms transfers ownership of Netsyra's intellectual property to you.",
+    ],
+  },
+  {
+    title: "15. Your Feedback",
+    content: [
+      "If you provide suggestions, ideas, bug reports, or other feedback regarding the Service, you grant Netsyra a perpetual, worldwide, irrevocable, royalty-free right to use that feedback for any lawful purpose without compensation or attribution, provided that we do not disclose your confidential information in doing so.",
+    ],
+  },
+  {
+    title: "16. Third-Party Services and Links",
+    content: [
+      "The Service may contain integrations, links, or functionality provided by third parties.",
+      "Third-party services are governed by their own terms and policies.",
+      "Netsyra is not responsible for third-party services that it does not control, including their availability, security, accuracy, content, or data practices.",
+    ],
+  },
+  {
+    title: "17. Availability and Changes",
+    content: [
+      "We work to keep the Service available and reliable, but we do not guarantee uninterrupted or error-free operation.",
+      "The Service may be temporarily unavailable because of maintenance, infrastructure failures, provider outages, security incidents, network problems, or circumstances beyond our reasonable control.",
+      "AI models and third-party services may change or become unavailable without notice where reasonably necessary.",
+      "We may modify, suspend, or discontinue features of the Service.",
+    ],
+  },
+  {
+    title: "18. Beta and Experimental Features",
+    content: [
+      "Some features may be identified as beta, experimental, preview, research, or otherwise not generally available.",
+      "Such features may contain errors or limitations and may be changed or discontinued at any time.",
+      "You should not rely on experimental features for critical operations unless we expressly state otherwise.",
+    ],
+  },
+  {
+    title: "19. Confidentiality",
+    content: [
+      "If you use Netsyra in a business context, you should avoid submitting confidential information unless the Service and applicable contractual terms are specifically designed to support such use.",
+      "These Terms do not create a general confidentiality obligation covering all information submitted to the Service unless expressly agreed in a separate written agreement.",
+      "For enterprise customers, additional confidentiality and data-processing terms may be available under a separate agreement.",
+    ],
+  },
+  {
+    title: "20. Privacy",
+    content: [
+      "Our collection and use of personal information is described in the Netsyra AI Privacy Policy.",
+      "The Privacy Policy forms part of these Terms by reference.",
+      "You should review it carefully before using the Service.",
+    ],
+  },
+  {
+    title: "21. Data Protection",
+    content: [
+      "Where applicable, Netsyra will process personal data in accordance with applicable data-protection laws.",
+      "If you use the Service to process personal data on behalf of another person or organization, you are responsible for ensuring that you have an appropriate legal basis and the necessary rights and instructions to submit that data.",
+      "Where required by applicable law or contract, Netsyra may enter into an appropriate data-processing agreement.",
+    ],
+  },
+  {
+    title: "22. Copyright Complaints",
+    content: [
+      "If you believe content available through the Service infringes your copyright, you may contact us at:",
+      "support@netsyraai.com",
+      "Your notice should include sufficient information to identify the copyrighted work, the allegedly infringing material, your contact information, and the information required by applicable copyright law.",
+    ],
+  },
+  {
+    title: "23. Suspension and Termination",
+    content: [
+      "You may stop using the Service at any time.",
+      "We may suspend or terminate access where reasonably necessary because of:",
+      "• material violation of these Terms;",
+      "• unlawful use;",
+      "• fraud or abuse;",
+      "• security threats;",
+      "• payment failure;",
+      "• attempts to circumvent restrictions;",
+      "• activity that creates significant risk to the Service or other users; or",
+      "• legal or regulatory requirements.",
+      "Where appropriate and reasonably practicable, we may provide notice and an opportunity to remedy the violation before termination.",
+      "Upon termination, your right to use the Service ends.",
+      "Certain provisions that by their nature should survive termination will remain effective, including provisions concerning intellectual property, disclaimers, limitation of liability, indemnification, dispute resolution, and outstanding payment obligations.",
+    ],
+  },
+  {
+    title: "24. Disclaimers",
+    content: [
+      "TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SERVICE IS PROVIDED ON AN \"AS IS\" AND \"AS AVAILABLE\" BASIS.",
+      "NETSYRA DISCLAIMS ALL WARRANTIES NOT EXPRESSLY PROVIDED IN THESE TERMS, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, AND WARRANTIES ARISING FROM COURSE OF DEALING OR USAGE OF TRADE.",
+      "WE DO NOT WARRANT THAT THE SERVICE OR AI OUTPUTS WILL BE UNINTERRUPTED, SECURE, ACCURATE, COMPLETE, RELIABLE, CURRENT, OR ERROR-FREE.",
+      "NOTHING IN THESE TERMS EXCLUDES OR LIMITS A WARRANTY OR RIGHT THAT CANNOT LAWFULLY BE EXCLUDED OR LIMITED.",
+    ],
+  },
+  {
+    title: "25. Limitation of Liability",
+    content: [
+      "TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NETSYRA AND ITS OFFICERS, DIRECTORS, EMPLOYEES, AFFILIATES, CONTRACTORS, AND SERVICE PROVIDERS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOSS OF PROFITS, REVENUE, DATA, GOODWILL, BUSINESS OPPORTUNITY, OR ANTICIPATED SAVINGS ARISING FROM OR RELATED TO YOUR USE OF THE SERVICE.",
+      "TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF NETSYRA ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TERMS WILL NOT EXCEED THE GREATER OF:",
+      "(a) THE AMOUNT YOU PAID TO NETSYRA FOR THE SERVICE DURING THE TWELVE MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM; OR",
+      "(b) USD $100.",
+      "This limitation does not apply to liability that cannot legally be limited or excluded under applicable law.",
+    ],
+  },
+  {
+    title: "26. Indemnification",
+    content: [
+      "To the maximum extent permitted by applicable law, you agree to defend, indemnify, and hold harmless Netsyra and its officers, directors, employees, affiliates, contractors, and service providers from claims, liabilities, damages, losses, and reasonable expenses arising from:",
+      "• your violation of these Terms;",
+      "• your unlawful use of the Service;",
+      "• Your Content;",
+      "• your violation of another person's rights; or",
+      "• applications or products that you build using the Service.",
+      "This provision applies only to the extent permitted by applicable law and does not require you to indemnify Netsyra for Netsyra's own unlawful conduct.",
+    ],
+  },
+  {
+    title: "27. Dispute Resolution and Governing Law",
+    content: [
+      "These Terms are governed by the laws of [GOVERNING JURISDICTION], without regard to conflict-of-law principles, except to the extent mandatory consumer-protection laws require otherwise.",
+      "Before filing a formal legal claim, you agree to contact Netsyra at support@netsyraai.com and provide a reasonable opportunity to resolve the dispute informally.",
+      "Nothing in this section prevents a consumer from exercising mandatory rights available under the laws of the consumer's jurisdiction.",
+      "[FINAL GOVERNING-LAW / ARBITRATION / COURT-JURISDICTION CLAUSE TO BE COMPLETED AFTER CONFIRMING NETSYRA'S LEGAL ENTITY AND JURISDICTION.]",
+    ],
+  },
+  {
+    title: "28. Changes to These Terms",
+    content: [
+      "We may update these Terms from time to time.",
+      "If we make material changes, we will provide reasonable notice through the Service, by email, or by another appropriate method where required by law.",
+      "The updated Terms will state their effective date.",
+      "Your continued use of the Service after the effective date means that you accept the updated Terms, except where applicable law requires additional consent.",
+      "We will not use a retroactive change to these Terms to authorize materially different privacy or data practices without providing any notice or consent required by applicable law.",
+    ],
+  },
+  {
+    title: "29. Severability",
+    content: [
+      "If any provision of these Terms is determined to be invalid, unlawful, or unenforceable, that provision will be enforced to the maximum extent permitted by law and the remaining provisions will remain in effect.",
+    ],
+  },
+  {
+    title: "30. No Waiver",
+    content: [
+      "A failure to enforce any provision of these Terms does not constitute a waiver of that provision or our right to enforce it later.",
+    ],
+  },
+  {
+    title: "31. Entire Agreement",
+    content: [
+      "These Terms, together with the Privacy Policy and any additional terms expressly incorporated into the Service, constitute the agreement between you and Netsyra concerning your use of the Service, unless a separate written agreement applies.",
+    ],
+  },
+  {
+    title: "32. Assignment",
+    content: [
+      "You may not assign or transfer your rights or obligations under these Terms without our prior written consent, except where prohibited by applicable law.",
+      "Netsyra may assign these Terms in connection with a merger, acquisition, corporate restructuring, sale of assets, or similar transaction.",
+    ],
+  },
+  {
+    title: "33. Contact",
+    content: [
+      "For questions concerning these Terms:",
+      "Netsyra AI",
+      "Email: support@netsyraai.com",
+      "Website: https://www.netsyraai.com",
+      "Legal Entity: [LEGAL ENTITY NAME]",
+      "Registered Address: [LEGAL BUSINESS ADDRESS]",
     ],
   },
 ];
@@ -386,9 +653,29 @@ export default function TermsPage() {
               Terms of Service
             </h1>
             <p className="text-gray-400 text-sm">
-              Last Updated: <span className="text-white">June 23, 2026</span>
+              Last Updated: <span className="text-white">August 31, 2026</span>
             </p>
             <div className="w-16 h-1 mx-auto rounded-full bg-gradient-to-r from-[#6c5ce7] to-[#00b4d8]" />
+          </motion.div>
+
+          {/* ── Intro ── */}
+          <motion.div
+            variants={item}
+            className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-4"
+          >
+            <p className="text-gray-300 text-base leading-relaxed">
+              These Terms of Service ("Terms") govern your access to and use of Netsyra AI, including the website, applications, APIs, AI assistants, model-routing services, coding tools, web-search functionality, autonomous or agentic features, and related products and services (collectively, the "Service").
+            </p>
+            <p className="text-gray-300 text-base leading-relaxed">
+              The Service is provided by <strong>[LEGAL ENTITY NAME]</strong>, doing business as <strong>Netsyra AI</strong> ("Netsyra," "we," "us," or "our").
+            </p>
+            <p className="text-gray-300 text-base leading-relaxed">
+              <strong>Registered Address:</strong> [LEGAL BUSINESS ADDRESS]<br />
+              <strong>Contact:</strong> <a href="mailto:support@netsyraai.com" className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">support@netsyraai.com</a>
+            </p>
+            <p className="text-gray-300 text-base leading-relaxed">
+              By creating an account, accessing the Service, purchasing a subscription, or otherwise using the Service, you agree to these Terms and our Privacy Policy. If you do not agree to these Terms, you must not access or use the Service.
+            </p>
           </motion.div>
 
           {/* ── Sections ── */}
@@ -403,7 +690,7 @@ export default function TermsPage() {
               </h2>
               <div className="space-y-2">
                 {section.content.map((line, i) => {
-                  // Check if line starts with a bullet
+                  // Bullet points
                   if (line.startsWith("•")) {
                     return (
                       <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed flex items-start gap-3">
@@ -412,21 +699,31 @@ export default function TermsPage() {
                       </p>
                     );
                   }
-                  // Check if line is an email
-                  if (line.startsWith("Email:")) {
-                    const email = line.replace("Email: ", "");
+                  // Numbered list (e.g., "1. provide...")
+                  if (/^\d+\./.test(line)) {
                     return (
-                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
-                        {line.replace(email, "")}
-                        <a
-                          href={`mailto:${email}`}
-                          className="text-[#6c5ce7] hover:text-[#8b7cf7] transition"
-                        >
-                          {email}
-                        </a>
+                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed flex items-start gap-3">
+                        <span className="text-[#6c5ce7] mt-1 font-mono">{line.match(/^\d+\./)?.[0]}</span>
+                        <span>{line.replace(/^\d+\.\s*/, "")}</span>
                       </p>
                     );
                   }
+                  // Email lines
+                  if (line.includes("@") && (line.includes("support@") || line.includes("Email:"))) {
+                    const email = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0];
+                    if (email) {
+                      const before = line.replace(email, "");
+                      return (
+                        <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
+                          {before}
+                          <a href={`mailto:${email}`} className="text-[#6c5ce7] hover:text-[#8b7cf7] transition">
+                            {email}
+                          </a>
+                        </p>
+                      );
+                    }
+                  }
+                  // Default paragraph
                   return (
                     <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
                       {line}

@@ -1353,13 +1353,20 @@ export default function ChatInterface({
                   animate={{ opacity: 1 }}
                   className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400 min-h-[60vh]"
                 >
-                  <div className="w-24 h-24 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center p-2 select-none pointer-events-none">
-                    <img
-                      src="/logo.png"
-                      alt="Netsyra"
-                      className="w-full h-full object-contain select-none pointer-events-none"
-                      style={{ filter: "invert(1)" }}
-                      draggable={false}
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-slate-200/80 shadow-sm flex items-center justify-center p-2 select-none pointer-events-none">
+                    <div
+                      className="w-full h-full select-none pointer-events-none"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        maskImage: 'url(/logo.png)',
+                        maskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center',
+                        WebkitMaskImage: 'url(/logo.png)',
+                        WebkitMaskSize: 'contain',
+                        WebkitMaskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                      }}
                     />
                   </div>
                   <p className="text-lg sm:text-xl font-medium text-gray-600">How can I help you today?</p>
@@ -1458,7 +1465,20 @@ export default function ChatInterface({
                       <div className="flex gap-3 w-full justify-start">
                         {msg.id === lastAssistantId && (
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                            <img src="/logo.png" className="w-5 h-5 object-contain" style={{ filter: "invert(1)" }} />
+                            <div
+                              className="w-5 h-5 select-none"
+                              style={{
+                                backgroundColor: '#ffffff',
+                                maskImage: 'url(/logo.png)',
+                                maskSize: 'contain',
+                                maskRepeat: 'no-repeat',
+                                maskPosition: 'center',
+                                WebkitMaskImage: 'url(/logo.png)',
+                                WebkitMaskSize: 'contain',
+                                WebkitMaskRepeat: 'no-repeat',
+                                WebkitMaskPosition: 'center',
+                              }}
+                            />
                           </div>
                         )}
                         <div className={cn(
@@ -1608,7 +1628,20 @@ export default function ChatInterface({
                   className="flex gap-3 justify-start"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                    <img src="/logo.png" alt="Netsyra" className="w-5 h-5 object-contain" style={{ filter: "invert(1)" }} />
+                    <div
+                      className="w-5 h-5 select-none"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        maskImage: 'url(/logo.png)',
+                        maskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center',
+                        WebkitMaskImage: 'url(/logo.png)',
+                        WebkitMaskSize: 'contain',
+                        WebkitMaskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                      }}
+                    />
                   </div>
                   <div className={cn(
                     "flex-1 min-w-0 text-zinc-950 pt-1 pl-1 md:pl-2 bg-white rounded-2xl px-4 py-2",

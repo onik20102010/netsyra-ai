@@ -26,66 +26,153 @@ const item = {
 };
 
 // ── Data ──────────────────────────────────────────────────
-const features = [
+const sections = [
   {
-    icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
-    title: "Intelligent by Design",
-    desc: "Every prompt is analyzed in real time. Complexity, cost, latency, and context determine which model responds—no manual tuning required.",
+    title: "Intelligence That Matches the Task",
+    content: [
+      "Netsyra AI is built around a simple idea: not every problem requires the same amount of intelligence.",
+      "A simple question should not require the computational cost of a frontier reasoning model. A complex software architecture problem should not be handled by a lightweight model simply because it is faster.",
+      "Netsyra is designed to intelligently determine what a request requires and which AI capabilities are best suited to solve it.",
+      "Our goal is to build an AI system that can dynamically balance intelligence, accuracy, speed, reliability, and computational cost for every request.",
+    ],
   },
   {
-    icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-    title: "Radically Efficient",
-    desc: "Our routing engine slashes AI costs by up to 70% while improving response quality. Lightweight models handle the routine; premium models tackle the complex.",
+    title: "Intelligent Model Selection",
+    content: [
+      "Instead of relying on a single model for everything, Netsyra can work with multiple specialized AI models and providers.",
+      "For each request, the system can evaluate factors such as:",
+      "• task complexity;",
+      "• reasoning requirements;",
+      "• coding difficulty;",
+      "• context size;",
+      "• required knowledge;",
+      "• ambiguity;",
+      "• tool requirements;",
+      "• expected output complexity;",
+      "• latency requirements; and",
+      "• computational cost.",
+      "Based on these factors, Netsyra can select an appropriate model or model strategy.",
+      "Simple tasks can be handled efficiently. Complex tasks can receive substantially stronger reasoning and processing.",
+      "The objective is not to use the largest model every time.",
+      "The objective is to use the right intelligence for the task.",
+    ],
   },
   {
-    icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    title: "Built for Builders",
-    desc: "Designed for developers, researchers, and businesses who demand performance without the overhead of managing multiple keys, contracts, and benchmarks.",
+    title: "More Than Model Routing",
+    content: [
+      "Netsyra is designed to go beyond simply choosing a model based on a fixed list of rules.",
+      "Our long-term goal is an intelligent orchestration layer capable of determining:",
+      "What is the user asking? → How difficult is it? → What capabilities are required? → Which model is best suited? → What tools are needed? → Is additional reasoning or verification required? → Is the result reliable enough to return?",
+      "This allows Netsyra to treat different requests differently rather than applying the same processing strategy to every conversation.",
+    ],
   },
   {
-    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
-    title: "Privacy First",
-    desc: "Conversations of the users are used to improve our models and achieve our goals quickly in a month.",
+    title: "Quality Where It Matters",
+    content: [
+      "Cost optimization is only useful when it preserves the quality users need.",
+      "Netsyra therefore aims to prioritize task-appropriate quality, rather than blindly optimizing for the lowest possible inference cost.",
+      "A lightweight model may be sufficient for a straightforward request.",
+      "A stronger reasoning model may be selected when a task involves:",
+      "• complex reasoning;",
+      "• difficult mathematics;",
+      "• multi-step planning;",
+      "• advanced programming;",
+      "• debugging;",
+      "• large-scale code analysis;",
+      "• security analysis;",
+      "• architectural decisions;",
+      "• ambiguous requirements; or",
+      "• tasks where mistakes carry a higher cost.",
+      "The system can therefore allocate greater computational capability when the problem actually requires it.",
+    ],
   },
   {
-    icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z",
-    title: "Blazing Fast",
-    desc: "Optimized infrastructure and intelligent caching deliver responses in under 7 seconds—often much less.",
+    title: "Efficiency by Design",
+    content: [
+      "Running every request through the most expensive model is inefficient.",
+      "Netsyra's architecture is designed to reduce unnecessary computational expenditure by matching model capability to task requirements.",
+      "This can improve:",
+      "• Cost efficiency — expensive models are reserved for tasks that benefit from them.",
+      "• Latency — simpler requests can be processed through faster models.",
+      "• Scalability — intelligent distribution of workloads can help support a larger number of users and requests.",
+      "• Model utilization — different models can be used according to their relative strengths instead of treating every model as interchangeable.",
+    ],
   },
   {
-    icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
-    title: "Context‑Aware Memory",
-    desc: "Remembers user preferences and facts across sessions without compromising privacy.",
-  },
-];
-
-const stats = [
-  { number: "70%", label: "Cost Reduction" },
-  { number: "<7s", label: "Avg. Response Time" },
-  { number: "100+", label: "Provider Models" },
-  { number: "24/7", label: "Intelligent Routing" },
-];
-
-const differentiators = [
-  {
-    num: "01",
-    title: "Multi‑Provider Routing",
-    desc: "Automatically selects the best model, and more—per request, in real time.",
+    title: "Specialized Intelligence",
+    content: [
+      "Different models can have different strengths.",
+      "One model may be particularly effective at reasoning. Another may excel at software development. Another may efficiently process large contexts. Another may provide fast responses at a lower computational cost.",
+      "Netsyra's goal is to take advantage of these differences.",
+      "Rather than asking:",
+      "\"Which model is the best?\"",
+      "Netsyra asks:",
+      "\"Which model is best for this task?\"",
+      "That distinction is fundamental to our architecture.",
+    ],
   },
   {
-    num: "02",
-    title: "Developer‑First API",
-    desc: "Clean, RESTful endpoints. Drop‑in integration with existing workflows. No complex configuration.",
+    title: "Dynamic Escalation",
+    content: [
+      "Netsyra is designed with the concept of intelligence escalation.",
+      "A request may begin with an efficient processing strategy and, when the system determines that additional capability is necessary, move toward a stronger model or a more sophisticated processing path.",
+      "This creates a more efficient architecture than permanently assigning every request to the same model.",
+      "The goal is to make stronger intelligence available when it is needed—not simply because it exists.",
+    ],
   },
   {
-    num: "03",
-    title: "Context‑Aware Memory",
-    desc: "Remembers user preferences and facts across sessions without compromising privacy.",
+    title: "Verification and Reliability",
+    content: [
+      "Selecting a model is only one part of solving a difficult problem.",
+      "For applicable tasks, Netsyra aims to incorporate additional safeguards such as:",
+      "• structured reasoning;",
+      "• tool use;",
+      "• result validation;",
+      "• consistency checks;",
+      "• error detection;",
+      "• code analysis;",
+      "• test execution where available;",
+      "• model-to-model verification; and",
+      "• retry or escalation strategies.",
+      "These mechanisms are intended to improve reliability without unnecessarily increasing processing costs for simple requests.",
+    ],
   },
   {
-    num: "04",
-    title: "Real‑Time Web Search",
-    desc: "Live queries trigger instant web searches, delivering current information alongside AI reasoning.",
+    title: "A Multi‑Model AI System",
+    content: [
+      "Netsyra is not intended to be defined by a single underlying model.",
+      "Models evolve rapidly. New capabilities appear, providers change their systems, and different models become better suited to different workloads.",
+      "Our architecture is therefore designed to remain model-agnostic and adaptable.",
+      "As better models and technologies become available, Netsyra can incorporate them into its orchestration layer rather than requiring the entire product to depend on a single model.",
+    ],
+  },
+  {
+    title: "Our Long‑Term Vision",
+    content: [
+      "Our long-term goal is to build an adaptive AI system that understands the requirements of a task before deciding how to solve it.",
+      "Instead of treating AI as:",
+      "User → One Model → Response",
+      "we envision:",
+      "User → Understanding → Difficulty Assessment → Capability Selection → Model & Tool Selection → Execution → Verification → Response",
+      "The system should continuously become better at determining how much intelligence a problem requires, where that intelligence should come from, and how to use it efficiently.",
+    ],
+  },
+  {
+    title: "Intelligence Should Be Efficient",
+    content: [
+      "We believe the future of AI is not simply about making models larger.",
+      "It is also about making AI systems smarter about how they use intelligence.",
+      "A powerful model should be available when a difficult problem demands it.",
+      "A fast and efficient model should handle work that does not require frontier-level computation.",
+      "And the system connecting them should understand the difference.",
+      "That is the problem Netsyra is built to solve.",
+    ],
+  },
+  {
+    title: "Our Goal",
+    content: [
+      "Build an AI orchestration system that dynamically matches intelligence to the task—maximizing useful capability while minimizing unnecessary cost, latency, and computation.",
+    ],
   },
 ];
 
@@ -340,128 +427,66 @@ export default function GoalPage() {
       </header>
 
       {/* ── Main Content ── */}
-      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
         <motion.div
           variants={container}
           initial="hidden"
           animate="show"
-          className="space-y-12 sm:space-y-20"
+          className="space-y-12"
         >
-          {/* ── Hero ── */}
-          <motion.div variants={item} className="text-center space-y-6">
-            <span className="inline-block text-xs tracking-[0.2em] uppercase text-gray-500 border border-white/5 px-4 py-1.5 rounded-full">
-              ✦ The Next Generation
-            </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-gray-400 bg-clip-text text-transparent leading-[1.1]">
-              The Future of AI Orchestration
+          {/* ── Header ── */}
+          <motion.div variants={item} className="text-center space-y-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-200 via-white to-[#6c5ce7] bg-clip-text text-transparent">
+              Our Goal
             </h1>
-            <p className="text-gray-400 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
-              We&apos;re building the standard layer for AI‑powered applications—where every prompt
-              finds its perfect model, automatically.
-            </p>
-            <div>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition text-sm"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Back to Home
-              </Link>
-            </div>
+            <div className="w-16 h-1 mx-auto rounded-full bg-gradient-to-r from-[#6c5ce7] to-[#00b4d8]" />
           </motion.div>
 
-          {/* ── Mission ── */}
-          <motion.div
-            variants={item}
-            className="text-center space-y-4 p-5 sm:p-8 md:p-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
-          >
-            <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Our Mission</span>
-            <p className="text-gray-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
-              To make AI accessible, affordable, and intelligent for everyone. We believe no single
-              model is perfect for every task—so we built Netsyra to route each request to the
-              best model automatically. We aim to become the definitive orchestration layer for
-              AI‑powered applications worldwide.
-            </p>
-          </motion.div>
-
-          {/* ── Features Grid ── */}
-          <motion.div variants={container} className="space-y-4">
-            <motion.div variants={item} className="text-center">
-              <span className="text-xs tracking-[0.2em] uppercase text-gray-500">Why Netsyra</span>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mt-1">Intelligent by Design</h2>
-              <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
-                Every prompt is analyzed in real time. Complexity, cost, latency, and context determine
-                which model responds—no manual tuning required.
-              </p>
+          {/* ── Sections ── */}
+          {sections.map((section, idx) => (
+            <motion.div
+              key={idx}
+              variants={item}
+              className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition space-y-3"
+            >
+              <h2 className="text-xl md:text-2xl font-semibold text-white">
+                {section.title}
+              </h2>
+              <div className="space-y-2">
+                {section.content.map((line, i) => {
+                  if (line.startsWith("•")) {
+                    return (
+                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed flex items-start gap-3">
+                        <span className="text-[#6c5ce7] mt-1">•</span>
+                        <span>{line.replace("• ", "")}</span>
+                      </p>
+                    );
+                  }
+                  // Check for quoted text or arrows
+                  if (line.startsWith('"') || line.startsWith('“') || line.startsWith('"')) {
+                    return (
+                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed italic border-l-2 border-[#6c5ce7] pl-4">
+                        {line}
+                      </p>
+                    );
+                  }
+                  // Check for arrow sequences (→)
+                  if (line.includes("→")) {
+                    return (
+                      <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed font-mono text-[#00b4d8]">
+                        {line}
+                      </p>
+                    );
+                  }
+                  return (
+                    <p key={i} className="text-gray-300 text-sm md:text-base leading-relaxed">
+                      {line}
+                    </p>
+                  );
+                })}
+              </div>
             </motion.div>
-
-            <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {features.map((f, i) => (
-                <motion.div
-                  key={i}
-                  variants={item}
-                  className="p-4 sm:p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#6c5ce7]/20 to-[#00b4d8]/10 flex items-center justify-center mb-4 group-hover:from-[#6c5ce7]/30 group-hover:to-[#00b4d8]/20 transition">
-                    <svg className="w-5 h-5 text-[#00b4d8]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d={f.icon} />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* ── Stats ── */}
-          <motion.div
-            variants={container}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
-          >
-            {stats.map((s, i) => (
-              <motion.div key={i} variants={item} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-[#6c5ce7] bg-clip-text text-transparent">
-                  {s.number}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">{s.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* ── What Sets Us Apart ── */}
-          <motion.div
-            variants={container}
-            className="space-y-6 p-4 sm:p-6 md:p-10 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition"
-          >
-            <motion.div variants={item} className="text-center">
-              <span className="text-xs tracking-[0.2em] uppercase text-gray-500">What Sets Us Apart</span>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mt-1">Beyond the Ordinary</h2>
-              <p className="text-gray-400 text-sm max-w-2xl mx-auto mt-2">
-                Four pillars that define our orchestration layer.
-              </p>
-            </motion.div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {differentiators.map((d, i) => (
-                <motion.div
-                  key={i}
-                  variants={item}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition"
-                >
-                  <span className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-semibold text-gray-400 flex-shrink-0 mt-0.5">
-                    {d.num}
-                  </span>
-                  <div>
-                    <h4 className="text-white font-medium text-sm">{d.title}</h4>
-                    <p className="text-gray-400 text-xs mt-1 leading-relaxed">{d.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          ))}
 
           {/* ── Back to Home ── */}
           <motion.div variants={item} className="text-center">
