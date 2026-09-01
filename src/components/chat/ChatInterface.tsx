@@ -51,7 +51,6 @@ type Message = {
   images?: { id: string; url: string; name: string }[];
 };
 
-// Friendly display names for the model tiers (used to show what Auto picked).
 const MODEL_LABELS: Record<string, string> = {
   auto: "Auto",
   fast: "N Fast",
@@ -209,7 +208,6 @@ function extractSources(content: string): {
   return { cleanContent, sources };
 }
 
-// ── MarkdownRenderer (top-level + memoized to prevent widget re-renders) ──
 const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   modelTier,
@@ -471,7 +469,6 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 });
 
-// ── Noise-suppressed audio constraints ──
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
   noiseSuppression: true,
@@ -630,11 +627,21 @@ export default function ChatInterface({
         return;
       }
       if (data) {
-        setMessages(data.map((m: any) => ({
+        const fetchedMessages = data.map((m: any) => ({
           id: m.id,
           role: m.role,
           content: m.content,
-        })));
+        }));
+        setMessages(fetchedMessages);
+        // Automatically collapse long user messages
+        const longUserIds = fetchedMessages
+          .filter(m => m.role === "user" && m.content.length > 500)
+          .map(m => m.id);
+        setCollapsedMessages(prev => {
+          const newSet = new Set(prev);
+          longUserIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
       }
     };
     fetchMessages();
@@ -1058,6 +1065,10 @@ export default function ChatInterface({
       };
 
       setMessages(prev => [...prev, userMessage]);
+      // Auto collapse if long
+      if (userMessage.content.length > 500) {
+        setCollapsedMessages(prev => new Set(prev).add(userMessage.id));
+      }
       setInput("");
       setAttachedImages([]);
 
@@ -1078,6 +1089,9 @@ export default function ChatInterface({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    if (userMessage.content.length > 500) {
+      setCollapsedMessages(prev => new Set(prev).add(userMessage.id));
+    }
     setInput("");
     setAttachedImages([]);
 
@@ -1449,21 +1463,28 @@ export default function ChatInterface({
                               </div>
                             </div>
                           ) : (
-                            <div>
+                            <>
                               {isLong && isCollapsed ? (
-                                <p className="whitespace-pre-wrap">{msg.content.slice(0, 200)}...</p>
+                                <p className="whitespace-pre-wrap line-clamp-3">{msg.content}</p>
                               ) : (
                                 <p className="whitespace-pre-wrap">{msg.content}</p>
                               )}
                               {isLong && (
-                                <button
-                                  onClick={() => toggleCollapse(msg.id)}
-                                  className="text-xs text-gray-500 hover:text-gray-700 mt-1 font-medium focus:outline-none"
-                                >
-                                  {isCollapsed ? "Expand" : "Collapse"}
-                                </button>
+                                <div className="flex justify-center mt-2">
+                                  <button
+                                    onClick={() => toggleCollapse(msg.id)}
+                                    className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition"
+                                    title={isCollapsed ? "Expand" : "Collapse"}
+                                  >
+                                    {isCollapsed ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronUp className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </div>
                               )}
-                            </div>
+                            </>
                           )}
                         </div>
                         {!isEditing && (
@@ -1481,19 +1502,10 @@ export default function ChatInterface({
                       <div className="flex gap-3 w-full justify-start">
                         {msg.id === lastAssistantId && (
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                            <div
-                              className="w-5 h-5 select-none"
-                              style={{
-                                backgroundColor: '#000000',
-                                maskImage: 'url(/logo.png)',
-                                maskSize: 'contain',
-                                maskRepeat: 'no-repeat',
-                                maskPosition: 'center',
-                                WebkitMaskImage: 'url(/logo.png)',
-                                WebkitMaskSize: 'contain',
-                                WebkitMaskRepeat: 'no-repeat',
-                                WebkitMaskPosition: 'center',
-                              }}
+                            <img
+                              src="/logo.png"
+                              alt="N"
+                              className="w-5 h-5 object-contain"
                             />
                           </div>
                         )}
@@ -1644,19 +1656,10 @@ export default function ChatInterface({
                   className="flex gap-3 justify-start"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
-                    <div
-                      className="w-5 h-5 select-none"
-                      style={{
-                        backgroundColor: '#000000',
-                        maskImage: 'url(/logo.png)',
-                        maskSize: 'contain',
-                        maskRepeat: 'no-repeat',
-                        maskPosition: 'center',
-                        WebkitMaskImage: 'url(/logo.png)',
-                        WebkitMaskSize: 'contain',
-                        WebkitMaskRepeat: 'no-repeat',
-                        WebkitMaskPosition: 'center',
-                      }}
+                    <img
+                      src="/logo.png"
+                      alt="N"
+                      className="w-5 h-5 object-contain"
                     />
                   </div>
                   <div className={cn(
