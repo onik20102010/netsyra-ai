@@ -499,6 +499,7 @@ export default function ChatInterface({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [partialReply, setPartialReply] = useState("");
+  const [collapsedMessages, setCollapsedMessages] = useState<Set<string>>(new Set());
 
   const [isThinking, setIsThinking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -530,6 +531,18 @@ export default function ChatInterface({
   const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id;
 
   const { refetch: refetchUsage } = useChatUsage();
+
+  const toggleCollapse = (id: string) => {
+    setCollapsedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   // ── Mobile keyboard detection ──
   useEffect(() => {
@@ -1366,6 +1379,8 @@ export default function ChatInterface({
               {messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
                 const isEditing = editingMessageId === msg.id;
+                const isCollapsed = collapsedMessages.has(msg.id);
+                const isLong = msg.content.length > 500;
 
                 return (
                   <motion.div
@@ -1400,7 +1415,7 @@ export default function ChatInterface({
                     )}
 
                     {isUser && msg.content ? (
-                      <div className="flex gap-3 w-full justify-end">
+                      <>
                         <div className="max-w-[85%] md:max-w-[75%] px-3.5 py-2.5 rounded-2xl bg-white text-gray-900 border border-gray-200 shadow-sm">
                           {isEditing ? (
                             <div className="flex flex-col gap-2 w-full">
@@ -1409,8 +1424,8 @@ export default function ChatInterface({
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}
                                 onKeyDown={handleEditKeyDown}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:border-gray-400 transition-colors"
-                                rows={3}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:border-gray-400 transition-colors min-h-[120px]"
+                                rows={6}
                                 autoFocus
                               />
                               <div className="flex items-center justify-between">
@@ -1435,29 +1450,41 @@ export default function ChatInterface({
                             </div>
                           ) : (
                             <div>
-                              {msg.content && <p>{msg.content}</p>}
-                            </div>
-                          )}
-                          {!isEditing && (
-                            <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1.5 justify-end">
-                              <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
+                              {isLong && isCollapsed ? (
+                                <p className="whitespace-pre-wrap">{msg.content.slice(0, 200)}...</p>
+                              ) : (
+                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                              )}
+                              {isLong && (
+                                <button
+                                  onClick={() => toggleCollapse(msg.id)}
+                                  className="text-xs text-gray-500 hover:text-gray-700 mt-1 font-medium focus:outline-none"
+                                >
+                                  {isCollapsed ? "Expand" : "Collapse"}
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
-                      </div>
+                        {!isEditing && (
+                          <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 mt-1 justify-end w-full max-w-[85%] md:max-w-[75%]">
+                            <button onClick={() => handleCopy(msg.content)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Copy">
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => startEditing(msg)} className="p-1 -m-0.5 text-gray-400 hover:text-gray-600 transition" title="Edit">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </>
                     ) : !isUser ? (
                       <div className="flex gap-3 w-full justify-start">
                         {msg.id === lastAssistantId && (
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                             <div
                               className="w-5 h-5 select-none"
                               style={{
-                                backgroundColor: '#ffffff',
+                                backgroundColor: '#000000',
                                 maskImage: 'url(/logo.png)',
                                 maskSize: 'contain',
                                 maskRepeat: 'no-repeat',
@@ -1616,11 +1643,11 @@ export default function ChatInterface({
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-3 justify-start"
                 >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-gray-700 flex items-center justify-center mt-0.5 shadow-sm select-none">
                     <div
                       className="w-5 h-5 select-none"
                       style={{
-                        backgroundColor: '#ffffff',
+                        backgroundColor: '#000000',
                         maskImage: 'url(/logo.png)',
                         maskSize: 'contain',
                         maskRepeat: 'no-repeat',
