@@ -51,7 +51,6 @@ type Message = {
   images?: { id: string; url: string; name: string }[];
 };
 
-// Friendly display names for the model tiers (used to show what Auto picked).
 const MODEL_LABELS: Record<string, string> = {
   auto: "Auto",
   fast: "N Fast",
@@ -209,7 +208,6 @@ function extractSources(content: string): {
   return { cleanContent, sources };
 }
 
-// ── MarkdownRenderer (top-level + memoized to prevent widget re-renders) ──
 const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   modelTier,
@@ -471,7 +469,6 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 });
 
-// ── Noise-suppressed audio constraints ──
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
   noiseSuppression: true,
@@ -1068,7 +1065,6 @@ export default function ChatInterface({
       };
 
       setMessages(prev => [...prev, userMessage]);
-      // Auto collapse if long
       if (userMessage.content.length > 500) {
         setCollapsedMessages(prev => new Set(prev).add(userMessage.id));
       }
@@ -1433,7 +1429,7 @@ export default function ChatInterface({
 
                     {isUser && msg.content ? (
                       <>
-                        <div className="max-w-[85%] md:max-w-[75%] px-3.5 py-2.5 rounded-2xl bg-white text-gray-900 border border-gray-200 shadow-sm">
+                        <div className="max-w-[85%] md:max-w-[75%] px-3.5 py-2.5 rounded-2xl bg-white text-gray-900 border border-gray-200 shadow-sm group">
                           {isEditing ? (
                             <div className="flex flex-col gap-2 w-full">
                               <textarea
@@ -1473,7 +1469,7 @@ export default function ChatInterface({
                                 <p className="whitespace-pre-wrap">{msg.content}</p>
                               )}
                               {isLong && (
-                                <div className="flex justify-start mt-2">
+                                <div className="flex justify-start mt-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
                                   <button
                                     onClick={() => toggleCollapse(msg.id)}
                                     className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition"
